@@ -4,6 +4,7 @@ from .forms import PatientForm
 from .models import Patient
 from queues.models import Visit, Queue
 from queues.forms import VitalSignForm
+from ai_triage.services import apply_ai_triage
 
 def severity_to_priority(sev: str) -> int:
     # priority เลขน้อยมาก่อน
@@ -33,10 +34,11 @@ def register_patient(request):
         visit.final_severity = "GREEN"
         visit.save()
 
-        Queue.objects.create(
-            visit=visit,
-            priority=severity_to_priority(visit.final_severity)
-        )
+        Queue.objects.create(visit=visit, priority=3)  # ตั้งต้น GREEN
+        apply_ai_triage(visit)  # <-- ให้ AI ประเมิน แล้วปรับสี+priority ให้อัตโนมัติ
+
+            
+        
 
         return redirect("queue_list")
 

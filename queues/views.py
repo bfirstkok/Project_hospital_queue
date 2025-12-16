@@ -46,3 +46,10 @@ def triage_visit(request, visit_id):
         q.save()
 
     return redirect("queue_list")
+
+q_items = (
+    Queue.objects
+    .select_related("visit", "visit__patient", "visit__triage_result")
+    .filter(status="WAITING")
+    .order_by("priority", "created_at")
+)

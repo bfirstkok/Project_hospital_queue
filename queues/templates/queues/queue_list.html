@@ -13,7 +13,8 @@
     <tr>
       <th>Visit</th>
       <th>ชื่อผู้ป่วย</th>
-      <th>สี</th>
+      <th>สี (Final)</th>
+      <th>AI</th>
       <th>registered_at</th>
       <th>Action</th>
     </tr>
@@ -21,34 +22,51 @@
     {% for q in q_items %}
       <tr>
         <td>#{{ q.visit.id }}</td>
-        <td>{{ q.visit.patient.first_name }} {{ q.visit.patient.last_name }}</td>
-        <td>{{ q.visit.final_severity }}</td>
-        <td>
-            <form method="post" action="{% url 'triage_visit' q.visit.id %}"style="display:inline;">
-                {% csrf_token %}
-                <select name="severity">
-                    <option value="GREEN">เขียว</option>
-                    <option value="YELLOW">เหลือง</option>
-                    <option value="RED">แดง</option>
-                </select>
-                <button type="submit">คัดกรอง</button>
-            </form>
 
-            <form method="post" action="{% url 'call_visit' q.visit.id %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">เรียกคิว</button>
-            </form>
-        </td>
-        <td>{{ q.visit.registered_at }}</td>
         <td>
-          <form method="post" action="{% url 'call_visit' q.visit.id %}">
+          {{ q.visit.patient.first_name }} {{ q.visit.patient.last_name }}
+        </td>
+
+        <td>
+          {{ q.visit.final_severity }}
+        </td>
+
+        <td>
+          {% if q.visit.triage_result %}
+            {{ q.visit.triage_result.ai_severity }}
+            {% if q.visit.triage_result.confidence %}
+              ({{ q.visit.triage_result.confidence }})
+            {% endif %}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td>
+          {{ q.visit.registered_at }}
+        </td>
+
+        <td>
+          <!-- คัดกรอง/เปลี่ยนสี -->
+          <form method="post" action="{% url 'triage_visit' q.visit.id %}" style="display:inline;">
+            {% csrf_token %}
+            <select name="severity">
+              <option value="GREEN"  {% if q.visit.final_severity == "GREEN" %}selected{% endif %}>เขียว</option>
+              <option value="YELLOW" {% if q.visit.final_severity == "YELLOW" %}selected{% endif %}>เหลือง</option>
+              <option value="RED"    {% if q.visit.final_severity == "RED" %}selected{% endif %}>แดง</option>
+            </select>
+            <button type="submit">คัดกรอง</button>
+          </form>
+
+          <!-- เรียกคิว -->
+          <form method="post" action="{% url 'call_visit' q.visit.id %}" style="display:inline;">
             {% csrf_token %}
             <button type="submit">เรียกคิว</button>
           </form>
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="5">ไม่มีคิวรอ</td></tr>
+      <tr><td colspan="6">ไม่มีคิวรอ</td></tr>
     {% endfor %}
   </table>
 </body>
