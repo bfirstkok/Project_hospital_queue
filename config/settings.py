@@ -125,8 +125,11 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/dashboard/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+LOGIN_URL = "/" 
+LOGIN_REDIRECT_URL = "/queues/"
+LOGOUT_REDIRECT_URL = "/"
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field

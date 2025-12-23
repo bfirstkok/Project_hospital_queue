@@ -25,9 +25,9 @@
 
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="/">📋 Queue</a>
-      <a class="btn" href="/monitor/">🩺 Monitor</a>
-      <a class="btn" href="/map/">🗺️ Map</a>
+      <a class="btn" href="/queues/">📋 Queue</a>
+      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
       <a class="btn" href="/accounts/login/">🚪 Logout</a>
     </div>
   </div>
@@ -134,7 +134,7 @@
   async function loadSparklines(visitIds){
     if(!visitIds.length) return;
     const qs = visitIds.join(",");
-    const res = await fetch(`/monitor/api/sparklines/?visit_ids=${qs}`);
+    const res = await fetch(`/queues/monitor/api/sparklines/?visit_ids=${qs}`);
     const data = await res.json();
     if(!data.ok) return;
 
@@ -154,7 +154,7 @@
     const elRefresh = document.getElementById("lastRefresh");
 
     try{
-      const res = await fetch("/monitor/api/summary/");
+      const res = await fetch("/queues/monitor/api/summary/");
       const data = await res.json();
       if(!data.ok) throw new Error(data.error || "API error");
 
@@ -188,7 +188,7 @@
             <td><div id="spark-o2-${x.visit_id}" class="muted">-</div></td>
 
             <td class="muted">${vitalsText(x.vitals)}</td>
-            <td><a class="btn" style="padding:8px 10px" href="/monitor/visit/${x.visit_id}/">ดู</a></td>
+            <td><a class="btn" style="padding:8px 10px" href="/queues/monitor/visit/${x.visit_id}/">ดู</a></td>
           </tr>
         `;
       }).join("");

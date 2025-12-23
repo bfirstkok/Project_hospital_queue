@@ -21,9 +21,9 @@
     </div>
 
     <div class="actions">
-      <a class="btn" href="/">📋 กลับหน้าคิว</a>
+      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
       <a class="btn" href="/dashboard/">🏠 Dashboard</a>
-      <a class="btn" href="/map/">🗺️ Map</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
     </div>
   </div>
 
@@ -125,7 +125,7 @@
     const elCards = document.getElementById("cards");
 
     try {
-      const res = await fetch("/monitor/api/summary/");
+      const res = await fetch("/queues/monitor/api/summary/");
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "API error");
 
@@ -209,7 +209,7 @@
             </td>
 
             <td data-label="Action">
-              <a class="rightLink" href="/monitor/visit/${r.visit_id}/">ดูรายละเอียด →</a>
+              <a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดูรายละเอียด →</a>
             </td>
           </tr>
         `;

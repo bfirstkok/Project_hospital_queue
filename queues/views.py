@@ -387,7 +387,7 @@ def update_location(request, visit_id: int):
 @require_GET
 def monitor_sparklines_api(request):
     """
-    GET /monitor/api/sparklines/?visit_ids=1,2,3
+    GET /queues/monitor/api/sparklines/?visit_ids=1,2,3
     return: { ok:true, series: { "1": {"bpm":[...], "o2":[...]}, ... } }
     """
     ids_raw = request.GET.get("visit_ids", "").strip()

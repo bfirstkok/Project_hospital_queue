@@ -8,8 +8,7 @@ urlpatterns = [
     # queue actions
     path("triage/<int:visit_id>/", views.triage_visit, name="triage_visit"),
     path("call/<int:visit_id>/", views.call_visit, name="call_visit"),
-
-    # optional manual location update (ทางเลือก B)
+    path("monitor/", views.monitor_dashboard, name="monitor_dashboard"),
     path("location/<int:visit_id>/", views.update_location, name="update_location"),
 
     # monitor
