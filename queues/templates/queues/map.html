@@ -1,36 +1,44 @@
 <!doctype html>
 <html>
 <head>
+  {% load static %}
   <meta charset="utf-8">
   <title>Patient Map</title>
-
+  <link rel="stylesheet" href="{% static 'css/map.css' %}?v=2">
   <!-- Leaflet (OpenStreetMap) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <style>
-    body { font-family: sans-serif; margin: 16px; }
-    #map { height: 72vh; border: 1px solid #ddd; border-radius: 10px; }
-    .toolbar { display:flex; gap:10px; align-items:center; margin: 10px 0 16px; flex-wrap: wrap; }
-    .pill { padding: 6px 10px; border-radius: 999px; background:#f3f3f3; display:inline-block; }
-    .btn { padding: 8px 12px; border:1px solid #ddd; border-radius: 10px; background:#fff; cursor:pointer; }
-    .btn:hover { background:#f8f8f8; }
-    .small { color:#666; font-size: 12px; }
-  </style>
 </head>
 <body>
-  <h2>Patient Map (ตำแหน่งผู้ป่วยจาก IoT)</h2>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="title pill-title">
+      <div class="icon">🗺️</div>
+      <div>
+        <h1>Patient Map</h1>
+        <div class="subtitle">ตำแหน่งผู้ป่วยจาก IoT (Realtime)</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="/">📋 คิว</a>
+      <a class="btn" href="/monitor/">🩺 Monitor</a>
+      <button class="btn primary" id="btnRefresh">🔄 Refresh</button>
+    </div>
+  </div>
 
   <div class="toolbar">
-    <a class="btn" href="/">กลับหน้าคิว</a>
-    <a class="btn" href="/monitor/">Monitor</a>
-    <span class="pill">อัปเดตล่าสุด (server): <b id="serverTime">-</b></span>
-    <span class="pill">จำนวนหมุด: <b id="count">0</b></span>
-    <button class="btn" id="btnRefresh">Refresh</button>
-    <span class="small">Auto refresh ทุก 5 วิ</span>
+    <span class="pill">⏱ อัปเดตล่าสุด: <b id="serverTime">-</b></span>
+    <span class="pill">📍 จำนวนหมุด: <b id="count">0</b></span>
+    <span class="small">Auto refresh ทุก 5 วินาที</span>
   </div>
 
   <div id="map"></div>
+
+</div>
+
 
   <script>
     // ตั้งค่าเริ่มต้น (ขอนแก่นโดยประมาณ)

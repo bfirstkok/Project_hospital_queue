@@ -175,9 +175,9 @@ def _visit_queryset_with_latest_vitals_and_gps():
     latest_any_log = TelemetryLog.objects.filter(visit=OuterRef("pk")).order_by("-ts")
 
     return (
-        Visit.objects.select_related("patient")
+        Visit.objects
+        .select_related("patient")
         .annotate(
-            # VitalSign ล่าสุด
             last_ts=Subquery(latest_vs.values("updated_at")[:1]),
             last_bpm=Subquery(latest_vs.values("pr")[:1]),
             last_o2=Subquery(latest_vs.values("o2sat")[:1]),
@@ -186,17 +186,15 @@ def _visit_queryset_with_latest_vitals_and_gps():
             last_sys=Subquery(latest_vs.values("sys_bp")[:1]),
             last_dia=Subquery(latest_vs.values("dia_bp")[:1]),
 
-            # GPS ล่าสุด (จาก TelemetryLog ที่มี lat/lng)
             last_lat=Subquery(latest_gps_log.values("lat")[:1]),
             last_lng=Subquery(latest_gps_log.values("lng")[:1]),
             last_gps_ts=Subquery(latest_gps_log.values("ts")[:1]),
 
-            # log ล่าสุด (คิด online)
             last_log_ts=Subquery(latest_any_log.values("ts")[:1]),
             last_device_id=Subquery(latest_any_log.values("device__device_id")[:1]),
         )
-        .order_by("-registered_at")
     )
+
 
 
 def _get_ai_severity(visit):
@@ -266,20 +264,32 @@ def monitor_latest_api(request):
 @login_required
 def monitor_summary_api(request):
     """
-    API ให้หน้า monitor_dashboard.html fetch ทุก 5 วิ
-    (กรองเฉพาะคิว WAITING)
+    API ให้หน้า dashboard / monitor
+    เรียงตาม: RED → YELLOW → GREEN → มาก่อนก่อน
     """
     now = timezone.now()
-    waiting_ids = Queue.objects.filter(status="WAITING").values_list("visit_id", flat=True)
 
-    visits = (
-        _visit_queryset_with_latest_vitals_and_gps()
-        .filter(id__in=waiting_ids)[:200]
+    q_items = (
+        Queue.objects
+        .select_related("visit", "visit__patient")
+        .filter(status="WAITING")
+        .order_by("priority", "created_at")[:200]
     )
 
+    visit_ids = [q.visit_id for q in q_items]
+
+    visits = {
+        v.id: v
+        for v in _visit_queryset_with_latest_vitals_and_gps()
+        .filter(id__in=visit_ids)
+    }
+
     items = []
-    for v in visits:
-        # online = มี log ล่าสุดภายใน 60 วิ (ปรับได้)
+    for q in q_items:
+        v = visits.get(q.visit_id)
+        if not v:
+            continue
+
         online = False
         if v.last_log_ts:
             online = (now - v.last_log_ts).total_seconds() <= 60
@@ -289,7 +299,6 @@ def monitor_summary_api(request):
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
-            "last_ts": v.last_ts.isoformat() if v.last_ts else None,
             "online": online,
             "device_id": v.last_device_id,
             "vitals": {
@@ -307,7 +316,11 @@ def monitor_summary_api(request):
             }
         })
 
-    return JsonResponse({"ok": True, "items": items, "server_time": now.isoformat()})
+    return JsonResponse({
+        "ok": True,
+        "items": items,
+        "server_time": now.isoformat()
+    })
 
 
 @login_required

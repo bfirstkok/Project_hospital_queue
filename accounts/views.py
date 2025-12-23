@@ -17,7 +17,7 @@ def dashboard(request):
     yellow_total = Queue.objects.filter(status="WAITING", priority=2).count()
     green_total  = Queue.objects.filter(status="WAITING", priority=3).count()
 
-    return render(request, "accounts/dashboard.html", {
+    return render(request, "dashboard/dashboard.html", {
         "now": now,
         "waiting_total": waiting_total,
         "called_total": called_total,

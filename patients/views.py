@@ -1,15 +1,15 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
-from .forms import PatientForm
+from django.utils import timezone
+
 from .models import Patient
 from queues.models import Visit, Queue
-from queues.forms import VitalSignForm
 from ai_triage.services import apply_ai_triage
 
 
 def severity_to_priority(sev: str) -> int:
-    # priority เลขน้อยมาก่อน
     return {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(sev, 3)
+
 
 @login_required
 def register_patient(request):
@@ -18,12 +18,47 @@ def register_patient(request):
         last_name = request.POST.get("last_name", "").strip()
         national_id = request.POST.get("national_id", "").strip()
 
-        if first_name and last_name and national_id:
-            Patient.objects.create(
-                first_name=first_name,
-                last_name=last_name,
-                national_id=national_id,  # ถ้าฟิลด์จริงไม่ชื่อ national_id ให้เปลี่ยนตรงนี้
+        if not (first_name and last_name and national_id):
+            return render(
+                request,
+                "patients/register.html",
+                {"error": "กรุณากรอกข้อมูลให้ครบ"},
             )
-            return redirect("queue_list")  # กลับหน้าคิว
+
+        # 1️⃣ Patient (กันซ้ำด้วย national_id)
+        patient, _ = Patient.objects.get_or_create(
+            national_id=national_id,
+            defaults={
+                "first_name": first_name,
+                "last_name": last_name,
+            },
+        )
+
+        # 2️⃣ Visit
+        visit = Visit.objects.create(
+            patient=patient,
+            registered_at=timezone.now(),
+        )
+
+        # 3️⃣ AI Triage
+        triage_result = apply_ai_triage(visit)
+
+        severity = (
+            triage_result.get("ai_severity")
+            if isinstance(triage_result, dict)
+            else getattr(triage_result, "ai_severity", None)
+        ) or "GREEN"
+
+        visit.final_severity = severity
+        visit.save()
+
+        # 4️⃣ Queue
+        Queue.objects.create(
+            visit=visit,
+            priority=severity_to_priority(severity),
+        )
+
+        # 5️⃣ กลับหน้าคิว
+        return redirect("queue_list")
 
     return render(request, "patients/register.html")

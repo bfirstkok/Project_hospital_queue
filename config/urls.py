@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
 
     # auth
     path("accounts/login/", auth_views.LoginView.as_view(), name="login"),
@@ -11,8 +11,8 @@ urlpatterns = [
 
     # app urls
     path("accounts/", include("accounts.urls")),
+    path("dashboard/", include("dashboard.urls")),  # ✅ เพิ่มบรรทัดนี้
 
     path("", include("queues.urls")),
     path("patients/", include("patients.urls")),
-
 ]

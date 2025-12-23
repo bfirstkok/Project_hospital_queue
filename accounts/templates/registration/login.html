@@ -1,14 +1,123 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Login</title></head>
-  <body>
-    <h2>Login (พยาบาล)</h2>
-    {% if form.errors %}<p style="color:red;">เข้าสู่ระบบไม่สำเร็จ</p>{% endif %}
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <title>Login</title>
 
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">เข้าสู่ระบบ</button>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
+<div class="login-box">
+    <div class="login-image">
+    <img src="{% static 'images/hospital-logo.png' %}" alt="Hospital Logo">
+    </div>
+    <h2>Login (พยาบาล)</h2>
+    {% if form.errors %}
+        <div class="error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    {% endif %}
+
+    <form method="post" id="loginForm">
+        {% csrf_token %}
+
+        <!-- Username -->
+        <label for="id_username">ชื่อผู้ใช้</label>
+        <input
+            type="text"
+            name="username"
+            id="id_username"
+            placeholder="ชื่อผู้ใช้"
+            required
+            autofocus
+        >
+
+        <!-- Password -->
+        <!-- Password -->
+<label for="id_password">รหัสผ่าน</label>
+<input
+    type="password"
+    name="password"
+    id="id_password"
+    placeholder="รหัสผ่าน"
+    required
+>
+
+<!-- Caps Lock warning -->
+<div id="capsWarning" class="caps-warning" style="display:none;">
+    ⚠ Caps Lock เปิดอยู่
+</div>
+
+
+        <!-- Show password -->
+        <div class="password-tools">
+    <label class="show-password">
+        <input type="checkbox" id="showPassword">
+        <span>แสดงรหัสผ่าน</span>
+    </label>
+</div>
+
+
+        <!-- Submit -->
+        <button type="submit" id="loginBtn">
+            <span class="btn-text">เข้าสู่ระบบ</span>
+            <span class="btn-loading">กำลังเข้าสู่ระบบ...</span>
+        </button>
     </form>
-  </body>
+
+    <div class="login-footer">
+        ระบบจัดการคิวโรงพยาบาล • สำหรับบุคลากรเท่านั้น
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // Focus username
+    const usernameInput = document.getElementById("id_username");
+    if (usernameInput) usernameInput.focus();
+
+    // Password + Caps Lock
+    const pwd = document.getElementById("id_password");
+    const warning = document.getElementById("capsWarning");
+
+    if (pwd && warning) {
+        const checkCaps = (e) => {
+            warning.style.display =
+                e.getModifierState && e.getModifierState("CapsLock")
+                    ? "block"
+                    : "none";
+        };
+
+        pwd.addEventListener("keydown", checkCaps);
+        pwd.addEventListener("keyup", checkCaps);
+        pwd.addEventListener("focus", checkCaps);
+        pwd.addEventListener("blur", () => warning.style.display = "none");
+    }
+
+    // Show / hide password
+    const showPassword = document.getElementById("showPassword");
+    if (showPassword && pwd) {
+        showPassword.addEventListener("change", () => {
+            pwd.type = showPassword.checked ? "text" : "password";
+        });
+    }
+
+    // Loading state
+    const form = document.getElementById("loginForm");
+    const btn = document.getElementById("loginBtn");
+
+    if (form && btn) {
+        form.addEventListener("submit", () => {
+            btn.classList.add("loading");
+            btn.disabled = true;
+        });
+    }
+});
+</script>
+
+
+</body>
 </html>
