@@ -176,6 +176,7 @@ input:focus{
 }
 
 
+<<<<<<< HEAD
 
 .alert{
   margin-top:12px;
@@ -185,6 +186,23 @@ input:focus{
   background:rgba(239,68,68,.12);
   color:#fee2e2;
   font-size:13px;
+=======
+.alert {
+    background-color: rgba(239, 68, 68, 0.15); /* พื้นหลังแดงจางๆ */
+    color: #ff4d4d;                          /* เปลี่ยนตัวหนังสือเป็นแดงที่สว่างและเข้มขึ้น */
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.5); /* เส้นขอบให้ดูคมชัดขึ้น */
+    margin-bottom: 20px;
+    
+    /* เพิ่มความหนาและเงาให้ตัวหนังสืออ่านง่ายขึ้น */
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); 
+    
+    display: flex;
+    align-items: center;
+    gap: 10px;
+>>>>>>> 23a39ec (อันนี้ลองแล้ว ล่าสุด)
 }
 
 /* ---------- FOOTER ---------- */
