@@ -6,17 +6,19 @@
   <title>ลงทะเบียนผู้ป่วย</title>
 
   {% load static %}
-  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=7">
 </head>
 
 <body>
 <div class="wrap">
+
+  <!-- ===== TOP BAR ===== -->
   <div class="topbar">
     <div class="pill-title">
       <div class="icon">🧾</div>
       <div>
         <h1>ลงทะเบียนผู้ป่วย</h1>
-        <div class="subtitle">เพิ่มผู้ป่วยใหม่เพื่อสร้าง Visit/Queue ต่อได้</div>
+        <div class="subtitle">เพิ่มผู้ป่วยใหม่เพื่อสร้าง Visit / Queue</div>
       </div>
     </div>
 
@@ -26,57 +28,271 @@
     </div>
   </div>
 
+  <!-- ===== CARD ===== -->
   <div class="card">
-    {# ถ้า view ส่ง error มาให้แสดง #}
-    {% if error %}
-      <div class="alert">❌ {{ error }}</div>
+
+    {% if form.errors %}
+      <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก</div>
     {% endif %}
 
     <form method="post" autocomplete="off">
       {% csrf_token %}
 
+      <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
+      <h3 class="section-title">ข้อมูลผู้ป่วย</h3>
       <div class="grid">
         <div class="field">
-          <label for="first_name">ชื่อ</label>
-          <input id="first_name" name="first_name" required placeholder="เช่น สมชาย"
-                 value="{{ first_name|default:'' }}">
+          <label>ชื่อ</label>
+          <input name="first_name" required placeholder="เช่น สมชาย"
+                 value="{{ form.first_name.value|default:'' }}">
         </div>
 
         <div class="field">
-          <label for="last_name">นามสกุล</label>
-          <input id="last_name" name="last_name" required placeholder="เช่น ใจดี"
-                 value="{{ last_name|default:'' }}">
+          <label>นามสกุล</label>
+          <input name="last_name" required placeholder="เช่น ใจดี"
+                 value="{{ form.last_name.value|default:'' }}">
         </div>
 
         <div class="field" style="grid-column: span 2;">
-          <label for="national_id">เลขบัตรประชาชน</label>
-          <input id="national_id" name="national_id" required inputmode="numeric"
-                 placeholder="13 หลัก (ไม่ต้องใส่ขีด) เช่น 1101700234567"
-                 value="{{ national_id|default:'' }}">
-          <div class="hint">
-            • แนะนำ: ตรวจซ้ำไม่ให้ลงทะเบียนซ้ำ <br>
-            • ถ้าจะทำเดโม: ใส่เลขสุ่ม 13 หลักได้ (แต่ควรกันซ้ำใน backend)
-          </div>
+          <label>เลขบัตรประชาชน</label>
+          <input name="national_id" required inputmode="numeric"
+                 placeholder="13 หลัก ไม่ต้องใส่ขีด"
+                 value="{{ form.national_id.value|default:'' }}">
+          <div class="hint">ใช้ตรวจสอบผู้ป่วยซ้ำในระบบ</div>
+        </div>
+
+        <div class="field">
+          <label>เพศ</label>
+          <select name="gender">
+            <option value="">-- เลือก --</option>
+            <option value="M">ชาย</option>
+            <option value="F">หญิง</option>
+            <option value="O">อื่นๆ</option>
+            <option value="UNKNOWN">ไม่ระบุ</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>อายุ</label>
+          <input name="age" type="number" min="0" placeholder="ปี">
+        </div>
+
+        <div class="field">
+          <label>เบอร์โทร</label>
+          <input name="phone" placeholder="08xxxxxxxx">
+        </div>
+
+        
+      </div>
+
+      <!-- ================= SECTION 2: สุขภาพ ================= -->
+      <h3 class="section-title">ข้อมูลสุขภาพ</h3>
+      <div class="grid">
+        <div class="field">
+          <label>หมู่เลือด</label>
+          <select name="blood_type">
+            <option value="UNKNOWN">ไม่ทราบ</option>
+            <option>A</option>
+            <option>B</option>
+            <option>AB</option>
+            <option>O</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>ส่วนสูง (cm)</label>
+          <input name="height_cm" type="number" step="0.01">
+        </div>
+
+        <div class="field">
+          <label>น้ำหนัก (kg)</label>
+          <input name="weight_kg" type="number" step="0.01">
+        </div>
+
+        <div class="field">
+  <label>ความดันตัวบน (SYS)</label>
+  <input name="bp_sys" type="number" min="0" placeholder="เช่น 120">
+</div>
+
+<div class="field">
+  <label>ความดันตัวล่าง (DIA)</label>
+  <input name="bp_dia" type="number" min="0" placeholder="เช่น 80">
+</div>
+      </div>
+
+      <div class="field">
+        <label>โรคประจำตัว</label>
+        <textarea name="chronic_diseases" rows="2"></textarea>
+      </div>
+
+      <div class="field">
+        <label>แพ้ยา / อาหาร</label>
+        <textarea name="allergies" rows="2"></textarea>
+      </div>
+
+      <div class="field">
+        <label>ยาที่ใช้ประจำ</label>
+        <textarea name="medications" rows="2"></textarea>
+      </div>
+
+      <!-- ================= SECTION 3: ที่อยู่ ================= -->
+<h3 class="section-title">ที่อยู่ (เลือก)</h3>
+
+<div class="grid">
+  <div class="field">
+    <label>จังหวัด</label>
+    <select id="province" name="province_code" required>
+      <option value="">-- เลือกจังหวัด --</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>อำเภอ</label>
+    <select id="district" name="district_code" required disabled>
+      <option value="">-- เลือกอำเภอ --</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>ตำบล</label>
+    <select id="subdistrict" name="subdistrict_code" required disabled>
+      <option value="">-- เลือกตำบล --</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>รหัสไปรษณีย์ (อัตโนมัติ)</label>
+    <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน">
+  </div>
+</div>
+
+<div class="hint">
+  • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
+  • ระบบจะบันทึกเป็น “โค้ด” (province/district/subdistrict) เพื่อกันชื่อซ้ำ
+</div>
+
+
+      <!-- ================= SECTION 4: ติดต่อฉุกเฉิน ================= -->
+      <h3 class="section-title">ผู้ติดต่อฉุกเฉิน</h3>
+      <div class="grid">
+        <div class="field">
+          <label>ชื่อผู้ติดต่อ</label>
+          <input name="emergency_name">
+        </div>
+
+        <div class="field">
+          <label>เบอร์โทร</label>
+          <input name="emergency_phone">
         </div>
       </div>
 
+      <!-- ================= SECTION 5: หมายเหตุ ================= -->
+      <h3 class="section-title">หมายเหตุเพิ่มเติม</h3>
+      <div class="field">
+        <textarea name="note" rows="2"></textarea>
+      </div>
+
+      <!-- ================= FOOTER ================= -->
       <div class="footer">
         <button class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
         <a class="btn ghost" href="/">ยกเลิก</a>
       </div>
+
     </form>
   </div>
 </div>
 
 <script>
-  // auto-format เบา ๆ: ตัดช่องว่าง
-  const nid = document.getElementById("national_id");
-  if(nid){
+  // ล้างช่องว่างเลขบัตร
+  const nid = document.querySelector('input[name="national_id"]');
+  if (nid) {
     nid.addEventListener("input", () => {
       nid.value = nid.value.replace(/\s+/g, "");
     });
   }
+
+  // ===== Address Dropdown (Thailand full) + Auto PostalCode =====
+  fetch("{% static 'data/th_address.json' %}")
+    .then(res => res.json())
+    .then(list => {
+      const provinceSel = document.getElementById("province");
+      const districtSel = document.getElementById("district");
+      const subdistrictSel = document.getElementById("subdistrict");
+      const postalInput = document.getElementById("postal_code");
+
+      if (!provinceSel || !districtSel || !subdistrictSel || !postalInput) {
+        console.warn("Address elements not found (province/district/subdistrict/postal_code).");
+        return;
+      }
+
+      function resetDistrict() {
+        districtSel.innerHTML = '<option value="">-- เลือกอำเภอ --</option>';
+        districtSel.disabled = true;
+      }
+      function resetSubdistrict() {
+        subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล --</option>';
+        subdistrictSel.disabled = true;
+      }
+      function resetPostal() {
+        postalInput.value = "";
+      }
+
+      // load provinces
+      provinceSel.innerHTML = '<option value="">-- เลือกจังหวัด --</option>';
+      list.forEach(p => {
+        provinceSel.add(new Option(p.provinceNameTh, p.provinceCode));
+      });
+
+      provinceSel.addEventListener("change", () => {
+        resetDistrict();
+        resetSubdistrict();
+        resetPostal();
+
+        const p = list.find(x => x.provinceCode === provinceSel.value);
+        if (!p) return;
+
+        p.districts.forEach(d => {
+          districtSel.add(new Option(d.districtNameTh, d.districtCode));
+        });
+        districtSel.disabled = false;
+      });
+
+      districtSel.addEventListener("change", () => {
+        resetSubdistrict();
+        resetPostal();
+
+        const p = list.find(x => x.provinceCode === provinceSel.value);
+        if (!p) return;
+
+        const d = p.districts.find(x => x.districtCode === districtSel.value);
+        if (!d) return;
+
+        d.subdistricts.forEach(s => {
+          subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode));
+        });
+        subdistrictSel.disabled = false;
+      });
+
+      subdistrictSel.addEventListener("change", () => {
+        resetPostal();
+
+        const p = list.find(x => x.provinceCode === provinceSel.value);
+        if (!p) return;
+
+        const d = p.districts.find(x => x.districtCode === districtSel.value);
+        if (!d) return;
+
+        const s = d.subdistricts.find(x => x.subdistrictCode === subdistrictSel.value);
+        if (!s) return;
+
+        postalInput.value = s.postalCode || "";
+      });
+    })
+    .catch(err => {
+      console.error("Failed to load th_address.json", err);
+    });
 </script>
+
 
 </body>
 </html>
