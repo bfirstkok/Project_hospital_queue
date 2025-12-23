@@ -10,7 +10,6 @@ urlpatterns = [
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
 
     # app urls
-    path("accounts/", include("accounts.urls")),
     path("dashboard/", include("dashboard.urls")),  # ✅ เพิ่มบรรทัดนี้
 
     path("", include("queues.urls")),
