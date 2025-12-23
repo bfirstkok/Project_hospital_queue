@@ -38,8 +38,15 @@ body{
 }
 
 /* ===== Links ===== */
-a{color:var(--primary); text-decoration:none}
-a:hover{text-decoration:underline}
+a{
+  color:var(--primary);
+  text-decoration:none;
+}
+
+a:hover{
+  text-decoration:none;
+}
+
 
 /* ===== Layout ===== */
 .wrap{max-width:1200px; margin:0 auto}
@@ -279,3 +286,4 @@ tbody tr:hover{
 .pill-title .icon{
   font-size:24px;
 }
+

@@ -5,14 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Visit Detail</title>
-  <link rel="stylesheet" href="{% static 'css/monitor_visit_detail.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/monitor_visit.css' %}?v=2">
 </head>
 
 <body>
 <div class="wrap">
 
   <div class="topbar">
-    <div class="title">
+    <div class="title pill-title">
       <h1>รายละเอียด Visit #{{ visit.id }}</h1>
       <div class="subtitle">
         ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}

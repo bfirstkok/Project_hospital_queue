@@ -157,3 +157,6 @@ body{
 .pill-title .icon{
   font-size:24px;
 }
+a.btn{
+  text-decoration: none;
+}

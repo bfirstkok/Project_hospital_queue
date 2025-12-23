@@ -37,13 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
 
     'accounts',
     'patients',
     'queues',
     'ai_triage',
     'dashboard',
-]
+] 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
