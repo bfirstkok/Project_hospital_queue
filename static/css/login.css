@@ -28,18 +28,20 @@ body {
     animation: fadeInUp 0.6s ease;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(4px);
+    animation: floatIn 0.8s ease-out;
 }
 
-@keyframes fadeInUp {
+@keyframes floatIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(30px) scale(0.96);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
+
 
 
 /* หัวข้อ */
@@ -77,6 +79,15 @@ input:focus {
     outline: none;
     border-color: #1976d2;
     box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+    animation: focusPulse 0.4s ease;
+}
+@keyframes focusPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(25,118,210,0.25);
+    }
+    100% {
+        box-shadow: 0 0 0 6px rgba(25,118,210,0);
+    }
 }
 
 /* ปุ่ม */
@@ -84,7 +95,7 @@ button {
     width: 100%;
     padding: 12px;
     margin-top: 8px;
-
+    transition: transform .15s ease, box-shadow .15s;
     background: #1976d2;
     color: #ffffff;
 
@@ -102,7 +113,7 @@ button:hover {
 }
 
 button:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
 }
 
 /* error */
