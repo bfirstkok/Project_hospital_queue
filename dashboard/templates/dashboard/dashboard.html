@@ -6,7 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard</title>
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=4">
+<<<<<<< HEAD
 
+=======
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 </head>
 
 <body>
@@ -22,12 +25,19 @@
       </div>
     </div>
 
+<<<<<<< HEAD
 
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <a class="btn" href="/">📋 Queue</a>
       <a class="btn" href="/monitor/">🩺 Monitor</a>
       <a class="btn" href="/map/">🗺️ Map</a>
+=======
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="/queues/">📋 Queue</a>
+      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       <a class="btn" href="/accounts/login/">🚪 Logout</a>
     </div>
   </div>
@@ -63,20 +73,33 @@
     <div class="card span4">
       <div class="kpi">
         <div>
+<<<<<<< HEAD
           <div class="label">Online จาก IoT</div>
+=======
+          <div class="label">Online จาก IoT (FOLLOWUP)</div>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
           <div class="val" id="onlineCount">-</div>
         </div>
         <div class="pill"><span class="dot good"></span>60s</div>
       </div>
+<<<<<<< HEAD
       <div class="muted" id="serverTime">กำลังโหลดจาก /monitor/api/summary/ ...</div>
+=======
+      <div class="muted" id="serverTime">กำลังโหลดจาก /queues/monitor/api/latest/ ...</div>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
     </div>
 
     <!-- Latest list -->
     <div class="card span12">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
+<<<<<<< HEAD
           <div style="font-weight:900;font-size:16px">รายการล่าสุด (Top 12)</div>
           <div class="muted">ดึงจาก monitor summary API</div>
+=======
+          <div style="font-weight:900;font-size:16px">รายการล่าสุด (Top 12) - FOLLOWUP</div>
+          <div class="muted">ดึงจาก /queues/monitor/api/latest/</div>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
         </div>
         <div class="pill" id="lastRefresh"><span class="dot warn"></span>กำลังโหลด...</div>
       </div>
@@ -96,7 +119,11 @@
             </tr>
           </thead>
           <tbody id="rows">
+<<<<<<< HEAD
             <tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>
+=======
+            <tr><td colspan="8" class="muted">กำลังโหลด...</td></tr>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
           </tbody>
         </table>
       </div>
@@ -134,7 +161,11 @@
   async function loadSparklines(visitIds){
     if(!visitIds.length) return;
     const qs = visitIds.join(",");
+<<<<<<< HEAD
     const res = await fetch(`/monitor/api/sparklines/?visit_ids=${qs}`);
+=======
+    const res = await fetch(`/queues/monitor/api/sparklines/?visit_ids=${qs}`);
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
     const data = await res.json();
     if(!data.ok) return;
 
@@ -154,6 +185,7 @@
     const elRefresh = document.getElementById("lastRefresh");
 
     try{
+<<<<<<< HEAD
       const res = await fetch("/monitor/api/summary/");
       const data = await res.json();
       if(!data.ok) throw new Error(data.error || "API error");
@@ -162,16 +194,38 @@
       const online = items.filter(x => x.online).length;
 
       elOnline.textContent = online;
+=======
+      // ✅ FOLLOWUP API
+      const res = await fetch("/queues/monitor/api/latest/");
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.error || "API error");
+
+      // ✅ API นี้คืนเป็น rows ไม่ใช่ items
+      const items = data.rows || [];
+
+      const online = items.filter(x => x.online).length;
+      elOnline.textContent = `${online}/${items.length}`;
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       elServer.textContent = "Server time: " + (data.server_time || "-");
       elRefresh.innerHTML = `<span class="dot good"></span>อัปเดตล่าสุด: ${new Date().toLocaleTimeString()}`;
 
       const top = items.slice(0, 12);
       if(top.length === 0){
+<<<<<<< HEAD
         elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีข้อมูล</td></tr>`;
         return;
       }
 
       // 1) render rows ก่อน
+=======
+        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีผู้ป่วย FOLLOWUP</td></tr>`;
+        return;
+      }
+
+      // render rows
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       elRows.innerHTML = top.map(x => {
         const onlinePill = x.online
           ? `<span class="pill"><span class="dot good"></span>ONLINE</span>`
@@ -180,7 +234,11 @@
         return `
           <tr>
             <td>#${x.visit_id}</td>
+<<<<<<< HEAD
             <td>${x.patient_name ?? "-"}</td>
+=======
+            <td>${x.name ?? "-"}</td>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
             <td>${x.severity ?? "-"}</td>
             <td>${onlinePill}</td>
 
@@ -188,12 +246,22 @@
             <td><div id="spark-o2-${x.visit_id}" class="muted">-</div></td>
 
             <td class="muted">${vitalsText(x.vitals)}</td>
+<<<<<<< HEAD
             <td><a class="btn" style="padding:8px 10px" href="/monitor/visit/${x.visit_id}/">ดู</a></td>
+=======
+            <td>
+              <a class="btn" style="padding:8px 10px" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
+            </td>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
           </tr>
         `;
       }).join("");
 
+<<<<<<< HEAD
       // 2) แล้วค่อยโหลด sparkline ทีเดียว
+=======
+      // load sparklines
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       const visitIds = top.map(x => x.visit_id);
       loadSparklines(visitIds);
 
@@ -205,6 +273,7 @@
 
   loadSummary();
   setInterval(loadSummary, 5000);
+<<<<<<< HEAD
 
    function getCookie(name){
     const v = `; ${document.cookie}`;
@@ -228,6 +297,8 @@
       alert("สร้างเดโมไม่สำเร็จ: " + e.message);
     }
   });
+=======
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 </script>
 
 </body>

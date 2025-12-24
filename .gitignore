@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+*.log
+media/
+staticfiles/
+local_settings.py
+
+# Migrations cache
+*/migrations/__pycache__/
+
+# VS Code / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+Thumbs.db
+
+# Jupyter / ML
+.ipynb_checkpoints/

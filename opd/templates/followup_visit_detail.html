@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Followup Detail</title>
+  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=1">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title pill-title">
+      <div class="icon">🧾</div>
+      <div>
+        <h1>รายละเอียดผู้ป่วย (FOLLOWUP)</h1>
+        <div class="subtitle">ดู log จาก IoT และข้อมูลนัดหมาย</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="/queues/monitor/">⬅ กลับหน้า Monitor</a>
+      <a class="btn" href="/opd/">🩺 กลับหน้า OPD</a>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="card span12"><div class="muted">{{ error }}</div></div>
+  {% endif %}
+
+  <div class="grid">
+    <div class="card span12">
+      <h3 style="margin:0 0 8px 0;">ข้อมูลผู้ป่วย</h3>
+      <div><b>Visit:</b> #{{ visit.id }}</div>
+      <div><b>ชื่อ:</b> {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+      {% if q %}<div class="muted">FOLLOWUP Queue: {{ q.id }}</div>{% endif %}
+    </div>
+
+    <div class="card span12">
+      <h3 style="margin:0 0 8px 0;">ข้อมูลนัดหมาย (จาก OPD)</h3>
+      {% if assessment %}
+        <div><b>นัดครั้งต่อไป:</b> {{ assessment.next_appointment_at|default:"-" }}</div>
+        <div><b>หมายเหตุ:</b> {{ assessment.next_appointment_note|default:"-" }}</div>
+        <div class="muted">OPD Visit ต้นทาง: #{{ assessment.visit_id }}</div>
+      {% else %}
+        <div class="muted">ไม่พบข้อมูล assessment ต้นทาง (ถ้าเธอยังไม่ทำ field followup_visit ใน model ให้บอกฉัน)</div>
+      {% endif %}
+    </div>
+
+    <div class="card span12">
+      <h3 style="margin:0 0 8px 0;">Telemetry Logs ล่าสุด</h3>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>เวลา</th>
+              <th>Device</th>
+              <th>BPM</th>
+              <th>O2</th>
+              <th>BT</th>
+              <th>SYS/DIA</th>
+              <th>RR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in logs %}
+              <tr>
+                <td class="muted">{{ l.ts }}</td>
+                <td>{{ l.device.device_id|default:"-" }}</td>
+                <td>{{ l.bpm|default:"-" }}</td>
+                <td>{{ l.o2sat|default:"-" }}</td>
+                <td>{{ l.bt|default:"-" }}</td>
+                <td>{{ l.sys_bp|default:"-" }}/{{ l.dia_bp|default:"-" }}</td>
+                <td>{{ l.rr|default:"-" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="7" class="muted">ยังไม่มีข้อมูลจาก IoT</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     'queues',
     'ai_triage',
     'dashboard',
+<<<<<<< HEAD
+=======
+    "opd"
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 ] 
 
 MIDDLEWARE = [
@@ -125,8 +129,17 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
+<<<<<<< HEAD
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+=======
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+LOGIN_URL = "/" 
+LOGIN_REDIRECT_URL = "/queues/"
+LOGOUT_REDIRECT_URL = "/"
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field

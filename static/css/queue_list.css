@@ -129,4 +129,42 @@ thead th {
 
 tbody tr {
   border-bottom: 1px solid #e5e7eb;
+<<<<<<< HEAD
 }
+=======
+}
+
+/* ===== OPD button (Primary) ===== */
+:root{
+  --primary:#2563eb;
+  --primary-soft: rgba(37,99,235,.12);
+  --primary-border: rgba(37,99,235,.35);
+}
+
+/* ปุ่มสีน้ำเงินสำหรับ "ไป OPD" */
+.btn.primary,
+.btn-primary{
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+.btn.primary:hover,
+.btn-primary:hover{
+  background: rgba(37,99,235,.18);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* สถานะปุ่มที่ปิด (ยังไม่เรียกคิว) */
+.btn.is-disabled{
+  opacity: .45;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* ให้ปุ่มในคอลัมน์ Action เรียงสวย ไม่ชิดกันเกิน */
+td form, td a.btn{
+  margin: 4px 6px 4px 0;
+}
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16

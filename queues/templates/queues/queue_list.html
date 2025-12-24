@@ -4,7 +4,11 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+<<<<<<< HEAD
   <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=5">
+=======
+  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=6">
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
   <title>คิวรอ (Waiting)</title>
 </head>
 
@@ -19,6 +23,7 @@
       </div>
     </div>
 
+<<<<<<< HEAD
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <a class="btn" href="/accounts/dashboard/">📊 Dashboard</a>
@@ -30,6 +35,20 @@
   </div>
 
   <!-- KPI summary (คำนวณจาก q_items ใน template แบบง่าย) -->
+=======
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="/dashboard/">📊 Dashboard</a>
+      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
+
+      <!-- ✅ เพิ่มทางลัดไป OPD List -->
+      <a class="btn" href="{% url 'opd_list' %}">🏥 OPD</a>
+
+      <a href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
+    </div>
+  </div>
+
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
   <div class="grid" style="margin-bottom:12px">
     <div class="card span4">
       <div class="kpi">
@@ -60,6 +79,10 @@
               <th style="width:340px">Action</th>
             </tr>
           </thead>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
           <tbody>
           {% for q in q_items %}
             {% with v=q.visit %}
@@ -82,15 +105,22 @@
               </td>
 
               <td>
+<<<<<<< HEAD
                 <span class="pill">
                   AI: {{ v.triage_result.ai_severity|default:"-" }}
                 </span>
+=======
+                <span class="pill">AI: {{ v.triage_result.ai_severity|default:"-" }}</span>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
               </td>
 
               <td class="muted">{{ v.registered_at }}</td>
 
               <td>
+<<<<<<< HEAD
                 <!-- คัดกรองแบบปุ่ม 3 สี (POST) -->
+=======
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
                 <form method="post" action="{% url 'triage_visit' v.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="severity" value="RED">
@@ -109,8 +139,13 @@
                   <button class="btn good" type="submit">🟢 คัดกรองเขียว</button>
                 </form>
 
+<<<<<<< HEAD
                 <!-- เรียกคิว -->
                 <a class="btn" href="{% url 'call_visit' v.id %}">📣 เรียกคิว</a>
+=======
+                <!-- ✅ เรียกคิว -> จะย้ายไปหน้า OPD list (CALLED) -->
+                <a class="btn primary" href="{% url 'call_visit' v.id %}">📣 เรียกคิว</a>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
               </td>
             </tr>
             {% endwith %}

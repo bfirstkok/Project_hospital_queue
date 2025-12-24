@@ -176,6 +176,7 @@ input:focus{
 }
 
 
+<<<<<<< HEAD
 .alert {
     background-color: rgba(239, 68, 68, 0.15); /* พื้นหลังแดงจางๆ */
     color: #ff4d4d;                          /* เปลี่ยนตัวหนังสือเป็นแดงที่สว่างและเข้มขึ้น */
@@ -191,6 +192,17 @@ input:focus{
     display: flex;
     align-items: center;
     gap: 10px;
+=======
+
+.alert{
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(239,68,68,.45);
+  background:rgba(239,68,68,.12);
+  color:#fee2e2;
+  font-size:13px;
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 }
 
 /* ---------- FOOTER ---------- */

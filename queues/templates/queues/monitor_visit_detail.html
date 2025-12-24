@@ -20,9 +20,15 @@
     </div>
 
     <div class="actions">
+<<<<<<< HEAD
       <a class="btn" href="/monitor/">🩺 กลับหน้า Monitor</a>
       <a class="btn" href="/">📋 กลับหน้าคิว</a>
       <a class="btn" href="/map/">🗺️ Map</a>
+=======
+      <a class="btn" href="/queues/monitor/">🩺 กลับหน้า Monitor</a>
+      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
     </div>
   </div>
 
@@ -112,7 +118,57 @@
           <th>Device</th>
         </tr>
       </thead>
+<<<<<<< HEAD
 
+=======
+      <div class="card">
+  <h3>ข้อมูลผู้ป่วย</h3>
+
+  <div class="kvgrid">
+    <div class="kv">
+      <div class="k">เพศ</div>
+      <div class="v">{{ visit.patient.gender|default:"-" }}</div>
+    </div>
+
+    <div class="kv">
+      <div class="k">อายุ</div>
+      <div class="v">{{ visit.patient.age|default:"-" }} ปี</div>
+    </div>
+
+    <div class="kv">
+      <div class="k">เลขบัตรประชาชน</div>
+      <div class="v mono">{{ visit.patient.national_id|default:"-" }}</div>
+    </div>
+
+    <div class="kv">
+      <div class="k">เบอร์โทร</div>
+      <div class="v mono">{{ visit.patient.phone|default:"-" }}</div>
+    </div>
+
+    <div class="kv">
+      <div class="k">ส่วนสูง</div>
+      <div class="v">{{ visit.patient.height_cm|default:"-" }} <small>cm</small></div>
+    </div>
+
+    <div class="kv">
+      <div class="k">น้ำหนัก</div>
+      <div class="v">{{ visit.patient.weight_kg|default:"-" }} <small>kg</small></div>
+    </div>
+
+    <div class="kv">
+      <div class="k">หมู่เลือด</div>
+      <div class="v">{{ visit.patient.blood_type|default:"-" }}</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="pill">🩺 โรคประจำตัว: {{ visit.patient.chronic_diseases|default:"-" }}</span>
+    <span class="pill">⚠️ แพ้ยา / อาหาร: {{ visit.patient.allergies|default:"-" }}</span>
+    <span class="pill">💊 ยาที่ใช้ประจำ: {{ visit.patient.medications|default:"-" }}</span>
+  </div>
+</div>
+    
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       <tbody>
         {% for x in logs %}
           <tr>

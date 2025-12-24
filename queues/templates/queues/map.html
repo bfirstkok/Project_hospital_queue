@@ -23,8 +23,13 @@
     </div>
 
     <div class="actions">
+<<<<<<< HEAD
       <a class="btn" href="/">📋 คิว</a>
       <a class="btn" href="/monitor/">🩺 Monitor</a>
+=======
+      <a class="btn" href="/queues/">📋 คิว</a>
+      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       <button class="btn primary" id="btnRefresh">🔄 Refresh</button>
     </div>
   </div>
@@ -57,10 +62,24 @@
       markers.forEach(m => map.removeLayer(m));
       markers = [];
     }
+<<<<<<< HEAD
 
     async function loadMap() {
       try {
         const res = await fetch("/monitor/api/summary/"); // เราจะใช้ API ตัวนี้
+=======
+async function loadMap() {
+      try {
+        // 1. แก้ไข URL ของ API ให้ถูกต้อง (เพิ่ม /queues/ นำหน้า)
+        const res = await fetch("/queues/monitor/api/summary/");
+
+        // ตรวจสอบเบื้องต้นว่าถ้าไม่ใช่ JSON (เช่น โดนเตะไปหน้า Login) ให้แจ้งเตือน
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           throw new Error("ระบบส่งข้อมูลมาผิดพลาด (กรุณาตรวจสอบการ Login)");
+        }
+
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
         const data = await res.json();
         if (!data.ok) throw new Error("API error");
 
@@ -86,6 +105,10 @@
           const vs = x.vitals || {};
           const bp = `${vs.sys_bp ?? "-"} / ${vs.dia_bp ?? "-"}`;
 
+<<<<<<< HEAD
+=======
+          // 2. แก้ไขลิงก์ "ดูรายละเอียด" ให้ชี้ไปที่พาร์ท /queues/
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
           const html = `
             <div style="min-width:240px">
               <div><b>#${x.visit_id}</b> ${x.patient_name}</div>
@@ -94,7 +117,11 @@
               <div>BPM: ${vs.bpm ?? "-"} | O2: ${vs.o2sat ?? "-"} | BT: ${vs.bt ?? "-"}</div>
               <div>RR: ${vs.rr ?? "-"} | BP: ${bp}</div>
               <div style="margin-top:8px">
+<<<<<<< HEAD
                 <a href="/monitor/visit/${x.visit_id}/">ดูรายละเอียด</a>
+=======
+                <a href="/queues/monitor/visit/${x.visit_id}/">ดูรายละเอียด</a>
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
               </div>
               <div style="margin-top:6px; color:#666; font-size:12px">
                 GPS updated: ${x.gps?.updated_at ? new Date(x.gps.updated_at).toLocaleString() : "-"}
@@ -114,7 +141,12 @@
 
       } catch (e) {
         console.error(e);
+<<<<<<< HEAD
         alert("โหลดแผนที่ไม่สำเร็จ: " + e.message);
+=======
+        // แสดงข้อความ Error ที่ชัดเจนขึ้น
+        console.log("Error details:", e.message);
+>>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       }
     }
 
