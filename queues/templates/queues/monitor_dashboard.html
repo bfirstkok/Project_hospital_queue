@@ -5,11 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Patient Monitor</title>
-<<<<<<< HEAD
-  <link rel="stylesheet" href="{% static 'css/monitor_dashboard.css' %}?v=8">
-=======
   <link rel="stylesheet" href="{% static 'css/monitor_dashboard.css' %}">
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 </head>
 
 <body>
@@ -25,15 +21,9 @@
     </div>
 
     <div class="actions">
-<<<<<<< HEAD
-      <a class="btn" href="/">📋 กลับหน้าคิว</a>
-      <a class="btn" href="/accounts/dashboard/">🏠 Dashboard</a>
-      <a class="btn" href="/map/">🗺️ Map</a>
-=======
       <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
       <a class="btn" href="/dashboard/">🏠 Dashboard</a>
       <a class="btn" href="/queues/map/">🗺️ Map</a>
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
     </div>
   </div>
 
@@ -135,11 +125,7 @@
     const elCards = document.getElementById("cards");
 
     try {
-<<<<<<< HEAD
-      const res = await fetch("/monitor/api/summary/");
-=======
       const res = await fetch("/queues/monitor/api/summary/");
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "API error");
 
@@ -223,11 +209,7 @@
             </td>
 
             <td data-label="Action">
-<<<<<<< HEAD
-              <a class="rightLink" href="/monitor/visit/${r.visit_id}/">ดูรายละเอียด →</a>
-=======
               <a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดูรายละเอียด →</a>
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
             </td>
           </tr>
         `;

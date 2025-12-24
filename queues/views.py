@@ -43,11 +43,7 @@ def call_visit(request, visit_id: int):
         visit.called_at = timezone.now()
         visit.save(update_fields=["called_at"])
 
-<<<<<<< HEAD
-    return redirect("queue_list")
-=======
     return redirect("opd_list")
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
 
 
 @login_required
@@ -391,11 +387,7 @@ def update_location(request, visit_id: int):
 @require_GET
 def monitor_sparklines_api(request):
     """
-<<<<<<< HEAD
-    GET /monitor/api/sparklines/?visit_ids=1,2,3
-=======
     GET /queues/monitor/api/sparklines/?visit_ids=1,2,3
->>>>>>> 936b9684b626c1ca84d26585058c55021c2e1a16
     return: { ok:true, series: { "1": {"bpm":[...], "o2":[...]}, ... } }
     """
     ids_raw = request.GET.get("visit_ids", "").strip()

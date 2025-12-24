@@ -56,15 +56,17 @@ def visit_assessment(request, visit_id: int):
     if not q or q.status != "CALLED":
         return redirect("opd_list")
 
-    assessment, _ = VisitAssessment.objects.get_or_create(visit=visit)
+    assessment = VisitAssessment.objects.filter(visit=visit).first()
 
     if request.method == "POST":
         form = VisitAssessmentForm(request.POST, instance=assessment)
         if form.is_valid():
-            assessment = form.save()
+            assessment = form.save(commit=False)
+            assessment.visit = visit
 
-            # ✅ คำนวณเร่งด่วนแบบปลอดภัย
             color, reasons = _compute_opd(assessment)
+            assessment.opd_urgency = color
+            assessment.save()
 
             # (ทางเลือก) ปรับสี final ตาม OPD auto
             if color in ["RED", "YELLOW"]:
