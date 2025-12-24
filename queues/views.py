@@ -43,7 +43,7 @@ def call_visit(request, visit_id: int):
         visit.called_at = timezone.now()
         visit.save(update_fields=["called_at"])
 
-    return redirect("queue_list")
+    return redirect("opd_list")
 
 
 @login_required

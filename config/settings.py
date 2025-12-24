@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'queues',
     'ai_triage',
     'dashboard',
+    "opd"
 ] 
 
 MIDDLEWARE = [

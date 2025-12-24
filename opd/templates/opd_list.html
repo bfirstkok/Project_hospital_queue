@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=6">
+  <title>OPD (CALLED)</title>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title pill-title">
+      <div class="icon">🩺</div>
+      <div>
+        <h1>OPD (CALLED)</h1>
+        <div class="subtitle">รายชื่อผู้ป่วยที่ถูกเรียกแล้ว → เข้าประเมิน/ผลตรวจ/นัดหมาย</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="/queues/">📋 Queue</a>
+      <a class="btn" href="/dashboard/">📊 Dashboard</a>
+      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
+      <a class="btn" href="/queues/map/">🗺️ Map</a>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-bottom:12px">
+    <div class="card span4">
+      <div class="kpi">
+        <div>
+          <div class="label">CALLED ทั้งหมด</div>
+          <div class="val">{{ q_items|length }}</div>
+        </div>
+        <div class="pill"><span class="dot warn"></span>Live</div>
+      </div>
+    </div>
+
+    <div class="card span12">
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px">Visit</th>
+              <th>ชื่อผู้ป่วย</th>
+              <th style="width:140px">สี (Final)</th>
+              <th style="width:220px">called_at</th>
+              <th style="width:240px">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for q in q_items %}
+            {% with v=q.visit %}
+            <tr>
+              <td>#{{ v.id }}</td>
+              <td>
+                <div style="font-weight:900">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
+                <div class="muted">Queue ID: {{ q.id }}</div>
+              </td>
+              <td>
+                {% if v.final_severity == "RED" %}
+                  <span class="pill sev red"><span class="dot bad"></span>RED</span>
+                {% elif v.final_severity == "YELLOW" %}
+                  <span class="pill sev yellow"><span class="dot warn"></span>YELLOW</span>
+                {% else %}
+                  <span class="pill sev green"><span class="dot good"></span>GREEN</span>
+                {% endif %}
+              </td>
+              <td class="muted">{{ v.called_at|default:"-" }}</td>
+              <td>
+                <a class="btn" href="{% url 'visit_assessment' v.id %}">📝 อาการ/ผลตรวจ + นัดหมาย</a>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td colspan="5" class="muted">ยังไม่มีเคสที่ถูกเรียก</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

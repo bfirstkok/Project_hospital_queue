@@ -41,7 +41,8 @@ class Queue(models.Model):
     class Status(models.TextChoices):
         WAITING = "WAITING", "รอ"
         CALLED = "CALLED", "เรียกแล้ว"
-        DONE = "DONE", "เสร็จสิ้น"
+        OPD_DONE = "OPD_DONE", "ตรวจเสร็จสิ้น"
+        FOLLOWUP = "FOLLOWUP", "นัดติดตาม"
         CANCELLED = "CANCELLED", "ยกเลิก"
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")

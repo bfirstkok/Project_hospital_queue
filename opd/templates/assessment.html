@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=6">
+  <title>OPD Assessment</title>
+  <style>
+    .box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+    .h2{font-size:16px;font-weight:900;margin:0 0 8px}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+    .col6{grid-column:span 6}
+    .col4{grid-column:span 4}
+    .col3{grid-column:span 3}
+    .col12{grid-column:span 12}
+    label{font-size:12px;color:var(--muted);font-weight:700}
+    input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+    .chk{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
+    .chk input{width:auto;margin-top:3px}
+    .badge-red{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.12);padding:8px 10px;border-radius:999px;font-weight:900}
+    .badge-yellow{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12);padding:8px 10px;border-radius:999px;font-weight:900}
+    .badge-ok{border:1px solid var(--line);background:rgba(2,6,23,.03);padding:8px 10px;border-radius:999px;font-weight:900}
+    @media (max-width: 900px){ .col6,.col4,.col3{grid-column:span 12} }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title pill-title">
+      <div class="icon">📝</div>
+      <div>
+        <h1>OPD Assessment</h1>
+        <div class="subtitle">Visit #{{ visit.id }} • {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="{% url 'opd_list' %}">🩺 กลับหน้า OPD</a>
+      <a class="btn" href="/queues/">📋 Queue</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- summary -->
+    <div class="card span12">
+      <div class="kpi" style="align-items:center">
+        <div>
+          <div class="label">สรุปผล OPD (ระบบคำนวณให้)</div>
+          <div style="margin-top:6px">
+            {% if opd_color == "RED" %}
+              <span class="badge-red">🟥 เร่งด่วนสีแดง</span>
+            {% elif opd_color == "YELLOW" %}
+              <span class="badge-yellow">🟨 เร่งด่วนสีเหลือง</span>
+            {% else %}
+              <span class="badge-ok">🟩 ไม่เข้าเกณฑ์เร่งด่วน</span>
+            {% endif %}
+          </div>
+          {% if opd_reasons %}
+            <div class="muted" style="margin-top:8px">
+              <b>เหตุผล:</b>
+              <ul style="margin:6px 0 0 18px">
+                {% for r in opd_reasons %}<li>{{ r }}</li>{% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+        <div class="pill"><span class="dot warn"></span>CALLED</div>
+      </div>
+    </div>
+
+    <div class="card span12">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="box">
+          <div class="h2">อาการสำคัญ (Chief complaint)</div>
+          {{ form.chief_complaint }}
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="col6 box">
+            <div class="h2">ค่า/อาการที่ระบบใช้คำนวณ (กรอกแบบคลินิกจริง)</div>
+
+            <div class="chk">{{ form.known_copd_asthma }} <div><b>Known COPD/Asthma + เหนื่อย</b></div></div>
+
+            <div class="row">
+              <div class="col3">
+                <label>Pain score (0–10)</label>
+                {{ form.pain_score }}
+              </div>
+              <div class="col3">
+                <label>BT (°C)</label>
+                {{ form.bt }}
+              </div>
+              <div class="col3">
+                <label>SYS BP</label>
+                {{ form.sys_bp }}
+              </div>
+              <div class="col3">
+                <label>DIA BP</label>
+                {{ form.dia_bp }}
+              </div>
+
+              <div class="col4">
+                <label>FBS (mg%)</label>
+                {{ form.fbs }}
+              </div>
+              <div class="col4">
+                <label>Lab K</label>
+                {{ form.lab_k }}
+              </div>
+              <div class="col4">
+                <label>Lab Mg</label>
+                {{ form.lab_mg }}
+              </div>
+              <div class="col4">
+                <label>Lab Hct</label>
+                {{ form.lab_hct }}
+              </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
+
+            <div class="h2">เหตุผลที่เป็น “ข้อความ” (ติ๊กเฉพาะที่เกี่ยว)</div>
+            <div class="chk">{{ form.anxious_family }} <div><b>ญาติวิตกกังวลมาก</b></div></div>
+            <div class="chk">{{ form.non_toxic_bite }} <div><b>ถูกสัตว์ไม่มีพิษกัด/ข่วน</b></div></div>
+            <div class="chk">{{ form.very_fatigue }} <div><b>เหนื่อยเพลียมาก</b></div></div>
+            <div class="chk">{{ form.blood_receive }} <div><b>มารับเลือด</b></div></div>
+          </div>
+
+          <div class="col6 box">
+            <div class="h2">กลุ่มพิเศษ (เร่งด่วนสีเหลือง)</div>
+            <div class="chk">{{ form.monk }} <div><b>พระภิกษุ/สามเณร</b></div></div>
+
+            <div class="row">
+              <div class="col4">
+                <label>อายุ (ปี)</label>
+                {{ form.age }}
+              </div>
+              <div class="col4">
+                <div class="chk" style="margin-top:22px">{{ form.child_under_5 }} <div><b>เด็กอายุต่ำกว่า 5 ปี</b></div></div>
+              </div>
+            </div>
+
+            <div class="chk">{{ form.pregnant }} <div><b>ตั้งครรภ์</b></div></div>
+            <div class="row">
+              <div class="col4">
+                <label>GA (สัปดาห์)</label>
+                {{ form.ga_weeks }}
+              </div>
+            </div>
+
+            <div class="chk">{{ form.epilepsy }} <div><b>Epilepsy</b></div></div>
+            <div class="chk">{{ form.pulmonary_tb_mplus }} <div><b>Pulmonary TB M+ กินยาไม่ครบ 2 เดือน</b></div></div>
+
+            <div class="chk">{{ form.low_immunity }} <div><b>ภูมิต้านทานต่ำ</b></div></div>
+            <label>รายละเอียดภูมิต้านทานต่ำ</label>
+            {{ form.low_immunity_detail }}
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="col6 box">
+            <div class="h2">วินิจฉัย (Diagnosis)</div>
+            {{ form.diagnosis }}
+          </div>
+          <div class="col6 box">
+            <div class="h2">การรักษา/แผน (Treatment)</div>
+            {{ form.treatment }}
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="col6 box">
+            <div class="h2">นัดหมายครั้งต่อไป</div>
+            <div class="row">
+              <div class="col6">
+                <label>วัน/เวลา นัดหมาย</label>
+                {{ form.next_appointment_at }}
+              </div>
+              <div class="col6">
+                <label>หมายเหตุ</label>
+                {{ form.next_appointment_note }}
+              </div>
+            </div>
+          </div>
+
+          <div class="col6 box">
+            <div class="h2">บันทึก</div>
+            <button class="btn good" type="submit">✅ บันทึก</button>
+            <a class="btn" href="{% url 'opd_list' %}">ยกเลิก</a>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

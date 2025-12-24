@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard</title>
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=4">
-
 </head>
 
 <body>
@@ -21,8 +20,6 @@
         </div>
       </div>
     </div>
-
-
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <a class="btn" href="/queues/">📋 Queue</a>
@@ -63,20 +60,20 @@
     <div class="card span4">
       <div class="kpi">
         <div>
-          <div class="label">Online จาก IoT</div>
+          <div class="label">Online จาก IoT (FOLLOWUP)</div>
           <div class="val" id="onlineCount">-</div>
         </div>
         <div class="pill"><span class="dot good"></span>60s</div>
       </div>
-      <div class="muted" id="serverTime">กำลังโหลดจาก /monitor/api/summary/ ...</div>
+      <div class="muted" id="serverTime">กำลังโหลดจาก /queues/monitor/api/latest/ ...</div>
     </div>
 
     <!-- Latest list -->
     <div class="card span12">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
-          <div style="font-weight:900;font-size:16px">รายการล่าสุด (Top 12)</div>
-          <div class="muted">ดึงจาก monitor summary API</div>
+          <div style="font-weight:900;font-size:16px">รายการล่าสุด (Top 12) - FOLLOWUP</div>
+          <div class="muted">ดึงจาก /queues/monitor/api/latest/</div>
         </div>
         <div class="pill" id="lastRefresh"><span class="dot warn"></span>กำลังโหลด...</div>
       </div>
@@ -96,7 +93,7 @@
             </tr>
           </thead>
           <tbody id="rows">
-            <tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>
+            <tr><td colspan="8" class="muted">กำลังโหลด...</td></tr>
           </tbody>
         </table>
       </div>
@@ -154,24 +151,28 @@
     const elRefresh = document.getElementById("lastRefresh");
 
     try{
-      const res = await fetch("/queues/monitor/api/summary/");
+      // ✅ FOLLOWUP API
+      const res = await fetch("/queues/monitor/api/latest/");
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       if(!data.ok) throw new Error(data.error || "API error");
 
-      const items = data.items || [];
-      const online = items.filter(x => x.online).length;
+      // ✅ API นี้คืนเป็น rows ไม่ใช่ items
+      const items = data.rows || [];
 
-      elOnline.textContent = online;
+      const online = items.filter(x => x.online).length;
+      elOnline.textContent = `${online}/${items.length}`;
       elServer.textContent = "Server time: " + (data.server_time || "-");
       elRefresh.innerHTML = `<span class="dot good"></span>อัปเดตล่าสุด: ${new Date().toLocaleTimeString()}`;
 
       const top = items.slice(0, 12);
       if(top.length === 0){
-        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีข้อมูล</td></tr>`;
+        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีผู้ป่วย FOLLOWUP</td></tr>`;
         return;
       }
 
-      // 1) render rows ก่อน
+      // render rows
       elRows.innerHTML = top.map(x => {
         const onlinePill = x.online
           ? `<span class="pill"><span class="dot good"></span>ONLINE</span>`
@@ -180,7 +181,7 @@
         return `
           <tr>
             <td>#${x.visit_id}</td>
-            <td>${x.patient_name ?? "-"}</td>
+            <td>${x.name ?? "-"}</td>
             <td>${x.severity ?? "-"}</td>
             <td>${onlinePill}</td>
 
@@ -188,12 +189,14 @@
             <td><div id="spark-o2-${x.visit_id}" class="muted">-</div></td>
 
             <td class="muted">${vitalsText(x.vitals)}</td>
-            <td><a class="btn" style="padding:8px 10px" href="/queues/monitor/visit/${x.visit_id}/">ดู</a></td>
+            <td>
+              <a class="btn" style="padding:8px 10px" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
+            </td>
           </tr>
         `;
       }).join("");
 
-      // 2) แล้วค่อยโหลด sparkline ทีเดียว
+      // load sparklines
       const visitIds = top.map(x => x.visit_id);
       loadSparklines(visitIds);
 
@@ -205,29 +208,6 @@
 
   loadSummary();
   setInterval(loadSummary, 5000);
-
-   function getCookie(name){
-    const v = `; ${document.cookie}`;
-    const parts = v.split(`; ${name}=`);
-    if(parts.length === 2) return parts.pop().split(';').shift();
-  }
-
-  document.getElementById("btnDemo")?.addEventListener("click", async () => {
-    try{
-      const csrftoken = getCookie("csrftoken");
-      const res = await fetch("/dashboard/api/demo-create/", {
-        method: "POST",
-        headers: { "X-CSRFToken": csrftoken }
-      });
-      const data = await res.json();
-      if(!data.ok) throw new Error(data.error || "สร้างไม่สำเร็จ");
-
-      alert(`สร้างเดโมสำเร็จ ✅ Visit #${data.visit_id} (${data.severity})`);
-      loadSummary(); // รีเฟรชตาราง + sparkline ทันที
-    }catch(e){
-      alert("สร้างเดโมไม่สำเร็จ: " + e.message);
-    }
-  });
 </script>
 
 </body>
