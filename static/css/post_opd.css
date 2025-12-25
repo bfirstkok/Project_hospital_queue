@@ -1,0 +1,181 @@
+:root{
+  --bg:#f8fbff;                /* พื้นหลังขาวฟ้า */
+  --card:#ffffff;              /* การ์ดขาว */
+  --line:rgba(15,23,42,.08);   /* เส้นอ่อน */
+  --text:#0f172a;              /* ตัวอักษรเข้ม อ่านง่าย */
+  --muted:#64748b;
+
+  --good:#16a34a; 
+  --warn:#d97706; 
+  --bad:#dc2626;
+
+  --shadow: 0 10px 26px rgba(15,23,42,.12);
+  --radius: 16px;
+}
+
+    *{box-sizing:border-box}
+    body{
+  margin:0;
+  padding:24px;
+  font-family: system-ui, Segoe UI, Tahoma, sans-serif;
+
+  background:
+    radial-gradient(900px 500px at 5% 10%, rgba(56,189,248,.18), transparent 55%),
+    radial-gradient(700px 400px at 95% 20%, rgba(34,197,94,.14), transparent 55%),
+    linear-gradient(180deg, #f8fbff, #eef6ff);
+
+  color:var(--text);
+}
+
+    a{color:#93c5fd; text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:1200px; margin:0 auto}
+    .topbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    .title{display:flex;align-items:center;gap:10px}
+    .title h1{margin:0;font-size:22px}
+    .subtitle{margin:2px 0 0;font-size:12px;color:var(--muted)}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border:1px solid var(--line);
+      background:rgba(255,255,255,.04);color:var(--text);
+      border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.18);
+      cursor:pointer;
+    }
+    .btn:hover{background:rgba(255,255,255,.07);text-decoration:none}
+    .btn.danger{border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.12)}
+    .btn.warn{border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.12)}
+    .btn.good{border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12)}
+    .card{
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px;
+}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+    .span12{grid-column:span 12}
+    .span4{grid-column:span 4}
+    .kpi{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .kpi .val{font-size:28px;font-weight:900}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;color:var(--muted)}
+    .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:middle}
+    .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top}
+    th{font-size:12px;color:rgba(233,238,252,.8)}
+    .muted{color:var(--muted);font-size:12px}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;white-space:nowrap}
+    .sev{font-weight:900}
+    .sev.red{color:#fecaca}
+    .sev.yellow{color:#fde68a}
+    .sev.green{color:#86efac}
+
+    form{display:inline}
+    @media (max-width: 900px){
+      body{padding:16px}
+      .span4{grid-column:span 12}
+      th:nth-child(5), td:nth-child(5){display:none;} /* ซ่อนเวลาในจอเล็ก (ปรับได้) */
+    }
+
+    .pill-title{
+  display:flex;
+  align-items:center;
+  gap:12px;
+
+  padding:10px 18px;
+  border-radius:999px;
+
+  background: linear-gradient(
+    180deg,
+    #ffffff,
+    #f1f8ff
+  );
+
+  border:1px solid rgba(15,23,42,.1);
+  box-shadow:0 6px 18px rgba(15,23,42,.12);
+}
+
+.pill-title h1{
+  margin:0;
+  font-size:20px;
+  font-weight:800;
+}
+
+.pill-title .subtitle{
+  font-size:12px;
+  color:#64748b;
+}
+
+.pill-title .icon{
+  font-size:24px;
+}
+
+thead th {
+  background: linear-gradient(180deg, #e0f2fe, #f8fafc);
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+
+  border-bottom: 2px solid #38bdf8;
+  padding: 14px 12px;
+}
+
+tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ===== OPD button (Primary) ===== */
+:root{
+  --primary:#2563eb;
+  --primary-soft: rgba(37,99,235,.12);
+  --primary-border: rgba(37,99,235,.35);
+}
+
+/* ปุ่มสีน้ำเงินสำหรับ "ไป OPD" */
+.btn.primary,
+.btn-primary{
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+.btn.primary:hover,
+.btn-primary:hover{
+  background: rgba(37,99,235,.18);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* สถานะปุ่มที่ปิด (ยังไม่เรียกคิว) */
+.btn.is-disabled{
+  opacity: .45;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* ให้ปุ่มในคอลัมน์ Action เรียงสวย ไม่ชิดกันเกิน */
+td form, td a.btn{
+  margin: 4px 6px 4px 0;
+}
+
+th.col-name,
+td.col-name {
+  width: 300px;
+  min-width: 280px;
+}
+
+td.td-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+tbody tr {
+  cursor: default;
+}

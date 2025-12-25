@@ -4,25 +4,8 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'css/opd_list.css' %}?v=9">
   <title>OPD Assessment</title>
-  <style>
-    .box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}
-    .h2{font-size:16px;font-weight:900;margin:0 0 8px}
-    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
-    .col6{grid-column:span 6}
-    .col4{grid-column:span 4}
-    .col3{grid-column:span 3}
-    .col12{grid-column:span 12}
-    label{font-size:12px;color:var(--muted);font-weight:700}
-    input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
-    .chk{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
-    .chk input{width:auto;margin-top:3px}
-    .badge-red{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.12);padding:8px 10px;border-radius:999px;font-weight:900}
-    .badge-yellow{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12);padding:8px 10px;border-radius:999px;font-weight:900}
-    .badge-ok{border:1px solid var(--line);background:rgba(2,6,23,.03);padding:8px 10px;border-radius:999px;font-weight:900}
-    @media (max-width: 900px){ .col6,.col4,.col3{grid-column:span 12} }
-  </style>
 </head>
 <body>
 <div class="wrap">
@@ -36,7 +19,7 @@
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="{% url 'opd_list' %}">🩺 กลับหน้า OPD</a>
+      <a class="btn" href="{% url 'opd_list' %}">🩺OPD</a>
       <a class="btn" href="/queues/">📋 Queue</a>
     </div>
   </div>

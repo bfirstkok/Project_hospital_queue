@@ -5,15 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Patient Monitor (หลัง OPD)</title>
-  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=1">
-  <style>
-    .online { color: #16a34a; font-weight: 800; }
-    .offline { color: #dc2626; font-weight: 800; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .row-click { cursor:pointer; }
-    .td-action { cursor: default; }
-  </style>
+  <link rel="stylesheet" href="{% static 'css/post_opd.css' %}?v=1">
 </head>
 <body>
 <div class="wrap">
@@ -27,8 +19,8 @@
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
-      <a class="btn" href="/opd/">🩺 กลับหน้า OPD</a>
+      <a class="btn" href="/queues/">📋Queue</a>
+      <a class="btn" href="/opd/">🩺OPD</a>
       <span class="pill mono" id="serverTime">--</span>
     </div>
   </div>
@@ -39,7 +31,7 @@
         <thead>
           <tr>
             <th style="width:90px">Visit</th>
-            <th>ชื่อผู้ป่วย</th>
+            <th class="col-name">ชื่อผู้ป่วย</th>
             <th style="width:110px">สถานะ</th>
             <th style="width:140px">Device</th>
             <th style="width:70px">BPM</th>
@@ -60,58 +52,59 @@
 </div>
 
 <script>
-  // ✅ absolute path กันซ้อน URL
   const API_URL = "/queues/monitor/api/latest/";
-
-  // ✅ routes ที่คุณเพิ่มไว้ใน queues/urls.py
   const DETAIL_URL = (visitId) => `/queues/monitor/visit/${visitId}/`;
-  const DEMO_PUSH_URL = (visitId) => `/queues/monitor/demo/push/${visitId}/`;
 
-  function fmt(v){ return (v === null || v === undefined || v === "") ? "-" : v; }
-
-  // คลิกทั้งแถวไปหน้า detail แต่ "ยกเว้น" ถ้าคลิกใน action / a / button
-  function rowClickHandler(ev, visitId) {
-    const t = ev.target;
-    if (!t) return;
-
-    // ถ้าคลิกในลิงก์/ปุ่ม/พื้นที่ action ให้ไม่ redirect
-    if (t.closest("a") || t.closest("button") || t.closest(".td-action") || t.closest(".actions")) {
-      return;
-    }
-    location.href = DETAIL_URL(visitId);
+  function fmt(v){
+    return (v === null || v === undefined || v === "") ? "-" : v;
   }
-
-  
 
   async function load() {
     const tbody = document.getElementById("rows");
 
     try {
-      const res = await fetch(API_URL, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      const res = await fetch(API_URL, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      document.getElementById("serverTime").textContent = data.server_time || "--";
+      document.getElementById("serverTime").textContent =
+        data.server_time || "--";
 
       const rows = data.rows || [];
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="11" class="muted">ยังไม่มีผู้ป่วย FOLLOWUP (ตรวจ OPD เสร็จแล้ว)</td></tr>`;
+        tbody.innerHTML =
+          `<tr><td colspan="11" class="muted">
+            ยังไม่มีผู้ป่วย FOLLOWUP (ตรวจ OPD เสร็จแล้ว)
+          </td></tr>`;
         return;
       }
 
       tbody.innerHTML = rows.map(r => {
         const vit = r.vitals || {};
-        const status = r.online ? `<span class="online">ONLINE</span>` : `<span class="offline">OFFLINE</span>`;
-        const created = r.created_at ? new Date(r.created_at).toLocaleString() : "-";
-        const device = (r.device_id && String(r.device_id).trim()) ? r.device_id : "DEV001";
+        const status = r.online
+          ? `<span class="online">ONLINE</span>`
+          : `<span class="offline">OFFLINE</span>`;
+        const created = r.created_at
+          ? new Date(r.created_at).toLocaleString()
+          : "-";
+        const device =
+          (r.device_id && String(r.device_id).trim())
+            ? r.device_id
+            : "DEV001";
 
         return `
-          <tr class="row-click" onclick="rowClickHandler(event, ${r.visit_id})">
+          <tr>
             <td>#${r.visit_id}</td>
-            <td>
+
+            <td class="col-name">
               <div style="font-weight:900">${r.name}</div>
-              <div class="muted">FOLLOWUP Queue: ${fmt(r.followup_queue_id)}</div>
+              <div class="muted">
+                FOLLOWUP Queue: ${fmt(r.followup_queue_id)}
+              </div>
             </td>
+
             <td>${status}</td>
             <td class="mono">${fmt(device)}</td>
             <td>${fmt(vit.bpm)}</td>
@@ -120,25 +113,28 @@
             <td>${fmt(vit.sys_bp)}/${fmt(vit.dia_bp)}</td>
             <td>${fmt(vit.rr)}</td>
             <td class="muted">${created}</td>
-            <td class="td-action">
-              <div class="actions">
-                <a class="btn" href="${DETAIL_URL(r.visit_id)}">🔎 รายละเอียด</a>
 
-        
-              </div>
+            <td class="td-action">
+              <a class="btn" href="${DETAIL_URL(r.visit_id)}">
+                🔎 รายละเอียด
+              </a>
             </td>
           </tr>
         `;
       }).join("");
 
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="11" class="muted">โหลดไม่สำเร็จ: ${e.message || e}</td></tr>`;
+      tbody.innerHTML =
+        `<tr><td colspan="11" class="muted">
+          โหลดไม่สำเร็จ: ${e.message || e}
+        </td></tr>`;
     }
   }
 
   load();
   setInterval(load, 5000);
 </script>
+
 
 </body>
 </html>

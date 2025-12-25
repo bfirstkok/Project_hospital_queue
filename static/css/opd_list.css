@@ -1,0 +1,241 @@
+:root{
+  --bg:#f8fbff;
+  --card:#ffffff;
+  --line:rgba(15,23,42,.10);
+
+  --text:#0f172a;
+  --muted:#64748b;
+
+  --primary:#2563eb;
+  --good:#16a34a;
+  --warn:#d97706;
+  --bad:#dc2626;
+
+  --shadow:0 10px 26px rgba(15,23,42,.12);
+  --radius:16px;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  padding:24px;
+  font-family: "Inter", system-ui, Segoe UI, sans-serif;
+
+  background:
+    radial-gradient(900px 500px at 5% 10%, rgba(56,189,248,.18), transparent 55%),
+    radial-gradient(700px 400px at 95% 20%, rgba(34,197,94,.14), transparent 55%),
+    linear-gradient(180deg,#f8fbff,#eef6ff);
+
+  color:var(--text);
+}
+
+a{color:var(--primary);text-decoration:none}
+.wrap{max-width:1200px;margin:0 auto}
+
+/* ================= TOP BAR ================= */
+.topbar{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+.pill-title{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:12px 20px;
+  border-radius:999px;
+
+  background:linear-gradient(180deg,#ffffff,#f1f8ff);
+  border:1px solid rgba(37,99,235,.25);
+  box-shadow:0 6px 18px rgba(15,23,42,.12);
+}
+
+.pill-title h1{
+  margin:0;
+  font-size:20px;
+  font-weight:900;
+}
+
+.pill-title .subtitle{
+  font-size:12px;
+  color:var(--muted);
+}
+
+.pill-title .icon{font-size:26px}
+
+/* ================= BUTTON ================= */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#fff;
+
+  color:var(--text);
+  font-size:14px;
+  font-weight:600;
+
+  box-shadow:0 4px 12px rgba(15,23,42,.12);
+  cursor:pointer;
+}
+
+.btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(15,23,42,.18);
+}
+
+.btn.good{
+  border-color:rgba(22,163,74,.35);
+  background:rgba(22,163,74,.12);
+}
+
+.btn.warn{
+  border-color:rgba(217,119,6,.35);
+  background:rgba(217,119,6,.12);
+}
+
+.btn.danger{
+  border-color:rgba(220,38,38,.35);
+  background:rgba(220,38,38,.12);
+}
+
+/* ================= CARD ================= */
+.card{
+  background:linear-gradient(180deg,#ffffff,#f8fbff);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:18px;
+}
+
+/* ================= GRID ================= */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.span12{grid-column:span 12}
+
+/* ================= KPI / SUMMARY ================= */
+.kpi{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+}
+
+.kpi .label{
+  font-size:12px;
+  color:var(--muted);
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#fff;
+
+  font-size:12px;
+  font-weight:700;
+}
+
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+.dot.good{background:var(--good)}
+.dot.warn{background:var(--warn)}
+.dot.bad{background:var(--bad)}
+
+/* ================= BOX ================= */
+.box{
+  padding:16px;
+  border-radius:14px;
+  border:1px dashed var(--line);
+  background:#ffffff;
+}
+
+.h2{
+  font-size:15px;
+  font-weight:900;
+  margin:0 0 10px;
+  color:#1e293b;
+}
+
+/* ================= FORM ================= */
+label{
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+input,
+textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  font-size:14px;
+}
+
+input:focus,
+textarea:focus{
+  outline:none;
+  border-color:rgba(37,99,235,.6);
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+
+.chk{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  margin:8px 0;
+}
+
+.chk input{width:auto;margin-top:3px}
+
+/* ================= BADGE ================= */
+.badge-red{
+  border:1px solid rgba(239,68,68,.45);
+  background:rgba(239,68,68,.12);
+  padding:8px 14px;
+  border-radius:999px;
+  font-weight:900;
+}
+
+.badge-yellow{
+  border:1px solid rgba(245,158,11,.45);
+  background:rgba(245,158,11,.12);
+  padding:8px 14px;
+  border-radius:999px;
+  font-weight:900;
+}
+
+.badge-ok{
+  border:1px solid var(--line);
+  background:rgba(15,23,42,.04);
+  padding:8px 14px;
+  border-radius:999px;
+  font-weight:900;
+}
+
+/* ================= MUTED ================= */
+.muted{
+  color:var(--muted);
+  font-size:12px;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width:900px){
+  body{padding:16px}
+  .col6,.col4,.col3{grid-column:span 12}
+}
