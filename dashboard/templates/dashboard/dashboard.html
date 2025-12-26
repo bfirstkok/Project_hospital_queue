@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard</title>
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=11">
+
+  <!-- ป้องกัน browser cache -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 </head>
 
 <body>
@@ -27,7 +32,7 @@
       <a class="btn" href="/queues/">📋 Queue</a>
       <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
       <a class="btn" href="/queues/map/">🗺️ Map</a>
-      <a class="btn" href="/accounts/login/">🚪 Logout</a>
+      <a class="btn" href="/accounts/logout/">🚪 Logout</a>
     </div>
   </div>
 
@@ -105,6 +110,25 @@
 </div>
 
 <script>
+  // ป้องกันการเข้าถึงหน้านี้หลัง logout
+  (function() {
+    // ถ้ามาจาก back_forward (browser cache)
+    const perfEntries = performance.getEntriesByType("navigation");
+    if (perfEntries.length > 0 && perfEntries[0].type === 'back_forward') {
+      // ตรวจสอบว่า logout แล้วหรือยัง
+      if (sessionStorage.getItem('loggedOut') === 'true') {
+        location.replace('/');
+        return;
+      }
+      // Reload หน้าเพื่อตรวจสอบ session
+      location.replace(location.href);
+      return;
+    }
+
+    // เคลียร์ flag loggedOut เมื่อเข้าหน้านี้สำเร็จ (หมายความว่ายัง login อยู่)
+    sessionStorage.removeItem('loggedOut');
+  })();
+
   let cachedItems = [];
 
   function vitalsText(v){

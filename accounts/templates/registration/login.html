@@ -7,6 +7,11 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- ป้องกัน browser cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
@@ -72,6 +77,30 @@
 </div>
 
 <script>
+// ป้องกันการกด back button กลับไปหน้าที่ต้อง login
+(function() {
+    // ตรวจสอบว่ามาจากการ refresh หรือ back button
+    const perfEntries = performance.getEntriesByType("navigation");
+    if (perfEntries.length > 0) {
+        const navEntry = perfEntries[0];
+        // ถ้ามาจาก back_forward (browser cache) ให้ reload
+        if (navEntry.type === 'back_forward') {
+            location.replace(location.href);
+        }
+    }
+
+    // Clear history และป้องกันการกด back (ทำงานทุกครั้งที่โหลดหน้า)
+    history.pushState(null, null, location.href);
+
+    window.addEventListener('popstate', function() {
+        history.pushState(null, null, location.href);
+    });
+
+    // เคลียร์ sessionStorage เมื่ออยู่หน้า login
+    // เพื่อให้รู้ว่า user logout แล้ว
+    sessionStorage.setItem('loggedOut', 'true');
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
 
     // Focus username

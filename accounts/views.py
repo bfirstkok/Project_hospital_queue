@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.contrib.auth import logout as auth_logout
+from django.shortcuts import render, redirect
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 
 
 from queues.models import Queue
@@ -25,4 +27,18 @@ def dashboard(request):
         "yellow_total": yellow_total,
         "green_total": green_total,
     })
-    
+
+
+@never_cache
+def custom_logout(request):
+    """
+    Custom logout view ที่เคลียร์ session และป้องกัน cache
+    """
+    auth_logout(request)
+    response = redirect('login')
+    # เพิ่ม headers เพื่อป้องกัน browser cache
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
+
