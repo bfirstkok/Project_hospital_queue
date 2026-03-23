@@ -79,15 +79,6 @@
 
           <div class="row" style="margin-top:10px">
             <span class="pill">⏱️ ล่าสุดเวลา: <span class="mono">{{ x.ts }}</span></span>
-            <span class="pill">📍 Lat: <span class="mono">{{ x.lat|default:"-" }}</span></span>
-            <span class="pill">📍 Lng: <span class="mono">{{ x.lng|default:"-" }}</span></span>
-
-            {% if x.lat and x.lng %}
-              <a class="btn" style="padding:8px 10px" target="_blank"
-                 href="https://www.google.com/maps?q={{ x.lat }},{{ x.lng }}">
-                เปิดใน Google Maps ↗
-              </a>
-            {% endif %}
           </div>
         {% endwith %}
       {% else %}

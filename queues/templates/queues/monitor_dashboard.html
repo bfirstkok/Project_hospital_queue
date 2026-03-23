@@ -64,10 +64,6 @@
     return "green";
   }
 
-  function navUrl(lat,lng){
-    return `https://www.google.com/maps?q=${lat},${lng}`;
-  }
-
   async function copyText(text){
     try{
       await navigator.clipboard.writeText(text);

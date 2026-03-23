@@ -22,8 +22,7 @@
 - 👤 ระบบลงทะเบียนและจัดการข้อมูลผู้ป่วย
 - ⏱️ ระบบจัดการคิวผู้ป่วยแบบเรียลไทม์
 - 🧠 AI ประเมินอาการเบื้องต้น (AI Triage)
-- 🗺️ แสดงตำแหน่งผู้ป่วยบนแผนที่ (Map View)
-- 📊 บันทึกเวลารอ เพื่อนำไปวิเคราะห์ Before–After
+-  บันทึกเวลารอ เพื่อนำไปวิเคราะห์ Before–After
 
 ---
 
@@ -107,8 +106,7 @@ severity assessment based on symptoms and vital signs.
 - 👤 Patient registration and management system
 - ⏱️ Real-time patient queue management
 - 🧠 AI-assisted preliminary triage (AI Triage)
-- 🗺️ Patient location visualization (Map View)
-- 📊 Waiting-time logging for Before–After analysis
+-  Waiting-time logging for Before–After analysis
 
 ---
 
