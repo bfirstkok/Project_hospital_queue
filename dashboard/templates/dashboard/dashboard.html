@@ -10,35 +10,55 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ===== RESET ===== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ===== BODY & SHELL ===== */
     body {
       font-family: 'Sarabun', sans-serif;
       background: #0a0e1a;
       color: #e8eaf0;
       min-height: 100vh;
     }
+
     .shell {
       display: grid;
       grid-template-rows: auto 1fr;
       min-height: 100vh;
       background: #0a0e1a;
     }
+
+    /* ===== TOPBAR ===== */
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.02);
     }
-    .logo-area { display: flex; align-items: center; gap: 10px; }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .logo-icon {
-      width: 32px; height: 32px;
+      width: 32px;
+      height: 32px;
       background: linear-gradient(135deg, #00d4aa, #0096ff);
       border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 14px;
     }
+
     .logo-text {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 14px;
@@ -46,25 +66,28 @@
       color: #fff;
       letter-spacing: -0.3px;
     }
+
     .logo-sub {
       font-size: 10px;
-      color: rgba(255,255,255,0.35);
+      color: rgba(255, 255, 255, 0.35);
       margin-top: 0px;
     }
+
     .nav-pills {
       display: flex;
       gap: 3px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
       padding: 3px;
     }
+
     .nav-pill {
       padding: 5px 13px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      color: rgba(255,255,255,0.45);
+      color: rgba(255, 255, 255, 0.45);
       transition: all 0.2s;
       border: none;
       background: transparent;
@@ -72,20 +95,23 @@
       text-decoration: none;
       display: inline-block;
     }
+
     .nav-pill.active {
-      background: rgba(0,212,170,0.15);
+      background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
     }
+
     .nav-pill:hover:not(.active) {
-      color: rgba(255,255,255,0.7);
-      background: rgba(255,255,255,0.06);
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.06);
     }
+
     .logout-btn {
       padding: 5px 12px;
       border-radius: 5px;
-      background: rgba(255,95,114,0.15);
+      background: rgba(255, 95, 114, 0.15);
       color: #ff5f72;
-      border: 1px solid rgba(255,95,114,0.2);
+      border: 1px solid rgba(255, 95, 114, 0.2);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -93,9 +119,12 @@
       display: inline-block;
       font-family: 'Sarabun', sans-serif;
     }
+
     .logout-btn:hover {
-      background: rgba(255,95,114,0.25);
+      background: rgba(255, 95, 114, 0.25);
     }
+
+    /* ===== MAIN CONTENT ===== */
     .wrap {
       display: grid;
       grid-template-columns: 1fr;
@@ -103,6 +132,7 @@
       gap: 8px;
       overflow-y: auto;
     }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -110,126 +140,168 @@
       align-content: start;
       align-items: stretch;
     }
+
+    /* ===== CARDS ===== */
     .card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       padding: 10px 14px;
       position: relative;
       display: flex;
       flex-direction: column;
     }
+
     .card::before {
       content: '';
       position: absolute;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
       height: 2px;
       background: linear-gradient(90deg, #00d4aa, transparent);
     }
+
     .kpi {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 4px;
     }
+
     .label {
       font-size: 10px;
       letter-spacing: 0.7px;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.35);
+      color: rgba(255, 255, 255, 0.35);
       margin-bottom: 4px;
     }
+
     .val {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 24px;
       font-weight: 700;
       color: #fff;
     }
+
     .pill {
       display: inline-flex;
       align-items: center;
       gap: 5px;
       padding: 4px 10px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       font-size: 10px;
       font-weight: 600;
     }
+
+    /* ===== INDICATORS ===== */
     .dot {
       width: 5px;
       height: 5px;
       border-radius: 50%;
       display: inline-block;
     }
-    .dot.good { background: #86efac; }
-    .dot.warn { background: #ffb830; }
-    .dot.bad { background: #ff5f72; }
+
+    .dot.good {
+      background: #86efac;
+    }
+
+    .dot.warn {
+      background: #ffb830;
+    }
+
+    .dot.bad {
+      background: #ff5f72;
+    }
+
+    /* ===== CHIPS ===== */
     .chips {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
+
     .chip {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 11px;
-      color: rgba(255,255,255,0.6);
+      color: rgba(255, 255, 255, 0.6);
     }
+
     .muted {
-      color: rgba(255,255,255,0.35);
+      color: rgba(255, 255, 255, 0.35);
       font-size: 11px;
       margin-top: 4px;
     }
+
+    /* ===== TABLE CARD ===== */
     .table-card {
       grid-column: 1 / -1;
       display: flex;
       flex-direction: column;
     }
+
     .table-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
     }
+
     .table-title {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 16px;
       font-weight: 600;
       color: #fff;
     }
+
     .table-wrap {
       border-radius: 12px;
       overflow: auto;
       flex: 1;
     }
+
+    /* ===== TABLE ===== */
     table {
       width: 100%;
       border-collapse: collapse;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
     }
+
     thead {
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
+
     th {
       padding: 14px 16px;
       font-size: 11px;
       letter-spacing: 0.7px;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.3);
+      color: rgba(255, 255, 255, 0.3);
       font-weight: 600;
       text-align: left;
     }
+
     td {
       padding: 13px 16px;
       font-size: 13px;
-      color: rgba(255,255,255,0.8);
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: rgba(255, 255, 255, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       vertical-align: middle;
     }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* ===== BADGES ===== */
     .badge {
       display: inline-block;
       padding: 4px 10px;
@@ -237,9 +309,23 @@
       font-size: 12px;
       font-weight: 600;
     }
-    .badge.red { background: rgba(255,95,114,0.15); color: #ff5f72; }
-    .badge.yellow { background: rgba(255,184,48,0.15); color: #ffb830; }
-    .badge.green { background: rgba(0,212,170,0.15); color: #00d4aa; }
+
+    .badge.red {
+      background: rgba(255, 95, 114, 0.15);
+      color: #ff5f72;
+    }
+
+    .badge.yellow {
+      background: rgba(255, 184, 48, 0.15);
+      color: #ffb830;
+    }
+
+    .badge.green {
+      background: rgba(0, 212, 170, 0.15);
+      color: #00d4aa;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
     .action-btn {
       padding: 5px 10px;
       border-radius: 5px;
@@ -252,26 +338,42 @@
       display: inline-block;
       margin-right: 4px;
     }
+
     .action-btn-blue {
-      background: rgba(0,150,255,0.15);
+      background: rgba(0, 150, 255, 0.15);
       color: #5ac8ff;
     }
-    .action-btn-blue:hover { background: rgba(0,150,255,0.25); }
+
+    .action-btn-blue:hover {
+      background: rgba(0, 150, 255, 0.25);
+    }
+
     .action-btn-red {
-      background: rgba(255,95,114,0.15);
+      background: rgba(255, 95, 114, 0.15);
       color: #ff5f72;
     }
-    .action-btn-red:hover { background: rgba(255,95,114,0.25); }
+
+    .action-btn-red:hover {
+      background: rgba(255, 95, 114, 0.25);
+    }
+
     .action-btn-yellow {
-      background: rgba(255,184,48,0.15);
+      background: rgba(255, 184, 48, 0.15);
       color: #ffb830;
     }
-    .action-btn-yellow:hover { background: rgba(255,184,48,0.25); }
+
+    .action-btn-yellow:hover {
+      background: rgba(255, 184, 48, 0.25);
+    }
+
     .action-btn-green {
-      background: rgba(0,212,170,0.15);
+      background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
     }
-    .action-btn-green:hover { background: rgba(0,212,170,0.25); }
+
+    .action-btn-green:hover {
+      background: rgba(0, 212, 170, 0.25);
+    }
   </style>
 </head>
 

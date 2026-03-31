@@ -7,35 +7,55 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Patient Monitor - FOLLOWUP</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ===== RESET ===== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ===== BODY & SHELL ===== */
     body {
       font-family: 'Sarabun', sans-serif;
       background: #0a0e1a;
       color: #e8eaf0;
       min-height: 100vh;
     }
+
     .shell {
       display: grid;
       grid-template-rows: auto 1fr;
       min-height: 100vh;
       background: #0a0e1a;
     }
+
+    /* ===== TOPBAR ===== */
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.02);
     }
-    .logo-area { display: flex; align-items: center; gap: 10px; }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .logo-icon {
-      width: 32px; height: 32px;
+      width: 32px;
+      height: 32px;
       background: linear-gradient(135deg, #00d4aa, #0096ff);
       border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 14px;
     }
+
     .logo-text {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 14px;
@@ -43,25 +63,28 @@
       color: #fff;
       letter-spacing: -0.3px;
     }
+
     .logo-sub {
       font-size: 10px;
-      color: rgba(255,255,255,0.35);
+      color: rgba(255, 255, 255, 0.35);
       margin-top: 0px;
     }
+
     .nav-pills {
       display: flex;
       gap: 3px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
       padding: 3px;
     }
+
     .nav-pill {
       padding: 5px 13px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      color: rgba(255,255,255,0.45);
+      color: rgba(255, 255, 255, 0.45);
       transition: all 0.2s;
       border: none;
       background: transparent;
@@ -69,14 +92,18 @@
       text-decoration: none;
       display: inline-block;
     }
+
     .nav-pill.active {
-      background: rgba(0,212,170,0.15);
+      background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
     }
+
     .nav-pill:hover:not(.active) {
-      color: rgba(255,255,255,0.7);
-      background: rgba(255,255,255,0.06);
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.06);
     }
+
+    /* ===== MAIN CONTENT ===== */
     .wrap {
       display: flex;
       flex-direction: column;
@@ -84,44 +111,98 @@
       gap: 8px;
       overflow-y: auto;
     }
-    .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
-    .dot.good { background: #86efac; }
-    .dot.bad { background: #ff5f72; }
-    .muted { color: rgba(255,255,255,0.35); font-size: 11px; }
+
+    /* ===== INDICATORS ===== */
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.good {
+      background: #86efac;
+    }
+
+    .dot.bad {
+      background: #ff5f72;
+    }
+
+    .muted {
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 11px;
+    }
+
+    /* ===== TABLE ===== */
     table {
       width: 100%;
       border-collapse: collapse;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
     }
+
     thead {
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
+
     th {
       padding: 12px 14px;
       font-size: 10px;
       letter-spacing: 0.6px;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.3);
+      color: rgba(255, 255, 255, 0.3);
       font-weight: 600;
       text-align: left;
     }
+
     td {
       padding: 11px 14px;
       font-size: 12px;
-      color: rgba(255,255,255,0.8);
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: rgba(255, 255, 255, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.03); }
-    .online { background: rgba(134,239,172,0.15); color: #86efac; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .offline { background: rgba(255,95,114,0.15); color: #ff5f72; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .col-name { font-weight: 600; }
-    .td-action { text-align: center; }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* ===== STATUS BADGES ===== */
+    .online {
+      background: rgba(134, 239, 172, 0.15);
+      color: #86efac;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .offline {
+      background: rgba(255, 95, 114, 0.15);
+      color: #ff5f72;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ===== COLUMN STYLES ===== */
+    .col-name {
+      font-weight: 600;
+    }
+
+    .td-action {
+      text-align: center;
+    }
+
+    /* ===== BUTTONS ===== */
     .btn {
       display: inline-block;
       padding: 5px 10px;
-      background: rgba(0,212,170,0.15);
+      background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
       border-radius: 5px;
       text-decoration: none;
@@ -132,16 +213,27 @@
       border: none;
       font-family: 'Sarabun', sans-serif;
     }
-    .btn:hover { background: rgba(0,212,170,0.25); }
-    .mono { font-family: monospace; font-size: 11px; }
+
+    .btn:hover {
+      background: rgba(0, 212, 170, 0.25);
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    .mono {
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    /* ===== CONTAINER ===== */
     .table-container {
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       overflow: hidden;
-      background: rgba(255,255,255,0.04);
+      background: rgba(255, 255, 255, 0.04);
     }
+
     #serverTime {
-      color: rgba(255,255,255,0.35);
+      color: rgba(255, 255, 255, 0.35);
       font-size: 11px;
       margin-left: auto;
     }
