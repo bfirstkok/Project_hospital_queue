@@ -4,56 +4,394 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Patient Monitor</title>
-  <link rel="stylesheet" href="{% static 'css/monitor_dashboard.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Patient Monitor - FOLLOWUP</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #0a0e1a;
+      color: #e8eaf0;
+      min-height: 100vh;
+    }
+    .shell {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      min-height: 100vh;
+      background: #0a0e1a;
+      padding: 0;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 0px;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .nav-pill {
+      padding: 5px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-pill.active {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+    }
+    .nav-pill:hover:not(.active) {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.06);
+    }
+    .statusbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.01);
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.good { background: #86efac; }
+    .dot.bad { background: #ff5f72; }
+    .muted { color: rgba(255,255,255,0.35); }
+    #status {
+      flex: 1;
+      text-align: right;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    #cards {
+      padding: 10px 28px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.01);
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 6px;
+    }
+    .stat-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .tableWrap {
+      padding: 10px 28px;
+      overflow: auto;
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    thead {
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    th {
+      padding: 14px 16px;
+      font-size: 11px;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      text-align: left;
+    }
+    td {
+      padding: 13px 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td {
+      background: rgba(255,255,255,0.03);
+    }
+    .sev {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .sev.red { background: rgba(255,95,114,0.15); color: #ff5f72; }
+    .sev.yellow { background: rgba(255,184,48,0.15); color: #ffb830; }
+    .sev.green { background: rgba(0,212,170,0.15); color: #00d4aa; }
+    .vitals {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .kv {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+    }
+    .rightLink {
+      color: #00d4aa;
+      text-decoration: none;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .rightLink:hover { text-decoration: underline; }
+    .onlineTag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .onlineTag.online { background: rgba(134,239,172,0.15); color: #86efac; }
+    .onlineTag.offline { background: rgba(255,95,114,0.15); color: #ff5f72; }
+    @media (max-width: 768px) {
+      .statusbar { padding: 12px 16px; }
+      .tableWrap { padding: 12px 16px; }
+      td { padding: 10px 12px; }
+      #cards { padding: 12px 16px; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-
+<div class="shell">
   <div class="topbar">
-    <div class="title pill-title">
-      <div class="icon">🩺</div>
+    <div class="logo-area">
+      <div class="logo-icon">🩺</div>
       <div>
-        <h1>Patient Monitor</h1>
-        <div class="subtitle">ดูสถานะผู้ป่วยจาก IoT (auto refresh)</div>
+        <div class="logo-text">Patient Monitor</div>
+        <div class="logo-sub">ติดตามผู้ป่วยจาก IoT (auto refresh)</div>
       </div>
     </div>
-
-    <div class="actions">
-      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
-      <a class="btn" href="/dashboard/">🏠 Dashboard</a>
+    <div class="nav-pills">
+      <a class="nav-pill" href="/queues/">Queue</a>
+      <a class="nav-pill active" href="/queues/monitor/">Monitor</a>
+      <a class="nav-pill" href="/opd/">OPD</a>
+      <a class="nav-pill" href="/dashboard/">Dashboard</a>
     </div>
   </div>
 
   <div class="statusbar">
-    <div class="pill"><span class="dot good"></span>ONLINE = มีข้อมูลล่าสุดภายใน 60 วินาที</div>
+    <div class="pill"><span class="dot good"></span>ONLINE = ข้อมูลล่าสุดภายใน 60 วินาที</div>
     <div class="pill"><span class="dot bad"></span>OFFLINE = เกิน 60 วินาที</div>
-    <div class="muted" id="status">กำลังโหลด...</div>
+    <div id="status">กำลังโหลด...</div>
   </div>
+
+  <div id="cards"></div>
 
   <div class="tableWrap">
     <table>
       <thead>
         <tr>
-          <th style="width:90px">Visit</th>
+          <th>Visit</th>
           <th>ผู้ป่วย</th>
-          <th style="width:130px">Severity</th>
-          <th style="width:120px">AI</th>
-          <th style="width:120px">Device</th>
-          <th style="width:140px">Online</th>
+          <th>Severity</th>
+          <th>AI</th>
+          <th>Device</th>
+          <th>Online</th>
           <th>Vitals ล่าสุด</th>
-          <th style="width:120px">Action</th>
+          <th>Action</th>
         </tr>
       </thead>
-
       <tbody id="rows">
         <tr><td colspan="8" class="muted">กำลังโหลด...</td></tr>
       </tbody>
     </table>
   </div>
-
 </div>
+
+<script>
+  function sevClass(s){
+    if(!s) return "";
+    const x = String(s).toUpperCase();
+    if(x.includes("RED")) return "red";
+    if(x.includes("YELLOW")) return "yellow";
+    return "green";
+  }
+
+  async function copyText(text){
+    try{
+      await navigator.clipboard.writeText(text);
+      alert("คัดลอกแล้ว: " + text);
+    }catch(e){
+      prompt("คัดลอกไม่สำเร็จ คัดลอกเอง:", text);
+    }
+  }
+
+  function renderCards(items){
+    const all = items.length;
+    const online = items.filter(x => x.online).length;
+    const offline = all - online;
+    const red = items.filter(x => (x.severity||"").toUpperCase()==="RED").length;
+    const yellow = items.filter(x => (x.severity||"").toUpperCase()==="YELLOW").length;
+    const green = items.filter(x => (x.severity||"").toUpperCase()==="GREEN").length;
+
+    return `
+      ${card("ทั้งหมด", all)}
+      ${card("ONLINE", online)}
+      ${card("OFFLINE", offline)}
+      ${card("RED", red)}
+      ${card("YELLOW", yellow)}
+      ${card("GREEN", green)}
+    `;
+
+    function card(label, value){
+      return `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-number">${value}</div></div>`;
+    }
+  }
+
+  function navUrl(lat, lng) {
+    return `https://maps.google.com/?q=${lat},${lng}`;
+  }
+
+  async function loadLatest() {
+    const elStatus = document.getElementById("status");
+    const elRows = document.getElementById("rows");
+    const elCards = document.getElementById("cards");
+
+    try {
+      const res = await fetch("/queues/monitor/api/summary/");
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "API error");
+
+      const nowStr = new Date().toLocaleTimeString();
+      const items = data.items || [];
+      const onlineCount = items.filter(r => r.online).length;
+      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | Online: ${onlineCount}/${items.length}`;
+
+      if(elCards) elCards.innerHTML = renderCards(items);
+
+      if (items.length === 0) {
+        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีข้อมูล</td></tr>`;
+        return;
+      }
+
+      elRows.innerHTML = items.map(r => {
+        const onlineText = r.online ? "ONLINE" : "OFFLINE";
+        const onlineCls = r.online ? "online" : "offline";
+        const dotCls = r.online ? "good" : "bad";
+        const sev = r.severity ?? "-";
+        const sevCss = sevClass(sev);
+        const v = r.vitals || {};
+        const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
+        const g = r.gps || {};
+        const hasGps = (g.lat != null && g.lng != null);
+
+        const vitalsHtml = `
+          <div class="vitals">
+            <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
+            <span class="kv"><span class="muted">O2</span> <b>${v.o2sat ?? "-"}</b></span>
+            <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
+            <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
+            <span class="kv"><span class="muted">BP</span> <b>${bp}</b></span>
+            ${hasGps ? `<span class="kv"><span class="muted">GPS</span> <b>${g.lat},${g.lng}</b></span>` : ``}
+          </div>
+        `;
+
+        const gpsBtns = hasGps ? `
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+            <a class="rightLink" target="_blank" href="${navUrl(g.lat,g.lng)}">เปิดนำทาง</a>
+            <a class="rightLink" href="javascript:void(0)" onclick="copyText('${g.lat},${g.lng}')">คัดลอก</a>
+          </div>
+        ` : ``;
+
+        return `
+          <tr>
+            <td><b>#${r.visit_id}</b></td>
+            <td><div style="font-weight:800">${r.patient_name ?? "-"}</div></td>
+            <td><span class="sev ${sevCss}">${sev}</span></td>
+            <td>-</td>
+            <td>${r.device_id ?? "-"}</td>
+            <td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td>
+            <td>${vitalsHtml}${gpsBtns}</td>
+            <td><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดู →</a></td>
+          </tr>
+        `;
+      }).join("");
+
+    } catch (e) {
+      elStatus.textContent = "โหลดไม่ได้: " + e.message;
+      elRows.innerHTML = `<tr><td colspan="8" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;
+    }
+  }
+
+  loadLatest();
+  setInterval(loadLatest, 5000);
+</script>
+
+</body>
+</html>
 
 <script>
   function sevClass(s){

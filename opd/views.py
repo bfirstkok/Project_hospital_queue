@@ -38,10 +38,20 @@ def opd_list(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="CALLED")
-        .order_by("priority", "created_at")
+        .order_by("visit__id")
     )
-    # ✅ จากโครงสร้างโฟลเดอร์ของเธอ: opd/templates/opd_list.html
-    return render(request, "opd_list.html", {"q_items": q_items})
+    
+    # Count by severity
+    red_count = sum(1 for q in q_items if q.visit.final_severity == "RED")
+    yellow_count = sum(1 for q in q_items if q.visit.final_severity == "YELLOW")
+    green_count = sum(1 for q in q_items if q.visit.final_severity == "GREEN")
+    
+    return render(request, "opd_list.html", {
+        "q_items": q_items,
+        "red_count": red_count,
+        "yellow_count": yellow_count,
+        "green_count": green_count,
+    })
 
 
 # -----------------------------
@@ -145,7 +155,7 @@ def post_opd_monitor_api(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="FOLLOWUP")
-        .order_by("-created_at")[:200]
+        .order_by("visit__id")[:200]
     )
 
     visit_ids = [q.visit_id for q in followup_qs]

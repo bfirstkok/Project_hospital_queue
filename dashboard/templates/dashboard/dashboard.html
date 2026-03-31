@@ -4,127 +4,375 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=11">
-
-  <!-- ป้องกัน browser cache -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Dashboard - OPD Queue</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #0a0e1a;
+      color: #e8eaf0;
+      min-height: 100vh;
+    }
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      background: #0a0e1a;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 0px;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .nav-pill {
+      padding: 5px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-pill.active {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+    }
+    .nav-pill:hover:not(.active) {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.06);
+    }
+    .logout-btn {
+      padding: 5px 12px;
+      border-radius: 5px;
+      background: rgba(255,95,114,0.15);
+      color: #ff5f72;
+      border: 1px solid rgba(255,95,114,0.2);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .logout-btn:hover {
+      background: rgba(255,95,114,0.25);
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 1fr;
+      padding: 10px 28px;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      align-content: start;
+      align-items: stretch;
+    }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 10px 14px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #00d4aa, transparent);
+    }
+    .kpi {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 4px;
+    }
+    .val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.good { background: #86efac; }
+    .dot.warn { background: #ffb830; }
+    .dot.bad { background: #ff5f72; }
+    .chips {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+    }
+    .muted {
+      color: rgba(255,255,255,0.35);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .table-card {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+    }
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .table-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .table-wrap {
+      border-radius: 12px;
+      overflow: auto;
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.02);
+    }
+    thead {
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    th {
+      padding: 14px 16px;
+      font-size: 11px;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      text-align: left;
+    }
+    td {
+      padding: 13px 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge.red { background: rgba(255,95,114,0.15); color: #ff5f72; }
+    .badge.yellow { background: rgba(255,184,48,0.15); color: #ffb830; }
+    .badge.green { background: rgba(0,212,170,0.15); color: #00d4aa; }
+    .action-btn {
+      padding: 5px 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+      margin-right: 4px;
+    }
+    .action-btn-blue {
+      background: rgba(0,150,255,0.15);
+      color: #5ac8ff;
+    }
+    .action-btn-blue:hover { background: rgba(0,150,255,0.25); }
+    .action-btn-red {
+      background: rgba(255,95,114,0.15);
+      color: #ff5f72;
+    }
+    .action-btn-red:hover { background: rgba(255,95,114,0.25); }
+    .action-btn-yellow {
+      background: rgba(255,184,48,0.15);
+      color: #ffb830;
+    }
+    .action-btn-yellow:hover { background: rgba(255,184,48,0.25); }
+    .action-btn-green {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+    }
+    .action-btn-green:hover { background: rgba(0,212,170,0.25); }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-
-  <!-- ================= TOPBAR ================= -->
+<div class="shell">
   <div class="topbar">
-    <div class="pill-title">
-      <div class="icon">📊</div>
+    <div class="logo-area">
+      <div class="logo-icon">📊</div>
       <div>
-        <h1>Dashboard</h1>
-        <div class="subtitle">
-          ศูนย์รวมระบบคิว + Monitor + Map (auto refresh)
-        </div>
+        <div class="logo-text">Dashboard</div>
+        <div class="logo-sub">ศูนย์รวมระบบจัดการคิว</div>
       </div>
     </div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="/queues/">📋 Queue</a>
-      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
-      <a class="btn" href="/accounts/logout/">🚪 Logout</a>
+    <div class="nav-pills">
+      <a class="nav-pill" href="/queues/">Queue</a>
+      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
+      <a class="nav-pill" href="/opd/">OPD</a>
+      <a class="nav-pill active" href="/dashboard/">Dashboard</a>
+      <a class="logout-btn" href="/accounts/logout/">Logout</a>
     </div>
   </div>
 
-  <!-- ================= GRID ================= -->
-  <div class="grid">
-
-    <!-- KPI -->
-    <div class="card span4">
-      <div class="kpi">
-        <div>
-          <div class="label">คิวรอ (WAITING)</div>
-          <div class="val">{{ waiting_total }}</div>
+  <div class="wrap">
+    <div class="grid">
+      <!-- KPI Cards -->
+      <div class="card">
+        <div class="kpi">
+          <div>
+            <div class="label">WAITING ทั้งหมด</div>
+            <div class="val">{{ waiting_total }}</div>
+          </div>
+          <div class="pill"><span class="dot warn"></span>Live</div>
         </div>
-        <div class="pill"><span class="dot warn"></span>Live</div>
-      </div>
-      <div class="chips">
-        <span class="chip"><span class="dot bad"></span>RED: {{ red_total }}</span>
-        <span class="chip"><span class="dot warn"></span>YELLOW: {{ yellow_total }}</span>
-        <span class="chip"><span class="dot good"></span>GREEN: {{ green_total }}</span>
-      </div>
-    </div>
-
-    <div class="card span4">
-      <div class="kpi">
-        <div>
-          <div class="label">เรียกแล้ว (CALLED)</div>
-          <div class="val">{{ called_total }}</div>
-        </div>
-        <div class="pill"><span class="dot good"></span>OK</div>
-      </div>
-      <div class="muted">อัปเดต ณ {{ now }}</div>
-    </div>
-
-    <div class="card span4">
-      <div class="kpi">
-        <div>
-          <div class="label">Online จาก IoT</div>
-          <div class="val" id="onlineCount">-</div>
-        </div>
-        <div class="pill"><span class="dot good"></span>60s</div>
-      </div>
-      <div class="muted" id="serverTime">loading...</div>
-    </div>
-
-    <!-- ================= TABLE ================= -->
-    <div class="card span12">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-weight:900;font-size:16px">
-          รายการล่าสุด (Top 12) - FOLLOWUP
-        </div>
-        <div class="pill" id="lastRefresh">
-          <span class="dot warn"></span>loading...
+        <div class="chips">
+          <span class="chip"><span class="dot bad"></span>RED: {{ red_total }}</span>
+          <span class="chip"><span class="dot warn"></span>YELLOW: {{ yellow_total }}</span>
+          <span class="chip"><span class="dot good"></span>GREEN: {{ green_total }}</span>
         </div>
       </div>
 
-      <div style="overflow:auto;margin-top:10px">
-        <table>
-          <thead>
-            <tr>
-              <th>Visit</th>
-              <th>ผู้ป่วย</th>
-              <th>Severity</th>
-              <th>Online</th>
-              <th>Vitals</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="rows">
-            <tr><td colspan="6">กำลังโหลด...</td></tr>
-          </tbody>
-        </table>
+      <div class="card">
+        <div class="kpi">
+          <div>
+            <div class="label">CALLED ทั้งหมด</div>
+            <div class="val">{{ called_total }}</div>
+          </div>
+          <div class="pill"><span class="dot good"></span>OK</div>
+        </div>
+        <div class="muted">อัปเดต ณ {{ now }}</div>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <div>
+            <div class="label">Online จาก IoT</div>
+            <div class="val" id="onlineCount">-</div>
+          </div>
+          <div class="pill"><span class="dot good"></span>Live</div>
+        </div>
+        <div class="muted" id="serverTime">loading...</div>
+      </div>
+
+      <!-- Table Card -->
+      <div class="card table-card">
+        <div class="table-header">
+          <div class="table-title">รายการล่าสุด (Top 12) - FOLLOWUP</div>
+          <div class="pill" id="lastRefresh"><span class="dot warn"></span>loading...</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Visit</th>
+                <th>ผู้ป่วย</th>
+                <th>Severity</th>
+                <th>Online</th>
+                <th>Vitals</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  // ป้องกันการเข้าถึงหน้านี้หลัง logout
   (function() {
-    // ถ้ามาจาก back_forward (browser cache)
     const perfEntries = performance.getEntriesByType("navigation");
     if (perfEntries.length > 0 && perfEntries[0].type === 'back_forward') {
-      // ตรวจสอบว่า logout แล้วหรือยัง
       if (sessionStorage.getItem('loggedOut') === 'true') {
         location.replace('/');
         return;
       }
-      // Reload หน้าเพื่อตรวจสอบ session
       location.replace(location.href);
       return;
     }
-
-    // เคลียร์ flag loggedOut เมื่อเข้าหน้านี้สำเร็จ (หมายความว่ายัง login อยู่)
     sessionStorage.removeItem('loggedOut');
   })();
 
@@ -136,38 +384,25 @@
     return `BPM ${v.bpm ?? "-"} | O2 ${v.o2sat ?? "-"} | BP ${bp}`;
   }
 
-  function levelClass(sev){
-    if(sev==="RED") return "level-red";
-    if(sev==="YELLOW") return "level-yellow";
-    if(sev==="GREEN") return "level-green";
-    return "";
-  }
-
   async function setSeverity(visitId, sev){
-    // อัปเดตใน cache ก่อน (ให้ UI เร็ว)
     const item = cachedItems.find(x=>x.visit_id===visitId);
     if(!item) return;
     item.severity = sev;
     render();
 
-    // บันทึกลง database
     try {
       const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ severity: sev })
       });
       const data = await res.json();
       if(!data.ok){
         console.error('Failed to update severity:', data.error);
-        // ถ้าบันทึกไม่สำเร็จ รีโหลดข้อมูลจาก server
         await loadSummary();
       }
     } catch(err) {
       console.error('Error updating severity:', err);
-      // ถ้าเกิด error รีโหลดข้อมูลจาก server
       await loadSummary();
     }
   }
@@ -175,17 +410,15 @@
   function render(){
     const el = document.getElementById("rows");
     if(cachedItems.length===0){
-      el.innerHTML = `<tr><td colspan="6">ไม่มีข้อมูล</td></tr>`;
+      el.innerHTML = `<tr><td colspan="6" class="muted">ไม่มีข้อมูล</td></tr>`;
       return;
     }
 
     el.innerHTML = cachedItems.slice(0,12).map(x=>`
-      <tr class="${levelClass(x.severity)}">
-        <td>#${x.visit_id}</td>
+      <tr>
+        <td><b>#${x.visit_id}</b></td>
         <td>${x.name ?? "-"}</td>
-        <td>
-          <span class="badge ${x.severity?.toLowerCase()}">${x.severity}</span>
-        </td>
+        <td><span class="badge ${x.severity?.toLowerCase()}">${x.severity}</span></td>
         <td>
           ${x.online
             ? `<span class="pill"><span class="dot good"></span>ONLINE</span>`
@@ -193,23 +426,11 @@
         </td>
         <td class="muted">${vitalsText(x.vitals)}</td>
         <td>
-  <a class="btn" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
-
-  <button class="btn-red"
-    onclick="setSeverity(${x.visit_id}, 'RED')">
-    🔴 RED
-  </button>
-
-  <button class="btn-yellow"
-    onclick="setSeverity(${x.visit_id}, 'YELLOW')">
-    🟡 YELLOW
-  </button>
-
-  <button class="btn-green"
-    onclick="setSeverity(${x.visit_id}, 'GREEN')">
-    🟢 GREEN
-  </button>
-</td>
+          <a class="action-btn action-btn-blue" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
+          <button class="action-btn action-btn-red" onclick="setSeverity(${x.visit_id}, 'RED')">RED</button>
+          <button class="action-btn action-btn-yellow" onclick="setSeverity(${x.visit_id}, 'YELLOW')">YEL</button>
+          <button class="action-btn action-btn-green" onclick="setSeverity(${x.visit_id}, 'GREEN')">GRN</button>
+        </td>
       </tr>
     `).join("");
   }

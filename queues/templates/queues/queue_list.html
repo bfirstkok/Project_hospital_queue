@@ -4,123 +4,548 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="{% static 'css/queue_list.css' %}?v=6">
-  <title>คิวรอ (Waiting)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>คิวรอ - OPD Queue</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #0a0e1a;
+      color: #e8eaf0;
+      min-height: 100vh;
+    }
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      background: #0a0e1a;
+      padding: 0;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 0px;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .nav-pill {
+      padding: 5px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-pill.active {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+    }
+    .nav-pill:hover:not(.active) {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.06);
+    }
+    .add-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+      font-family: 'Sarabun', sans-serif;
+      transition: opacity 0.2s;
+      text-decoration: none;
+    }
+    .add-btn:hover { opacity: 0.85; }
+    .content {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      height: 100%;
+    }
+    .sidebar {
+      padding: 12px 16px;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card.teal::before { background: linear-gradient(90deg, #00d4aa, transparent); }
+    .stat-card.red::before { background: linear-gradient(90deg, #ff5f72, transparent); }
+    .stat-card.amber::before { background: linear-gradient(90deg, #ffb830, transparent); }
+    .stat-card.green::before { background: linear-gradient(90deg, #00d4aa, transparent); }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 8px;
+    }
+    .stat-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 6px;
+    }
+    .live-dot {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; color: #00d4aa;
+      margin-top: 8px;
+    }
+    .live-dot::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: #00d4aa;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+    .triage-legend {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .triage-legend h4 {
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .triage-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .triage-row:last-child { border-bottom: none; }
+    .triage-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .triage-info { flex: 1; }
+    .triage-name { font-size: 13px; font-weight: 500; }
+    .triage-desc { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .triage-count {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 600;
+    }
+    .main {
+      padding: 10px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .queue-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .queue-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .queue-meta { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+    .filter-bar {
+      display: flex; gap: 8px;
+    }
+    .filter-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .filter-chip.active {
+      background: rgba(0,212,170,0.12);
+      border-color: rgba(0,212,170,0.4);
+      color: #00d4aa;
+    }
+    .queue-table-wrap {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      overflow: hidden;
+      flex: 1;
+    }
+    .queue-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .queue-table th {
+      padding: 14px 16px;
+      font-size: 11px;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+    .queue-table td {
+      padding: 13px 16px;
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .queue-table tr:last-child td { border-bottom: none; }
+    .queue-table tr:hover td {
+      background: rgba(255,255,255,0.03);
+    }
+    .visit-badge {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(0,150,255,0.15);
+      color: #5ac8ff;
+      padding: 3px 8px;
+      border-radius: 5px;
+    }
+    .patient-name { font-weight: 500; color: #fff; }
+    .patient-age { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .triage-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .triage-badge.red { background: rgba(255,95,114,0.15); color: #ff5f72; }
+    .triage-badge.yellow { background: rgba(255,184,48,0.15); color: #ffb830; }
+    .triage-badge.green { background: rgba(0,212,170,0.15); color: #00d4aa; }
+    .triage-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(138,99,255,0.15);
+      color: #a78fff;
+      border: 1px solid rgba(138,99,255,0.2);
+    }
+    .time-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+    }
+    .action-group {
+      display: flex; gap: 6px;
+    }
+    .action-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: 'Sarabun', sans-serif;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .action-btn.call {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+      border: 1px solid rgba(0,212,170,0.2);
+    }
+    .action-btn.call:hover {
+      background: rgba(0,212,170,0.25);
+    }
+    .action-btn.triage {
+      padding: 3px 8px;
+      font-size: 10px;
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .action-btn.triage:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .action-btn.red {
+      background: rgba(255,95,114,0.15);
+      color: #ff5f72;
+      border: 1px solid rgba(255,95,114,0.2);
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+    .action-btn.red:hover {
+      background: rgba(255,95,114,0.25);
+    }
+    .action-btn.yellow {
+      background: rgba(255,184,48,0.15);
+      color: #ffb830;
+      border: 1px solid rgba(255,184,48,0.2);
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+    .action-btn.yellow:hover {
+      background: rgba(255,184,48,0.25);
+    }
+    .action-btn.green {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+      border: 1px solid rgba(0,212,170,0.2);
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+    .action-btn.green:hover {
+      background: rgba(0,212,170,0.25);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255,255,255,0.25);
+    }
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+    .empty-text { font-size: 14px; }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
+<div class="shell">
   <div class="topbar">
-    <div class="title pill-title">
-      <div class="icon">📋</div>
+    <div class="logo-area">
+      <div class="logo-icon">🏥</div>
       <div>
-        <h1>คิวรอ (Waiting)</h1>
-        <div class="subtitle">จัดการคิว + คัดกรอง + เรียกคิว</div>
+        <div class="logo-text">คิวรอ · OPD Queue</div>
+        <div class="logo-sub">จัดการคิว · คัดกรอง · เรียกคิว</div>
       </div>
     </div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="/dashboard/">📊 Dashboard</a>
-      <a class="btn" href="/queues/monitor/">🩺 Monitor</a>
-
-      <!-- ✅ เพิ่มทางลัดไป OPD List -->
-      <a class="btn" href="{% url 'opd_list' %}">🏥 OPD</a>
-
-      <a href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
+    <div class="nav-pills">
+      <a class="nav-pill active" href="{% url 'queue_list' %}">Queue</a>
+      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
+      <a class="nav-pill" href="{% url 'opd_list' %}">OPD</a>
+      <a class="nav-pill" href="/dashboard/">Dashboard</a>
     </div>
+    <a class="add-btn" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
   </div>
 
-  <div class="grid" style="margin-bottom:12px">
-    <div class="card span4">
-      <div class="kpi">
-        <div>
-          <div class="label">WAITING ทั้งหมด</div>
-          <div class="val">{{ q_items|length }}</div>
-        </div>
-        <div class="pill"><span class="dot warn"></span>Live</div>
+  <div class="content">
+    <div class="sidebar">
+      <div class="stat-card teal">
+        <div class="stat-label">Waiting ทั้งหมด</div>
+        <div class="stat-number">{{ q_items|length }}</div>
+        <div class="live-dot">Live</div>
       </div>
-      <div class="chips">
-        <span class="chip"><span class="dot bad"></span>RED</span>
-        <span class="chip"><span class="dot warn"></span>YELLOW</span>
-        <span class="chip"><span class="dot good"></span>GREEN</span>
-        <span class="chip">*นับแยกสีจะทำใน backend ต่อได้</span>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="stat-card red">
+          <div class="stat-label">Red</div>
+          <div class="stat-number" style="color:#ff5f72; font-size:22px;">{{ red_count }}</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">Yellow</div>
+          <div class="stat-number" style="color:#ffb830; font-size:22px;">{{ yellow_count }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card green">
+        <div class="stat-label">Green</div>
+        <div class="stat-number" style="color:#00d4aa; font-size:22px;">{{ green_count }}</div>
+        <div class="stat-sub">ความเสี่ยงต่ำ</div>
+      </div>
+
+      <div class="triage-legend">
+        <h4>ระดับความเร่งด่วน</h4>
+        <div class="triage-row">
+          <div class="triage-dot" style="background:#ff5f72;"></div>
+          <div class="triage-info">
+            <div class="triage-name" style="color:#ff5f72;">Red</div>
+            <div class="triage-desc">ฉุกเฉินวิกฤต</div>
+          </div>
+          <div class="triage-count" style="color:#ff5f72;">{{ red_count }}</div>
+        </div>
+        <div class="triage-row">
+          <div class="triage-dot" style="background:#ffb830;"></div>
+          <div class="triage-info">
+            <div class="triage-name" style="color:#ffb830;">Yellow</div>
+            <div class="triage-desc">เร่งด่วน</div>
+          </div>
+          <div class="triage-count" style="color:#ffb830;">{{ yellow_count }}</div>
+        </div>
+        <div class="triage-row">
+          <div class="triage-dot" style="background:#00d4aa;"></div>
+          <div class="triage-info">
+            <div class="triage-name" style="color:#00d4aa;">Green</div>
+            <div class="triage-desc">ไม่เร่งด่วน</div>
+          </div>
+          <div class="triage-count" style="color:#00d4aa;">{{ green_count }}</div>
+        </div>
       </div>
     </div>
 
-    <div class="card span12">
-      <div style="overflow:auto">
-        <table>
+    <div class="main">
+      <div class="queue-header">
+        <div>
+          <div class="queue-title">รายการคิวรอ</div>
+          <div class="queue-meta">อัปเดตล่าสุด: เพิ่งตอนนี้</div>
+        </div>
+        <div class="filter-bar">
+          <button class="filter-chip active">ทั้งหมด</button>
+        </div>
+      </div>
+
+      <div class="queue-table-wrap">
+        <table class="queue-table">
           <thead>
             <tr>
-              <th style="width:80px">Visit</th>
+              <th>Visit</th>
               <th>ชื่อผู้ป่วย</th>
-              <th style="width:140px">สี (Final)</th>
-              <th style="width:140px">AI</th>
-              <th style="width:220px">registered_at</th>
-              <th style="width:340px">Action</th>
+              <th>สี (Final)</th>
+              <th>AI</th>
+              <th>Registered At</th>
+              <th>Action</th>
             </tr>
           </thead>
-
           <tbody>
           {% for q in q_items %}
             {% with v=q.visit %}
             <tr>
-              <td>#{{ v.id }}</td>
-
+              <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
-                <div style="font-weight:900">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="muted">Queue ID: {{ q.id }}</div>
+                <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
+                <div class="patient-age">Queue ID: {{ q.id }}</div>
               </td>
-
               <td>
                 {% if v.final_severity == "RED" %}
-                  <span class="pill sev red"><span class="dot bad"></span>RED</span>
+                  <span class="triage-badge red"><span class="dot"></span>RED</span>
                 {% elif v.final_severity == "YELLOW" %}
-                  <span class="pill sev yellow"><span class="dot warn"></span>YELLOW</span>
+                  <span class="triage-badge yellow"><span class="dot"></span>YELLOW</span>
                 {% else %}
-                  <span class="pill sev green"><span class="dot good"></span>GREEN</span>
+                  <span class="triage-badge green"><span class="dot"></span>GREEN</span>
                 {% endif %}
               </td>
-
               <td>
-                <span class="pill">AI: {{ v.triage_result.ai_severity|default:"-" }}</span>
+                <span class="ai-badge">✦ {{ v.triage_result.ai_severity|default:"-" }}</span>
               </td>
-
-              <td class="muted">{{ v.registered_at }}</td>
-
+              <td><span class="time-text">{{ v.registered_at|date:"H:i" }}</span></td>
               <td>
-                <form method="post" action="{% url 'triage_visit' v.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="severity" value="RED">
-                  <button class="btn danger" type="submit">🔴 คัดกรองแดง</button>
-                </form>
-
-                <form method="post" action="{% url 'triage_visit' v.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="severity" value="YELLOW">
-                  <button class="btn warn" type="submit">🟡 คัดกรองเหลือง</button>
-                </form>
-
-                <form method="post" action="{% url 'triage_visit' v.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="severity" value="GREEN">
-                  <button class="btn good" type="submit">🟢 คัดกรองเขียว</button>
-                </form>
-
-                <!-- ✅ เรียกคิว -> จะย้ายไปหน้า OPD list (CALLED) -->
-                <a class="btn primary" href="{% url 'call_visit' v.id %}">📣 เรียกคิว</a>
+                <div class="action-group">
+                  <a class="action-btn call" href="{% url 'call_visit' v.id %}">เรียก</a>
+                  <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
+                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">R</button>
+                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">Y</button>
+                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">G</button>
+                </div>
               </td>
             </tr>
             {% endwith %}
           {% empty %}
-            <tr><td colspan="6" class="muted">ยังไม่มีคิวรอ</td></tr>
+            <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">ยังไม่มีคิวรอ</div></div></td></tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
   </div>
-
 </div>
+
+<script>
+  // คำนวณสถิติ
+  document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.queue-table tbody tr');
+    let red = 0, yellow = 0, green = 0;
+    
+    rows.forEach(row => {
+      if (row.innerHTML.includes('RED')) red++;
+      else if (row.innerHTML.includes('YELLOW')) yellow++;
+      else if (row.innerHTML.includes('GREEN')) green++;
+    });
+  });
+
+  async function setSeverity(visitId, sev) {
+    try {
+      const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ severity: sev })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        location.reload();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+</script>
 </body>
 </html>

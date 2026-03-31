@@ -1,204 +1,202 @@
 <!doctype html>
 <html lang="th">
 <head>
+  {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ลงทะเบียนผู้ป่วย</title>
-
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=8">
+  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}">
 </head>
 
 <body>
-<div class="wrap">
-
-  <!-- ===== TOP BAR ===== -->
+<div class="shell">
   <div class="topbar">
-    <div class="pill-title">
-      <div class="icon">🧾</div>
+    <div class="logo-area">
+      <div class="logo-icon">🏥</div>
       <div>
-        <h1>ลงทะเบียนผู้ป่วย</h1>
-        <div class="subtitle">เพิ่มผู้ป่วยใหม่เพื่อสร้าง Visit / Queue</div>
+        <div class="logo-text">คิวรอ · OPD Queue</div>
+        <div class="logo-sub">จัดการคิว · คัดกรอง · เรียกคิว</div>
       </div>
     </div>
-
-    <div class="actions">
-      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
-      <a class="btn" href="/dashboard/">📊 Dashboard</a>
+    <div class="nav-pills">
+      <a class="nav-pill" href="{% url 'queue_list' %}">Queue</a>
+      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
+      <a class="nav-pill" href="{% url 'opd_list' %}">OPD</a>
+      <a class="nav-pill" href="/dashboard/">Dashboard</a>
+      <a class="nav-pill active" href="/patients/register/">Register</a>
     </div>
   </div>
 
-  <!-- ===== CARD ===== -->
-  <div class="card">
+  <div class="content">
+    <div class="content-wrapper">
+      <div class="card">
 
-    {% if form.errors %}
-      <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก</div>
-    {% endif %}
+        {% if form.errors %}
+          <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก</div>
+        {% endif %}
 
-    <form method="post" autocomplete="off">
-      {% csrf_token %}
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
 
-      <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
-      <h3 class="section-title">ข้อมูลผู้ป่วย</h3>
-      <div class="grid">
-        <div class="field">
-          <label>ชื่อ</label>
-          <input name="first_name" required placeholder="เช่น สมชาย"
-                 value="{{ form.first_name.value|default:'' }}">
-        </div>
+          <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
+          <h3>ข้อมูลผู้ป่วย</h3>
+          <div class="grid">
+            <div class="field">
+              <label>ชื่อ</label>
+              <input name="first_name" required placeholder="เช่น สมชาย"
+                     value="{{ form.first_name.value|default:'' }}">
+            </div>
 
-        <div class="field">
-          <label>นามสกุล</label>
-          <input name="last_name" required placeholder="เช่น ใจดี"
-                 value="{{ form.last_name.value|default:'' }}">
-        </div>
+            <div class="field">
+              <label>นามสกุล</label>
+              <input name="last_name" required placeholder="เช่น ใจดี"
+                     value="{{ form.last_name.value|default:'' }}">
+            </div>
 
-        <div class="field" style="grid-column: span 2;">
-          <label>เลขบัตรประชาชน</label>
-          <input name="national_id" required inputmode="numeric"
-                 placeholder="13 หลัก ไม่ต้องใส่ขีด"
-                 value="{{ form.national_id.value|default:'' }}">
-          <div class="hint">ใช้ตรวจสอบผู้ป่วยซ้ำในระบบ</div>
-        </div>
+            <div class="field full">
+              <label>เลขบัตรประชาชน</label>
+              <input name="national_id" required inputmode="numeric"
+                     placeholder="13 หลัก ไม่ต้องใส่ขีด"
+                     value="{{ form.national_id.value|default:'' }}">
+              <div class="hint">ใช้ตรวจสอบผู้ป่วยซ้ำในระบบ</div>
+            </div>
 
-        <div class="field">
-          <label>เพศ</label>
-          <select name="gender">
-            <option value="">-- เลือก --</option>
-            <option value="M">ชาย</option>
-            <option value="F">หญิง</option>
-            <option value="O">อื่นๆ</option>
-            <option value="UNKNOWN">ไม่ระบุ</option>
-          </select>
-        </div>
+            <div class="field">
+              <label>เพศ</label>
+              <select name="gender">
+                <option value="">-- เลือก --</option>
+                <option value="M">ชาย</option>
+                <option value="F">หญิง</option>
+                <option value="O">อื่นๆ</option>
+                <option value="UNKNOWN">ไม่ระบุ</option>
+              </select>
+            </div>
 
-        <div class="field">
-          <label>อายุ</label>
-          <input name="age" type="number" min="0" placeholder="ปี">
-        </div>
+            <div class="field">
+              <label>อายุ</label>
+              <input name="age" type="number" min="0" placeholder="ปี">
+            </div>
 
-        <div class="field">
-          <label>เบอร์โทร</label>
-          <input name="phone" placeholder="08xxxxxxxx">
-        </div>
+            <div class="field">
+              <label>เบอร์โทร</label>
+              <input name="phone" placeholder="08xxxxxxxx">
+            </div>
+          </div>
 
-        
+          <!-- ================= SECTION 2: สุขภาพ ================= -->
+          <h3>ข้อมูลสุขภาพ</h3>
+          <div class="grid">
+            <div class="field">
+              <label>หมู่เลือด</label>
+              <select name="blood_type">
+                <option value="UNKNOWN">ไม่ทราบ</option>
+                <option>A</option>
+                <option>B</option>
+                <option>AB</option>
+                <option>O</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>ส่วนสูง (cm)</label>
+              <input name="height_cm" type="number" step="0.01">
+            </div>
+
+            <div class="field">
+              <label>น้ำหนัก (kg)</label>
+              <input name="weight_kg" type="number" step="0.01">
+            </div>
+
+            <div class="field">
+              <label>ความดันตัวบน (SYS)</label>
+              <input name="bp_sys" type="number" min="0" placeholder="เช่น 120">
+            </div>
+
+            <div class="field">
+              <label>ความดันตัวล่าง (DIA)</label>
+              <input name="bp_dia" type="number" min="0" placeholder="เช่น 80">
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>โรคประจำตัว</label>
+            <textarea name="chronic_diseases"></textarea>
+          </div>
+
+          <div class="field full">
+            <label>แพ้ยา / อาหาร</label>
+            <textarea name="allergies"></textarea>
+          </div>
+
+          <div class="field full">
+            <label>ยาที่ใช้ประจำ</label>
+            <textarea name="medications"></textarea>
+          </div>
+
+          <!-- ================= SECTION 3: ที่อยู่ ================= -->
+          <h3>ที่อยู่ (เลือก)</h3>
+          <div class="grid">
+            <div class="field">
+              <label>จังหวัด</label>
+              <select id="province" name="province_code" required>
+                <option value="">-- เลือกจังหวัด --</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>อำเภอ</label>
+              <select id="district" name="district_code" required disabled>
+                <option value="">-- เลือกอำเภอ --</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>ตำบล</label>
+              <select id="subdistrict" name="subdistrict_code" required disabled>
+                <option value="">-- เลือกตำบล --</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>รหัสไปรษณีย์ (อัตโนมัติ)</label>
+              <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน">
+            </div>
+          </div>
+          <div class="hint">
+            • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
+            • ระบบจะบันทึกเป็น "โค้ด" (province/district/subdistrict) เพื่อกันชื่อซ้ำ
+          </div>
+
+          <!-- ================= SECTION 4: ติดต่อฉุกเฉิน ================= -->
+          <h3>ผู้ติดต่อฉุกเฉิน</h3>
+          <div class="grid">
+            <div class="field">
+              <label>ชื่อผู้ติดต่อ</label>
+              <input name="emergency_name">
+            </div>
+
+            <div class="field">
+              <label>เบอร์โทร</label>
+              <input name="emergency_phone">
+            </div>
+          </div>
+
+          <!-- ================= SECTION 5: หมายเหตุ ================= -->
+          <h3>อาการ</h3>
+          <div class="field full">
+            <textarea name="note"></textarea>
+          </div>
+
+          <!-- ================= FOOTER ================= -->
+          <div class="footer">
+            <button class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
+            <a class="btn ghost" href="{% url 'queue_list' %}">ยกเลิก</a>
+          </div>
+
+        </form>
       </div>
-
-      <!-- ================= SECTION 2: สุขภาพ ================= -->
-      <h3 class="section-title">ข้อมูลสุขภาพ</h3>
-      <div class="grid">
-        <div class="field">
-          <label>หมู่เลือด</label>
-          <select name="blood_type">
-            <option value="UNKNOWN">ไม่ทราบ</option>
-            <option>A</option>
-            <option>B</option>
-            <option>AB</option>
-            <option>O</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>ส่วนสูง (cm)</label>
-          <input name="height_cm" type="number" step="0.01">
-        </div>
-
-        <div class="field">
-          <label>น้ำหนัก (kg)</label>
-          <input name="weight_kg" type="number" step="0.01">
-        </div>
-
-        <div class="field">
-  <label>ความดันตัวบน (SYS)</label>
-  <input name="bp_sys" type="number" min="0" placeholder="เช่น 120">
-</div>
-
-<div class="field">
-  <label>ความดันตัวล่าง (DIA)</label>
-  <input name="bp_dia" type="number" min="0" placeholder="เช่น 80">
-</div>
-      </div>
-
-      <div class="field">
-        <label>โรคประจำตัว</label>
-        <textarea name="chronic_diseases" rows="2"></textarea>
-      </div>
-
-      <div class="field">
-        <label>แพ้ยา / อาหาร</label>
-        <textarea name="allergies" rows="2"></textarea>
-      </div>
-
-      <div class="field">
-        <label>ยาที่ใช้ประจำ</label>
-        <textarea name="medications" rows="2"></textarea>
-      </div>
-
-      <!-- ================= SECTION 3: ที่อยู่ ================= -->
-<h3 class="section-title">ที่อยู่ (เลือก)</h3>
-
-<div class="grid">
-  <div class="field">
-    <label>จังหวัด</label>
-    <select id="province" name="province_code" required>
-      <option value="">-- เลือกจังหวัด --</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label>อำเภอ</label>
-    <select id="district" name="district_code" required disabled>
-      <option value="">-- เลือกอำเภอ --</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label>ตำบล</label>
-    <select id="subdistrict" name="subdistrict_code" required disabled>
-      <option value="">-- เลือกตำบล --</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label>รหัสไปรษณีย์ (อัตโนมัติ)</label>
-    <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน">
-  </div>
-</div>
-
-<div class="hint">
-  • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
-  • ระบบจะบันทึกเป็น “โค้ด” (province/district/subdistrict) เพื่อกันชื่อซ้ำ
-</div>
-
-
-      <!-- ================= SECTION 4: ติดต่อฉุกเฉิน ================= -->
-      <h3 class="section-title">ผู้ติดต่อฉุกเฉิน</h3>
-      <div class="grid">
-        <div class="field">
-          <label>ชื่อผู้ติดต่อ</label>
-          <input name="emergency_name">
-        </div>
-
-        <div class="field">
-          <label>เบอร์โทร</label>
-          <input name="emergency_phone">
-        </div>
-      </div>
-
-      <!-- ================= SECTION 5: หมายเหตุ ================= -->
-      <h3 class="section-title">อาการ</h3>
-      <div class="field">
-        <textarea name="note" rows="2"></textarea>
-      </div>
-
-      <!-- ================= FOOTER ================= -->
-      <div class="footer">
-        <button class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
-        <a class="btn ghost" href="/queues/">ยกเลิก</a>
-      </div>
-
-    </form>
+    </div>
   </div>
 </div>
 
@@ -292,7 +290,6 @@
       console.error("Failed to load th_address.json", err);
     });
 </script>
-
 
 </body>
 </html>

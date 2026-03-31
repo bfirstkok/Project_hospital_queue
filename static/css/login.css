@@ -1,224 +1,251 @@
-body {
-    font-family: "Segoe UI", "Noto Sans Thai", sans-serif;
-    min-height: 100vh;
-    margin: 0;
-    background-attachment: fixed;
-    /* Background image + overlay */
-    background:
-    linear-gradient(
-        rgba(255, 255, 255, 0.7),
-        rgba(255, 255, 255, 0.7)
-    ),
-    url("../images/login-bg.jpg") center / cover no-repeat;
+/* Modern Dark Theme - Login Page */
 
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: rgba(255,255,255,0.03);
+  --text-primary: #e8eaf0;
+  --text-muted: rgba(255,255,255,0.35);
+  --text-secondary: rgba(255,255,255,0.7);
+  --border-color: rgba(255,255,255,0.07);
+  --border-light: rgba(255,255,255,0.1);
+  
+  --color-red: #ff5f72;
+  --color-blue: #0096ff;
+  --gradient-primary: linear-gradient(135deg, #00d4aa, #0096ff);
 }
 
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-/* กล่อง Login */
+body {
+  font-family: 'Sarabun', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* ============ LOGIN BOX ============ */
 .login-box {
-    width: 380px;
-    padding: 36px 40px;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-    border-top: 6px solid #1976d2;
-    animation: fadeInUp 0.6s ease;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(4px);
-    animation: floatIn 0.8s ease-out;
+  width: 100%;
+  max-width: 420px;
+  padding: 36px 40px;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  background: rgba(10, 14, 26, 0.8);
+  backdrop-filter: blur(10px);
+  animation: floatIn 0.8s ease-out;
 }
 
 @keyframes floatIn {
-    from {
-        opacity: 0;
-        transform: translateY(30px) scale(0.96);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-
-
-/* หัวข้อ */
+/* ============ HEADER ============ */
 .login-box h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    text-align: center;
-    color: #1976d2;
-    font-weight: 600;
+  margin: 0 0 12px 0;
+  text-align: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 20px;
+  font-family: 'Space Grotesk', sans-serif;
 }
 
-/* label */
+.login-box p {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 28px 0;
+}
+
+/* ============ FORM ELEMENTS ============ */
 label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-/* input */
-input {
-    width: 100%;
-    padding: 10px 12px;
-    margin-bottom: 14px;
-
-    border-radius: 8px;
-    border: 1px solid #cfd8dc;
-    font-size: 14px;
-
-    transition: border 0.2s, box-shadow 0.2s;
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  width: 100%;
+  padding: 11px 13px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-family: 'Sarabun', sans-serif;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-input:focus {
-    outline: none;
-    border-color: #1976d2;
-    box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
-    animation: focusPulse 0.4s ease;
-}
-@keyframes focusPulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(25,118,210,0.25);
-    }
-    100% {
-        box-shadow: 0 0 0 6px rgba(25,118,210,0);
-    }
+input[type="text"]::placeholder,
+input[type="password"]::placeholder,
+input[type="email"]::placeholder {
+  color: rgba(255, 255, 255, 0.25);
 }
 
-/* ปุ่ม */
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+  outline: none;
+  border-color: rgba(0, 212, 170, 0.4);
+  background: rgba(0, 212, 170, 0.05);
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.1);
+}
+
+/* ============ BUTTONS ============ */
 button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    transition: transform .15s ease, box-shadow .15s;
-    background: #1976d2;
-    color: #ffffff;
-
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+  width: 100%;
+  padding: 11px 16px;
+  margin-top: 8px;
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Sarabun', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 button:hover {
-    background: #1565c0;
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 button:active {
-    transform: scale(0.97);
+  transform: scale(0.97);
 }
 
-/* error */
+/* ============ ERROR MESSAGE ============ */
 .error {
-    background: #ffebee;
-    color: #c62828;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    font-size: 14px;
-    margin-bottom: 12px;
+  background: rgba(255, 95, 114, 0.12);
+  color: #ff9aa8;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 95, 114, 0.3);
+  text-align: center;
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
-/* footer */
+/* ============ FOOTER ============ */
 .login-footer {
-    margin-top: 18px;
-    text-align: center;
-    font-size: 13px;
-    color: #607d8b;
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
 }
-/* UX Enhancements */
 
+.login-footer a {
+  color: #00d4aa;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.login-footer a:hover {
+  color: #00e8c4;
+}
+
+/* ============ PASSWORD TOOLS ============ */
 .password-tools {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    margin-top: -5px;
-}
-
-/* Button loading */
-#loginBtn {
-    position: relative;
-}
-
-#loginBtn .btn-loading {
-    display: none;
-}
-
-#loginBtn.loading .btn-text {
-    display: none;
-}
-
-#loginBtn.loading .btn-loading {
-    display: inline;
-}
-
-/* Input focus */
-input:focus {
-    outline: none;
-    border-color: #0277bd;
-    box-shadow: 0 0 0 2px rgba(2,119,189,0.2);
-}
-
-/* Mobile friendly */
-@media (max-width: 480px) {
-    .login-box {
-        width: 90%;
-        padding: 20px;
-    }
-}
-
-/* Show password UX */
-.password-tools {
-    margin-top: 6px;
-    margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: -8px 0 12px 0;
 }
 
 .show-password {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
 
-    font-size: 14px;
-    font-weight: 500;
-    color: #555;
-
-    cursor: pointer;
-    user-select: none;
+.show-password:hover {
+  color: var(--text-primary);
 }
 
 .show-password input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    accent-color: #1976d2;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #00d4aa;
 }
 
-.caps-warning {
-    color: #c62828;
+/* ============ BUTTON LOADING ============ */
+#loginBtn {
+  position: relative;
+}
+
+#loginBtn .btn-loading {
+  display: none;
+}
+
+#loginBtn.loading .btn-text {
+  display: none;
+}
+
+#loginBtn.loading .btn-loading {
+  display: inline;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 640px) {
+  .login-box {
+    padding: 28px 24px;
+    border-radius: 12px;
+  }
+
+  .login-box h2 {
+    font-size: 18px;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"] {
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  button {
+    padding: 10px 14px;
     font-size: 13px;
-    margin-top: -8px;
-    margin-bottom: 10px;
+  }
 }
 
-.login-image {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 16px;
-}
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
 
-.login-image img {
-    width: 100px;
-    padding: 14px;
-    background: white;
-    border-radius: 50%;
-    box-shadow: 0 6px 20px rgba(25,118,210,0.25);
+  .login-box {
+    padding: 24px 20px;
+  }
 }

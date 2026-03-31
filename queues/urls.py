@@ -17,6 +17,7 @@ urlpatterns = [
     # ✅ /queues/monitor/ = FOLLOWUP monitor (หลัง OPD)
     path("monitor/", opd_views.post_opd_monitor, name="monitor_dashboard"),
     path("monitor/api/latest/", opd_views.post_opd_monitor_api, name="monitor_latest_api"),
+    path("monitor/api/summary/", views.monitor_summary_api, name="monitor_summary_api"),
     path("monitor/visit/<int:visit_id>/", opd_views.post_opd_visit_detail, name="followup_visit_detail"),
     path("monitor/demo/push/<int:visit_id>/", opd_views.post_opd_demo_push_telemetry, name="followup_demo_push"),
 

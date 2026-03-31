@@ -1,241 +1,216 @@
-:root{
-  --bg:#f8fbff;
-  --card:#ffffff;
-  --line:rgba(15,23,42,.10);
+/* Modern Dark Theme - OPD List Page */
 
-  --text:#0f172a;
-  --muted:#64748b;
-
-  --primary:#2563eb;
-  --good:#16a34a;
-  --warn:#d97706;
-  --bad:#dc2626;
-
-  --shadow:0 10px 26px rgba(15,23,42,.12);
-  --radius:16px;
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: rgba(255,255,255,0.03);
+  --text-primary: #e8eaf0;
+  --text-muted: rgba(255,255,255,0.35);
+  --text-secondary: rgba(255,255,255,0.7);
+  --border-color: rgba(255,255,255,0.07);
+  --border-light: rgba(255,255,255,0.1);
+  --color-red: #ff5f72;
+  --color-yellow: #ffb830;
+  --color-green: #00d4aa;
+  --gradient-primary: linear-gradient(135deg, #00d4aa, #0096ff);
 }
 
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  padding:24px;
-  font-family: "Inter", system-ui, Segoe UI, sans-serif;
-
-  background:
-    radial-gradient(900px 500px at 5% 10%, rgba(56,189,248,.18), transparent 55%),
-    radial-gradient(700px 400px at 95% 20%, rgba(34,197,94,.14), transparent 55%),
-    linear-gradient(180deg,#f8fbff,#eef6ff);
-
-  color:var(--text);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-a{color:var(--primary);text-decoration:none}
-.wrap{max-width:1200px;margin:0 auto}
-
-/* ================= TOP BAR ================= */
-.topbar{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:space-between;
-  align-items:center;
-  gap:14px;
-  margin-bottom:18px;
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-.pill-title{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:12px 20px;
-  border-radius:999px;
-
-  background:linear-gradient(180deg,#ffffff,#f1f8ff);
-  border:1px solid rgba(37,99,235,.25);
-  box-shadow:0 6px 18px rgba(15,23,42,.12);
+table {
+  border-collapse: collapse;
+  width: 100%;
 }
 
-.pill-title h1{
-  margin:0;
-  font-size:20px;
-  font-weight:900;
+th, td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.pill-title .subtitle{
-  font-size:12px;
-  color:var(--muted);
+th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.02);
 }
 
-.pill-title .icon{font-size:26px}
-
-/* ================= BUTTON ================= */
-.btn{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 14px;
-
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:#fff;
-
-  color:var(--text);
-  font-size:14px;
-  font-weight:600;
-
-  box-shadow:0 4px 12px rgba(15,23,42,.12);
-  cursor:pointer;
+td {
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
-.btn:hover{
-  transform:translateY(-1px);
-  box-shadow:0 6px 16px rgba(15,23,42,.18);
+tr:hover td {
+  background: rgba(255,255,255,0.03);
 }
 
-.btn.good{
-  border-color:rgba(22,163,74,.35);
-  background:rgba(22,163,74,.12);
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.btn.warn{
-  border-color:rgba(217,119,6,.35);
-  background:rgba(217,119,6,.12);
+.badge.red {
+  background: rgba(255,95,114,0.15);
+  color: var(--color-red);
 }
 
-.btn.danger{
-  border-color:rgba(220,38,38,.35);
-  background:rgba(220,38,38,.12);
+.badge.yellow {
+  background: rgba(255,184,48,0.15);
+  color: var(--color-yellow);
 }
 
-/* ================= CARD ================= */
-.card{
-  background:linear-gradient(180deg,#ffffff,#f8fbff);
-  border:1px solid var(--line);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  padding:18px;
+.badge.green {
+  background: rgba(0,212,170,0.15);
+  color: var(--color-green);
 }
 
-/* ================= GRID ================= */
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.span12{grid-column:span 12}
-
-/* ================= KPI / SUMMARY ================= */
-.kpi{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:12px;
+.badge.blue {
+  background: rgba(0,150,255,0.15);
+  color: #5ac8ff;
 }
 
-.kpi .label{
-  font-size:12px;
-  color:var(--muted);
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 12px;
-
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:#fff;
-
-  font-size:12px;
-  font-weight:700;
+.status-badge.called {
+  background: rgba(0,150,255,0.15);
+  color: #5ac8ff;
 }
 
-.dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-}
-.dot.good{background:var(--good)}
-.dot.warn{background:var(--warn)}
-.dot.bad{background:var(--bad)}
-
-/* ================= BOX ================= */
-.box{
-  padding:16px;
-  border-radius:14px;
-  border:1px dashed var(--line);
-  background:#ffffff;
+.status-badge.assessed {
+  background: rgba(0,212,170,0.15);
+  color: var(--color-green);
 }
 
-.h2{
-  font-size:15px;
-  font-weight:900;
-  margin:0 0 10px;
-  color:#1e293b;
+/* Action buttons */
+.action-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
 }
 
-/* ================= FORM ================= */
-label{
-  font-size:12px;
-  font-weight:700;
-  color:var(--muted);
+.action-btn:hover {
+  background: rgba(255,255,255,0.06);
 }
 
-input,
-textarea{
-  width:100%;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  font-size:14px;
+.action-btn.assess {
+  color: var(--color-green);
+  border-color: rgba(0,212,170,0.3);
 }
 
-input:focus,
-textarea:focus{
-  outline:none;
-  border-color:rgba(37,99,235,.6);
-  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+.action-btn.assess:hover {
+  background: rgba(0,212,170,0.1);
 }
 
-.chk{
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-  margin:8px 0;
+.action-btn.red {
+  color: var(--color-red);
+  border-color: rgba(255,95,114,0.3);
 }
 
-.chk input{width:auto;margin-top:3px}
-
-/* ================= BADGE ================= */
-.badge-red{
-  border:1px solid rgba(239,68,68,.45);
-  background:rgba(239,68,68,.12);
-  padding:8px 14px;
-  border-radius:999px;
-  font-weight:900;
+.action-btn.red:hover {
+  background: rgba(255,95,114,0.1);
 }
 
-.badge-yellow{
-  border:1px solid rgba(245,158,11,.45);
-  background:rgba(245,158,11,.12);
-  padding:8px 14px;
-  border-radius:999px;
-  font-weight:900;
+.action-btn.yellow {
+  color: var(--color-yellow);
+  border-color: rgba(255,184,48,0.3);
 }
 
-.badge-ok{
-  border:1px solid var(--line);
-  background:rgba(15,23,42,.04);
-  padding:8px 14px;
-  border-radius:999px;
-  font-weight:900;
+.action-btn.yellow:hover {
+  background: rgba(255,184,48,0.1);
 }
 
-/* ================= MUTED ================= */
-.muted{
-  color:var(--muted);
-  font-size:12px;
+.action-btn.green {
+  color: var(--color-green);
+  border-color: rgba(0,212,170,0.3);
 }
 
-/* ================= RESPONSIVE ================= */
-@media (max-width:900px){
-  body{padding:16px}
-  .col6,.col4,.col3{grid-column:span 12}
+.action-btn.green:hover {
+  background: rgba(0,212,170,0.1);
+}
+
+/* Vitals card */
+.vitals-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.vital-item {
+  background: rgba(255,255,255,0.02);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.vital-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.vital-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  th, td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .badge {
+    font-size: 11px;
+  }
+
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .vitals-grid {
+    grid-template-columns: 1fr;
+  }
 }

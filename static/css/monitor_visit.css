@@ -1,254 +1,244 @@
-:root{
-  --bg:#f6f8fb;
-  --card:#ffffff;
-  --border:#e5e7eb;
-  --text:#0f172a;
-  --muted:#64748b;
+/* Modern Dark Theme - Monitor Visit Details */
 
-  --green:#22c55e;
-  --yellow:#f59e0b;
-  --red:#ef4444;
-  --blue:#3b82f6;
-
-  --radius:16px;
-  --shadow:0 12px 30px rgba(0,0,0,.06);
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: rgba(255,255,255,0.03);
+  --text-primary: #e8eaf0;
+  --text-muted: rgba(255,255,255,0.35);
+  --text-secondary: rgba(255,255,255,0.7);
+  --border-color: rgba(255,255,255,0.07);
+  --border-light: rgba(255,255,255,0.1);
+  --color-red: #ff5f72;
+  --color-yellow: #ffb830;
+  --color-green: #00d4aa;
+  --color-blue: #0096ff;
 }
 
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  padding:24px;
-  font-family:system-ui,-apple-system,Segoe UI,sans-serif;
-  background:linear-gradient(180deg,#f8fafc,#eef2ff);
-  color:var(--text);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.wrap{
-  max-width:1280px;
-  margin:auto;
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-/* ================= Topbar ================= */
-.topbar{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:space-between;
-  align-items:center;
-  gap:14px;
-  margin-bottom:20px;
+/* Card layout */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
 }
 
-.title h1{
-  margin:0;
-  font-size:22px;
-  font-weight:800;
+.card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+  font-family: 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
 }
 
-.subtitle{
-  font-size:13px;
-  color:var(--muted);
+/* Patient info */
+.patient-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
 }
 
-/* ================= Buttons ================= */
-.actions{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
+.info-item {
+  background: rgba(255,255,255,0.02);
+  padding: 10px;
+  border-radius: 6px;
 }
 
-.btn{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  font-size:14px;
-  box-shadow:0 4px 12px rgba(0,0,0,.05);
+.info-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
-.btn:hover{
-  background:#f1f5f9;
-  text-decoration:none;
+.info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-/* ================= Grid ================= */
-.grid{
-  display:grid;
-  grid-template-columns:1.2fr .8fr;
-  gap:16px;
-  margin-bottom:20px;
+/* Vitals grid */
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
 }
 
-@media(max-width:900px){
-  body{padding:16px}
-  .grid{grid-template-columns:1fr}
+.vital-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
 }
 
-/* ================= Card ================= */
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  padding:16px;
+.vital-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
-.card h3{
-  margin:0 0 12px;
-  font-size:15px;
-  font-weight:700;
+.vital-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
 }
 
-/* ================= Pills / Badges ================= */
-.row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-  margin:10px 0;
+.vital-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
-.pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 12px;
-  border-radius:999px;
-  background:#f1f5f9;
-  font-size:13px;
-  color:#334155;
+/*Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.sev{
-  padding:6px 14px;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:800;
+.status-badge.online {
+  background: rgba(0,212,170,0.15);
+  color: var(--color-green);
 }
 
-.sev.green{background:#dcfce7;color:#166534}
-.sev.yellow{background:#fef3c7;color:#92400e}
-.sev.red{background:#fee2e2;color:#991b1b}
-
-/* ================= Key / Value ================= */
-.kvgrid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:12px;
+.status-badge.online::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--color-green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
 }
 
-@media(max-width:900px){
-  .kvgrid{grid-template-columns:repeat(2,1fr)}
-}
-
-.kv{
-  background:#f8fafc;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
-}
-
-.k{
-  font-size:12px;
-  color:var(--muted);
-}
-
-.v{
-  margin-top:4px;
-  font-size:22px;
-  font-weight:900;
-}
-
-.v small{
-  font-size:12px;
-  color:var(--muted);
-}
-
-/* ================= Table ================= */
-.tableWrap{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-thead{
-  background:#f1f5f9;
-}
-
-thead th{
-  text-align:left;
-  padding:14px;
-  font-size:13px;
-  color:#334155;
-}
-
-tbody td{
-  padding:14px;
-  border-top:1px solid var(--border);
-  font-size:14px;
-}
-
-tbody tr:hover{
-  background:#f8fafc;
-}
-
-/* ================= Utils ================= */
-.muted{
-  color:var(--muted);
-  font-size:13px;
-}
-
-.mono{
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-
-/* ================= Mobile Table ================= */
-@media(max-width:900px){
-  thead{display:none}
-  table,tbody,tr,td{display:block;width:100%}
-  tbody tr{border-bottom:1px solid var(--border)}
-  tbody td{
-    border:none;
-    padding:10px 14px;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
   }
-  tbody td::before{
-    content:attr(data-label);
-    display:block;
-    font-size:12px;
-    color:var(--muted);
-    margin-bottom:4px;
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
   }
 }
-.pill-title h1{
-  margin:0;
-  font-size:20px;
-  font-weight:800;
+
+.status-badge.offline {
+  background: rgba(255,95,114,0.15);
+  color: var(--color-red);
 }
 
-.pill-title .subtitle{
-  font-size:12px;
-  color:#64748b;
+/* Timeline / history */
+.timeline {
+  position: relative;
+  padding-left: 20px;
 }
 
-.pill-title .icon{
-  font-size:24px;
-}
-a{
-  text-decoration: none;
-  color: inherit;
+.timeline-item {
+  padding: 10px 0;
+  padding-left: 20px;
+  border-left: 2px solid var(--border-light);
+  position: relative;
 }
 
-a:hover{
-  text-decoration: none;
+.timeline-item::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--color-green);
+  border-radius: 50%;
+  position: absolute;
+  left: -5px;
+  top: 12px;
+}
+
+.timeline-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.timeline-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #00d4aa, #0096ff);
+  color: #fff;
+  border: none;
+}
+
+.btn.primary:hover {
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .patient-info {
+    grid-template-columns: 1fr;
+  }
+
+  .vitals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 12px;
+  }
+
+  .vitals-grid {
+    grid-template-columns: 1fr;
+  }
 }

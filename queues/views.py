@@ -27,9 +27,20 @@ def queue_list(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="WAITING")
-        .order_by("priority", "created_at")
+        .order_by("visit__id")
     )
-    return render(request, "queues/queue_list.html", {"q_items": q_items})
+    
+    # Count by severity
+    red_count = sum(1 for q in q_items if q.visit.final_severity == "RED")
+    yellow_count = sum(1 for q in q_items if q.visit.final_severity == "YELLOW")
+    green_count = sum(1 for q in q_items if q.visit.final_severity == "GREEN")
+    
+    return render(request, "queues/queue_list.html", {
+        "q_items": q_items,
+        "red_count": red_count,
+        "yellow_count": yellow_count,
+        "green_count": green_count,
+    })
 
 
 @login_required
@@ -255,7 +266,7 @@ def monitor_latest_api(request):
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
         .filter(status="WAITING")
-        .order_by("priority", "created_at")[:200]
+        .order_by("visit__id")[:200]
     )
 
     rows = []
@@ -305,7 +316,7 @@ def monitor_summary_api(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="WAITING")
-        .order_by("priority", "created_at")[:200]
+        .order_by("visit__id")[:200]
     )
 
     visit_ids = [q.visit_id for q in q_items]

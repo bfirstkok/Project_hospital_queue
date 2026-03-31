@@ -4,49 +4,195 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Patient Monitor (หลัง OPD)</title>
-  <link rel="stylesheet" href="{% static 'css/post_opd.css' %}?v=1">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Patient Monitor - FOLLOWUP</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #0a0e1a;
+      color: #e8eaf0;
+      min-height: 100vh;
+    }
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      background: #0a0e1a;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 0px;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .nav-pill {
+      padding: 5px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: rgba(255,255,255,0.45);
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-pill.active {
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+    }
+    .nav-pill:hover:not(.active) {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.06);
+    }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      padding: 10px 28px;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+    .dot.good { background: #86efac; }
+    .dot.bad { background: #ff5f72; }
+    .muted { color: rgba(255,255,255,0.35); font-size: 11px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.02);
+    }
+    thead {
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    th {
+      padding: 12px 14px;
+      font-size: 10px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      text-align: left;
+    }
+    td {
+      padding: 11px 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    .online { background: rgba(134,239,172,0.15); color: #86efac; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .offline { background: rgba(255,95,114,0.15); color: #ff5f72; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .col-name { font-weight: 600; }
+    .td-action { text-align: center; }
+    .btn {
+      display: inline-block;
+      padding: 5px 10px;
+      background: rgba(0,212,170,0.15);
+      color: #00d4aa;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .btn:hover { background: rgba(0,212,170,0.25); }
+    .mono { font-family: monospace; font-size: 11px; }
+    .table-container {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.04);
+    }
+    #serverTime {
+      color: rgba(255,255,255,0.35);
+      font-size: 11px;
+      margin-left: auto;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
+<div class="shell">
   <div class="topbar">
-    <div class="title pill-title">
-      <div class="icon">📡</div>
+    <div class="logo-area">
+      <div class="logo-icon">🩺</div>
       <div>
-        <h1>Patient Monitor (FOLLOWUP)</h1>
-        <div class="subtitle">โชว์เฉพาะผู้ป่วย “ตรวจ OPD เสร็จแล้ว” และอยู่ในสถานะ FOLLOWUP</div>
+        <div class="logo-text">Patient Monitor</div>
+        <div class="logo-sub">ติดตามผู้ป่วย FOLLOWUP</div>
       </div>
     </div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="/queues/">📋Queue</a>
-      <a class="btn" href="/opd/">🩺OPD</a>
-      <span class="pill mono" id="serverTime">--</span>
+    <div class="nav-pills">
+      <a class="nav-pill" href="/queues/">Queue</a>
+      <a class="nav-pill active" href="/queues/monitor/">Monitor</a>
+      <a class="nav-pill" href="/opd/">OPD</a>
+      <a class="nav-pill" href="/dashboard/">Dashboard</a>
     </div>
   </div>
 
-  <div class="card span12">
-    <div style="overflow:auto">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:90px">Visit</th>
-            <th class="col-name">ชื่อผู้ป่วย</th>
-            <th style="width:110px">สถานะ</th>
-            <th style="width:140px">Device</th>
-            <th style="width:70px">BPM</th>
-            <th style="width:70px">O2</th>
-            <th style="width:70px">BT</th>
-            <th style="width:90px">SYS/DIA</th>
-            <th style="width:70px">RR</th>
-            <th style="width:170px">Created</th>
-            <th style="width:220px">Action</th>
-          </tr>
-        </thead>
-        <tbody id="rows">
-          <tr><td colspan="11" class="muted">กำลังโหลด...</td></tr>
-        </tbody>
-      </table>
+  <div class="wrap">
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <div style="font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fff;">รายการล่าสุด - FOLLOWUP</div>
+      <span class="mono" id="serverTime">--</span>
+    </div>
+    <div class="table-container">
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">Visit</th>
+              <th class="col-name">ชื่อผู้ป่วย</th>
+              <th style="width:90px">สถานะ</th>
+              <th style="width:110px">Device</th>
+              <th style="width:60px">BPM</th>
+              <th style="width:60px">O2</th>
+              <th style="width:60px">BT</th>
+              <th style="width:80px">SYS/DIA</th>
+              <th style="width:60px">RR</th>
+              <th style="width:140px">Created</th>
+              <th style="width:190px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="11" class="muted">กำลังโหลด...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -76,7 +222,7 @@
       if (!rows.length) {
         tbody.innerHTML =
           `<tr><td colspan="11" class="muted">
-            ยังไม่มีผู้ป่วย FOLLOWUP (ตรวจ OPD เสร็จแล้ว)
+            ยังไม่มีผู้ป่วย FOLLOWUP
           </td></tr>`;
         return;
       }
@@ -89,52 +235,33 @@
         const created = r.created_at
           ? new Date(r.created_at).toLocaleString()
           : "-";
-        const device =
-          (r.device_id && String(r.device_id).trim())
-            ? r.device_id
-            : "DEV001";
+        const device = (r.device_id && String(r.device_id).trim()) ? r.device_id : "DEV001";
 
-        return `
-          <tr>
-            <td>#${r.visit_id}</td>
-
-            <td class="col-name">
-              <div style="font-weight:900">${r.name}</div>
-              <div class="muted">
-                FOLLOWUP Queue: ${fmt(r.followup_queue_id)}
-              </div>
-            </td>
-
-            <td>${status}</td>
-            <td class="mono">${fmt(device)}</td>
-            <td>${fmt(vit.bpm)}</td>
-            <td>${fmt(vit.o2sat)}</td>
-            <td>${fmt(vit.bt)}</td>
-            <td>${fmt(vit.sys_bp)}/${fmt(vit.dia_bp)}</td>
-            <td>${fmt(vit.rr)}</td>
-            <td class="muted">${created}</td>
-
-            <td class="td-action">
-              <a class="btn" href="${DETAIL_URL(r.visit_id)}">
-                🔎 รายละเอียด
-              </a>
-            </td>
-          </tr>
-        `;
+        return `<tr>
+          <td><b>#${r.visit_id}</b></td>
+          <td class="col-name">${r.name}</td>
+          <td>${status}</td>
+          <td class="mono">${fmt(device)}</td>
+          <td>${fmt(vit.bpm)}</td>
+          <td>${fmt(vit.o2sat)}</td>
+          <td>${fmt(vit.bt)}</td>
+          <td>${fmt(vit.sys_bp)}/${fmt(vit.dia_bp)}</td>
+          <td>${fmt(vit.rr)}</td>
+          <td class="muted">${created}</td>
+          <td class="td-action">
+            <a class="btn" href="${DETAIL_URL(r.visit_id)}">ดู →</a>
+          </td>
+        </tr>`;
       }).join("");
-
-    } catch (e) {
+    } catch (err) {
+      console.error("Error loading data:", err);
       tbody.innerHTML =
-        `<tr><td colspan="11" class="muted">
-          โหลดไม่สำเร็จ: ${e.message || e}
-        </td></tr>`;
+        `<tr><td colspan="11" class="muted">Error: ${err.message}</td></tr>`;
     }
   }
 
   load();
   setInterval(load, 5000);
 </script>
-
-
 </body>
 </html>
