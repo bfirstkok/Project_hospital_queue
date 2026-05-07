@@ -55,6 +55,24 @@ body {
   }
 }
 
+/* ============ LOGO ============ */
+.login-image {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-image img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  opacity: 0.95;
+  transition: opacity 0.3s;
+}
+
+.login-image img:hover {
+  opacity: 1;
+}
+
 /* ============ HEADER ============ */
 .login-box h2 {
   margin: 0 0 12px 0;
