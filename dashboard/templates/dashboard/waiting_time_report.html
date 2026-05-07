@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="th">
+<head>
+  
+  {% load static %}
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รายงานเวลารอ</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    a { color: #00d4aa; text-decoration: none; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; }
+    .label { color: rgba(255,255,255,.55); font-size: 12px; }
+    .num { font-size: 28px; font-weight: 800; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
+    th { color: rgba(255,255,255,.55); font-size: 12px; }
+    .muted { color: rgba(255,255,255,.55); }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>รายงานเวลารอ ก่อน-หลัง</h1>
+        <div class="muted">สรุปเวลาจากลงทะเบียน คัดกรอง และเรียกคิว</div>
+      </div>
+      <div>
+        <a href="/dashboard/">แดชบอร์ด</a> |
+        <a href="{% url 'dashboard:waiting_time_report_csv' %}">ส่งออก CSV</a>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="label">รายการทั้งหมด</div><div class="num">{{ total }}</div></div>
+      <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงคัดกรอง</div><div class="num">{{ avg_triage|default:"-" }} นาที</div></div>
+      <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงเรียกคิว</div><div class="num">{{ avg_called|default:"-" }} นาที</div></div>
+      <div class="card"><div class="label">RED / YELLOW / GREEN</div><div class="num">{{ severity_counts.RED }} / {{ severity_counts.YELLOW }} / {{ severity_counts.GREEN }}</div></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>รหัส Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th>
+            <th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th>
+            <th>ลงทะเบียน -> คัดกรอง</th><th>ลงทะเบียน -> เรียกคิว</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>#{{ row.visit.id }}</td>
+              <td>{{ row.patient.first_name }} {{ row.patient.last_name }}</td>
+              <td>{{ row.visit.final_severity }}</td>
+              <td>{{ row.status }}</td>
+              <td>{{ row.visit.registered_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ row.visit.triaged_at|date:"Y-m-d H:i"|default:"-" }}</td>
+              <td>{{ row.visit.called_at|date:"Y-m-d H:i"|default:"-" }}</td>
+              <td>{{ row.triage_wait|default:"-" }}</td>
+              <td>{{ row.called_wait|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="9" class="muted">ยังไม่มีรายการ</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

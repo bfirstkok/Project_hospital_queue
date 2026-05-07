@@ -9,9 +9,11 @@ urlpatterns = [
     path("", views.queue_list, name="queue_list"),
 
     # queue actions
+    path("assessment/<int:visit_id>/", views.nurse_triage_assessment, name="nurse_triage_assessment"),
     path("triage/<int:visit_id>/", views.triage_visit, name="triage_visit"),
     path("call/<int:visit_id>/", views.call_visit, name="call_visit"),
-    path("location/<int:visit_id>/", views.update_location, name="update_location"),
+    path("monitoring/<int:visit_id>/", views.send_to_monitoring, name="send_to_monitoring"),
+    path("discharge/<int:visit_id>/", views.discharge_visit, name="discharge_visit"),
     path("api/update-severity/<int:visit_id>/", views.update_severity_api, name="update_severity_api"),
 
     # ✅ /queues/monitor/ = FOLLOWUP monitor (หลัง OPD)
@@ -27,6 +29,7 @@ urlpatterns = [
     path("monitor/waiting/api/summary/", views.monitor_summary_api, name="waiting_monitor_summary_api"),
     path("monitor/waiting/visit/<int:visit_id>/", views.monitor_visit_detail, name="waiting_monitor_visit_detail"),
     path("monitor/waiting/api/sparklines/", views.monitor_sparklines_api, name="waiting_monitor_sparklines_api"),
+    path("devices/pairing/", views.device_pairing, name="device_pairing"),
 
     # iot api
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),

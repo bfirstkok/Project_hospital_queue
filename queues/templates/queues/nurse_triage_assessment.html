@@ -1,0 +1,108 @@
+﻿<!doctype html>
+<html lang="th">
+<head>
+  
+  {% load static %}
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPD Triage Assessment</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+    a { color: #00d4aa; text-decoration: none; }
+    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 12px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; }
+    textarea { resize: vertical; }
+    .btn { border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 700; color: #fff; cursor: pointer; }
+    .primary { background: linear-gradient(135deg, #00d4aa, #0096ff); }
+    .red { background: #b91c1c; }
+    .yellow { background: #b7791f; }
+    .green { background: #047857; }
+    .dark { background: rgba(255,255,255,.1); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.08); font-weight: 700; }
+    .muted { color: rgba(255,255,255,.55); }
+    .error { color: #fecaca; font-size: 12px; margin-top: 4px; }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>OPD Triage Assessment</h1>
+        <div class="muted">รหัส Visit #{{ visit.id }} - {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+      </div>
+      <a href="{% url 'queue_list' %}">กลับหน้าคิว</a>
+    </div>
+
+    <div class="card">
+      <h2>อาการและสัญญาณชีพ</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="grid">
+          {% for field in form %}
+            {% if field.name != "symptoms" %}
+              <div>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div style="margin-top:12px">
+          <label for="{{ form.symptoms.id_for_label }}">{{ form.symptoms.label }}</label>
+          {{ form.symptoms }}
+          {% for error in form.symptoms.errors %}<div class="error">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">ประเมินด้วย AI</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>AI Result / Nurse Confirm</h2>
+      {% if triage_result %}
+        <p>
+          <span class="badge">AI: {{ triage_result.ai_severity|default:"-" }}</span>
+          <span class="badge">Model: {{ triage_result.model_name|default:"-" }}</span>
+          <span class="badge">Confidence: {{ triage_result.confidence|floatformat:2|default:"-" }}</span>
+          <span class="badge">Nurse: {{ triage_result.nurse_severity|default:"-" }}</span>
+        </p>
+        <div class="card" style="background:rgba(0,0,0,.18); margin:12px 0 0">
+          <strong>เหตุผลประกอบการประเมิน</strong>
+          <p style="margin:8px 0 0">{{ triage_result.ai_reason|default:"-" }}</p>
+        </div>
+        <div class="actions">
+          <form method="post" action="{% url 'triage_visit' visit.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="severity" value="RED">
+            <button class="btn red" type="submit">ยืนยันสีแดง</button>
+          </form>
+          <form method="post" action="{% url 'triage_visit' visit.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="severity" value="YELLOW">
+            <button class="btn yellow" type="submit">ยืนยันสีเหลือง</button>
+          </form>
+          <form method="post" action="{% url 'triage_visit' visit.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="severity" value="GREEN">
+            <button class="btn green" type="submit">ยืนยันสีเขียว</button>
+          </form>
+          <form method="post" action="{% url 'send_to_monitoring' visit.id %}">
+            {% csrf_token %}
+            <button class="btn dark" type="submit">ส่งไปโซนติดตาม</button>
+          </form>
+        </div>
+      {% else %}
+        <p class="muted">กรอกอาการและสัญญาณชีพ แล้วกดประเมินด้วย AI</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

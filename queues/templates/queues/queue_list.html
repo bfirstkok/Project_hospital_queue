@@ -545,6 +545,7 @@
       font-size: 14px;
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 
 <body>
@@ -558,10 +559,10 @@
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill active" href="{% url 'queue_list' %}">Queue</a>
-      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="{% url 'opd_list' %}">OPD</a>
-      <a class="nav-pill" href="/dashboard/">Dashboard</a>
+      <a class="nav-pill active" href="{% url 'queue_list' %}">คิว</a>
+      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill" href="{% url 'opd_list' %}">ห้องตรวจ</a>
+      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
     </div>
     <a class="add-btn" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
   </div>
@@ -569,7 +570,7 @@
   <div class="content">
     <div class="sidebar">
       <div class="stat-card teal">
-        <div class="stat-label">Waiting ทั้งหมด</div>
+        <div class="stat-label">รอทั้งหมด</div>
         <div class="stat-number">{{ q_items|length }}</div>
         <div class="live-dot">Live</div>
       </div>
@@ -635,12 +636,12 @@
         <table class="queue-table">
           <thead>
             <tr>
-              <th>Visit</th>
+              <th>ลำดับ</th>
               <th>ชื่อผู้ป่วย</th>
-              <th>สี (Final)</th>
+              <th>ระดับสุดท้าย</th>
               <th>AI</th>
-              <th>Registered At</th>
-              <th>Action</th>
+              <th>เวลาลงทะเบียน</th>
+              <th>คำสั่ง</th>
             </tr>
           </thead>
           <tbody>
@@ -650,7 +651,7 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">Queue ID: {{ q.id }}</div>
+                <div class="patient-age">เลขคิว: {{ q.id }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}
@@ -668,10 +669,11 @@
               <td>
                 <div class="action-group">
                   <a class="action-btn call" href="{% url 'call_visit' v.id %}">เรียก</a>
+                  <a class="action-btn triage" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
                   <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">R</button>
-                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">Y</button>
-                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">G</button>
+                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
+                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
+                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
                 </div>
               </td>
             </tr>
@@ -687,6 +689,13 @@
 </div>
 
 <script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return "";
+  }
+
   // คำนวณสถิติ
   document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('.queue-table tbody tr');
@@ -703,7 +712,10 @@
     try {
       const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
         body: JSON.stringify({ severity: sev })
       });
       const data = await res.json();
@@ -713,7 +725,7 @@
         alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
   }
 </script>

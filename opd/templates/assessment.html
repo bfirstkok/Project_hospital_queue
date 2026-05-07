@@ -4,8 +4,8 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="{% static 'css/opd_list.css' %}?v=9">
-  <title>OPD Assessment</title>
+  <title>ประเมินห้องตรวจ</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
 <div class="wrap">
@@ -13,14 +13,14 @@
     <div class="title pill-title">
       <div class="icon">📝</div>
       <div>
-        <h1>OPD Assessment</h1>
-        <div class="subtitle">Visit #{{ visit.id }} • {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+        <h1>ประเมินห้องตรวจ</h1>
+        <div class="subtitle">รหัส Visit #{{ visit.id }} • {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
       </div>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="{% url 'opd_list' %}">🩺OPD</a>
-      <a class="btn" href="/queues/">📋 Queue</a>
+      <a class="btn" href="{% url 'opd_list' %}">ห้องตรวจ</a>
+      <a class="btn" href="/queues/">คิว</a>
     </div>
   </div>
 

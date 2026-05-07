@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>OPD - Assessment List</title>
+  <title>ห้องตรวจ - รายการประเมิน</title>
   <style>
     /* ===== RESET ===== */
     * {
@@ -494,6 +494,7 @@
       font-size: 14px;
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 
 <body>
@@ -502,15 +503,15 @@
     <div class="logo-area">
       <div class="logo-icon">🩺</div>
       <div>
-        <div class="logo-text">OPD · Assessment</div>
+        <div class="logo-text">ห้องตรวจ · ประเมิน</div>
         <div class="logo-sub">ประเมิน · ผลตรวจ · นัดหมาย</div>
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill" href="{% url 'queue_list' %}">Queue</a>
-      <a class="nav-pill active" href="{% url 'opd_list' %}">OPD</a>
-      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="/dashboard/">Dashboard</a>
+      <a class="nav-pill" href="{% url 'queue_list' %}">คิว</a>
+      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill active" href="{% url 'opd_list' %}">ห้องตรวจ</a>
+      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
     </div>
   </div>
 
@@ -579,11 +580,11 @@
         <table class="queue-table">
           <thead>
             <tr>
-              <th>Visit</th>
+              <th>ลำดับ</th>
               <th>ชื่อผู้ป่วย</th>
-              <th>สี (Final)</th>
-              <th>Called At</th>
-              <th>Action</th>
+              <th>ระดับสุดท้าย</th>
+              <th>เวลาเรียก</th>
+              <th>คำสั่ง</th>
             </tr>
           </thead>
           <tbody>
@@ -593,7 +594,7 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">Queue ID: {{ q.id }}</div>
+                <div class="patient-age">เลขคิว: {{ q.id }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}
@@ -609,9 +610,9 @@
                 <div class="action-group">
                   <a class="action-btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
                   <a class="action-btn secondary" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">R</button>
-                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">Y</button>
-                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">G</button>
+                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
+                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
+                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
                 </div>
               </td>
             </tr>
@@ -641,7 +642,7 @@
         alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
   }
 </script>

@@ -15,7 +15,10 @@ from django.apps import apps
 
 
 
-from .models import Queue, Visit, Device, TelemetryLog, VitalSign
+from ai_triage.services import apply_ai_triage
+from patients.models import Patient
+from .forms import DevicePairingForm, NurseTriageAssessmentForm
+from .models import Queue, Visit, Device, TelemetryLog, VitalSign, TriageResult
 
 
 # -----------------------------
@@ -27,7 +30,7 @@ def queue_list(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="WAITING")
-        .order_by("visit__id")
+        .order_by("priority", "created_at")
     )
     
     # Count by severity
@@ -58,6 +61,61 @@ def call_visit(request, visit_id: int):
 
 
 @login_required
+@transaction.atomic
+def nurse_triage_assessment(request, visit_id: int):
+    visit = get_object_or_404(Visit.objects.select_related("patient"), id=visit_id)
+    q = getattr(visit, "queue", None)
+
+    initial = {}
+    vitals = getattr(visit, "vitals", None)
+    if vitals:
+        initial = {
+            "rr": vitals.rr,
+            "pr": vitals.pr,
+            "sys_bp": vitals.sys_bp,
+            "dia_bp": vitals.dia_bp,
+            "bt": vitals.bt,
+            "o2sat": vitals.o2sat,
+        }
+    if visit.note:
+        initial["symptoms"] = visit.note
+
+    ai_result = None
+    triage_result = getattr(visit, "triage_result", None)
+
+    if request.method == "POST":
+        form = NurseTriageAssessmentForm(request.POST)
+        if form.is_valid():
+            vitals, _ = VitalSign.objects.get_or_create(visit=visit)
+            vitals.rr = form.cleaned_data["rr"]
+            vitals.pr = form.cleaned_data["pr"]
+            vitals.sys_bp = form.cleaned_data["sys_bp"]
+            vitals.dia_bp = form.cleaned_data["dia_bp"]
+            vitals.bt = form.cleaned_data["bt"]
+            vitals.o2sat = form.cleaned_data["o2sat"]
+            vitals.save()
+
+            visit.note = form.cleaned_data.get("symptoms", "")
+            visit.save(update_fields=["note"])
+
+            ai_result = apply_ai_triage(visit)
+            triage_result = getattr(visit, "triage_result", None)
+            if q:
+                q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(visit.final_severity, 3)
+                q.save(update_fields=["priority"])
+    else:
+        form = NurseTriageAssessmentForm(initial=initial)
+
+    return render(request, "queues/nurse_triage_assessment.html", {
+        "visit": visit,
+        "queue": q,
+        "form": form,
+        "ai_result": ai_result,
+        "triage_result": triage_result,
+    })
+
+
+@login_required
 @require_POST
 def triage_visit(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
@@ -72,12 +130,37 @@ def triage_visit(request, visit_id: int):
         q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}[new_sev]
         q.save(update_fields=["priority"])
 
+        triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
+        triage_result.nurse_severity = new_sev
+        triage_result.save(update_fields=["nurse_severity"])
+
     return redirect("queue_list")
 
 
 @login_required
 @require_POST
-@csrf_exempt
+def send_to_monitoring(request, visit_id: int):
+    visit = get_object_or_404(Visit, id=visit_id)
+    q = getattr(visit, "queue", None)
+    if q:
+        q.status = "MONITORING"
+        q.save(update_fields=["status"])
+    return redirect("monitor_dashboard")
+
+
+@login_required
+@require_POST
+def discharge_visit(request, visit_id: int):
+    visit = get_object_or_404(Visit, id=visit_id)
+    q = getattr(visit, "queue", None)
+    if q:
+        q.status = "DISCHARGED"
+        q.save(update_fields=["status"])
+    return redirect("monitor_dashboard")
+
+
+@login_required
+@require_POST
 def update_severity_api(request, visit_id: int):
     """
     API สำหรับ Dashboard เปลี่ยนสี severity
@@ -101,6 +184,10 @@ def update_severity_api(request, visit_id: int):
         q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}[new_sev]
         q.save(update_fields=["priority"])
 
+        triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
+        triage_result.nurse_severity = new_sev
+        triage_result.save(update_fields=["nurse_severity"])
+
         return JsonResponse({"ok": True, "visit_id": visit.id, "severity": new_sev})
 
     except Exception as e:
@@ -122,8 +209,7 @@ def iot_telemetry(request):
       {
         "visit_id": 1,
         "ts": "2025-12-17T08:30:00Z",
-        "vitals": {"bpm": 90, "o2sat": 97, "bt": 37.1, "rr": 18, "sys_bp": 120, "dia_bp": 80},
-        "gps": {"lat": 16.44, "lng": 102.83}
+        "vitals": {"bpm": 90, "o2sat": 97, "bt": 37.1, "rr": 18, "sys_bp": 120, "dia_bp": 80}
       }
     """
     device_id = request.headers.get("X-DEVICE-ID")
@@ -151,8 +237,6 @@ def iot_telemetry(request):
         return JsonResponse({"ok": False, "error": "Visit not found"}, status=404)
 
     vitals = data.get("vitals") or {}
-    gps = data.get("gps") or {}
-
     # parse ts (ถ้าไม่ส่งมา ใช้เวลาปัจจุบัน)
     ts_str = data.get("ts")
     ts = timezone.now()
@@ -176,8 +260,6 @@ def iot_telemetry(request):
         rr=vitals.get("rr"),
         sys_bp=vitals.get("sys_bp"),
         dia_bp=vitals.get("dia_bp"),
-        lat=gps.get("lat"),
-        lng=gps.get("lng"),
     )
 
     # 2) update device last_seen
@@ -206,14 +288,8 @@ def iot_telemetry(request):
 # -----------------------------
 # helpers: ดึง "ล่าสุด" ด้วย Subquery
 # -----------------------------
-def _visit_queryset_with_latest_vitals_and_gps():
+def _visit_queryset_with_latest_vitals():
     latest_vs = VitalSign.objects.filter(visit=OuterRef("pk")).order_by("-updated_at")
-
-    latest_gps_log = (
-        TelemetryLog.objects
-        .filter(visit=OuterRef("pk"), lat__isnull=False, lng__isnull=False)
-        .order_by("-ts")
-    )
 
     latest_any_log = TelemetryLog.objects.filter(visit=OuterRef("pk")).order_by("-ts")
 
@@ -228,10 +304,6 @@ def _visit_queryset_with_latest_vitals_and_gps():
             last_rr=Subquery(latest_vs.values("rr")[:1]),
             last_sys=Subquery(latest_vs.values("sys_bp")[:1]),
             last_dia=Subquery(latest_vs.values("dia_bp")[:1]),
-
-            last_lat=Subquery(latest_gps_log.values("lat")[:1]),
-            last_lng=Subquery(latest_gps_log.values("lng")[:1]),
-            last_gps_ts=Subquery(latest_gps_log.values("ts")[:1]),
 
             last_log_ts=Subquery(latest_any_log.values("ts")[:1]),
             last_device_id=Subquery(latest_any_log.values("device__device_id")[:1]),
@@ -255,6 +327,36 @@ def monitor_dashboard(request):
 
 
 @login_required
+@transaction.atomic
+def device_pairing(request):
+    if request.method == "POST":
+        form = DevicePairingForm(request.POST)
+        if form.is_valid():
+            visit = form.cleaned_data["visit"]
+            device = form.cleaned_data["device"]
+            TelemetryLog.objects.create(visit=visit, device=device, ts=timezone.now())
+            device.last_seen = timezone.now()
+            device.save(update_fields=["last_seen"])
+            return redirect("device_pairing")
+    else:
+        form = DevicePairingForm()
+
+    latest_pairings = (
+        TelemetryLog.objects
+        .select_related("visit", "visit__patient", "device")
+        .filter(device__isnull=False)
+        .order_by("-ts")[:30]
+    )
+    devices = Device.objects.order_by("device_id")
+
+    return render(request, "queues/device_pairing.html", {
+        "form": form,
+        "latest_pairings": latest_pairings,
+        "devices": devices,
+    })
+
+
+@login_required
 def monitor_latest_api(request):
     """
     ส่งข้อมูลล่าสุดให้หน้า monitor (รีเฟรชทุก 5 วิ)
@@ -266,7 +368,7 @@ def monitor_latest_api(request):
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
         .filter(status="WAITING")
-        .order_by("visit__id")[:200]
+        .order_by("priority", "created_at")[:200]
     )
 
     rows = []
@@ -316,14 +418,14 @@ def monitor_summary_api(request):
         Queue.objects
         .select_related("visit", "visit__patient")
         .filter(status="WAITING")
-        .order_by("visit__id")[:200]
+        .order_by("priority", "created_at")[:200]
     )
 
     visit_ids = [q.visit_id for q in q_items]
 
     visits = {
         v.id: v
-        for v in _visit_queryset_with_latest_vitals_and_gps()
+        for v in _visit_queryset_with_latest_vitals()
         .filter(id__in=visit_ids)
     }
 
@@ -351,11 +453,6 @@ def monitor_summary_api(request):
                 "rr": v.last_rr,
                 "sys_bp": v.last_sys,
                 "dia_bp": v.last_dia,
-            },
-            "gps": {
-                "lat": float(v.last_lat) if v.last_lat is not None else None,
-                "lng": float(v.last_lng) if v.last_lng is not None else None,
-                "updated_at": v.last_gps_ts.isoformat() if v.last_gps_ts else None,
             }
         })
 
@@ -383,45 +480,6 @@ def monitor_visit_detail(request, visit_id: int):
     })
 
 
-@login_required
-@csrf_exempt
-@require_POST
-def update_location(request, visit_id: int):
-    """
-    อัปเดตพิกัด โดยบันทึกเป็น TelemetryLog (ไม่แตะ Visit.lat/lng)
-    Body: {"lat": 16.44, "lng": 102.83}
-    """
-    visit = get_object_or_404(Visit, id=visit_id)
-
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-        lat = data.get("lat")
-        lng = data.get("lng")
-        if lat is None or lng is None:
-            return JsonResponse({"ok": False, "error": "lat/lng required"}, status=400)
-
-        # ✅ กันพัง: ผูก device ล่าสุดถ้ามี (ไม่งั้นค่อยเป็น None)
-        last_log = (
-            TelemetryLog.objects
-            .select_related("device")
-            .filter(visit=visit)
-            .order_by("-ts")
-            .first()
-        )
-        device = last_log.device if last_log and last_log.device else None
-
-        TelemetryLog.objects.create(
-            visit=visit,
-            device=device,
-            ts=timezone.now(),
-            lat=lat,
-            lng=lng,
-        )
-
-        return JsonResponse({"ok": True})
-    except Exception as e:
-        return JsonResponse({"ok": False, "error": str(e)}, status=400)
-    
 @login_required
 @require_GET
 def monitor_sparklines_api(request):
@@ -521,8 +579,8 @@ def dashboard_demo_create(request):
     patient = Patient.objects.create(
         first_name=fn,
         last_name=ln,
-        citizen_id=cid,   # ถ้า field ไม่ชื่อ citizen_id ให้แก้
-        hn=hn,            # ถ้าไม่มี hn ให้ลบ
+        national_id=cid,
+        hn=hn,
     )
 
     # --- 3) สร้าง Visit ---

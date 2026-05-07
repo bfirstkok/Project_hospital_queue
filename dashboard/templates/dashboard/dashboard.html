@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>Dashboard - OPD Queue</title>
+  <title>แดชบอร์ด - ระบบคิว</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -375,6 +375,7 @@
       background: rgba(0, 212, 170, 0.25);
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 
 <body>
@@ -383,16 +384,16 @@
     <div class="logo-area">
       <div class="logo-icon">📊</div>
       <div>
-        <div class="logo-text">Dashboard</div>
+        <div class="logo-text">แดชบอร์ด</div>
         <div class="logo-sub">ศูนย์รวมระบบจัดการคิว</div>
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill" href="/queues/">Queue</a>
-      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="/opd/">OPD</a>
-      <a class="nav-pill active" href="/dashboard/">Dashboard</a>
-      <a class="logout-btn" href="/accounts/logout/">Logout</a>
+      <a class="nav-pill" href="/queues/">คิว</a>
+      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill" href="/opd/">ห้องตรวจ</a>
+      <a class="nav-pill active" href="/dashboard/">แดชบอร์ด</a>
+      <a class="logout-btn" href="/accounts/logout/">ออกจากระบบ</a>
     </div>
   </div>
 
@@ -402,10 +403,10 @@
       <div class="card">
         <div class="kpi">
           <div>
-            <div class="label">WAITING ทั้งหมด</div>
+            <div class="label">รอคิวทั้งหมด</div>
             <div class="val">{{ waiting_total }}</div>
           </div>
-          <div class="pill"><span class="dot warn"></span>Live</div>
+          <div class="pill"><span class="dot warn"></span>สด</div>
         </div>
         <div class="chips">
           <span class="chip"><span class="dot bad"></span>RED: {{ red_total }}</span>
@@ -417,10 +418,10 @@
       <div class="card">
         <div class="kpi">
           <div>
-            <div class="label">CALLED ทั้งหมด</div>
+            <div class="label">เรียกแล้วทั้งหมด</div>
             <div class="val">{{ called_total }}</div>
           </div>
-          <div class="pill"><span class="dot good"></span>OK</div>
+          <div class="pill"><span class="dot good"></span>ปกติ</div>
         </div>
         <div class="muted">อัปเดต ณ {{ now }}</div>
       </div>
@@ -428,7 +429,7 @@
       <div class="card">
         <div class="kpi">
           <div>
-            <div class="label">Online จาก IoT</div>
+            <div class="label">ออนไลน์จาก IoT</div>
             <div class="val" id="onlineCount">-</div>
           </div>
           <div class="pill"><span class="dot good"></span>Live</div>
@@ -446,12 +447,12 @@
           <table>
             <thead>
               <tr>
-                <th>Visit</th>
+                <th>ลำดับ</th>
                 <th>ผู้ป่วย</th>
-                <th>Severity</th>
-                <th>Online</th>
-                <th>Vitals</th>
-                <th>Action</th>
+                <th>ระดับ</th>
+                <th>ออนไลน์</th>
+                <th>สัญญาณชีพ</th>
+                <th>คำสั่ง</th>
               </tr>
             </thead>
             <tbody id="rows">
@@ -523,15 +524,15 @@
         <td><span class="badge ${x.severity?.toLowerCase()}">${x.severity}</span></td>
         <td>
           ${x.online
-            ? `<span class="pill"><span class="dot good"></span>ONLINE</span>`
-            : `<span class="pill"><span class="dot bad"></span>OFFLINE</span>`}
+            ? `<span class="pill"><span class="dot good"></span>ออนไลน์</span>`
+            : `<span class="pill"><span class="dot bad"></span>ออฟไลน์</span>`}
         </td>
         <td class="muted">${vitalsText(x.vitals)}</td>
         <td>
           <a class="action-btn action-btn-blue" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
-          <button class="action-btn action-btn-red" onclick="setSeverity(${x.visit_id}, 'RED')">RED</button>
-          <button class="action-btn action-btn-yellow" onclick="setSeverity(${x.visit_id}, 'YELLOW')">YEL</button>
-          <button class="action-btn action-btn-green" onclick="setSeverity(${x.visit_id}, 'GREEN')">GRN</button>
+          <button class="action-btn action-btn-red" onclick="setSeverity(${x.visit_id}, 'RED')">แดง</button>
+          <button class="action-btn action-btn-yellow" onclick="setSeverity(${x.visit_id}, 'YELLOW')">เหลือง</button>
+          <button class="action-btn action-btn-green" onclick="setSeverity(${x.visit_id}, 'GREEN')">เขียว</button>
         </td>
       </tr>
     `).join("");

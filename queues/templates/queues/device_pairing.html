@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th">
+<head>
+  
+  {% load static %}
+<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จับคู่อุปกรณ์</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    a { color: #00d4aa; text-decoration: none; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 18px; margin-top: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 12px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
+    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); background: #111827; color: #fff; }
+    button { border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #00d4aa, #0096ff); cursor: pointer; margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
+    th { color: rgba(255,255,255,.55); font-size: 12px; }
+    .muted { color: rgba(255,255,255,.55); }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>จับคู่อุปกรณ์</h1>
+        <div class="muted">จับคู่อุปกรณ์ IoT ที่ใช้งานอยู่กับ Visit ของผู้ป่วย</div>
+      </div>
+      <div>
+        <a href="/queues/">คิว</a> |
+        <a href="/queues/monitor/">ติดตาม</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>จับคู่อุปกรณ์</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="grid">
+          <div>
+            <label for="{{ form.visit.id_for_label }}">รายการผู้ป่วย</label>
+            {{ form.visit }}
+          </div>
+          <div>
+            <label for="{{ form.device.id_for_label }}">อุปกรณ์</label>
+            {{ form.device }}
+          </div>
+        </div>
+        <button type="submit">บันทึกการจับคู่</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>อุปกรณ์ที่ใช้งานอยู่</h2>
+      <table>
+        <thead><tr><th>รหัสอุปกรณ์</th><th>ใช้งานอยู่</th><th>พบล่าสุด</th></tr></thead>
+        <tbody>
+          {% for device in devices %}
+            <tr>
+              <td>{{ device.device_id }}</td>
+              <td>{{ device.is_active }}</td>
+              <td>{{ device.last_seen|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="muted">ยังไม่มีอุปกรณ์ เพิ่มอุปกรณ์ใน Django admin หรือ seed demo data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>การจับคู่ล่าสุด</h2>
+      <table>
+        <thead><tr><th>เวลา</th><th>รหัส Visit</th><th>ผู้ป่วย</th><th>อุปกรณ์</th></tr></thead>
+        <tbody>
+          {% for row in latest_pairings %}
+            <tr>
+              <td>{{ row.ts }}</td>
+              <td>#{{ row.visit_id }}</td>
+              <td>{{ row.visit.patient.first_name }} {{ row.visit.patient.last_name }}</td>
+              <td>{{ row.device.device_id }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="muted">ยังไม่มีประวัติการจับคู่</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

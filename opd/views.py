@@ -13,6 +13,21 @@ from .models import VisitAssessment
 from .forms import VisitAssessmentForm
 
 
+def _monitor_alerts(v):
+    alerts = []
+    if v.last_o2sat is not None and v.last_o2sat < 95:
+        alerts.append("SpO2 < 95")
+    if v.last_rr is not None and v.last_rr > 30:
+        alerts.append("RR > 30")
+    if v.last_bt is not None and float(v.last_bt) >= 39:
+        alerts.append("Temp >= 39")
+    if v.last_sys is not None and v.last_sys < 90:
+        alerts.append("Systolic BP < 90")
+    if v.last_bpm is not None and v.last_bpm >= 120:
+        alerts.append("BPM >= 120")
+    return alerts
+
+
 # -----------------------------
 # helpers
 # -----------------------------
@@ -151,14 +166,14 @@ def post_opd_monitor(request):
 def post_opd_monitor_api(request):
     offline_after = timezone.now() - timedelta(minutes=3)
 
-    followup_qs = (
+    monitor_qs = (
         Queue.objects
         .select_related("visit", "visit__patient")
-        .filter(status="FOLLOWUP")
-        .order_by("visit__id")[:200]
+        .filter(status="MONITORING")
+        .order_by("priority", "created_at")[:200]
     )
 
-    visit_ids = [q.visit_id for q in followup_qs]
+    visit_ids = [q.visit_id for q in monitor_qs]
 
     latest_log = (
         TelemetryLog.objects
@@ -185,12 +200,13 @@ def post_opd_monitor_api(request):
     visit_map = {v.id: v for v in visits}
 
     rows = []
-    for q in followup_qs:
+    for q in monitor_qs:
         v = visit_map.get(q.visit_id)
         if not v:
             continue
 
         online = bool(v.last_log_ts and v.last_log_ts >= offline_after)
+        alerts = _monitor_alerts(v)
 
         rows.append({
             "visit_id": v.id,
@@ -198,6 +214,8 @@ def post_opd_monitor_api(request):
             "severity": v.final_severity,
             "device_id": v.last_device_id,
             "online": online,
+            "alerts": alerts,
+            "alert_level": "critical" if alerts else "normal",
             "vitals": {
                 "bpm": v.last_bpm,
                 "o2sat": v.last_o2sat,
@@ -206,7 +224,7 @@ def post_opd_monitor_api(request):
                 "sys_bp": v.last_sys,
                 "dia_bp": v.last_dia,
             },
-            "followup_queue_id": q.id,
+            "queue_id": q.id,
             "created_at": q.created_at.isoformat() if q.created_at else None,
         })
 
@@ -223,7 +241,7 @@ def post_opd_visit_detail(request, visit_id: int):
 
     # ต้องเป็นเคส FOLLOWUP เท่านั้น
     q = getattr(visit, "queue", None)
-    if not q or q.status != "FOLLOWUP":
+    if not q or q.status != "MONITORING":
         return redirect("monitor_dashboard")
 
     logs = (
@@ -258,8 +276,8 @@ def post_opd_demo_push_telemetry(request, visit_id: int):
 
     # ต้องเป็น followup เท่านั้น
     q = getattr(visit, "queue", None)
-    if not q or q.status != "FOLLOWUP":
-        return JsonResponse({"ok": False, "error": "visit is not FOLLOWUP"}, status=400)
+    if not q or q.status != "MONITORING":
+        return JsonResponse({"ok": False, "error": "visit is not MONITORING"}, status=400)
 
     # สุ่มค่าทั่วไป
     bpm = random.randint(60, 120)

@@ -16,6 +16,8 @@ db.sqlite3-journal
 media/
 staticfiles/
 local_settings.py
+.tmp/
+.env
 
 # Migrations cache
 */migrations/__pycache__/

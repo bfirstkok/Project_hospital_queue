@@ -1,11 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="th">
 <head>
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>Patient Monitor - FOLLOWUP</title>
+  <title>ติดตามผู้ป่วย</title>
   <style>
     /* ===== RESET ===== */
     * {
@@ -189,6 +189,26 @@
       font-weight: 600;
     }
 
+    .alert {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255, 95, 114, 0.18);
+      color: #fecaca;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .ok {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(134, 239, 172, 0.14);
+      color: #86efac;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
     /* ===== COLUMN STYLES ===== */
     .col-name {
       font-weight: 600;
@@ -238,6 +258,7 @@
       margin-left: auto;
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
 <div class="shell">
@@ -245,21 +266,21 @@
     <div class="logo-area">
       <div class="logo-icon">🩺</div>
       <div>
-        <div class="logo-text">Patient Monitor</div>
-        <div class="logo-sub">ติดตามผู้ป่วย FOLLOWUP</div>
+        <div class="logo-text">Monitoring Zone</div>
+        <div class="logo-sub">ติดตามผู้ป่วย RED หรือเคสที่พยาบาลส่งเข้า monitoring</div>
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill" href="/queues/">Queue</a>
-      <a class="nav-pill active" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="/opd/">OPD</a>
-      <a class="nav-pill" href="/dashboard/">Dashboard</a>
+      <a class="nav-pill" href="/queues/">คิว</a>
+      <a class="nav-pill active" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill" href="/opd/">ห้องตรวจ</a>
+      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
     </div>
   </div>
 
   <div class="wrap">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-      <div style="font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fff;">รายการล่าสุด - FOLLOWUP</div>
+      <div style="font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: #fff;">รายการล่าสุด - MONITORING</div>
       <span class="mono" id="serverTime">--</span>
     </div>
     <div class="table-container">
@@ -267,17 +288,18 @@
         <table>
           <thead>
             <tr>
-              <th style="width:70px">Visit</th>
+              <th style="width:70px">ลำดับ</th>
               <th class="col-name">ชื่อผู้ป่วย</th>
               <th style="width:90px">สถานะ</th>
-              <th style="width:110px">Device</th>
+              <th style="width:110px">อุปกรณ์</th>
               <th style="width:60px">BPM</th>
               <th style="width:60px">O2</th>
               <th style="width:60px">BT</th>
               <th style="width:80px">SYS/DIA</th>
               <th style="width:60px">RR</th>
-              <th style="width:140px">Created</th>
-              <th style="width:190px">Action</th>
+              <th style="width:160px">Alert</th>
+              <th style="width:140px">เวลาสร้าง</th>
+              <th style="width:190px">คำสั่ง</th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -314,7 +336,7 @@
       if (!rows.length) {
         tbody.innerHTML =
           `<tr><td colspan="11" class="muted">
-            ยังไม่มีผู้ป่วย FOLLOWUP
+            ยังไม่มีผู้ป่วยใน Monitoring Zone
           </td></tr>`;
         return;
       }
@@ -322,12 +344,16 @@
       tbody.innerHTML = rows.map(r => {
         const vit = r.vitals || {};
         const status = r.online
-          ? `<span class="online">ONLINE</span>`
-          : `<span class="offline">OFFLINE</span>`;
+          ? `<span class="online">ออนไลน์</span>`
+          : `<span class="offline">ออฟไลน์</span>`;
         const created = r.created_at
           ? new Date(r.created_at).toLocaleString()
           : "-";
         const device = (r.device_id && String(r.device_id).trim()) ? r.device_id : "DEV001";
+        const alerts = r.alerts || [];
+        const alertHtml = alerts.length
+          ? `<span class="alert">${alerts.join(", ")}</span>`
+          : `<span class="ok">Stable</span>`;
 
         return `<tr>
           <td><b>#${r.visit_id}</b></td>
@@ -339,16 +365,17 @@
           <td>${fmt(vit.bt)}</td>
           <td>${fmt(vit.sys_bp)}/${fmt(vit.dia_bp)}</td>
           <td>${fmt(vit.rr)}</td>
+          <td>${alertHtml}</td>
           <td class="muted">${created}</td>
           <td class="td-action">
-            <a class="btn" href="${DETAIL_URL(r.visit_id)}">ดู →</a>
+            <a class="btn" href="${DETAIL_URL(r.visit_id)}">ดูรายละเอียด</a>
           </td>
         </tr>`;
       }).join("");
     } catch (err) {
       console.error("Error loading data:", err);
       tbody.innerHTML =
-        `<tr><td colspan="11" class="muted">Error: ${err.message}</td></tr>`;
+        `<tr><td colspan="11" class="muted">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
     }
   }
 

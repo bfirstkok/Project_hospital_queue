@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>Patient Monitor - FOLLOWUP</title>
+  <title>ติดตามผู้ป่วย</title>
   <style>
     /* ===== RESET ===== */
     * {
@@ -321,6 +321,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 
 <body>
@@ -329,21 +330,21 @@
     <div class="logo-area">
       <div class="logo-icon">🩺</div>
       <div>
-        <div class="logo-text">Patient Monitor</div>
+        <div class="logo-text">ติดตามผู้ป่วย</div>
         <div class="logo-sub">ติดตามผู้ป่วยจาก IoT (auto refresh)</div>
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill" href="/queues/">Queue</a>
-      <a class="nav-pill active" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="/opd/">OPD</a>
-      <a class="nav-pill" href="/dashboard/">Dashboard</a>
+      <a class="nav-pill" href="/queues/">คิว</a>
+      <a class="nav-pill active" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill" href="/opd/">ห้องตรวจ</a>
+      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
     </div>
   </div>
 
   <div class="statusbar">
-    <div class="pill"><span class="dot good"></span>ONLINE = ข้อมูลล่าสุดภายใน 60 วินาที</div>
-    <div class="pill"><span class="dot bad"></span>OFFLINE = เกิน 60 วินาที</div>
+    <div class="pill"><span class="dot good"></span>ออนไลน์ = ข้อมูลล่าสุดภายใน 60 วินาที</div>
+    <div class="pill"><span class="dot bad"></span>ออฟไลน์ = เกิน 60 วินาที</div>
     <div id="status">กำลังโหลด...</div>
   </div>
 
@@ -353,14 +354,14 @@
     <table>
       <thead>
         <tr>
-          <th>Visit</th>
+          <th>ลำดับ</th>
           <th>ผู้ป่วย</th>
-          <th>Severity</th>
+          <th>ระดับ</th>
           <th>AI</th>
-          <th>Device</th>
-          <th>Online</th>
-          <th>Vitals ล่าสุด</th>
-          <th>Action</th>
+          <th>อุปกรณ์</th>
+          <th>ออนไลน์</th>
+          <th>สัญญาณชีพล่าสุด</th>
+          <th>คำสั่ง</th>
         </tr>
       </thead>
       <tbody id="rows">
@@ -379,15 +380,6 @@
     return "green";
   }
 
-  async function copyText(text){
-    try{
-      await navigator.clipboard.writeText(text);
-      alert("คัดลอกแล้ว: " + text);
-    }catch(e){
-      prompt("คัดลอกไม่สำเร็จ คัดลอกเอง:", text);
-    }
-  }
-
   function renderCards(items){
     const all = items.length;
     const online = items.filter(x => x.online).length;
@@ -398,8 +390,8 @@
 
     return `
       ${card("ทั้งหมด", all)}
-      ${card("ONLINE", online)}
-      ${card("OFFLINE", offline)}
+      ${card("ออนไลน์", online)}
+      ${card("ออฟไลน์", offline)}
       ${card("RED", red)}
       ${card("YELLOW", yellow)}
       ${card("GREEN", green)}
@@ -408,10 +400,6 @@
     function card(label, value){
       return `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-number">${value}</div></div>`;
     }
-  }
-
-  function navUrl(lat, lng) {
-    return `https://maps.google.com/?q=${lat},${lng}`;
   }
 
   async function loadLatest() {
@@ -427,7 +415,7 @@
       const nowStr = new Date().toLocaleTimeString();
       const items = data.items || [];
       const onlineCount = items.filter(r => r.online).length;
-      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | Online: ${onlineCount}/${items.length}`;
+      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${items.length}`;
 
       if(elCards) elCards.innerHTML = renderCards(items);
 
@@ -437,16 +425,13 @@
       }
 
       elRows.innerHTML = items.map(r => {
-        const onlineText = r.online ? "ONLINE" : "OFFLINE";
+        const onlineText = r.online ? "ออนไลน์" : "ออฟไลน์";
         const onlineCls = r.online ? "online" : "offline";
         const dotCls = r.online ? "good" : "bad";
         const sev = r.severity ?? "-";
         const sevCss = sevClass(sev);
         const v = r.vitals || {};
         const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
-        const g = r.gps || {};
-        const hasGps = (g.lat != null && g.lng != null);
-
         const vitalsHtml = `
           <div class="vitals">
             <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
@@ -454,16 +439,8 @@
             <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
             <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
             <span class="kv"><span class="muted">BP</span> <b>${bp}</b></span>
-            ${hasGps ? `<span class="kv"><span class="muted">GPS</span> <b>${g.lat},${g.lng}</b></span>` : ``}
           </div>
         `;
-
-        const gpsBtns = hasGps ? `
-          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-            <a class="rightLink" target="_blank" href="${navUrl(g.lat,g.lng)}">เปิดนำทาง</a>
-            <a class="rightLink" href="javascript:void(0)" onclick="copyText('${g.lat},${g.lng}')">คัดลอก</a>
-          </div>
-        ` : ``;
 
         return `
           <tr>
@@ -473,8 +450,8 @@
             <td>-</td>
             <td>${r.device_id ?? "-"}</td>
             <td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td>
-            <td>${vitalsHtml}${gpsBtns}</td>
-            <td><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดู →</a></td>
+            <td>${vitalsHtml}</td>
+            <td><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดูรายละเอียด</a></td>
           </tr>
         `;
       }).join("");
@@ -527,8 +504,8 @@
         grid-template-columns: repeat(6, minmax(140px, 1fr));
       ">
         ${card("ทั้งหมด", all)}
-        ${card("ONLINE", online, "color:#86efac")}
-        ${card("OFFLINE", offline, "color:rgba(233,238,252,.55)")}
+        ${card("ออนไลน์", online, "color:#86efac")}
+        ${card("ออฟไลน์", offline, "color:rgba(233,238,252,.55)")}
         ${card("RED", red, "color:#fecaca")}
         ${card("YELLOW", yellow, "color:#fde68a")}
         ${card("GREEN", green, "color:#86efac")}
@@ -566,7 +543,7 @@
 
       // summary text
       const onlineCount = items.filter(r => r.online).length;
-      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | Online: ${onlineCount}/${items.length}`;
+      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${items.length}`;
 
       // cards
       if(elCards) elCards.innerHTML = renderCards(items);
@@ -577,7 +554,7 @@
       }
 
       elRows.innerHTML = items.map(r => {
-        const onlineText = r.online ? "ONLINE" : "OFFLINE";
+        const onlineText = r.online ? "ออนไลน์" : "ออฟไลน์";
         const onlineCls = r.online ? "online" : "offline";
         const dotCls = r.online ? "good" : "bad";
 
@@ -587,9 +564,6 @@
         const v = r.vitals || {};
         const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
 
-        const g = r.gps || {};
-        const hasGps = (g.lat != null && g.lng != null);
-
         const vitalsHtml = `
           <div class="vitals">
             <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
@@ -597,27 +571,19 @@
             <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
             <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
             <span class="kv"><span class="muted">BP</span> <b>${bp}</b></span>
-            ${hasGps ? `<span class="kv"><span class="muted">GPS</span> <b>${g.lat},${g.lng}</b></span>` : ``}
           </div>
         `;
 
-        const gpsBtns = hasGps ? `
-          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-            <a class="rightLink" target="_blank" href="${navUrl(g.lat,g.lng)}">เปิดนำทาง</a>
-            <a class="rightLink" href="javascript:void(0)" onclick="copyText('${g.lat},${g.lng}')">คัดลอกพิกัด</a>
-          </div>
-        ` : ``;
-
         return `
           <tr>
-            <td data-label="Visit">#${r.visit_id}</td>
+            <td data-label="ลำดับ">#${r.visit_id}</td>
 
             <td data-label="ผู้ป่วย">
               <div style="font-weight:800">${r.patient_name ?? "-"}</div>
-              <div class="muted">Visit ID: ${r.visit_id}</div>
+              <div class="muted">รหัส Visit: ${r.visit_id}</div>
             </td>
 
-            <td data-label="Severity">
+            <td data-label="ระดับ">
               <span class="sev ${sevCss}">${sev}</span>
             </td>
 
@@ -625,23 +591,22 @@
               <span class="aiTag">-</span>
             </td>
 
-            <td data-label="Device">
+            <td data-label="อุปกรณ์">
               <span class="pill" style="color:var(--text)">${r.device_id ?? "-"}</span>
             </td>
 
-            <td data-label="Online">
+            <td data-label="ออนไลน์">
               <span class="onlineTag ${onlineCls}">
                 <span class="dot ${dotCls}"></span>${onlineText}
               </span>
             </td>
 
-            <td data-label="Vitals ล่าสุด">
+            <td data-label="สัญญาณชีพล่าสุด">
               ${vitalsHtml}
-              ${gpsBtns}
             </td>
 
-            <td data-label="Action">
-              <a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดูรายละเอียด →</a>
+            <td data-label="คำสั่ง">
+              <a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">ดูรายละเอียด</a>
             </td>
           </tr>
         `;

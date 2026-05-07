@@ -4,58 +4,112 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Visit Detail</title>
-  <link rel="stylesheet" href="{% static 'css/monitor_visit.css' %}?v=2">
+  <title>รายละเอียดรายการตรวจ</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    .detail-hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .kvgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .kv {
+      padding: 12px;
+      border: 1px solid rgba(174,194,220,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.035);
+    }
+    .k {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 5px;
+    }
+    .v {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .mono {
+      font-family: "Space Grotesk", Consolas, monospace;
+    }
+    .note-box {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(174,194,220,.12);
+      color: #dce7f7;
+    }
+    .section-stack {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 900px) {
+      .detail-hero, .detail-grid { display: block; }
+      .detail-actions { margin-top: 12px; }
+      .detail-grid .card { margin-bottom: 14px; }
+    }
+  </style>
 </head>
 
 <body>
 <div class="wrap">
-
-  <div class="topbar">
-    <div class="title pill-title">
-      <h1>รายละเอียด Visit #{{ visit.id }}</h1>
-      <div class="subtitle">
-        ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}
-      </div>
+  <div class="detail-hero">
+    <div>
+      <h1>รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
+      <div class="muted">ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
     </div>
-
-    <div class="actions">
-      <a class="btn" href="/queues/monitor/">🩺 กลับหน้า Monitor</a>
-      <a class="btn" href="/queues/">📋 กลับหน้าคิว</a>
+    <div class="detail-actions">
+      <a class="btn ghost" href="/queues/monitor/">กลับหน้าติดตาม</a>
+      <a class="btn ghost" href="/queues/">กลับหน้าคิว</a>
     </div>
   </div>
 
-  <div class="grid">
-    <!-- Visit info -->
+  <div class="detail-grid">
     <div class="card">
-      <h3>ข้อมูล Visit</h3>
-
+      <h2>ข้อมูลรายการตรวจ</h2>
       <div class="row">
-        <span class="pill">👤 <b style="color:var(--text)">{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></span>
-        <span class="pill">🆔 <span class="mono">Visit {{ visit.id }}</span></span>
-
+        <span class="pill"><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></span>
+        <span class="pill"><span class="mono">รายการตรวจ {{ visit.id }}</span></span>
         {% with sev=visit.final_severity|upper %}
-          <span class="sev
-            {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}
-          ">Severity: {{ visit.final_severity }}</span>
+          <span class="sev {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
+            Severity: {{ visit.final_severity }}
+          </span>
         {% endwith %}
       </div>
-
       <div class="row">
-        <span class="pill">📝 registered_at: <span class="mono">{{ visit.registered_at }}</span></span>
-        <span class="pill">✅ triaged_at: <span class="mono">{{ visit.triaged_at|default:"-" }}</span></span>
-        <span class="pill">📣 called_at: <span class="mono">{{ visit.called_at|default:"-" }}</span></span>
+        <span class="pill">ลงทะเบียน: <span class="mono">{{ visit.registered_at }}</span></span>
+        <span class="pill">คัดกรอง: <span class="mono">{{ visit.triaged_at|default:"-" }}</span></span>
+        <span class="pill">เรียกคิว: <span class="mono">{{ visit.called_at|default:"-" }}</span></span>
       </div>
-
-      <div class="muted" style="margin-top:10px">
-        หมายเหตุ: หน้านี้ดึง Telemetry log ย้อนหลัง (ล่าสุด 50 รายการ) เพื่อดูแนวโน้มสัญญาณชีพและพิกัด
-      </div>
+      <p class="muted" style="margin-top:14px">
+        หน้านี้แสดง telemetry log ล่าสุด 50 รายการ เพื่อช่วยดูแนวโน้มสัญญาณชีพย้อนหลัง
+      </p>
     </div>
 
-    <!-- Latest summary from logs[0] -->
     <div class="card">
-      <h3>Vitals ล่าสุด</h3>
-
+      <h2>สัญญาณชีพล่าสุด</h2>
       {% if logs %}
         {% with x=logs.0 %}
           <div class="kvgrid">
@@ -63,23 +117,10 @@
             <div class="kv"><div class="k">O2Sat</div><div class="v">{{ x.o2sat|default:"-" }} <small>%</small></div></div>
             <div class="kv"><div class="k">BT</div><div class="v">{{ x.bt|default:"-" }} <small>°C</small></div></div>
             <div class="kv"><div class="k">RR</div><div class="v">{{ x.rr|default:"-" }}</div></div>
-            <div class="kv">
-              <div class="k">BP</div>
-              <div class="v">
-                {% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}
-              </div>
-            </div>
-            <div class="kv">
-              <div class="k">Device</div>
-              <div class="v" style="font-size:14px">
-                {% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}
-              </div>
-            </div>
+            <div class="kv"><div class="k">BP</div><div class="v">{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</div></div>
+            <div class="kv"><div class="k">Device</div><div class="v" style="font-size:14px">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</div></div>
           </div>
-
-          <div class="row" style="margin-top:10px">
-            <span class="pill">⏱️ ล่าสุดเวลา: <span class="mono">{{ x.ts }}</span></span>
-          </div>
+          <div class="row"><span class="pill">ล่าสุดเวลา: <span class="mono">{{ x.ts }}</span></span></div>
         {% endwith %}
       {% else %}
         <div class="muted">ยังไม่มีข้อมูลจาก IoT</div>
@@ -87,215 +128,104 @@
     </div>
   </div>
 
-  <div class="tableWrap">
-    <table>
-      <thead>
-        <tr>
-          <th>เวลา (ts)</th>
-          <th>BPM</th>
-          <th>O2Sat</th>
-          <th>BT</th>
-          <th>RR</th>
-          <th>BP</th>
-          <th>Lat</th>
-          <th>Lng</th>
-          <th>Device</th>
-        </tr>
-      </thead>
+  <div class="section-stack">
+    <div class="card">
+      <h2>ข้อมูลผู้ป่วย</h2>
+      <div class="kvgrid">
+        <div class="kv"><div class="k">เพศ</div><div class="v">{{ visit.patient.gender|default:"-" }}</div></div>
+        <div class="kv"><div class="k">อายุ</div><div class="v">{{ visit.patient.age|default:"-" }} <small>ปี</small></div></div>
+        <div class="kv"><div class="k">เลขบัตรประชาชน</div><div class="v mono" style="font-size:14px">{{ visit.patient.national_id|default:"-" }}</div></div>
+        <div class="kv"><div class="k">เบอร์โทร</div><div class="v mono" style="font-size:14px">{{ visit.patient.phone|default:"-" }}</div></div>
+        <div class="kv"><div class="k">ส่วนสูง</div><div class="v">{{ visit.patient.height_cm|default:"-" }} <small>cm</small></div></div>
+        <div class="kv"><div class="k">น้ำหนัก</div><div class="v">{{ visit.patient.weight_kg|default:"-" }} <small>kg</small></div></div>
+        <div class="kv"><div class="k">หมู่เลือด</div><div class="v">{{ visit.patient.blood_type|default:"-" }}</div></div>
+      </div>
+      <div class="row">
+        <span class="pill">โรคประจำตัว: {{ visit.patient.chronic_diseases|default:"-" }}</span>
+        <span class="pill">แพ้ยา / อาหาร: {{ visit.patient.allergies|default:"-" }}</span>
+        <span class="pill">ยาที่ใช้ประจำ: {{ visit.patient.medications|default:"-" }}</span>
+      </div>
+    </div>
+
+    {% if assessment %}
       <div class="card">
-  <h3>ข้อมูลผู้ป่วย</h3>
+        <h2>ผลประเมิน</h2>
+        <div class="note-box">
+          <b>อาการสำคัญ:</b> {{ assessment.chief_complaint|default:"ไม่มีข้อมูล" }}
+        </div>
+        <div class="kvgrid" style="margin-top:12px">
+          <div class="kv"><div class="k">Pain Score</div><div class="v">{{ assessment.pain_score|default:"-" }}</div></div>
+          <div class="kv"><div class="k">BT</div><div class="v">{{ assessment.bt|default:"-" }} <small>°C</small></div></div>
+          <div class="kv"><div class="k">SYS BP</div><div class="v">{{ assessment.sys_bp|default:"-" }}</div></div>
+          <div class="kv"><div class="k">DIA BP</div><div class="v">{{ assessment.dia_bp|default:"-" }}</div></div>
+          <div class="kv"><div class="k">FBS</div><div class="v">{{ assessment.fbs|default:"-" }}</div></div>
+          <div class="kv"><div class="k">Lab K</div><div class="v">{{ assessment.lab_k|default:"-" }}</div></div>
+          <div class="kv"><div class="k">Lab Mg</div><div class="v">{{ assessment.lab_mg|default:"-" }}</div></div>
+          <div class="kv"><div class="k">Lab Hct</div><div class="v">{{ assessment.lab_hct|default:"-" }}</div></div>
+        </div>
 
-  <div class="kvgrid">
-    <div class="kv">
-      <div class="k">เพศ</div>
-      <div class="v">{{ visit.patient.gender|default:"-" }}</div>
-    </div>
+        <div class="row">
+          {% if assessment.anxious_family %}<span class="pill">ญาติวิตกกังวลมาก</span>{% endif %}
+          {% if assessment.non_toxic_bite %}<span class="pill">ถูกสัตว์ไม่มีพิษกัด/ข่วน</span>{% endif %}
+          {% if assessment.very_fatigue %}<span class="pill">เหนื่อยเพลียมาก</span>{% endif %}
+          {% if assessment.blood_receive %}<span class="pill">มารับเลือด</span>{% endif %}
+          {% if not assessment.anxious_family and not assessment.non_toxic_bite and not assessment.very_fatigue and not assessment.blood_receive %}
+            <span class="muted">ไม่มี flag เพิ่มเติม</span>
+          {% endif %}
+        </div>
 
-    <div class="kv">
-      <div class="k">อายุ</div>
-      <div class="v">{{ visit.patient.age|default:"-" }} ปี</div>
-    </div>
+        <div class="note-box" style="margin-top:12px">
+          <b>วินิจฉัย:</b> {{ assessment.diagnosis|default:"ไม่มีข้อมูล" }}<br>
+          <b>การรักษา/แผน:</b> {{ assessment.treatment|default:"ไม่มีข้อมูล" }}
+        </div>
 
-    <div class="kv">
-      <div class="k">เลขบัตรประชาชน</div>
-      <div class="v mono">{{ visit.patient.national_id|default:"-" }}</div>
-    </div>
-
-    <div class="kv">
-      <div class="k">เบอร์โทร</div>
-      <div class="v mono">{{ visit.patient.phone|default:"-" }}</div>
-    </div>
-
-    <div class="kv">
-      <div class="k">ส่วนสูง</div>
-      <div class="v">{{ visit.patient.height_cm|default:"-" }} <small>cm</small></div>
-    </div>
-
-    <div class="kv">
-      <div class="k">น้ำหนัก</div>
-      <div class="v">{{ visit.patient.weight_kg|default:"-" }} <small>kg</small></div>
-    </div>
-
-    <div class="kv">
-      <div class="k">หมู่เลือด</div>
-      <div class="v">{{ visit.patient.blood_type|default:"-" }}</div>
-    </div>
+        <div class="row">
+          <span class="pill">นัดหมาย: {{ assessment.next_appointment_at|default:"-" }}</span>
+          <span class="pill">หมายเหตุ: {{ assessment.next_appointment_note|default:"-" }}</span>
+          {% with urg=assessment.opd_urgency|upper %}
+            <span class="sev {% if urg == 'RED' %}red{% elif urg == 'YELLOW' %}yellow{% else %}green{% endif %}">
+              {{ assessment.get_opd_urgency_display }}
+            </span>
+          {% endwith %}
+          {% if assessment.opd_reason %}<span class="pill">เหตุผล: {{ assessment.opd_reason }}</span>{% endif %}
+        </div>
+      </div>
+    {% endif %}
   </div>
 
-  <div class="row">
-    <span class="pill">🩺 โรคประจำตัว: {{ visit.patient.chronic_diseases|default:"-" }}</span>
-    <span class="pill">⚠️ แพ้ยา / อาหาร: {{ visit.patient.allergies|default:"-" }}</span>
-    <span class="pill">💊 ยาที่ใช้ประจำ: {{ visit.patient.medications|default:"-" }}</span>
-  </div>
-</div>
-
-<!-- Assessment Section -->
-{% if assessment %}
-<div class="card">
-  <h3>Assessment</h3>
-
-  <!-- Chief Complaint -->
-  <div style="margin-bottom:15px">
-    <div style="font-weight:700; margin-bottom:5px">อาการสำคัญ (Chief Complaint)</div>
-    <div style="padding:8px; background:#f5f5f5; border-radius:4px">
-      {{ assessment.chief_complaint|default:"ไม่มีข้อมูล" }}
-    </div>
-  </div>
-
-  <!-- Clinical Values -->
-  <div style="font-weight:700; margin-bottom:5px">ค่า/อาการที่ระบบใช้คำนวณ</div>
-  <div class="kvgrid">
-    <div class="kv">
-      <div class="k">Pain Score</div>
-      <div class="v">{{ assessment.pain_score|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">BT (°C)</div>
-      <div class="v">{{ assessment.bt|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">SYS BP</div>
-      <div class="v">{{ assessment.sys_bp|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">DIA BP</div>
-      <div class="v">{{ assessment.dia_bp|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">FBS (mg%)</div>
-      <div class="v">{{ assessment.fbs|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">Lab K</div>
-      <div class="v">{{ assessment.lab_k|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">Lab Mg</div>
-      <div class="v">{{ assessment.lab_mg|default:"-" }}</div>
-    </div>
-    <div class="kv">
-      <div class="k">Lab Hct</div>
-      <div class="v">{{ assessment.lab_hct|default:"-" }}</div>
-    </div>
-  </div>
-
-  <!-- Flags/Reasons -->
-  <div style="margin-top:15px">
-    <div style="font-weight:700; margin-bottom:5px">เหตุผลที่เป็น "ข้อความ"</div>
-    <div class="row" style="flex-wrap:wrap">
-      {% if assessment.anxious_family %}<span class="pill">ญาติวิตกกังวลมาก</span>{% endif %}
-      {% if assessment.non_toxic_bite %}<span class="pill">ถูกสัตว์ไม่มีพิษกัด/ข่วน</span>{% endif %}
-      {% if assessment.very_fatigue %}<span class="pill">เหนื่อยเพลียมาก</span>{% endif %}
-      {% if assessment.blood_receive %}<span class="pill">มารับเลือด</span>{% endif %}
-      {% if not assessment.anxious_family and not assessment.non_toxic_bite and not assessment.very_fatigue and not assessment.blood_receive %}
-        <span class="muted">-</span>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Special Groups -->
-  <div style="margin-top:15px">
-    <div style="font-weight:700; margin-bottom:5px">กลุ่มพิเศษ (เร่งด่วนสีเหลือง)</div>
-    <div class="row" style="flex-wrap:wrap">
-      {% if assessment.monk %}<span class="pill">พระภิกษุ/สามเณร</span>{% endif %}
-      {% if assessment.age %}<span class="pill">อายุ {{ assessment.age }} ปี</span>{% endif %}
-      {% if assessment.child_under_5 %}<span class="pill">เด็กอายุต่ำกว่า 5 ปี</span>{% endif %}
-      {% if assessment.pregnant %}<span class="pill">ตั้งครรภ์{% if assessment.ga_weeks %} (GA {{ assessment.ga_weeks }} สัปดาห์){% endif %}</span>{% endif %}
-      {% if assessment.epilepsy %}<span class="pill">Epilepsy</span>{% endif %}
-      {% if assessment.pulmonary_tb_mplus %}<span class="pill">Pulmonary TB M+</span>{% endif %}
-      {% if assessment.low_immunity %}<span class="pill">ภูมิต้านทานต่ำ{% if assessment.low_immunity_detail %} ({{ assessment.low_immunity_detail }}){% endif %}</span>{% endif %}
-      {% if not assessment.monk and not assessment.age and not assessment.child_under_5 and not assessment.pregnant and not assessment.epilepsy and not assessment.pulmonary_tb_mplus and not assessment.low_immunity %}
-        <span class="muted">-</span>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Diagnosis -->
-  <div style="margin-top:15px">
-    <div style="font-weight:700; margin-bottom:5px">วินิจฉัย (Diagnosis)</div>
-    <div style="padding:8px; background:#f5f5f5; border-radius:4px">
-      {{ assessment.diagnosis|default:"ไม่มีข้อมูล" }}
-    </div>
-  </div>
-
-  <!-- Treatment -->
-  <div style="margin-top:15px">
-    <div style="font-weight:700; margin-bottom:5px">การรักษา/แผน (Treatment)</div>
-    <div style="padding:8px; background:#f5f5f5; border-radius:4px">
-      {{ assessment.treatment|default:"ไม่มีข้อมูล" }}
-    </div>
-  </div>
-
-  <!-- Next Appointment -->
-  <div style="margin-top:15px">
-    <div style="font-weight:700; margin-bottom:5px">นัดหมายครั้งต่อไป</div>
-    <div class="row">
-      <span class="pill">📅 วัน/เวลา: {{ assessment.next_appointment_at|default:"-" }}</span>
-      <span class="pill">📝 หมายเหตุ: {{ assessment.next_appointment_note|default:"-" }}</span>
-    </div>
-  </div>
-
-  <!-- OPD Urgency -->
-  <div style="margin-top:15px; padding:10px; background:#f9f9f9; border-radius:4px">
-    <div style="font-weight:700; margin-bottom:5px">ผลการประเมินความเร่งด่วน OPD</div>
-    <div class="row">
-      {% with urg=assessment.opd_urgency|upper %}
-        <span class="sev {% if urg == 'RED' %}red{% elif urg == 'YELLOW' %}yellow{% else %}green{% endif %}">
-          {{ assessment.get_opd_urgency_display }}
-        </span>
-      {% endwith %}
-      {% if assessment.opd_reason %}
-        <span class="pill">เหตุผล: {{ assessment.opd_reason }}</span>
-      {% endif %}
-    </div>
-  </div>
-</div>
-{% endif %}
-    
-      <tbody>
-        {% for x in logs %}
+  <div class="card">
+    <h2>บันทึกสัญญาณชีพ</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead>
           <tr>
-            <td data-label="เวลา (ts)" class="mono">{{ x.updated_at }}</td>
-            <td data-label="BPM">{{ x.bpm|default:"-" }}</td>
-            <td data-label="O2Sat">{{ x.o2sat|default:"-" }}</td>
-            <td data-label="BT">{{ x.bt|default:"-" }}</td>
-            <td data-label="RR">{{ x.rr|default:"-" }}</td>
-            <td data-label="BP">
-              {% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}
-            </td>
-            <td data-label="Lat" class="mono">{{ x.lat|default:"-" }}</td>
-            <td data-label="Lng" class="mono">{{ x.lng|default:"-" }}</td>
-            <td data-label="Device">
-              {% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}
-            </td>
+            <th>เวลา</th>
+            <th>BPM</th>
+            <th>O2Sat</th>
+            <th>BT</th>
+            <th>RR</th>
+            <th>BP</th>
+            <th>อุปกรณ์</th>
           </tr>
-        {% empty %}
-          <tr><td colspan="9" class="muted">ยังไม่มีข้อมูลจาก IoT</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for x in logs %}
+            <tr>
+              <td class="mono">{{ x.updated_at }}</td>
+              <td>{{ x.bpm|default:"-" }}</td>
+              <td>{{ x.o2sat|default:"-" }}</td>
+              <td>{{ x.bt|default:"-" }}</td>
+              <td>{{ x.rr|default:"-" }}</td>
+              <td>{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</td>
+              <td>{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="muted">ยังไม่มีข้อมูลจาก IoT</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-
 </div>
 </body>
 </html>

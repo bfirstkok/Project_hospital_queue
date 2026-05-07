@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="utf-8">
-    <title>Login</title>
+    <title>เข้าสู่ระบบ</title>
 
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
@@ -12,6 +12,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
 
@@ -19,7 +20,7 @@
     <div class="login-image">
     <img src="{% static 'images/hospital-logo.png' %}" alt="Hospital Logo">
     </div>
-    <h2>Login (พยาบาล)</h2>
+    <h2>เข้าสู่ระบบ (พยาบาล)</h2>
     {% if form.errors %}
         <div class="error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
     {% endif %}

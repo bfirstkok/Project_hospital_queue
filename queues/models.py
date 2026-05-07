@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 from django.utils import timezone
 
 class Visit(models.Model):
@@ -39,14 +39,16 @@ class VitalSign(models.Model):
 
 class Queue(models.Model):
     class Status(models.TextChoices):
-        WAITING = "WAITING", "รอ"
-        CALLED = "CALLED", "เรียกแล้ว"
-        OPD_DONE = "OPD_DONE", "ตรวจเสร็จสิ้น"
-        FOLLOWUP = "FOLLOWUP", "นัดติดตาม"
-        CANCELLED = "CANCELLED", "ยกเลิก"
+        WAITING = "WAITING", "Waiting"
+        CALLED = "CALLED", "Called"
+        MONITORING = "MONITORING", "Monitoring"
+        OPD_DONE = "OPD_DONE", "OPD Done"
+        FOLLOWUP = "FOLLOWUP", "Follow-up"
+        DISCHARGED = "DISCHARGED", "Discharged"
+        CANCELLED = "CANCELLED", "Cancelled"
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.WAITING)
 
     priority = models.IntegerField(default=3)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -60,6 +62,7 @@ class TriageResult(models.Model):
 
     model_name = models.CharField(max_length=50, blank=True, null=True)
     confidence = models.FloatField(blank=True, null=True)
+    ai_reason = models.TextField(blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -79,7 +82,7 @@ class Device(models.Model):
 
 
 class TelemetryLog(models.Model):
-    # ✅ แก้ตรงนี้: ไม่อ้าง "queues.Visit" แล้ว เพื่อกัน resolve ไม่เจอ
+    # ไม่อ้าง "queues.Visit" เพื่อกัน resolve ไม่เจอ
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="telemetry_logs")
     device = models.ForeignKey(Device, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -98,7 +101,7 @@ class TelemetryLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # ✅ แก้ index ให้ migrate ผ่านแน่นอน (ไม่ใช้ "-ts")
+        # ใช้ index แบบ field list เพื่อให้ migrate ได้ทุก database
         indexes = [
             models.Index(fields=["visit", "ts"]),
         ]

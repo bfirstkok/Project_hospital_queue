@@ -1,163 +1,206 @@
-# 🏥 Hospital Queue & Patient Monitoring System
+# Hospital Queue & Patient Monitoring System
 
-ระบบติดตามอาการผู้ป่วยและจัดการคิวพยาบาล  
-พัฒนาเพื่อใช้เป็นโครงงานวิศวกรรมคอมพิวเตอร์  
-มหาวิทยาลัยเทคโนโลยีราชมงคลอีสาน วิทยาเขตขอนแก่น
+Web application for patient queue management, nurse triage, AI-assisted severity assessment, IoT vital-sign monitoring, and waiting-time reporting.
 
----
+The current concept focuses on clinical monitoring and queue prioritization. GPS/map tracking is not part of the core workflow.
 
-## 📌 ภาพรวมโครงงาน
-ระบบเว็บแอปพลิเคชันสำหรับโรงพยาบาล/คลินิก  
-ช่วยลดเวลารอคอยของผู้ป่วย และเพิ่มประสิทธิภาพการจัดการคิว  
-โดยใช้ **AI ช่วยประเมินระดับความรุนแรงของผู้ป่วย (Triage)**
+## Core Workflow
 
-### ระดับความรุนแรง
-- 🔴 สีแดง : ฉุกเฉิน  
-- 🟡 สีเหลือง : เร่งด่วน  
-- 🟢 สีเขียว : ทั่วไป  
+1. Staff registers a patient.
+2. Nurse opens OPD Triage Assessment and enters symptoms plus vital signs.
+3. AI suggests RED, YELLOW, or GREEN severity.
+4. Nurse confirms or overrides the AI result.
+5. Queue is ordered by severity priority and registration time.
+6. RED patients or patients selected by the nurse can be sent to Monitoring Zone.
+7. Monitoring Zone shows live vital signs, online/offline status, and clinical alerts.
+8. Dashboard provides AI evaluation and waiting-time reports.
 
----
+## Severity Logic
 
-## ✨ ฟีเจอร์หลัก
-- 👤 ระบบลงทะเบียนและจัดการข้อมูลผู้ป่วย
-- ⏱️ ระบบจัดการคิวผู้ป่วยแบบเรียลไทม์
-- 🧠 AI ประเมินอาการเบื้องต้น (AI Triage)
--  บันทึกเวลารอ เพื่อนำไปวิเคราะห์ Before–After
+Queue priority:
 
----
+```text
+RED    -> priority 1
+YELLOW -> priority 2
+GREEN  -> priority 3
+```
 
-## 🛠️ Tech Stack
-### Backend
-- Python 3
-- Django
-- Django REST Framework
+The queue is ordered by:
 
-### Frontend
-- HTML5 / CSS3
-- Bootstrap 5
-- JavaScript
-- Django Template
+```python
+priority, created_at
+```
 
-### Database
-- SQLite (Development)
-- PostgreSQL (Production – Planned)
+Rule-based fallback thresholds:
 
-### AI / Data Mining
-- Pandas / NumPy
-- Scikit-learn
-- Synthetic Dataset + Medical Triage Rules
+- RED: `O2Sat < 95`, `RR > 30`, `Systolic BP < 90`, `BT >= 39`
+- YELLOW: `O2Sat 95-96`, `RR 21-30`, `PR/BPM >= 120`, `BT 38-38.9`
+- GREEN: no RED/YELLOW trigger
 
----
+The Decision Tree model is used first. If the model cannot be loaded, the system falls back to the rule-based triage logic.
 
-## 📂 โครงสร้างโปรเจค (โดยย่อ)
-hospital_queue/
-├── accounts/ # ระบบผู้ใช้งาน
-├── patients/ # ข้อมูลผู้ป่วย
-├── queues/ # ระบบคิว
-├── ai_triage/ # โมเดล AI ประเมินอาการ
-├── config/ # Django settings
+## Key Features
+
+- Patient registration
+- OPD Triage Assessment
+- AI result with confidence and clinical reason
+- Nurse confirmation stored separately from AI prediction
+- Queue ordered by priority and registration time
+- Monitoring Zone for active monitoring cases
+- IoT telemetry for BPM, SpO2, temperature, RR, and BP
+- Device Pairing page
+- Before-After Waiting Time Report
+- CSV export
+- AI Evaluation page with metrics and confusion matrix
+- Supabase PostgreSQL support with SQLite fallback
+- Demo data seeding command
+
+## Main Pages
+
+```text
+/                         Login
+/queues/                  Queue
+/queues/assessment/<id>/  OPD Triage Assessment
+/queues/monitor/          Monitoring Zone
+/queues/devices/pairing/  Device Pairing
+/dashboard/               Dashboard
+/dashboard/reports/waiting-time/      Waiting Time Report
+/dashboard/reports/waiting-time.csv   Waiting Time CSV Export
+/dashboard/ai-evaluation/             AI Evaluation
+/patients/register/       Patient Registration
+/opd/                     OPD List
+```
+
+## Tech Stack
+
+- Python 3.12
+- Django 6.0
+- Supabase PostgreSQL
+- SQLite fallback for local development
+- scikit-learn
+- pandas
+- NumPy
+- HTML/CSS/JavaScript
+- Django templates
+
+## Project Structure
+
+```text
+Project_hospital_queue/
+├── accounts/
+├── ai_triage/
+│   ├── ml/
+│   │   ├── predictor.py
+│   │   └── train_dt.py
+│   ├── models/
+│   │   └── triage_dt_v1.pkl
+│   └── reports/
+│       ├── confusion_matrix.csv
+│       ├── metrics.txt
+│       └── synth_dataset.csv
+├── config/
+├── dashboard/
+├── opd/
+├── patients/
+├── queues/
+├── static/
 ├── manage.py
-├── requirements.txt
-└── README.md
+└── requirements.txt
+```
 
-🔐 หมายเหตุสำคัญ
+## Environment Setup
 
-ไม่เก็บ db.sqlite3 และไฟล์ .zip ไว้ใน GitHub
+Create `.env` from `.env.example`:
 
-ข้อมูลผู้ป่วยที่ใช้ในระบบเป็น ข้อมูลสมมติ (Test Data)
+```env
+SECRET_KEY=change-me
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+DATABASE_URL=
+DB_SSLMODE=require
+```
 
-ผลการประเมินจาก AI เป็นเพียงคำแนะนำเบื้องต้น
-พยาบาลเป็นผู้ตัดสินใจสุดท้าย
+Leave `DATABASE_URL` empty to use SQLite.
 
-👨‍💻 ผู้พัฒนา
+For Supabase PostgreSQL:
 
-นายคณาธิปกรณ์ นามทะจัก
+```env
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@<host>:<port>/postgres
+DB_SSLMODE=require
+```
 
-นายนันทวัฒน์ ร้อยเพีย
+Do not commit `.env`.
 
-สาขาวิศวกรรมคอมพิวเตอร์
-มหาวิทยาลัยเทคโนโลยีราชมงคลอีสาน วิทยาเขตขอนแก่น
+## Run Locally
 
+```powershell
+cd "F:\Code\code web\Project_hospital_queue"
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py runserver
+```
 
-# 🏥 Hospital Queue & Patient Monitoring System
+Open:
 
-**Patient Monitoring and Queue Management System**  
-This project is developed as a Computer Engineering Capstone Project  
-Rajamangala University of Technology Isan, Khon Kaen Campus
+```text
+http://127.0.0.1:8000/
+```
 
----
+If another server is already using port 8000:
 
-## 📌 Project Overview
-This web-based application is designed for hospitals and clinics to  
-**reduce patient waiting time** and **improve queue management efficiency**  
-by integrating an **AI-assisted patient triage system**.
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8001
+```
 
-The system supports real-time queue tracking and preliminary patient
-severity assessment based on symptoms and vital signs.
+Demo account:
 
-### Patient Severity Levels
-- 🔴 Red : Emergency  
-- 🟡 Yellow : Urgent  
-- 🟢 Green : General  
+```text
+username: admin
+password: Admin@12345
+```
 
----
+Change the demo password before production or public deployment.
 
-## ✨ Key Features
-- 👤 Patient registration and management system
-- ⏱️ Real-time patient queue management
-- 🧠 AI-assisted preliminary triage (AI Triage)
--  Waiting-time logging for Before–After analysis
+## Seed Demo Data
 
----
+```powershell
+.\.venv\Scripts\python.exe manage.py seed_demo
+```
 
-## 🛠️ Technology Stack
-### Backend
-- Python 3
-- Django Framework
-- Django REST Framework
+This creates:
 
-### Frontend
-- HTML5 / CSS3
-- Bootstrap 5
-- JavaScript
-- Django Template Engine
+- RED/YELLOW/GREEN demo patients
+- waiting queues
+- a monitoring case
+- demo IoT devices
+- telemetry logs
 
-### Database
-- SQLite (Development)
-- PostgreSQL (Planned for Production)
+## AI Training
 
-### AI / Data Mining
-- Pandas / NumPy
-- Scikit-learn
-- Synthetic Dataset with Medical Triage Rules
+Train or regenerate the model:
 
----
+```powershell
+.\.venv\Scripts\python.exe ai_triage\ml\train_dt.py
+```
 
-## 📂 Project Structure (Simplified)
-hospital_queue/
-├── accounts/ # User & authentication module
-├── patients/ # Patient data management
-├── queues/ # Queue management system
-├── ai_triage/ # AI triage model
-├── config/ # Django settings
-├── manage.py
-├── requirements.txt
-└── README.md
+Generated outputs:
 
-🔐 Important Notes
+- `ai_triage/models/triage_dt_v1.pkl`
+- `ai_triage/reports/metrics.txt`
+- `ai_triage/reports/confusion_matrix.csv`
+- `ai_triage/reports/synth_dataset.csv`
 
-db.sqlite3 and .zip files are excluded from the repository
+## Verification
 
-All patient data used in this project are synthetic / test data
+Useful checks:
 
-AI triage results are decision-support only
-Final decisions must be made by medical professionals
+```powershell
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+```
 
-👨‍💻 Developers
+## Important Notes
 
-Mr. Kanathipkorn Namtachak
-
-Mr. Nuntawat Roipia
-
-Department of Computer Engineering
-Rajamangala University of Technology Isan, Khon Kaen Campus
+- Patient data is synthetic/test data.
+- AI triage is decision support only.
+- Final severity must be confirmed by medical staff.
+- `.env` contains secrets and must not be committed.

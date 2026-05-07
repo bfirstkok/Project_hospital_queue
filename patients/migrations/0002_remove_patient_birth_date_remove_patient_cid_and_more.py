@@ -60,7 +60,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='patient',
             name='gender',
-            field=models.CharField(choices=[('M', 'ชาย'), ('F', 'หญิง'), ('O', 'อื่นๆ')], default='UNKNOWN', max_length=1),
+            field=models.CharField(choices=[('M', 'ชาย'), ('F', 'หญิง'), ('O', 'อื่นๆ'), ('UNKNOWN', 'ไม่ระบุ')], default='UNKNOWN', max_length=10),
         ),
         migrations.AddField(
             model_name='patient',

@@ -10,22 +10,38 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_env_file(path):
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
+
+
+load_env_file(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f2c$n+g06pr02rfos&ci-bcaiee^=qj%(&og!ks*v-_%k@8@%c'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-f2c$n+g06pr02rfos&ci-bcaiee^=qj%(&og!ks*v-_%k@8@%c')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes", "on")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
 
 
 # Application definition
@@ -78,15 +94,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+def database_from_url(database_url):
+    parsed = urlparse(database_url)
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": parsed.path.lstrip("/"),
+        "USER": parsed.username or "",
+        "PASSWORD": parsed.password or "",
+        "HOST": parsed.hostname or "localhost",
+        "PORT": str(parsed.port or 5432),
+        "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},
     }
-}
+
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    DATABASES = {"default": database_from_url(DATABASE_URL)}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -113,6 +146,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'th'
 TIME_ZONE = 'Asia/Bangkok'
+DEFAULT_CHARSET = 'utf-8'
 
 USE_I18N = True
 USE_TZ = True

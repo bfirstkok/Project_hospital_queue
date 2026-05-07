@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ลงทะเบียนผู้ป่วย</title>
   <link rel="stylesheet" href="{% static 'css/register_dark.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 
 <body>
@@ -20,11 +21,11 @@
       </div>
     </div>
     <div class="nav-pills">
-      <a class="nav-pill" href="{% url 'queue_list' %}">Queue</a>
-      <a class="nav-pill" href="/queues/monitor/">Monitor</a>
-      <a class="nav-pill" href="{% url 'opd_list' %}">OPD</a>
-      <a class="nav-pill" href="/dashboard/">Dashboard</a>
-      <a class="nav-pill active" href="/patients/register/">Register</a>
+      <a class="nav-pill" href="{% url 'queue_list' %}">คิว</a>
+      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
+      <a class="nav-pill" href="{% url 'opd_list' %}">ห้องตรวจ</a>
+      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
+      <a class="nav-pill active" href="/patients/register/">ลงทะเบียน</a>
     </div>
   </div>
 
