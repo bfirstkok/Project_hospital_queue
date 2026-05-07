@@ -131,6 +131,56 @@ DB_SSLMODE=require
 
 Do not commit `.env`.
 
+## Deploy Publicly on Render
+
+Recommended stack:
+
+```text
+Render Web Service + Supabase PostgreSQL
+```
+
+Before public deployment:
+
+1. Rotate the Supabase database password because the previous password was shared during setup.
+2. Use a new production `SECRET_KEY`.
+3. Keep `DEBUG=False`.
+4. Do not commit `.env`.
+
+This repository includes `render.yaml` for Render deployment.
+
+Render environment variables:
+
+```env
+DEBUG=False
+SECRET_KEY=<generated-by-render-or-your-secret>
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@<host>:<port>/postgres
+DB_SSLMODE=require
+ALLOWED_HOSTS=.onrender.com
+CSRF_TRUSTED_ORIGINS=https://*.onrender.com
+```
+
+Render build command:
+
+```bash
+pip install -r requirements.txt && python manage.py collectstatic --no-input
+```
+
+Render start command:
+
+```bash
+gunicorn config.wsgi:application
+```
+
+After the first deploy, run migrations from Render Shell:
+
+```bash
+python manage.py migrate
+python manage.py seed_demo
+python manage.py createsuperuser
+```
+
+If using the existing Supabase data, `seed_demo` and `createsuperuser` are optional.
+
 ## Run Locally
 
 ```powershell
