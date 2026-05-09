@@ -36,6 +36,8 @@ def _compute_opd(assessment):
     รองรับทั้งชื่อ compute_opd_priority() และ compute_opd_urgency()
     คืนค่า (color, reasons)
     """
+    if assessment is None:
+        return ("NORMAL", [])
     if hasattr(assessment, "compute_opd_priority"):
         return assessment.compute_opd_priority()
     if hasattr(assessment, "compute_opd_urgency"):

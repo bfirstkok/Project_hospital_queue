@@ -6,180 +6,395 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ประเมินห้องตรวจ</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    .assessment-page {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .assessment-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .title-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .title-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: #061522;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(32, 214, 181, .18);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .summary-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .summary-eyebrow,
+    .section-eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .urgency-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .urgency-badge.red {
+      color: var(--red);
+      background: rgba(255, 95, 114, .14);
+      border-color: rgba(255, 95, 114, .28);
+    }
+
+    .urgency-badge.yellow {
+      color: var(--yellow);
+      background: rgba(255, 196, 77, .14);
+      border-color: rgba(255, 196, 77, .28);
+    }
+
+    .urgency-badge.normal {
+      color: var(--green);
+      background: rgba(34, 211, 166, .14);
+      border-color: rgba(34, 211, 166, .28);
+    }
+
+    .summary-reasons {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: #cbd8e8;
+    }
+
+    .assessment-card {
+      padding: 18px;
+    }
+
+    .assessment-page .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .assessment-page input,
+    .assessment-page select,
+    .assessment-page textarea {
+      min-height: 38px;
+      padding: 9px 11px;
+      font-size: 14px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: 14px;
+    }
+
+    .section {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(174,194,220,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.025);
+    }
+
+    .section.full {
+      grid-column: 1 / -1;
+    }
+
+    .section-title {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #b8c5d6;
+    }
+
+    .field textarea {
+      min-height: 94px;
+      resize: vertical;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-height: 42px;
+      padding: 10px 11px;
+      border: 1px solid rgba(174,194,220,.12);
+      border-radius: 8px;
+      background: rgba(255,255,255,.035);
+      color: #dce7f7;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .check-item input {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      accent-color: var(--teal);
+      flex: 0 0 auto;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .btn.save {
+      min-width: 120px;
+      justify-content: center;
+    }
+
+    @media (max-width: 920px) {
+      .assessment-header,
+      .summary-card {
+        display: block;
+      }
+
+      .header-actions {
+        justify-content: flex-start;
+        margin-top: 12px;
+      }
+
+      .summary-card .pill {
+        margin-top: 12px;
+      }
+
+      .form-grid,
+      .field-grid,
+      .field-grid.two,
+      .check-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar">
-    <div class="title pill-title">
-      <div class="icon">📝</div>
+<main class="assessment-page">
+  <header class="assessment-header">
+    <div class="title-lockup">
+      <div class="title-icon">OPD</div>
       <div>
         <h1>ประเมินห้องตรวจ</h1>
-        <div class="subtitle">รหัส Visit #{{ visit.id }} • {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+        <div class="subtitle">Visit #{{ visit.id }} · {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <a class="btn" href="{% url 'opd_list' %}">ห้องตรวจ</a>
-      <a class="btn" href="/queues/">คิว</a>
-    </div>
-  </div>
+    <nav class="header-actions">
+      <a class="btn ghost" href="{% url 'opd_list' %}">ห้องตรวจ</a>
+      <a class="btn ghost" href="/queues/">คิว</a>
+    </nav>
+  </header>
 
-  <div class="grid">
-    <!-- summary -->
-    <div class="card span12">
-      <div class="kpi" style="align-items:center">
+  <section class="card assessment-card summary-card">
+    <div>
+      <div class="summary-eyebrow">สรุปผล OPD</div>
+      {% if opd_color == "RED" %}
+        <span class="urgency-badge red">เร่งด่วนสีแดง</span>
+      {% elif opd_color == "YELLOW" %}
+        <span class="urgency-badge yellow">เร่งด่วนสีเหลือง</span>
+      {% else %}
+        <span class="urgency-badge normal">ไม่เข้าเกณฑ์เร่งด่วน</span>
+      {% endif %}
+
+      {% if opd_reasons %}
+        <ul class="summary-reasons">
+          {% for r in opd_reasons %}<li>{{ r }}</li>{% endfor %}
+        </ul>
+      {% else %}
+        <div class="muted" style="margin-top:10px">ยังไม่มีเหตุผลเร่งด่วนจากข้อมูลที่บันทึก</div>
+      {% endif %}
+    </div>
+    <div class="pill">สถานะ: CALLED</div>
+  </section>
+
+  <form method="post" class="card assessment-card">
+    {% csrf_token %}
+
+    <div class="form-grid">
+      <section class="section full">
         <div>
-          <div class="label">สรุปผล OPD (ระบบคำนวณให้)</div>
-          <div style="margin-top:6px">
-            {% if opd_color == "RED" %}
-              <span class="badge-red">🟥 เร่งด่วนสีแดง</span>
-            {% elif opd_color == "YELLOW" %}
-              <span class="badge-yellow">🟨 เร่งด่วนสีเหลือง</span>
-            {% else %}
-              <span class="badge-ok">🟩 ไม่เข้าเกณฑ์เร่งด่วน</span>
-            {% endif %}
-          </div>
-          {% if opd_reasons %}
-            <div class="muted" style="margin-top:8px">
-              <b>เหตุผล:</b>
-              <ul style="margin:6px 0 0 18px">
-                {% for r in opd_reasons %}<li>{{ r }}</li>{% endfor %}
-              </ul>
-            </div>
-          {% endif %}
+          <div class="section-eyebrow">ข้อมูลหลัก</div>
+          <div class="section-title">อาการสำคัญ</div>
         </div>
-        <div class="pill"><span class="dot warn"></span>CALLED</div>
-      </div>
-    </div>
-
-    <div class="card span12">
-      <form method="post">
-        {% csrf_token %}
-
-        <div class="box">
-          <div class="h2">อาการสำคัญ (Chief complaint)</div>
+        <div class="field">
           {{ form.chief_complaint }}
         </div>
+      </section>
 
-        <div class="row" style="margin-top:12px">
-          <div class="col6 box">
-            <div class="h2">ค่า/อาการที่ระบบใช้คำนวณ (กรอกแบบคลินิกจริง)</div>
-
-            <div class="chk">{{ form.known_copd_asthma }} <div><b>Known COPD/Asthma + เหนื่อย</b></div></div>
-
-            <div class="row">
-              <div class="col3">
-                <label>Pain score (0–10)</label>
-                {{ form.pain_score }}
-              </div>
-              <div class="col3">
-                <label>BT (°C)</label>
-                {{ form.bt }}
-              </div>
-              <div class="col3">
-                <label>SYS BP</label>
-                {{ form.sys_bp }}
-              </div>
-              <div class="col3">
-                <label>DIA BP</label>
-                {{ form.dia_bp }}
-              </div>
-
-              <div class="col4">
-                <label>FBS (mg%)</label>
-                {{ form.fbs }}
-              </div>
-              <div class="col4">
-                <label>Lab K</label>
-                {{ form.lab_k }}
-              </div>
-              <div class="col4">
-                <label>Lab Mg</label>
-                {{ form.lab_mg }}
-              </div>
-              <div class="col4">
-                <label>Lab Hct</label>
-                {{ form.lab_hct }}
-              </div>
-            </div>
-
-            <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
-
-            <div class="h2">เหตุผลที่เป็น “ข้อความ” (ติ๊กเฉพาะที่เกี่ยว)</div>
-            <div class="chk">{{ form.anxious_family }} <div><b>ญาติวิตกกังวลมาก</b></div></div>
-            <div class="chk">{{ form.non_toxic_bite }} <div><b>ถูกสัตว์ไม่มีพิษกัด/ข่วน</b></div></div>
-            <div class="chk">{{ form.very_fatigue }} <div><b>เหนื่อยเพลียมาก</b></div></div>
-            <div class="chk">{{ form.blood_receive }} <div><b>มารับเลือด</b></div></div>
-          </div>
-
-          <div class="col6 box">
-            <div class="h2">กลุ่มพิเศษ (เร่งด่วนสีเหลือง)</div>
-            <div class="chk">{{ form.monk }} <div><b>พระภิกษุ/สามเณร</b></div></div>
-
-            <div class="row">
-              <div class="col4">
-                <label>อายุ (ปี)</label>
-                {{ form.age }}
-              </div>
-              <div class="col4">
-                <div class="chk" style="margin-top:22px">{{ form.child_under_5 }} <div><b>เด็กอายุต่ำกว่า 5 ปี</b></div></div>
-              </div>
-            </div>
-
-            <div class="chk">{{ form.pregnant }} <div><b>ตั้งครรภ์</b></div></div>
-            <div class="row">
-              <div class="col4">
-                <label>GA (สัปดาห์)</label>
-                {{ form.ga_weeks }}
-              </div>
-            </div>
-
-            <div class="chk">{{ form.epilepsy }} <div><b>Epilepsy</b></div></div>
-            <div class="chk">{{ form.pulmonary_tb_mplus }} <div><b>Pulmonary TB M+ กินยาไม่ครบ 2 เดือน</b></div></div>
-
-            <div class="chk">{{ form.low_immunity }} <div><b>ภูมิต้านทานต่ำ</b></div></div>
-            <label>รายละเอียดภูมิต้านทานต่ำ</label>
-            {{ form.low_immunity_detail }}
-          </div>
+      <section class="section">
+        <div>
+          <div class="section-eyebrow">Clinical values</div>
+          <div class="section-title">ค่าสำหรับคำนวณความเร่งด่วน</div>
         </div>
 
-        <div class="row" style="margin-top:12px">
-          <div class="col6 box">
-            <div class="h2">วินิจฉัย (Diagnosis)</div>
-            {{ form.diagnosis }}
-          </div>
-          <div class="col6 box">
-            <div class="h2">การรักษา/แผน (Treatment)</div>
-            {{ form.treatment }}
-          </div>
+        <label class="check-item">{{ form.known_copd_asthma }} <span>Known COPD/Asthma + เหนื่อย</span></label>
+
+        <div class="field-grid">
+          <div class="field"><label>Pain score</label>{{ form.pain_score }}</div>
+          <div class="field"><label>BT (°C)</label>{{ form.bt }}</div>
+          <div class="field"><label>SYS BP</label>{{ form.sys_bp }}</div>
+          <div class="field"><label>DIA BP</label>{{ form.dia_bp }}</div>
+          <div class="field"><label>FBS</label>{{ form.fbs }}</div>
+          <div class="field"><label>Lab K</label>{{ form.lab_k }}</div>
+          <div class="field"><label>Lab Mg</label>{{ form.lab_mg }}</div>
+          <div class="field"><label>Lab Hct</label>{{ form.lab_hct }}</div>
         </div>
 
-        <div class="row" style="margin-top:12px">
-          <div class="col6 box">
-            <div class="h2">นัดหมายครั้งต่อไป</div>
-            <div class="row">
-              <div class="col6">
-                <label>วัน/เวลา นัดหมาย</label>
-                {{ form.next_appointment_at }}
-              </div>
-              <div class="col6">
-                <label>หมายเหตุ</label>
-                {{ form.next_appointment_note }}
-              </div>
-            </div>
-          </div>
-
-          <div class="col6 box">
-            <div class="h2">บันทึก</div>
-            <button class="btn good" type="submit">✅ บันทึก</button>
-            <a class="btn" href="{% url 'opd_list' %}">ยกเลิก</a>
+        <div class="check-list">
+          <div class="section-title">เหตุผลเพิ่มเติม</div>
+          <div class="check-grid">
+            <label class="check-item">{{ form.anxious_family }} <span>ญาติวิตกกังวลมาก</span></label>
+            <label class="check-item">{{ form.non_toxic_bite }} <span>ถูกสัตว์ไม่มีพิษกัด/ข่วน</span></label>
+            <label class="check-item">{{ form.very_fatigue }} <span>เหนื่อยเพลียมาก</span></label>
+            <label class="check-item">{{ form.blood_receive }} <span>มารับเลือด</span></label>
           </div>
         </div>
+      </section>
 
-      </form>
+      <section class="section">
+        <div>
+          <div class="section-eyebrow">Special groups</div>
+          <div class="section-title">กลุ่มพิเศษ</div>
+        </div>
+
+        <div class="check-grid">
+          <label class="check-item">{{ form.monk }} <span>พระภิกษุ/สามเณร</span></label>
+          <label class="check-item">{{ form.child_under_5 }} <span>เด็กอายุต่ำกว่า 5 ปี</span></label>
+          <label class="check-item">{{ form.pregnant }} <span>ตั้งครรภ์</span></label>
+          <label class="check-item">{{ form.epilepsy }} <span>Epilepsy</span></label>
+          <label class="check-item">{{ form.pulmonary_tb_mplus }} <span>Pulmonary TB M+</span></label>
+          <label class="check-item">{{ form.low_immunity }} <span>ภูมิต้านทานต่ำ</span></label>
+        </div>
+
+        <div class="field-grid two">
+          <div class="field"><label>อายุ</label>{{ form.age }}</div>
+          <div class="field"><label>GA (สัปดาห์)</label>{{ form.ga_weeks }}</div>
+        </div>
+
+        <div class="field">
+          <label>รายละเอียดภูมิต้านทานต่ำ</label>
+          {{ form.low_immunity_detail }}
+        </div>
+      </section>
+
+      <section class="section">
+        <div>
+          <div class="section-eyebrow">Clinical note</div>
+          <div class="section-title">วินิจฉัย</div>
+        </div>
+        <div class="field">{{ form.diagnosis }}</div>
+      </section>
+
+      <section class="section">
+        <div>
+          <div class="section-eyebrow">Plan</div>
+          <div class="section-title">การรักษา/แผน</div>
+        </div>
+        <div class="field">{{ form.treatment }}</div>
+      </section>
+
+      <section class="section full">
+        <div>
+          <div class="section-eyebrow">Follow-up</div>
+          <div class="section-title">นัดหมายครั้งต่อไป</div>
+        </div>
+        <div class="field-grid two">
+          <div class="field"><label>วัน/เวลา</label>{{ form.next_appointment_at }}</div>
+          <div class="field"><label>หมายเหตุ</label>{{ form.next_appointment_note }}</div>
+        </div>
+      </section>
+
+      <div class="form-actions section full">
+        <a class="btn ghost" href="{% url 'opd_list' %}">ยกเลิก</a>
+        <button class="btn primary save" type="submit">บันทึก</button>
+      </div>
     </div>
-
-  </div>
-</div>
+  </form>
+</main>
 </body>
 </html>

@@ -4,6 +4,7 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>แดชบอร์ด - ระบบคิว</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -480,32 +481,58 @@
   })();
 
   let cachedItems = [];
+  const pendingSeverity = new Map();
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+    return "";
+  }
+
+  function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return (meta && meta.content) || getCookie('csrftoken');
+  }
 
   function vitalsText(v){
     if(!v) return "-";
-    const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
-    return `BPM ${v.bpm ?? "-"} | O2 ${v.o2sat ?? "-"} | BP ${bp}`;
+    const bp = (v.sys_bp != null ? v.sys_bp : "-") + "/" + (v.dia_bp != null ? v.dia_bp : "-");
+    return `BPM ${v.bpm != null ? v.bpm : "-"} | O2 ${v.o2sat != null ? v.o2sat : "-"} | BP ${bp}`;
   }
 
   async function setSeverity(visitId, sev){
     const item = cachedItems.find(x=>x.visit_id===visitId);
     if(!item) return;
     item.severity = sev;
+    pendingSeverity.set(visitId, sev);
     render();
 
     try {
       const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
         body: JSON.stringify({ severity: sev })
       });
+      if(!res.ok){
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       if(!data.ok){
         console.error('Failed to update severity:', data.error);
+        pendingSeverity.delete(visitId);
         await loadSummary();
+        return;
       }
+      item.severity = data.severity || sev;
+      pendingSeverity.delete(visitId);
     } catch(err) {
       console.error('Error updating severity:', err);
+      pendingSeverity.delete(visitId);
       await loadSummary();
     }
   }
@@ -520,8 +547,8 @@
     el.innerHTML = cachedItems.slice(0,12).map(x=>`
       <tr>
         <td><b>#${x.visit_id}</b></td>
-        <td>${x.name ?? "-"}</td>
-        <td><span class="badge ${x.severity?.toLowerCase()}">${x.severity}</span></td>
+        <td>${x.name != null ? x.name : "-"}</td>
+        <td><span class="badge ${x.severity ? x.severity.toLowerCase() : ""}">${x.severity || "-"}</span></td>
         <td>
           ${x.online
             ? `<span class="pill"><span class="dot good"></span>ออนไลน์</span>`
@@ -542,6 +569,11 @@
     const res = await fetch("/queues/monitor/api/latest/");
     const data = await res.json();
     cachedItems = data.rows || [];
+    cachedItems.forEach(item => {
+      if (pendingSeverity.has(item.visit_id)) {
+        item.severity = pendingSeverity.get(item.visit_id);
+      }
+    });
 
     document.getElementById("onlineCount").textContent =
       `${cachedItems.filter(x=>x.online).length}/${cachedItems.length}`;
