@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from patients.models import Patient
-from queues.models import Device, Queue, TelemetryLog, TriageResult, Visit, VitalSign
+from queues.models import Device, DeviceAssignment, Queue, TelemetryLog, TriageResult, Visit, VitalSign
 
 
 SEED_PATIENTS = [
@@ -90,6 +90,15 @@ class Command(BaseCommand):
             )
 
             device = devices[idx % len(devices)]
+            DeviceAssignment.objects.filter(device=device, is_active=True).update(
+                is_active=False,
+                unpaired_at=now,
+            )
+            DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
+                is_active=False,
+                unpaired_at=now,
+            )
+            DeviceAssignment.objects.create(device=device, visit=visit)
             for n in range(8):
                 drift = random.randint(-3, 3)
                 TelemetryLog.objects.create(

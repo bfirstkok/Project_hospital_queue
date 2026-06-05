@@ -79,10 +79,11 @@
         <tbody>
           {% for row in latest_pairings %}
             <tr>
-              <td>{{ row.ts }}</td>
+              <td>{{ row.paired_at }}</td>
               <td>#{{ row.visit_id }}</td>
               <td>{{ row.visit.patient.first_name }} {{ row.visit.patient.last_name }}</td>
               <td>{{ row.device.device_id }}</td>
+              <td>{% if row.is_active %}Active{% else %}Inactive{% endif %}</td>
             </tr>
           {% empty %}
             <tr><td colspan="4" class="muted">ยังไม่มีประวัติการจับคู่</td></tr>

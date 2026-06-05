@@ -21,12 +21,12 @@ class DevicePairingForm(forms.Form):
     visit = forms.ModelChoiceField(
         queryset=Visit.objects.select_related("patient", "queue").filter(
             queue__status__in=["WAITING", "MONITORING", "FOLLOWUP"]
-        ).order_by("queue__priority", "registered_at"),
+        ).exclude(device_assignments__is_active=True).order_by("queue__priority", "registered_at"),
         label="Visit",
         required=True,
     )
     device = forms.ModelChoiceField(
-        queryset=Device.objects.filter(is_active=True).order_by("device_id"),
+        queryset=Device.objects.filter(is_active=True).exclude(assignments__is_active=True).order_by("device_id"),
         label="Device",
         required=True,
     )

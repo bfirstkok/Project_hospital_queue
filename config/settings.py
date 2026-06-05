@@ -26,7 +26,7 @@ def load_env_file(path):
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ[key.strip()] = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 load_env_file(BASE_DIR / ".env")
@@ -122,8 +122,9 @@ def database_from_url(database_url):
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+USE_SQLITE = DATABASE_URL.lower() in ("", "sqlite", "sqlite3", "local")
 
-if DATABASE_URL:
+if not USE_SQLITE:
     DATABASES = {"default": database_from_url(DATABASE_URL)}
 else:
     DATABASES = {

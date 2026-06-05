@@ -18,7 +18,7 @@ from django.apps import apps
 from ai_triage.services import apply_ai_triage
 from patients.models import Patient
 from .forms import DevicePairingForm, NurseTriageAssessmentForm
-from .models import Queue, Visit, Device, TelemetryLog, VitalSign, TriageResult
+from .models import Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
 
 
 # -----------------------------
@@ -227,14 +227,27 @@ def iot_telemetry(request):
     except Exception:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
-    visit_id = data.get("visit_id")
-    if not visit_id:
-        return JsonResponse({"ok": False, "error": "visit_id required"}, status=400)
+    assignment = (
+        DeviceAssignment.objects
+        .select_related("visit", "visit__patient")
+        .filter(device=device, is_active=True)
+        .first()
+    )
+    if not assignment:
+        return JsonResponse({"ok": False, "error": "Device is not paired to an active visit"}, status=409)
 
-    try:
-        visit = Visit.objects.select_related("patient").get(id=visit_id)
-    except Visit.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Visit not found"}, status=404)
+    visit = assignment.visit
+    posted_visit_id = data.get("visit_id")
+    if posted_visit_id:
+        try:
+            posted_visit_id = int(posted_visit_id)
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "error": "visit_id must be an integer"}, status=400)
+        if posted_visit_id != visit.id:
+            return JsonResponse({
+                "ok": False,
+                "error": "Posted visit_id does not match active device assignment",
+            }, status=409)
 
     vitals = data.get("vitals") or {}
     # parse ts (ถ้าไม่ส่งมา ใช้เวลาปัจจุบัน)
@@ -334,7 +347,16 @@ def device_pairing(request):
         if form.is_valid():
             visit = form.cleaned_data["visit"]
             device = form.cleaned_data["device"]
-            TelemetryLog.objects.create(visit=visit, device=device, ts=timezone.now())
+            now = timezone.now()
+            DeviceAssignment.objects.filter(device=device, is_active=True).update(
+                is_active=False,
+                unpaired_at=now,
+            )
+            DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
+                is_active=False,
+                unpaired_at=now,
+            )
+            DeviceAssignment.objects.create(visit=visit, device=device)
             device.last_seen = timezone.now()
             device.save(update_fields=["last_seen"])
             return redirect("device_pairing")
@@ -342,10 +364,9 @@ def device_pairing(request):
         form = DevicePairingForm()
 
     latest_pairings = (
-        TelemetryLog.objects
+        DeviceAssignment.objects
         .select_related("visit", "visit__patient", "device")
-        .filter(device__isnull=False)
-        .order_by("-ts")[:30]
+        .order_by("-paired_at")[:30]
     )
     devices = Device.objects.order_by("device_id")
 

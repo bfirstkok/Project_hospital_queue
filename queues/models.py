@@ -1,4 +1,5 @@
 ﻿from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 class Visit(models.Model):
@@ -79,6 +80,36 @@ class Device(models.Model):
 
     def __str__(self):
         return self.device_id
+
+
+class DeviceAssignment(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="assignments")
+    visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="device_assignments")
+    paired_at = models.DateTimeField(auto_now_add=True)
+    unpaired_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["device", "is_active"]),
+            models.Index(fields=["visit", "is_active"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["device"],
+                condition=Q(is_active=True),
+                name="unique_active_assignment_per_device",
+            ),
+            models.UniqueConstraint(
+                fields=["visit"],
+                condition=Q(is_active=True),
+                name="unique_active_assignment_per_visit",
+            ),
+        ]
+
+    def __str__(self):
+        state = "active" if self.is_active else "inactive"
+        return f"{self.device.device_id} -> Visit#{self.visit_id} ({state})"
 
 
 class TelemetryLog(models.Model):
