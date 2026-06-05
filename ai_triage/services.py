@@ -4,6 +4,23 @@ from ai_triage.ml.predictor import dt_predict
 from queues.models import TriageResult
 
 SEV_TO_PRIORITY = {"RED": 1, "YELLOW": 2, "GREEN": 3}
+URGENT_SYMPTOM_LABELS = {
+    "chest_pain": "เจ็บหน้าอก",
+    "dyspnea": "หายใจลำบาก / หอบเหนื่อย",
+    "altered_consciousness": "ซึมลง / หมดสติ",
+    "seizure": "ชัก",
+    "major_bleeding": "เลือดออกมาก",
+    "severe_pain": "ปวดรุนแรง",
+    "high_fever": "ไข้สูง",
+    "severe_accident": "อุบัติเหตุรุนแรง",
+}
+RISK_FLAG_LABELS = {
+    "copd_asthma": "COPD / Asthma",
+    "child_under_5": "เด็กอายุต่ำกว่า 5 ปี",
+    "elderly_80": "ผู้สูงอายุ ≥ 80 ปี",
+    "pregnant": "ตั้งครรภ์",
+    "immunocompromised": "ภูมิคุ้มกันต่ำ",
+}
 
 
 def explain_vitals(v):
@@ -30,6 +47,17 @@ def explain_vitals(v):
     elif v.bt is not None and 38 <= v.bt < 39:
         reasons.append(f"BT {v.bt}°C fever")
 
+    if getattr(v, "pain_score", None) is not None and v.pain_score >= 7:
+        reasons.append(f"Pain score {v.pain_score}/10")
+
+    urgent = [URGENT_SYMPTOM_LABELS.get(x, x) for x in (getattr(v, "urgent_symptoms", None) or [])]
+    if urgent:
+        reasons.append("อาการเร่งด่วน: " + ", ".join(urgent))
+
+    risks = [RISK_FLAG_LABELS.get(x, x) for x in (getattr(v, "risk_flags", None) or [])]
+    if risks:
+        reasons.append("กลุ่มเสี่ยง: " + ", ".join(risks))
+
     return "; ".join(reasons) or "No critical vital-sign trigger detected"
 
 def apply_ai_triage(visit):
@@ -43,14 +71,24 @@ def apply_ai_triage(visit):
     if not hasattr(visit, "vitals"):
         return None  # ไม่มี vitals
 
+    rule_sev, rule_conf, rule_reason = rule_based_triage(visit.vitals)
     clinical_reason = explain_vitals(visit.vitals)
 
     try:
-        sev, conf, reason = dt_predict(visit.vitals)
-        model_name = "decision_tree_v1"
+        model_sev, model_conf, model_reason = dt_predict(visit.vitals)
+        model_name = "decision_tree_v1_guarded_by_rules"
     except Exception:
-        sev, conf, reason = rule_based_triage(visit.vitals)
+        model_sev, model_conf, model_reason = rule_sev, rule_conf, rule_reason
         model_name = "rule_based_fallback"
+
+    sev = rule_sev
+    conf = rule_conf
+    reason = rule_reason
+    if model_sev != rule_sev:
+        clinical_reason = (
+            f"{clinical_reason}; Rule guardrail applied "
+            f"(model suggested {model_sev}, rule result {rule_sev})"
+        )
 
     triage_obj, _ = TriageResult.objects.get_or_create(visit=visit)
     triage_obj.ai_severity = sev

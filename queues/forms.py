@@ -4,17 +4,76 @@ from .models import Device, Visit
 
 
 class NurseTriageAssessmentForm(forms.Form):
-    rr = forms.IntegerField(label="RR", min_value=0, required=True)
-    pr = forms.IntegerField(label="PR / BPM", min_value=0, required=True)
-    sys_bp = forms.IntegerField(label="Systolic BP", min_value=0, required=True)
-    dia_bp = forms.IntegerField(label="Diastolic BP", min_value=0, required=True)
-    bt = forms.FloatField(label="BT", min_value=30, max_value=45, required=True)
-    o2sat = forms.IntegerField(label="O2 Sat", min_value=0, max_value=100, required=True)
+    URGENT_SYMPTOM_CHOICES = [
+        ("chest_pain", "เจ็บหน้าอก"),
+        ("dyspnea", "หายใจลำบาก / หอบเหนื่อย"),
+        ("altered_consciousness", "ซึมลง / หมดสติ"),
+        ("seizure", "ชัก"),
+        ("major_bleeding", "เลือดออกมาก"),
+        ("severe_pain", "ปวดรุนแรง"),
+        ("high_fever", "ไข้สูง"),
+        ("severe_accident", "อุบัติเหตุรุนแรง"),
+    ]
+    RISK_FLAG_CHOICES = [
+        ("copd_asthma", "COPD / Asthma"),
+        ("child_under_5", "เด็กอายุต่ำกว่า 5 ปี"),
+        ("elderly_80", "ผู้สูงอายุ ≥ 80 ปี"),
+        ("pregnant", "ตั้งครรภ์"),
+        ("immunocompromised", "ภูมิคุ้มกันต่ำ"),
+    ]
+    VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
+
+    rr = forms.IntegerField(label="RR *", min_value=0, required=False)
+    rr_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    pr = forms.IntegerField(label="PR / BPM *", min_value=0, required=False)
+    pr_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    sys_bp = forms.IntegerField(label="Systolic BP *", min_value=0, required=False)
+    sys_bp_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    dia_bp = forms.IntegerField(label="Diastolic BP *", min_value=0, required=False)
+    dia_bp_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    bt = forms.FloatField(label="BT *", min_value=30, max_value=45, required=False)
+    bt_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    o2sat = forms.IntegerField(label="O₂ Sat *", min_value=0, max_value=100, required=False)
+    o2sat_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
+    pain_score = forms.IntegerField(
+        label="Pain Score",
+        min_value=0,
+        max_value=10,
+        required=False,
+        widget=forms.NumberInput(attrs={"type": "range", "min": 0, "max": 10, "step": 1}),
+    )
+    urgent_symptoms = forms.MultipleChoiceField(
+        label="อาการเร่งด่วน",
+        choices=URGENT_SYMPTOM_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    risk_flags = forms.MultipleChoiceField(
+        label="กลุ่มเสี่ยง",
+        choices=RISK_FLAG_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
     symptoms = forms.CharField(
-        label="Symptoms",
+        label="รายละเอียดอาการเพิ่มเติม",
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+    def __init__(self, *args, is_draft=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_draft = is_draft
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.is_draft:
+            return cleaned
+
+        for field in self.VITAL_FIELDS:
+            if cleaned.get(field) is None and not cleaned.get(f"{field}_unmeasured"):
+                self.add_error(field, "กรุณากรอกค่า หรือเลือก 'ยังไม่ได้วัด'")
+
+        return cleaned
 
 
 class DevicePairingForm(forms.Form):

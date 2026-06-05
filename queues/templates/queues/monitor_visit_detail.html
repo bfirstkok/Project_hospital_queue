@@ -4,279 +4,497 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>รายละเอียดรายการตรวจ</title>
+  <title>รายละเอียดรายการตรวจ #{{ visit.id }}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
-    .detail-hero {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 16px;
+    :root {
+      --bg: #07111f;
+      --panel: rgba(13, 25, 43, .88);
+      --panel-strong: rgba(18, 33, 54, .94);
+      --line: rgba(148, 163, 184, .18);
+      --text: #eaf2ff;
+      --muted: rgba(226, 232, 240, .62);
+      --soft: rgba(255, 255, 255, .045);
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --cyan: #22d3ee;
     }
-    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .detail-grid {
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, .11), transparent 32rem),
+        linear-gradient(115deg, #07111f 0%, #0b1424 52%, #101b2d 100%);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    .wrap {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 26px 24px 42px;
+    }
+
+    a { color: var(--cyan); text-decoration: none; }
+    h1, h2, h3, p { margin-top: 0; }
+
+    .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      font-size: 30px;
+      line-height: 1.12;
+      margin-bottom: 8px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 13px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
       gap: 14px;
       margin-bottom: 14px;
     }
-    .kvgrid {
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .24);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 17px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .card-body { padding: 17px; }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .mini {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      min-width: 0;
+    }
+
+    .mini-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+
+    .mini-value {
+      font-size: 14px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid var(--line);
+      color: rgba(234, 242, 255, .9);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .severity {
+      padding: 7px 11px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .3px;
+      border: 1px solid var(--line);
+    }
+
+    .severity.red { color: #fecaca; background: rgba(239, 68, 68, .17); border-color: rgba(239, 68, 68, .36); }
+    .severity.yellow { color: #fde68a; background: rgba(245, 158, 11, .16); border-color: rgba(245, 158, 11, .34); }
+    .severity.green { color: #86efac; background: rgba(34, 197, 94, .16); border-color: rgba(34, 197, 94, .34); }
+
+    .muted { color: var(--muted); }
+    .mono { font-family: "Space Grotesk", Consolas, monospace; }
+
+    .latest-vitals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .vital {
+      min-height: 94px;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .025));
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .vital-label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .45px;
+      text-transform: uppercase;
+    }
+
+    .vital-value {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      color: #fff;
+    }
+
+    .vital-value small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .content-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .profile-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 10px;
     }
-    .vitals-grid {
+
+    .wide-note {
+      margin-top: 12px;
+      display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
-    .kv {
+
+    .note {
       padding: 12px;
-      border: 1px solid rgba(174,194,220,.12);
       border-radius: 10px;
-      background: rgba(255,255,255,.035);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .035);
+      color: rgba(234, 242, 255, .86);
       min-width: 0;
     }
-    .k {
-      font-size: 11px;
+
+    .note b {
+      display: block;
       color: var(--muted);
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: .6px;
-      margin-bottom: 5px;
-      line-height: 1.2;
+      letter-spacing: .45px;
+      margin-bottom: 7px;
     }
-    .v {
-      color: #fff;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.25;
-      overflow-wrap: anywhere;
+
+    .table-shell {
+      overflow: auto;
+      border-top: 1px solid var(--line);
     }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .mono {
-      font-family: "Space Grotesk", Consolas, monospace;
-    }
-    .note-box {
-      padding: 12px;
-      border-radius: 10px;
-      background: rgba(255,255,255,.045);
-      border: 1px solid rgba(174,194,220,.12);
-      color: #dce7f7;
-    }
-    .section-stack {
-      display: grid;
-      gap: 14px;
-      margin-bottom: 14px;
-    }
+
     .detail-table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
       table-layout: fixed;
-      min-width: 820px;
     }
-    .detail-table th,
-    .detail-table td {
-      padding: 9px 14px;
-      line-height: 1.25;
-      vertical-align: middle;
-    }
-    .detail-table th,
-    .detail-table td {
+
+    .detail-table th {
+      background: rgba(255, 255, 255, .055);
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .45px;
+      text-transform: uppercase;
+      padding: 12px 14px;
       text-align: center;
+    }
+
+    .detail-table td {
+      padding: 13px 14px;
+      border-top: 1px solid rgba(148, 163, 184, .12);
+      text-align: center;
+      color: rgba(234, 242, 255, .86);
       font-variant-numeric: tabular-nums;
     }
-    .detail-table .time-col {
-      width: 190px;
-      text-align: left;
-    }
+
+    .detail-table .time-col,
     .detail-table .device-col {
-      width: 230px;
       text-align: left;
     }
-    .detail-table .metric-col {
-      width: 92px;
+
+    .empty {
+      padding: 28px 18px;
+      color: var(--muted);
+      text-align: center;
     }
+
     @media (max-width: 900px) {
-      .detail-hero, .detail-grid { display: block; }
-      .detail-actions { margin-top: 12px; }
-      .detail-grid .card { margin-bottom: 14px; }
-      .vitals-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .hero, .overview, .wide-note { grid-template-columns: 1fr; }
+      .toolbar { justify-content: flex-start; }
+      .latest-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-strip { grid-template-columns: 1fr; }
     }
+
     @media (max-width: 560px) {
-      .vitals-grid,
-      .kvgrid {
-        grid-template-columns: 1fr;
-      }
+      .wrap { padding: 18px 14px 32px; }
+      .title { font-size: 24px; }
+      .latest-vitals, .profile-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
 <div class="wrap">
-  <div class="detail-hero">
+  <header class="hero">
     <div>
-      <h1>รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
-      <div class="muted">ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
-    </div>
-    <div class="detail-actions">
-      <a class="btn ghost" href="/queues/monitor/">กลับหน้าติดตาม</a>
-      <a class="btn ghost" href="/queues/">กลับหน้าคิว</a>
-    </div>
-  </div>
-
-  <div class="detail-grid">
-    <div class="card">
-      <h2>ข้อมูลรายการตรวจ</h2>
-      <div class="row">
-        <span class="pill"><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></span>
-        <span class="pill"><span class="mono">รายการตรวจ {{ visit.id }}</span></span>
+      <h1 class="title">รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
+      <div class="subtitle">
+        <span>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</span>
         {% with sev=visit.final_severity|upper %}
-          <span class="sev {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
-            Severity: {{ visit.final_severity }}
+          <span class="severity {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
+            {{ visit.final_severity }}
           </span>
         {% endwith %}
       </div>
-      <div class="row">
-        <span class="pill">ลงทะเบียน: <span class="mono">{{ visit.registered_at }}</span></span>
-        <span class="pill">คัดกรอง: <span class="mono">{{ visit.triaged_at|default:"-" }}</span></span>
-        <span class="pill">เรียกคิว: <span class="mono">{{ visit.called_at|default:"-" }}</span></span>
-      </div>
-      <p class="muted" style="margin-top:14px">
-        หน้านี้แสดง telemetry log ล่าสุด 50 รายการ เพื่อช่วยดูแนวโน้มสัญญาณชีพย้อนหลัง
-      </p>
     </div>
+    <nav class="toolbar">
+      <a class="btn-link" href="/queues/monitor/">กลับหน้าติดตาม</a>
+      <a class="btn-link" href="/queues/">กลับหน้าคิว</a>
+    </nav>
+  </header>
 
+  <section class="overview">
     <div class="card">
-      <h2>สัญญาณชีพล่าสุด</h2>
-      {% if logs %}
-        {% with x=logs.0 %}
-          <div class="kvgrid vitals-grid">
-            <div class="kv"><div class="k">BPM</div><div class="v">{{ x.bpm|default:"-" }}</div></div>
-            <div class="kv"><div class="k">O2Sat</div><div class="v">{{ x.o2sat|default:"-" }} <small>%</small></div></div>
-            <div class="kv"><div class="k">BT</div><div class="v">{{ x.bt|default:"-" }} <small>°C</small></div></div>
-            <div class="kv"><div class="k">RR</div><div class="v">{{ x.rr|default:"-" }}</div></div>
-            <div class="kv"><div class="k">BP</div><div class="v">{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</div></div>
-            <div class="kv"><div class="k">Device</div><div class="v" style="font-size:14px">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</div></div>
+      <div class="card-head">
+        <h2 class="card-title">ข้อมูลรายการตรวจ</h2>
+        <span class="pill mono">Visit #{{ visit.id }}</span>
+      </div>
+      <div class="card-body">
+        <div class="pill-row">
+          <span class="pill">{{ visit.patient.first_name }} {{ visit.patient.last_name }}</span>
+          {% with sev=visit.final_severity|upper %}
+            <span class="severity {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
+              Severity: {{ visit.final_severity }}
+            </span>
+          {% endwith %}
+        </div>
+        <div class="summary-strip">
+          <div class="mini">
+            <div class="mini-label">ลงทะเบียน</div>
+            <div class="mini-value mono">{{ visit.registered_at }}</div>
           </div>
-          <div class="row"><span class="pill">ล่าสุดเวลา: <span class="mono">{{ x.ts }}</span></span></div>
-        {% endwith %}
-      {% else %}
-        <div class="muted">ยังไม่มีข้อมูลจาก IoT</div>
-      {% endif %}
+          <div class="mini">
+            <div class="mini-label">คัดกรอง</div>
+            <div class="mini-value mono">{{ visit.triaged_at|default:"-" }}</div>
+          </div>
+          <div class="mini">
+            <div class="mini-label">เรียกคิว</div>
+            <div class="mini-value mono">{{ visit.called_at|default:"-" }}</div>
+          </div>
+        </div>
+        <p class="muted" style="margin:14px 0 0">
+          แสดงข้อมูลรายการตรวจและ telemetry log ล่าสุด 50 รายการ เพื่อช่วยดูแนวโน้มสัญญาณชีพย้อนหลัง
+        </p>
+      </div>
     </div>
-  </div>
 
-  <div class="section-stack">
     <div class="card">
-      <h2>ข้อมูลผู้ป่วย</h2>
-      <div class="kvgrid">
-        <div class="kv"><div class="k">เพศ</div><div class="v">{{ visit.patient.gender|default:"-" }}</div></div>
-        <div class="kv"><div class="k">อายุ</div><div class="v">{{ visit.patient.age|default:"-" }} <small>ปี</small></div></div>
-        <div class="kv"><div class="k">เลขบัตรประชาชน</div><div class="v mono" style="font-size:14px">{{ visit.patient.national_id|default:"-" }}</div></div>
-        <div class="kv"><div class="k">เบอร์โทร</div><div class="v mono" style="font-size:14px">{{ visit.patient.phone|default:"-" }}</div></div>
-        <div class="kv"><div class="k">ส่วนสูง</div><div class="v">{{ visit.patient.height_cm|default:"-" }} <small>cm</small></div></div>
-        <div class="kv"><div class="k">น้ำหนัก</div><div class="v">{{ visit.patient.weight_kg|default:"-" }} <small>kg</small></div></div>
-        <div class="kv"><div class="k">หมู่เลือด</div><div class="v">{{ visit.patient.blood_type|default:"-" }}</div></div>
+      <div class="card-head">
+        <h2 class="card-title">สัญญาณชีพล่าสุด</h2>
+        {% if logs %}
+          <span class="pill mono">{{ logs.0.ts }}</span>
+        {% endif %}
       </div>
-      <div class="row">
-        <span class="pill">โรคประจำตัว: {{ visit.patient.chronic_diseases|default:"-" }}</span>
-        <span class="pill">แพ้ยา / อาหาร: {{ visit.patient.allergies|default:"-" }}</span>
-        <span class="pill">ยาที่ใช้ประจำ: {{ visit.patient.medications|default:"-" }}</span>
+      <div class="card-body">
+        {% if logs %}
+          {% with x=logs.0 %}
+            <div class="latest-vitals">
+              <div class="vital"><div class="vital-label">BPM</div><div class="vital-value">{{ x.bpm|default:"-" }}</div></div>
+              <div class="vital"><div class="vital-label">O2Sat</div><div class="vital-value">{{ x.o2sat|default:"-" }} <small>%</small></div></div>
+              <div class="vital"><div class="vital-label">BT</div><div class="vital-value">{{ x.bt|default:"-" }} <small>°C</small></div></div>
+              <div class="vital"><div class="vital-label">RR</div><div class="vital-value">{{ x.rr|default:"-" }}</div></div>
+              <div class="vital"><div class="vital-label">BP</div><div class="vital-value">{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</div></div>
+              <div class="vital"><div class="vital-label">Device</div><div class="vital-value" style="font-size:15px">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</div></div>
+            </div>
+          {% endwith %}
+        {% else %}
+          <div class="empty">ยังไม่มีข้อมูลจาก IoT</div>
+        {% endif %}
       </div>
     </div>
+  </section>
+
+  <main class="content-stack">
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">ข้อมูลผู้ป่วย</h2>
+      </div>
+      <div class="card-body">
+        <div class="profile-grid">
+          <div class="mini"><div class="mini-label">เพศ</div><div class="mini-value">{{ visit.patient.gender|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">อายุ</div><div class="mini-value">{{ visit.patient.age|default:"-" }} ปี</div></div>
+          <div class="mini"><div class="mini-label">เลขบัตรประชาชน</div><div class="mini-value mono">{{ visit.patient.national_id|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">เบอร์โทร</div><div class="mini-value mono">{{ visit.patient.phone|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">ส่วนสูง</div><div class="mini-value">{{ visit.patient.height_cm|default:"-" }} cm</div></div>
+          <div class="mini"><div class="mini-label">น้ำหนัก</div><div class="mini-value">{{ visit.patient.weight_kg|default:"-" }} kg</div></div>
+          <div class="mini"><div class="mini-label">หมู่เลือด</div><div class="mini-value">{{ visit.patient.blood_type|default:"-" }}</div></div>
+        </div>
+        <div class="wide-note">
+          <div class="note"><b>โรคประจำตัว</b>{{ visit.patient.chronic_diseases|default:"-" }}</div>
+          <div class="note"><b>แพ้ยา / อาหาร</b>{{ visit.patient.allergies|default:"-" }}</div>
+          <div class="note"><b>ยาที่ใช้ประจำ</b>{{ visit.patient.medications|default:"-" }}</div>
+        </div>
+      </div>
+    </section>
 
     {% if assessment %}
-      <div class="card">
-        <h2>ผลประเมิน</h2>
-        <div class="note-box">
-          <b>อาการสำคัญ:</b> {{ assessment.chief_complaint|default:"ไม่มีข้อมูล" }}
-        </div>
-        <div class="kvgrid" style="margin-top:12px">
-          <div class="kv"><div class="k">Pain Score</div><div class="v">{{ assessment.pain_score|default:"-" }}</div></div>
-          <div class="kv"><div class="k">BT</div><div class="v">{{ assessment.bt|default:"-" }} <small>°C</small></div></div>
-          <div class="kv"><div class="k">SYS BP</div><div class="v">{{ assessment.sys_bp|default:"-" }}</div></div>
-          <div class="kv"><div class="k">DIA BP</div><div class="v">{{ assessment.dia_bp|default:"-" }}</div></div>
-          <div class="kv"><div class="k">FBS</div><div class="v">{{ assessment.fbs|default:"-" }}</div></div>
-          <div class="kv"><div class="k">Lab K</div><div class="v">{{ assessment.lab_k|default:"-" }}</div></div>
-          <div class="kv"><div class="k">Lab Mg</div><div class="v">{{ assessment.lab_mg|default:"-" }}</div></div>
-          <div class="kv"><div class="k">Lab Hct</div><div class="v">{{ assessment.lab_hct|default:"-" }}</div></div>
-        </div>
-
-        <div class="row">
-          {% if assessment.anxious_family %}<span class="pill">ญาติวิตกกังวลมาก</span>{% endif %}
-          {% if assessment.non_toxic_bite %}<span class="pill">ถูกสัตว์ไม่มีพิษกัด/ข่วน</span>{% endif %}
-          {% if assessment.very_fatigue %}<span class="pill">เหนื่อยเพลียมาก</span>{% endif %}
-          {% if assessment.blood_receive %}<span class="pill">มารับเลือด</span>{% endif %}
-          {% if not assessment.anxious_family and not assessment.non_toxic_bite and not assessment.very_fatigue and not assessment.blood_receive %}
-            <span class="muted">ไม่มี flag เพิ่มเติม</span>
-          {% endif %}
-        </div>
-
-        <div class="note-box" style="margin-top:12px">
-          <b>วินิจฉัย:</b> {{ assessment.diagnosis|default:"ไม่มีข้อมูล" }}<br>
-          <b>การรักษา/แผน:</b> {{ assessment.treatment|default:"ไม่มีข้อมูล" }}
-        </div>
-
-        <div class="row">
-          <span class="pill">นัดหมาย: {{ assessment.next_appointment_at|default:"-" }}</span>
-          <span class="pill">หมายเหตุ: {{ assessment.next_appointment_note|default:"-" }}</span>
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title">ผลประเมิน OPD</h2>
           {% with urg=assessment.opd_urgency|upper %}
-            <span class="sev {% if urg == 'RED' %}red{% elif urg == 'YELLOW' %}yellow{% else %}green{% endif %}">
+            <span class="severity {% if urg == 'RED' %}red{% elif urg == 'YELLOW' %}yellow{% else %}green{% endif %}">
               {{ assessment.get_opd_urgency_display }}
             </span>
           {% endwith %}
-          {% if assessment.opd_reason %}<span class="pill">เหตุผล: {{ assessment.opd_reason }}</span>{% endif %}
         </div>
-      </div>
+        <div class="card-body">
+          <div class="note"><b>อาการสำคัญ</b>{{ assessment.chief_complaint|default:"ไม่มีข้อมูล" }}</div>
+          <div class="profile-grid" style="margin-top:12px">
+            <div class="mini"><div class="mini-label">Pain Score</div><div class="mini-value">{{ assessment.pain_score|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">BT</div><div class="mini-value">{{ assessment.bt|default:"-" }} °C</div></div>
+            <div class="mini"><div class="mini-label">SYS BP</div><div class="mini-value">{{ assessment.sys_bp|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">DIA BP</div><div class="mini-value">{{ assessment.dia_bp|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">FBS</div><div class="mini-value">{{ assessment.fbs|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">Lab K</div><div class="mini-value">{{ assessment.lab_k|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">Lab Mg</div><div class="mini-value">{{ assessment.lab_mg|default:"-" }}</div></div>
+            <div class="mini"><div class="mini-label">Lab Hct</div><div class="mini-value">{{ assessment.lab_hct|default:"-" }}</div></div>
+          </div>
+          <div class="wide-note">
+            <div class="note"><b>วินิจฉัย</b>{{ assessment.diagnosis|default:"ไม่มีข้อมูล" }}</div>
+            <div class="note"><b>การรักษา / แผน</b>{{ assessment.treatment|default:"ไม่มีข้อมูล" }}</div>
+            <div class="note"><b>นัดหมาย</b>{{ assessment.next_appointment_at|default:"-" }}<br>{{ assessment.next_appointment_note|default:"" }}</div>
+          </div>
+          {% if assessment.opd_reason %}
+            <div class="note" style="margin-top:12px"><b>เหตุผล</b>{{ assessment.opd_reason }}</div>
+          {% endif %}
+        </div>
+      </section>
     {% endif %}
-  </div>
 
-  <div class="card">
-    <h2>บันทึกสัญญาณชีพ</h2>
-    <div style="overflow:auto">
-      <table class="detail-table">
-        <colgroup>
-          <col class="time-col">
-          <col class="metric-col">
-          <col class="metric-col">
-          <col class="metric-col">
-          <col class="metric-col">
-          <col class="metric-col">
-          <col class="device-col">
-        </colgroup>
-        <thead>
-          <tr>
-            <th>เวลา</th>
-            <th>BPM</th>
-            <th>O2Sat</th>
-            <th>BT</th>
-            <th>RR</th>
-            <th>BP</th>
-            <th>อุปกรณ์</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for x in logs %}
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">บันทึกสัญญาณชีพ</h2>
+        <span class="pill">{{ logs|length }} รายการ</span>
+      </div>
+      <div class="table-shell">
+        <table class="detail-table">
+          <colgroup>
+            <col style="width:210px">
+            <col style="width:92px">
+            <col style="width:92px">
+            <col style="width:92px">
+            <col style="width:92px">
+            <col style="width:110px">
+            <col style="width:230px">
+          </colgroup>
+          <thead>
             <tr>
-              <td class="mono time-col">{{ x.ts }}</td>
-              <td>{{ x.bpm|default:"-" }}</td>
-              <td>{{ x.o2sat|default:"-" }}</td>
-              <td>{{ x.bt|default:"-" }}</td>
-              <td>{{ x.rr|default:"-" }}</td>
-              <td>{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</td>
-              <td class="device-col">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</td>
+              <th class="time-col">เวลา</th>
+              <th>BPM</th>
+              <th>O2Sat</th>
+              <th>BT</th>
+              <th>RR</th>
+              <th>BP</th>
+              <th class="device-col">อุปกรณ์</th>
             </tr>
-          {% empty %}
-            <tr><td colspan="7" class="muted">ยังไม่มีข้อมูลจาก IoT</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+          </thead>
+          <tbody>
+            {% for x in logs %}
+              <tr>
+                <td class="mono time-col">{{ x.ts }}</td>
+                <td>{{ x.bpm|default:"-" }}</td>
+                <td>{{ x.o2sat|default:"-" }}</td>
+                <td>{{ x.bt|default:"-" }}</td>
+                <td>{{ x.rr|default:"-" }}</td>
+                <td>{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</td>
+                <td class="device-col">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="7" class="empty">ยังไม่มีข้อมูลจาก IoT</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 </div>
 </body>
 </html>

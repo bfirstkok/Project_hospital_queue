@@ -53,7 +53,7 @@ def _compute_opd(assessment):
 def opd_list(request):
     q_items = (
         Queue.objects
-        .select_related("visit", "visit__patient")
+        .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
         .filter(status="CALLED")
         .order_by("visit__id")
     )

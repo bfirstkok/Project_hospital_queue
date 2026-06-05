@@ -34,6 +34,9 @@ class VitalSign(models.Model):
     dia_bp = models.IntegerField("Diastolic BP", blank=True, null=True)
     bt = models.FloatField("BT (°C)", blank=True, null=True)
     o2sat = models.IntegerField("O₂ Sat", blank=True, null=True)
+    pain_score = models.PositiveSmallIntegerField(blank=True, null=True)
+    urgent_symptoms = models.JSONField(default=list, blank=True)
+    risk_flags = models.JSONField(default=list, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -64,6 +67,7 @@ class TriageResult(models.Model):
     model_name = models.CharField(max_length=50, blank=True, null=True)
     confidence = models.FloatField(blank=True, null=True)
     ai_reason = models.TextField(blank=True, default="")
+    nurse_note = models.TextField(blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
 

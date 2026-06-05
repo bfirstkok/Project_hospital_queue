@@ -76,7 +76,13 @@ def nurse_triage_assessment(request, visit_id: int):
             "dia_bp": vitals.dia_bp,
             "bt": vitals.bt,
             "o2sat": vitals.o2sat,
+            "pain_score": vitals.pain_score,
+            "urgent_symptoms": vitals.urgent_symptoms,
+            "risk_flags": vitals.risk_flags,
         }
+        for field in ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]:
+            if initial[field] is None:
+                initial[f"{field}_unmeasured"] = True
     if visit.note:
         initial["symptoms"] = visit.note
 
@@ -84,7 +90,9 @@ def nurse_triage_assessment(request, visit_id: int):
     triage_result = getattr(visit, "triage_result", None)
 
     if request.method == "POST":
-        form = NurseTriageAssessmentForm(request.POST)
+        action = request.POST.get("action", "evaluate")
+        is_draft = action == "draft"
+        form = NurseTriageAssessmentForm(request.POST, is_draft=is_draft)
         if form.is_valid():
             vitals, _ = VitalSign.objects.get_or_create(visit=visit)
             vitals.rr = form.cleaned_data["rr"]
@@ -93,16 +101,22 @@ def nurse_triage_assessment(request, visit_id: int):
             vitals.dia_bp = form.cleaned_data["dia_bp"]
             vitals.bt = form.cleaned_data["bt"]
             vitals.o2sat = form.cleaned_data["o2sat"]
+            vitals.pain_score = form.cleaned_data.get("pain_score")
+            vitals.urgent_symptoms = form.cleaned_data.get("urgent_symptoms") or []
+            vitals.risk_flags = form.cleaned_data.get("risk_flags") or []
             vitals.save()
 
             visit.note = form.cleaned_data.get("symptoms", "")
             visit.save(update_fields=["note"])
 
-            ai_result = apply_ai_triage(visit)
-            triage_result = getattr(visit, "triage_result", None)
-            if q:
-                q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(visit.final_severity, 3)
-                q.save(update_fields=["priority"])
+            if not is_draft:
+                ai_result = apply_ai_triage(visit)
+                triage_result = getattr(visit, "triage_result", None)
+                if q:
+                    q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(visit.final_severity, 3)
+                    q.save(update_fields=["priority"])
+            else:
+                ai_result = {"draft": True}
     else:
         form = NurseTriageAssessmentForm(initial=initial)
 
@@ -120,6 +134,7 @@ def nurse_triage_assessment(request, visit_id: int):
 def triage_visit(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
     new_sev = request.POST.get("severity")
+    nurse_note = request.POST.get("nurse_note", "").strip()
 
     if new_sev in ["RED", "YELLOW", "GREEN"]:
         visit.final_severity = new_sev
@@ -132,7 +147,8 @@ def triage_visit(request, visit_id: int):
 
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
-        triage_result.save(update_fields=["nurse_severity"])
+        triage_result.nurse_note = nurse_note
+        triage_result.save(update_fields=["nurse_severity", "nurse_note"])
 
     return redirect("queue_list")
 
