@@ -5,622 +5,345 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>ห้องตรวจ - รายการประเมิน</title>
+  <title>ห้องตรวจ {{ selected_room }} - OPD</title>
   <style>
-    /* ===== RESET ===== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* ===== BODY & SHELL ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0a0e1a;
       color: #e8eaf0;
-      min-height: 100vh;
     }
-
-    .shell {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
-      background: #0a0e1a;
-      padding: 0;
-    }
-
-    /* ===== TOPBAR ===== */
+    .shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
     .topbar {
+      min-height: 68px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.02);
+      gap: 18px;
+      padding: 12px 22px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.025);
     }
-
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 260px; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      color: #07111f;
+      font-weight: 800;
+      background: linear-gradient(135deg, #23d8b5, #5ac8ff);
     }
-
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
-
-    .logo-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: -0.3px;
-    }
-
-    .logo-sub {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 0px;
-    }
-
+    .brand-title { font-size: 15px; font-weight: 800; color: #fff; }
+    .brand-sub { font-size: 12px; color: rgba(255,255,255,.42); margin-top: 1px; }
     .nav-pills {
       display: flex;
-      gap: 3px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      padding: 3px;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.06);
     }
-
     .nav-pill {
-      padding: 5px 13px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.45);
-      transition: all 0.2s;
-      border: none;
-      background: transparent;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .nav-pill.active {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .nav-pill:hover:not(.active) {
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .add-btn {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 18px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      min-height: 32px;
+      padding: 0 14px;
       border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #fff;
-      cursor: pointer;
-      border: none;
-      font-family: 'Sarabun', sans-serif;
-      transition: opacity 0.2s;
+      color: rgba(255,255,255,.58);
       text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
     }
-
-    .add-btn:hover {
-      opacity: 0.85;
-    }
-
-    /* ===== LAYOUT ===== */
+    .nav-pill.active { background: rgba(0,212,170,.16); color: #28dfbf; }
+    .nav-pill:hover { color: #fff; background: rgba(255,255,255,.075); }
     .content {
       display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 0;
-      height: 100%;
+      grid-template-columns: 272px minmax(0, 1fr);
+      min-height: 0;
     }
-
     .sidebar {
-      padding: 12px 16px;
-      border-right: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 14px;
+      border-right: 1px solid rgba(255,255,255,.075);
+      background: rgba(5,10,20,.28);
       display: flex;
       flex-direction: column;
       gap: 14px;
-      overflow-y: auto;
     }
-
-    .main {
-      padding: 10px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      overflow-y: auto;
-    }
-
-    /* ===== STAT CARDS ===== */
-    .stat-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    .main { padding: 18px 24px; min-width: 0; }
+    .stat-card, .legend, .table-wrap {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
       border-radius: 12px;
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
     }
-
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-    }
-
-    .stat-card.teal::before {
-      background: linear-gradient(90deg, #00d4aa, transparent);
-    }
-
-    .stat-card.red::before {
-      background: linear-gradient(90deg, #ff5f72, transparent);
-    }
-
-    .stat-card.amber::before {
-      background: linear-gradient(90deg, #ffb830, transparent);
-    }
-
-    .stat-card.green::before {
-      background: linear-gradient(90deg, #00d4aa, transparent);
-    }
-
+    .stat-card { padding: 16px; }
+    .stat-card.total { border-top: 2px solid #20d7b2; }
     .stat-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .7px;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
+      color: rgba(255,255,255,.42);
       margin-bottom: 8px;
     }
-
-    .stat-number {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 32px;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1;
-    }
-
+    .stat-number { font-size: 34px; line-height: 1; font-weight: 800; color: #fff; }
     .live-dot {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      color: #00d4aa;
-      margin-top: 8px;
-    }
-
-    .live-dot::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background: #00d4aa;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.5;
-        transform: scale(1.3);
-      }
-    }
-
-    /* ===== TRIAGE LEGEND ===== */
-    .triage-legend {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 16px;
-    }
-
-    .triage-legend h4 {
-      font-size: 11px;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
-      margin-bottom: 12px;
-      font-weight: 600;
-    }
-
-    .triage-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .triage-row:last-child {
-      border-bottom: none;
-    }
-
-    .triage-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .triage-info {
-      flex: 1;
-    }
-
-    .triage-name {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .triage-desc {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    .triage-count {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    /* ===== QUEUE SECTION ===== */
-    .queue-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .queue-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .queue-meta {
+      gap: 6px;
+      margin-top: 10px;
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 2px;
-    }
-
-    /* ===== TABLE ===== */
-    .queue-table-wrap {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 14px;
-      overflow: hidden;
-      flex: 1;
-    }
-
-    .queue-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .queue-table th {
-      padding: 14px 16px;
-      font-size: 11px;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.3);
-      font-weight: 600;
-      text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .queue-table td {
-      padding: 13px 16px;
-      font-size: 13.5px;
-      color: rgba(255, 255, 255, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      vertical-align: middle;
-    }
-
-    .queue-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .queue-table tr:hover td {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    /* ===== TABLE CONTENT ===== */
-    .visit-badge {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 12px;
+      color: #20d7b2;
       font-weight: 700;
-      background: rgba(0, 150, 255, 0.15);
-      color: #5ac8ff;
-      padding: 3px 8px;
-      border-radius: 5px;
     }
-
-    .patient-name {
-      font-weight: 500;
-      color: #fff;
-    }
-
-    .patient-age {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    .triage-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-
-    .triage-badge.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .triage-badge.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-    }
-
-    .triage-badge.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .triage-badge .dot {
-      width: 5px;
-      height: 5px;
+    .live-dot::before {
+      content: "";
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: currentColor;
     }
-
-    .time-text {
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .legend { padding: 16px; }
+    .legend h3 {
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(255,255,255,.42);
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      margin-bottom: 10px;
     }
-
-    .nurse-summary {
+    .legend-row {
       display: grid;
-      gap: 7px;
-      min-width: 260px;
-    }
-
-    .nurse-line {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
       align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
     }
-
+    .legend-row:last-child { border-bottom: 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+    .legend-name { font-size: 13px; font-weight: 800; }
+    .legend-desc { font-size: 11px; color: rgba(255,255,255,.42); }
+    .legend-count { font-size: 16px; font-weight: 800; }
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 24px; line-height: 1.2; color: #fff; }
+    .subtitle { margin-top: 4px; color: rgba(255,255,255,.52); font-size: 13px; }
+    .room-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .room-current, .room-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 13px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .room-current {
+      background: rgba(90,200,255,.12);
+      border: 1px solid rgba(90,200,255,.24);
+      color: #8fd8ff;
+    }
+    .room-link {
+      color: rgba(255,255,255,.72);
+      text-decoration: none;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.09);
+    }
+    .room-link:hover { color: #fff; background: rgba(255,255,255,.1); }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th {
+      padding: 14px 16px;
+      text-align: left;
+      color: rgba(255,255,255,.45);
+      background: rgba(255,255,255,.035);
+      border-bottom: 1px solid rgba(255,255,255,.075);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+      vertical-align: middle;
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+    }
+    tr:hover td { background: rgba(255,255,255,.025); }
+    .visit-badge {
+      display: inline-flex;
+      padding: 4px 9px;
+      border-radius: 7px;
+      background: rgba(90,200,255,.13);
+      color: #79d2ff;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .patient-name { color: #fff; font-weight: 800; }
+    .patient-meta { margin-top: 3px; color: rgba(255,255,255,.42); font-size: 12px; }
+    .triage-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 8px;
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .triage-badge.red { background: rgba(255,95,114,.14); color: #ff6b7d; }
+    .triage-badge.yellow { background: rgba(255,184,48,.14); color: #ffbf42; }
+    .triage-badge.green { background: rgba(0,212,170,.14); color: #23d8b5; }
+    .nurse-summary { display: grid; gap: 7px; min-width: 280px; }
+    .nurse-line { display: flex; gap: 6px; flex-wrap: wrap; }
     .mini-chip {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
       min-height: 24px;
       padding: 0 8px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      color: rgba(255,255,255,.74);
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.75);
       white-space: nowrap;
     }
-
-    .reason-snippet {
-      max-width: 420px;
-      color: rgba(255, 255, 255, 0.45);
-      font-size: 11px;
-      line-height: 1.45;
+    .reason {
+      max-width: 440px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    /* ===== ACTIONS ===== */
-    .action-group {
-      display: flex;
-      gap: 6px;
-    }
-
-    .action-btn {
-      padding: 5px 12px;
-      border-radius: 6px;
+      color: rgba(255,255,255,.46);
       font-size: 12px;
-      font-weight: 600;
+    }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid rgba(255,255,255,.1);
+      min-height: 30px;
+      padding: 0 11px;
+      border-radius: 8px;
       cursor: pointer;
-      border: none;
-      font-family: 'Sarabun', sans-serif;
-      transition: all 0.2s;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
       text-decoration: none;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      color: rgba(255,255,255,.75);
+      background: rgba(255,255,255,.06);
     }
-
-    .action-btn.primary {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-      border: 1px solid rgba(0, 212, 170, 0.2);
-    }
-
-    .action-btn.primary:hover {
-      background: rgba(0, 212, 170, 0.25);
-    }
-
-    .action-btn.secondary {
-      background: rgba(255, 255, 255, 0.06);
-      color: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .action-btn.secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .action-btn.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-      border: 1px solid rgba(255, 95, 114, 0.2);
-    }
-
-    .action-btn.red:hover {
-      background: rgba(255, 95, 114, 0.25);
-    }
-
-    .action-btn.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-      border: 1px solid rgba(255, 184, 48, 0.2);
-    }
-
-    .action-btn.yellow:hover {
-      background: rgba(255, 184, 48, 0.25);
-    }
-
-    .action-btn.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-      border: 1px solid rgba(0, 212, 170, 0.2);
-    }
-
-    .action-btn.green:hover {
-      background: rgba(0, 212, 170, 0.25);
-    }
-
-    /* ===== EMPTY STATE ===== */
+    .btn.primary { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.24); }
+    .btn.red { color: #ff6b7d; background: rgba(255,95,114,.13); border-color: rgba(255,95,114,.22); }
+    .btn.yellow { color: #ffbf42; background: rgba(255,184,48,.13); border-color: rgba(255,184,48,.22); }
+    .btn.green { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.22); }
+    .btn:hover { filter: brightness(1.14); }
     .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      color: rgba(255,255,255,.42);
       text-align: center;
-      padding: 60px 20px;
-      color: rgba(255, 255, 255, 0.25);
+      gap: 8px;
     }
-
-    .empty-icon {
-      font-size: 32px;
-      margin-bottom: 12px;
-      opacity: 0.4;
-    }
-
-    .empty-text {
-      font-size: 14px;
+    .empty-icon { font-size: 34px; opacity: .45; }
+    @media (max-width: 900px) {
+      .topbar, .page-head { flex-direction: column; align-items: stretch; }
+      .content { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.075); }
+      .nav-pills { overflow-x: auto; }
     }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
-
 <body>
 <div class="shell">
-  <div class="topbar">
-    <div class="logo-area">
-      <div class="logo-icon">🩺</div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">OPD</div>
       <div>
-        <div class="logo-text">ห้องตรวจ · ประเมิน</div>
-        <div class="logo-sub">ประเมิน · ผลตรวจ · นัดหมาย</div>
+        <div class="brand-title">ห้องตรวจ OPD</div>
+        <div class="brand-sub">ประเมินผู้ป่วยตามห้องตรวจ</div>
       </div>
     </div>
-    <div class="nav-pills">
+    <nav class="nav-pills">
       <a class="nav-pill" href="{% url 'queue_list' %}">คิว</a>
       <a class="nav-pill active" href="{% url 'opd_list' %}">ห้องตรวจ</a>
       <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
       <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
-    </div>
-  </div>
+    </nav>
+  </header>
 
-  <div class="content">
-    <div class="sidebar">
-      <div class="stat-card teal">
-        <div class="stat-label">CALLED ทั้งหมด</div>
+  <main class="content">
+    <aside class="sidebar">
+      <section class="stat-card total">
+        <div class="stat-label">Called ห้องนี้</div>
         <div class="stat-number">{{ q_items|length }}</div>
         <div class="live-dot">Live</div>
-      </div>
+      </section>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="stat-card red">
+      <div class="stat-grid">
+        <section class="stat-card">
           <div class="stat-label">Red</div>
-          <div class="stat-number" style="color:#ff5f72; font-size:22px;">{{ red_count }}</div>
-        </div>
-        <div class="stat-card amber">
+          <div class="stat-number" style="color:#ff6b7d; font-size:24px;">{{ red_count }}</div>
+        </section>
+        <section class="stat-card">
           <div class="stat-label">Yellow</div>
-          <div class="stat-number" style="color:#ffb830; font-size:22px;">{{ yellow_count }}</div>
-        </div>
+          <div class="stat-number" style="color:#ffbf42; font-size:24px;">{{ yellow_count }}</div>
+        </section>
       </div>
 
-      <div class="stat-card green">
+      <section class="stat-card">
         <div class="stat-label">Green</div>
-        <div class="stat-number" style="color:#00d4aa; font-size:22px;">{{ green_count }}</div>
-      </div>
+        <div class="stat-number" style="color:#20d7b2; font-size:24px;">{{ green_count }}</div>
+      </section>
 
-      <div class="triage-legend">
-        <h4>ระดับความเร่งด่วน</h4>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#ff5f72;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#ff5f72;">Red</div>
-            <div class="triage-desc">ฉุกเฉินวิกฤต</div>
-          </div>
-          <div class="triage-count" style="color:#ff5f72;">{{ red_count }}</div>
+      <section class="legend">
+        <h3>ระดับความเร่งด่วน</h3>
+        <div class="legend-row" style="color:#ff6b7d;">
+          <span class="dot"></span>
+          <div><div class="legend-name">Red</div><div class="legend-desc">ฉุกเฉินวิกฤต</div></div>
+          <div class="legend-count">{{ red_count }}</div>
         </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#ffb830;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#ffb830;">Yellow</div>
-            <div class="triage-desc">เร่งด่วน</div>
-          </div>
-          <div class="triage-count" style="color:#ffb830;">{{ yellow_count }}</div>
+        <div class="legend-row" style="color:#ffbf42;">
+          <span class="dot"></span>
+          <div><div class="legend-name">Yellow</div><div class="legend-desc">เร่งด่วน</div></div>
+          <div class="legend-count">{{ yellow_count }}</div>
         </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#00d4aa;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#00d4aa;">Green</div>
-            <div class="triage-desc">ไม่เร่งด่วน</div>
-          </div>
-          <div class="triage-count" style="color:#00d4aa;">{{ green_count }}</div>
+        <div class="legend-row" style="color:#20d7b2;">
+          <span class="dot"></span>
+          <div><div class="legend-name">Green</div><div class="legend-desc">ไม่เร่งด่วน</div></div>
+          <div class="legend-count">{{ green_count }}</div>
         </div>
-      </div>
-    </div>
+      </section>
+    </aside>
 
-    <div class="main">
-      <div class="queue-header">
+    <section class="main">
+      <div class="page-head">
         <div>
-          <div class="queue-title">รายการประเมิน OPD</div>
-          <div class="queue-meta">อัปเดตล่าสุด: เพิ่งตอนนี้</div>
+          <h1>รายการประเมิน OPD · ห้องตรวจ {{ selected_room }}</h1>
+          <p class="subtitle">แสดงเฉพาะผู้ป่วยที่ถูกเรียกเข้าห้องตรวจ {{ selected_room }}</p>
+        </div>
+        <div class="room-tools">
+          <span class="room-current">ห้อง {{ selected_room }}</span>
+          <a class="room-link" href="{% url 'opd_room_select' %}">เปลี่ยนห้อง</a>
         </div>
       </div>
 
-      <div class="queue-table-wrap">
-        <table class="queue-table">
+      <div class="table-wrap">
+        <table>
           <thead>
             <tr>
               <th>ลำดับ</th>
-              <th>ชื่อผู้ป่วย</th>
-              <th>ระดับสุดท้าย</th>
+              <th>ผู้ป่วย</th>
+              <th>ระดับล่าสุด</th>
               <th>ผลคัดกรองพยาบาล</th>
               <th>เวลาเรียก</th>
               <th>คำสั่ง</th>
@@ -633,7 +356,7 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">เลขคิว: {{ q.id }}</div>
+                <div class="patient-meta">เลขคิว: {{ q.id }} · Visit #{{ v.id }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}
@@ -654,34 +377,41 @@
                   <div class="nurse-line">
                     <span class="mini-chip">RR {{ v.vitals.rr|default:"-" }}</span>
                     <span class="mini-chip">PR {{ v.vitals.pr|default:"-" }}</span>
-                    <span class="mini-chip">O₂ {{ v.vitals.o2sat|default:"-" }}%</span>
-                    <span class="mini-chip">BT {{ v.vitals.bt|default:"-" }}°C</span>
+                    <span class="mini-chip">O2 {{ v.vitals.o2sat|default:"-" }}%</span>
+                    <span class="mini-chip">BT {{ v.vitals.bt|default:"-" }} C</span>
                   </div>
-                  <div class="reason-snippet" title="{{ v.triage_result.ai_reason|default:'' }}">
+                  <div class="reason" title="{{ v.triage_result.ai_reason|default:'' }}">
                     {{ v.triage_result.ai_reason|default:"ยังไม่มีเหตุผลจากการคัดกรอง" }}
                   </div>
                 </div>
               </td>
-              <td><span class="time-text">{{ v.called_at|date:"H:i"|default:"-" }}</span></td>
+              <td>{{ v.called_at|date:"H:i"|default:"-" }}</td>
               <td>
-                <div class="action-group">
-                  <a class="action-btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
-                  <a class="action-btn secondary" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
-                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
-                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
+                <div class="actions">
+                  <a class="btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
+                  <a class="btn" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
+                  <button class="btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
+                  <button class="btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
+                  <button class="btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
                 </div>
               </td>
             </tr>
             {% endwith %}
           {% empty %}
-            <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">ยังไม่มีเคส OPD</div></div></td></tr>
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-icon">ไม่มีรายการ</div>
+                  <div>ยังไม่มีเคสในห้องตรวจ {{ selected_room }}</div>
+                </div>
+              </td>
+            </tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -699,14 +429,9 @@
 
   async function readJsonResponse(res) {
     const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return res.json();
-    }
-
+    if (contentType.includes('application/json')) return res.json();
     const text = await res.text();
-    const isHtml = text.trim().startsWith('<!doctype') || text.trim().startsWith('<html');
-    const detail = isHtml ? `server returned HTML (${res.status})` : text.slice(0, 160);
-    throw new Error(detail);
+    throw new Error(text.trim().startsWith('<') ? `server returned HTML (${res.status})` : text.slice(0, 160));
   }
 
   async function setSeverity(visitId, sev) {
@@ -721,11 +446,8 @@
         body: JSON.stringify({ severity: sev })
       });
       const data = await readJsonResponse(res);
-      if (data.ok) {
-        location.reload();
-      } else {
-        alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
-      }
+      if (data.ok) location.reload();
+      else alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
     } catch (err) {
       alert('เกิดข้อผิดพลาด: ' + err.message);
     }

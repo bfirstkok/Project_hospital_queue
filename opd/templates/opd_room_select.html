@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เลือกห้องตรวจ OPD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Sarabun', sans-serif;
+      color: #e8eaf0;
+      background: #0a0e1a;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(780px, 100%);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 14px;
+      padding: 30px;
+    }
+    .eyebrow {
+      color: #5ac8ff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .hint {
+      color: rgba(255,255,255,.58);
+      margin-bottom: 24px;
+    }
+    .rooms {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .room-btn {
+      border: 1px solid rgba(90,200,255,.24);
+      background: rgba(90,200,255,.1);
+      color: #f4fbff;
+      border-radius: 12px;
+      padding: 26px 16px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      text-align: left;
+      transition: transform .16s, background .16s, border-color .16s;
+    }
+    .room-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(90,200,255,.17);
+      border-color: rgba(90,200,255,.45);
+    }
+    .room-btn.active {
+      border-color: rgba(0,212,170,.52);
+      background: rgba(0,212,170,.14);
+    }
+    .room-no {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 38px;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .room-label {
+      font-size: 13px;
+      color: rgba(255,255,255,.62);
+    }
+    .error {
+      margin-bottom: 14px;
+      color: #ff7a8a;
+      font-weight: 600;
+    }
+    .nav {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .link {
+      color: rgba(255,255,255,.58);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .link:hover { color: #fff; }
+    @media (max-width: 640px) {
+      .rooms { grid-template-columns: 1fr; }
+      .panel { padding: 20px; }
+    }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <main class="panel">
+    <div class="eyebrow">Doctor workspace</div>
+    <h1>เลือกห้องตรวจ</h1>
+    <p class="hint">หลังเลือกห้อง ระบบจะแสดงเฉพาะรายชื่อผู้ป่วยที่ถูกเรียกเข้าห้องนั้น</p>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="rooms">
+        {% for room in rooms %}
+          <button class="room-btn {% if selected_room == room %}active{% endif %}" type="submit" name="exam_room" value="{{ room }}">
+            <span class="room-no">{{ room }}</span>
+            <span class="room-label">เข้าห้องตรวจ {{ room }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    </form>
+
+    <div class="nav">
+      <a class="link" href="{% url 'queue_list' %}">กลับหน้าคิว</a>
+      <a class="link" href="/dashboard/">แดชบอร์ด</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -48,14 +48,37 @@ def queue_list(request):
 
 @login_required
 def call_visit(request, visit_id: int):
-    visit = get_object_or_404(Visit, id=visit_id)
+    visit = get_object_or_404(Visit.objects.select_related("patient"), id=visit_id)
     q = getattr(visit, "queue", None)
-    if q and q.status == "WAITING":
-        q.status = "CALLED"
-        q.save(update_fields=["status"])
+    if not q:
+        return redirect("queue_list")
+
+    if request.method == "POST":
+        room = request.POST.get("exam_room")
+        if room not in {"1", "2", "3"}:
+            return render(request, "queues/select_exam_room.html", {
+                "visit": visit,
+                "queue": q,
+                "rooms": [1, 2, 3],
+                "error": "กรุณาเลือกห้องตรวจ",
+            })
+
+        if q.status == "WAITING":
+            q.status = "CALLED"
+        q.exam_room = int(room)
+        q.save(update_fields=["status", "exam_room"])
 
         visit.called_at = timezone.now()
         visit.save(update_fields=["called_at"])
+
+        return redirect("opd_list")
+
+    if q and q.status == "WAITING":
+        return render(request, "queues/select_exam_room.html", {
+            "visit": visit,
+            "queue": q,
+            "rooms": [1, 2, 3],
+        })
 
     return redirect("opd_list")
 
@@ -401,10 +424,26 @@ def monitor_latest_api(request):
     """
     offline_after = timezone.now() - timedelta(minutes=3)
 
+    latest_log = (
+        TelemetryLog.objects
+        .filter(visit=OuterRef("visit"))
+        .order_by("-ts")
+    )
+
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
         .filter(status="WAITING")
+        .annotate(
+            last_log_ts=Subquery(latest_log.values("ts")[:1]),
+            last_device_id=Subquery(latest_log.values("device__device_id")[:1]),
+            last_bpm=Subquery(latest_log.values("bpm")[:1]),
+            last_o2sat=Subquery(latest_log.values("o2sat")[:1]),
+            last_bt=Subquery(latest_log.values("bt")[:1]),
+            last_rr=Subquery(latest_log.values("rr")[:1]),
+            last_sys_bp=Subquery(latest_log.values("sys_bp")[:1]),
+            last_dia_bp=Subquery(latest_log.values("dia_bp")[:1]),
+        )
         .order_by("priority", "created_at")[:200]
     )
 
@@ -412,30 +451,22 @@ def monitor_latest_api(request):
     for q in q_items:
         visit = q.visit
 
-        last_log = (
-            TelemetryLog.objects
-            .select_related("device")
-            .filter(visit=visit)
-            .order_by("-ts")
-            .first()
-        )
-
-        online = bool(last_log and last_log.ts and last_log.ts >= offline_after)
+        online = bool(q.last_log_ts and q.last_log_ts >= offline_after)
 
         rows.append({
             "visit_id": visit.id,
             "name": f"{visit.patient.first_name} {visit.patient.last_name}",
             "severity": visit.final_severity,
             "ai": _get_ai_severity(visit),
-            "device_id": last_log.device.device_id if last_log and last_log.device else None,
+            "device_id": q.last_device_id,
             "online": online,
 
-            "bpm": last_log.bpm if last_log else None,
-            "o2sat": last_log.o2sat if last_log else None,
-            "bt": last_log.bt if last_log else None,
-            "rr": last_log.rr if last_log else None,
-            "sys_bp": last_log.sys_bp if last_log else None,
-            "dia_bp": last_log.dia_bp if last_log else None,
+            "bpm": q.last_bpm,
+            "o2sat": q.last_o2sat,
+            "bt": q.last_bt,
+            "rr": q.last_rr,
+            "sys_bp": q.last_sys_bp,
+            "dia_bp": q.last_dia_bp,
 
             "registered_at": visit.registered_at.isoformat() if visit.registered_at else None,
         })

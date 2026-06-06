@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เลือกห้องตรวจ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Sarabun', sans-serif;
+      color: #e8eaf0;
+      background: #0a0e1a;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(720px, 100%);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .eyebrow {
+      color: #00d4aa;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 30px;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+    .patient {
+      color: rgba(255,255,255,.68);
+      margin-bottom: 22px;
+    }
+    .rooms {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .room-btn {
+      border: 1px solid rgba(0,212,170,.28);
+      background: rgba(0,212,170,.11);
+      color: #eafffb;
+      border-radius: 12px;
+      padding: 24px 14px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      text-align: left;
+      transition: transform .16s, background .16s, border-color .16s;
+    }
+    .room-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(0,212,170,.18);
+      border-color: rgba(0,212,170,.45);
+    }
+    .room-no {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 34px;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .room-label {
+      font-size: 13px;
+      color: rgba(255,255,255,.62);
+    }
+    .error {
+      margin-bottom: 14px;
+      color: #ff7a8a;
+      font-weight: 600;
+    }
+    .back {
+      display: inline-flex;
+      color: rgba(255,255,255,.58);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .back:hover { color: #fff; }
+    @media (max-width: 640px) {
+      .rooms { grid-template-columns: 1fr; }
+      .panel { padding: 20px; }
+    }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <main class="panel">
+    <div class="eyebrow">ส่งเข้าห้องตรวจ</div>
+    <h1>เลือกห้องตรวจ</h1>
+    <div class="patient">
+      Visit #{{ visit.id }} · {{ visit.patient.first_name }} {{ visit.patient.last_name }}
+    </div>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="rooms">
+        {% for room in rooms %}
+          <button class="room-btn" type="submit" name="exam_room" value="{{ room }}">
+            <span class="room-no">{{ room }}</span>
+            <span class="room-label">ห้องตรวจ {{ room }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    </form>
+
+    <a class="back" href="{% url 'queue_list' %}">กลับหน้าคิว</a>
+  </main>
+</body>
+</html>

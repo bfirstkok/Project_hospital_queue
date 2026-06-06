@@ -12,6 +12,8 @@ from queues.models import Queue, Visit, TelemetryLog, VitalSign
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
 
+EXAM_ROOMS = (1, 2, 3)
+
 
 def _monitor_alerts(v):
     alerts = []
@@ -51,10 +53,14 @@ def _compute_opd(assessment):
 # -----------------------------
 @login_required
 def opd_list(request):
+    selected_room = request.session.get("opd_exam_room")
+    if selected_room not in EXAM_ROOMS:
+        return redirect("opd_room_select")
+
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
-        .filter(status="CALLED")
+        .filter(status="CALLED", exam_room=selected_room)
         .order_by("visit__id")
     )
     
@@ -68,6 +74,26 @@ def opd_list(request):
         "red_count": red_count,
         "yellow_count": yellow_count,
         "green_count": green_count,
+        "selected_room": selected_room,
+        "rooms": EXAM_ROOMS,
+    })
+
+
+@login_required
+def opd_room_select(request):
+    if request.method == "POST":
+        room = request.POST.get("exam_room")
+        if room in {"1", "2", "3"}:
+            request.session["opd_exam_room"] = int(room)
+            return redirect("opd_list")
+        return render(request, "opd_room_select.html", {
+            "rooms": EXAM_ROOMS,
+            "error": "กรุณาเลือกห้องตรวจ",
+        })
+
+    return render(request, "opd_room_select.html", {
+        "rooms": EXAM_ROOMS,
+        "selected_room": request.session.get("opd_exam_room"),
     })
 
 

@@ -55,6 +55,7 @@ class Queue(models.Model):
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.WAITING)
 
     priority = models.IntegerField(default=3)
+    exam_room = models.PositiveSmallIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
