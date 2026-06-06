@@ -15,6 +15,13 @@ from .forms import VisitAssessmentForm
 EXAM_ROOMS = (1, 2, 3)
 
 
+def _get_related(obj, attr):
+    try:
+        return getattr(obj, attr)
+    except AttributeError:
+        return None
+
+
 def _monitor_alerts(v):
     alerts = []
     if v.last_o2sat is not None and v.last_o2sat < 95:
@@ -48,6 +55,52 @@ def _compute_opd(assessment):
     return ("GREEN", ["No urgency rule method found on VisitAssessment"])
 
 
+def _opd_queue_queryset(selected_room):
+    return (
+        Queue.objects
+        .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
+        .filter(status="CALLED", exam_room=selected_room)
+        .order_by("visit__id")
+    )
+
+
+def _opd_queue_payload(q_items):
+    rows = []
+    counts = {"RED": 0, "YELLOW": 0, "GREEN": 0}
+
+    for index, q in enumerate(q_items, start=1):
+        v = q.visit
+        severity = v.final_severity or "GREEN"
+        if severity in counts:
+            counts[severity] += 1
+
+        triage = _get_related(v, "triage_result")
+        vitals = _get_related(v, "vitals")
+
+        rows.append({
+            "index": index,
+            "queue_id": q.id,
+            "visit_id": v.id,
+            "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
+            "severity": severity,
+            "ai_severity": triage.ai_severity if triage else None,
+            "nurse_severity": triage.nurse_severity if triage else None,
+            "ai_reason": triage.ai_reason if triage else "",
+            "pain_score": vitals.pain_score if vitals else None,
+            "rr": vitals.rr if vitals else None,
+            "pr": vitals.pr if vitals else None,
+            "o2sat": vitals.o2sat if vitals else None,
+            "bt": vitals.bt if vitals else None,
+            "called_at": timezone.localtime(v.called_at).strftime("%H:%M") if v.called_at else "-",
+        })
+
+    return {
+        "rows": rows,
+        "counts": counts,
+        "total": len(rows),
+    }
+
+
 # -----------------------------
 # OPD LIST (เคสที่ถูกเรียกเข้าห้องตรวจ)
 # -----------------------------
@@ -57,12 +110,7 @@ def opd_list(request):
     if selected_room not in EXAM_ROOMS:
         return redirect("opd_room_select")
 
-    q_items = (
-        Queue.objects
-        .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
-        .filter(status="CALLED", exam_room=selected_room)
-        .order_by("visit__id")
-    )
+    q_items = _opd_queue_queryset(selected_room)
     
     # Count by severity
     red_count = sum(1 for q in q_items if q.visit.final_severity == "RED")
@@ -77,6 +125,21 @@ def opd_list(request):
         "selected_room": selected_room,
         "rooms": EXAM_ROOMS,
     })
+
+
+@login_required
+def opd_list_api(request):
+    selected_room = request.session.get("opd_exam_room")
+    if selected_room not in EXAM_ROOMS:
+        return JsonResponse({"ok": False, "error": "no_exam_room"}, status=400)
+
+    payload = _opd_queue_payload(_opd_queue_queryset(selected_room))
+    payload.update({
+        "ok": True,
+        "selected_room": selected_room,
+        "server_time": timezone.now().isoformat(),
+    })
+    return JsonResponse(payload)
 
 
 @login_required

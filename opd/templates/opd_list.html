@@ -105,6 +105,20 @@
       border-radius: 50%;
       background: currentColor;
     }
+    .sync-status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255,255,255,.52);
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .sync-status.ok { color: #20d7b2; border-color: rgba(0,212,170,.22); }
+    .sync-status.error { color: #ff6b7d; border-color: rgba(255,95,114,.22); }
     .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .legend { padding: 16px; }
     .legend h3 {
@@ -285,24 +299,24 @@
     <aside class="sidebar">
       <section class="stat-card total">
         <div class="stat-label">Called ห้องนี้</div>
-        <div class="stat-number">{{ q_items|length }}</div>
+        <div class="stat-number" id="totalCount">{{ q_items|length }}</div>
         <div class="live-dot">Live</div>
       </section>
 
       <div class="stat-grid">
         <section class="stat-card">
           <div class="stat-label">Red</div>
-          <div class="stat-number" style="color:#ff6b7d; font-size:24px;">{{ red_count }}</div>
+          <div class="stat-number" id="redCount" style="color:#ff6b7d; font-size:24px;">{{ red_count }}</div>
         </section>
         <section class="stat-card">
           <div class="stat-label">Yellow</div>
-          <div class="stat-number" style="color:#ffbf42; font-size:24px;">{{ yellow_count }}</div>
+          <div class="stat-number" id="yellowCount" style="color:#ffbf42; font-size:24px;">{{ yellow_count }}</div>
         </section>
       </div>
 
       <section class="stat-card">
         <div class="stat-label">Green</div>
-        <div class="stat-number" style="color:#20d7b2; font-size:24px;">{{ green_count }}</div>
+        <div class="stat-number" id="greenCount" style="color:#20d7b2; font-size:24px;">{{ green_count }}</div>
       </section>
 
       <section class="legend">
@@ -310,17 +324,17 @@
         <div class="legend-row" style="color:#ff6b7d;">
           <span class="dot"></span>
           <div><div class="legend-name">Red</div><div class="legend-desc">ฉุกเฉินวิกฤต</div></div>
-          <div class="legend-count">{{ red_count }}</div>
+          <div class="legend-count" id="legendRedCount">{{ red_count }}</div>
         </div>
         <div class="legend-row" style="color:#ffbf42;">
           <span class="dot"></span>
           <div><div class="legend-name">Yellow</div><div class="legend-desc">เร่งด่วน</div></div>
-          <div class="legend-count">{{ yellow_count }}</div>
+          <div class="legend-count" id="legendYellowCount">{{ yellow_count }}</div>
         </div>
         <div class="legend-row" style="color:#20d7b2;">
           <span class="dot"></span>
           <div><div class="legend-name">Green</div><div class="legend-desc">ไม่เร่งด่วน</div></div>
-          <div class="legend-count">{{ green_count }}</div>
+          <div class="legend-count" id="legendGreenCount">{{ green_count }}</div>
         </div>
       </section>
     </aside>
@@ -332,6 +346,7 @@
           <p class="subtitle">แสดงเฉพาะผู้ป่วยที่ถูกเรียกเข้าห้องตรวจ {{ selected_room }}</p>
         </div>
         <div class="room-tools">
+          <span class="sync-status ok" id="syncStatus">อัปเดตอัตโนมัติ</span>
           <span class="room-current">ห้อง {{ selected_room }}</span>
           <a class="room-link" href="{% url 'opd_room_select' %}">เปลี่ยนห้อง</a>
         </div>
@@ -349,7 +364,7 @@
               <th>คำสั่ง</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="opdTableBody">
           {% for q in q_items %}
             {% with v=q.visit %}
             <tr>
@@ -434,6 +449,120 @@
     throw new Error(text.trim().startsWith('<') ? `server returned HTML (${res.status})` : text.slice(0, 160));
   }
 
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function showValue(value, fallback = "-") {
+    return value === null || value === undefined || value === "" ? fallback : escapeHtml(value);
+  }
+
+  function severityBadge(severity) {
+    const sev = severity === "RED" || severity === "YELLOW" ? severity : "GREEN";
+    const cls = sev.toLowerCase();
+    return `<span class="triage-badge ${cls}"><span class="dot"></span>${sev}</span>`;
+  }
+
+  function renderOpdRows(rows) {
+    const tbody = document.getElementById("opdTableBody");
+    if (!tbody) return;
+
+    if (!rows.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-icon">ไม่มีรายการ</div>
+              <div>ยังไม่มีเคสในห้องตรวจ {{ selected_room }}</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = rows.map((row) => {
+      const reason = row.ai_reason || "ยังไม่มีเหตุผลจากการคัดกรอง";
+      return `
+        <tr>
+          <td><span class="visit-badge">#${row.index}</span></td>
+          <td>
+            <div class="patient-name">${escapeHtml(row.patient_name)}</div>
+            <div class="patient-meta">เลขคิว: ${row.queue_id} · Visit #${row.visit_id}</div>
+          </td>
+          <td>${severityBadge(row.severity)}</td>
+          <td>
+            <div class="nurse-summary">
+              <div class="nurse-line">
+                <span class="mini-chip">AI: ${showValue(row.ai_severity)}</span>
+                <span class="mini-chip">พยาบาล: ${showValue(row.nurse_severity, "ยังไม่ยืนยัน")}</span>
+                <span class="mini-chip">Pain: ${showValue(row.pain_score)}</span>
+              </div>
+              <div class="nurse-line">
+                <span class="mini-chip">RR ${showValue(row.rr)}</span>
+                <span class="mini-chip">PR ${showValue(row.pr)}</span>
+                <span class="mini-chip">O2 ${showValue(row.o2sat)}%</span>
+                <span class="mini-chip">BT ${showValue(row.bt)} C</span>
+              </div>
+              <div class="reason" title="${escapeHtml(reason)}">${escapeHtml(reason)}</div>
+            </div>
+          </td>
+          <td>${escapeHtml(row.called_at || "-")}</td>
+          <td>
+            <div class="actions">
+              <a class="btn primary" href="/opd/visit/${row.visit_id}/assessment/">ประเมิน</a>
+              <a class="btn" href="/opd/visit/${row.visit_id}/detail/">ดู</a>
+              <button class="btn red" onclick="setSeverity(${row.visit_id}, 'RED')">แดง</button>
+              <button class="btn yellow" onclick="setSeverity(${row.visit_id}, 'YELLOW')">เหลือง</button>
+              <button class="btn green" onclick="setSeverity(${row.visit_id}, 'GREEN')">เขียว</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function setCount(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function updateCounts(data) {
+    setCount("totalCount", data.total);
+    setCount("redCount", data.counts.RED);
+    setCount("yellowCount", data.counts.YELLOW);
+    setCount("greenCount", data.counts.GREEN);
+    setCount("legendRedCount", data.counts.RED);
+    setCount("legendYellowCount", data.counts.YELLOW);
+    setCount("legendGreenCount", data.counts.GREEN);
+  }
+
+  function setSyncStatus(text, state = "ok") {
+    const el = document.getElementById("syncStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle("ok", state === "ok");
+    el.classList.toggle("error", state === "error");
+  }
+
+  async function refreshOpdList() {
+    try {
+      const res = await fetch("{% url 'opd_list_api' %}", { credentials: "same-origin" });
+      const data = await readJsonResponse(res);
+      if (!data.ok) throw new Error(data.error || "unknown");
+      renderOpdRows(data.rows);
+      updateCounts(data);
+      setSyncStatus("อัปเดตอัตโนมัติ");
+    } catch (err) {
+      setSyncStatus("เชื่อมต่อข้อมูลไม่ได้", "error");
+    }
+  }
+
   async function setSeverity(visitId, sev) {
     try {
       const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
@@ -446,12 +575,15 @@
         body: JSON.stringify({ severity: sev })
       });
       const data = await readJsonResponse(res);
-      if (data.ok) location.reload();
+      if (data.ok) refreshOpdList();
       else alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
     } catch (err) {
       alert('เกิดข้อผิดพลาด: ' + err.message);
     }
   }
+
+  setInterval(refreshOpdList, 5000);
+  refreshOpdList();
 </script>
 </body>
 </html>

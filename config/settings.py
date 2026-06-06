@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -110,6 +110,10 @@ def database_from_url(database_url):
     parsed = urlparse(database_url)
     if parsed.scheme not in ("postgres", "postgresql"):
         raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
+    query_options = dict(parse_qsl(parsed.query))
+    options = {"sslmode": query_options.get("sslmode", os.getenv("DB_SSLMODE", "require"))}
+    if "channel_binding" in query_options:
+        options["channel_binding"] = query_options["channel_binding"]
     return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": parsed.path.lstrip("/"),
@@ -117,7 +121,7 @@ def database_from_url(database_url):
         "PASSWORD": parsed.password or "",
         "HOST": parsed.hostname or "localhost",
         "PORT": str(parsed.port or 5432),
-        "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},
+        "OPTIONS": options,
     }
 
 

@@ -289,13 +289,32 @@
     .detail-table .device-col {
       text-align: left;
     }
-
-    .empty {
-      padding: 28px 18px;
-      color: var(--muted);
-      text-align: center;
+    .detail-table .metric-col {
+      width: 92px;
     }
-
+    .card {
+      padding: 16px 20px;
+    }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+      font-family: 'Sarabun', sans-serif;
+      transition: opacity 0.2s, transform 0.2s;
+      text-decoration: none;
+    }
+    .btn-back:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
     @media (max-width: 900px) {
       .hero, .overview, .wide-note { grid-template-columns: 1fr; }
       .toolbar { justify-content: flex-start; }
@@ -315,9 +334,21 @@
 <div class="wrap">
   <header class="hero">
     <div>
-      <h1 class="title">รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
-      <div class="subtitle">
-        <span>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</span>
+      <h1>รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
+      <div class="muted">ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+    </div>
+    <div class="detail-actions">
+      <a class="btn-back" href="/queues/monitor/">← กลับหน้าติดตาม</a>
+      <a class="btn-back" href="/queues/">← กลับหน้าคิว</a>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="card">
+      <h2>ข้อมูลรายการตรวจ</h2>
+      <div class="row">
+        <span class="pill"><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></span>
+        <span class="pill"><span class="mono">รายการตรวจ {{ visit.id }}</span></span>
         {% with sev=visit.final_severity|upper %}
           <span class="severity {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
             {{ visit.final_severity }}

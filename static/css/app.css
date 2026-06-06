@@ -201,6 +201,10 @@ h3 {
   overflow: hidden;
 }
 
+.card {
+  padding: 16px 20px !important;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
