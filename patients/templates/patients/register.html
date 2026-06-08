@@ -135,7 +135,14 @@
             <textarea name="medications"></textarea>
           </div>
 
-          <!-- ================= SECTION 3: ที่อยู่ ================= -->
+          <!-- ================= SECTION 3: อาการที่มารับบริการ ================= -->
+          <h3>อาการที่มารับบริการ</h3>
+          <div class="field full">
+            <label>อาการของผู้ป่วย</label>
+            <textarea name="note" placeholder="ระบุอาการสำคัญหรือเหตุผลที่มารับบริการ"></textarea>
+          </div>
+
+          <!-- ================= SECTION 4: ที่อยู่ ================= -->
           <h3>ที่อยู่ (เลือก)</h3>
           <div class="grid">
             <div class="field">
@@ -164,12 +171,15 @@
               <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน">
             </div>
           </div>
+          <input id="province_name" name="province" type="hidden">
+          <input id="district_name" name="district" type="hidden">
+          <input id="subdistrict_name" name="subdistrict" type="hidden">
           <div class="hint">
             • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
-            • ระบบจะบันทึกเป็น "โค้ด" (province/district/subdistrict) เพื่อกันชื่อซ้ำ
+            • ระบบจะบันทึกชื่อจังหวัด อำเภอ ตำบล และรหัสไปรษณีย์ไว้ในข้อมูลผู้ป่วย
           </div>
 
-          <!-- ================= SECTION 4: ติดต่อฉุกเฉิน ================= -->
+          <!-- ================= SECTION 5: ติดต่อฉุกเฉิน ================= -->
           <h3>ผู้ติดต่อฉุกเฉิน</h3>
           <div class="grid">
             <div class="field">
@@ -178,15 +188,25 @@
             </div>
 
             <div class="field">
+              <label>ความสัมพันธ์กับผู้ป่วย</label>
+              <select name="emergency_relationship">
+                <option value="">-- เลือก --</option>
+                <option value="FATHER">พ่อ</option>
+                <option value="MOTHER">แม่</option>
+                <option value="SPOUSE">คู่สมรส</option>
+                <option value="CHILD">บุตร</option>
+                <option value="SIBLING">พี่น้อง</option>
+                <option value="RELATIVE">ญาติ</option>
+                <option value="FRIEND">เพื่อน</option>
+                <option value="CAREGIVER">ผู้ดูแล</option>
+                <option value="OTHER">อื่น ๆ</option>
+              </select>
+            </div>
+
+            <div class="field">
               <label>เบอร์โทร</label>
               <input name="emergency_phone">
             </div>
-          </div>
-
-          <!-- ================= SECTION 5: หมายเหตุ ================= -->
-          <h3>อาการ</h3>
-          <div class="field full">
-            <textarea name="note"></textarea>
           </div>
 
           <!-- ================= FOOTER ================= -->
@@ -218,6 +238,9 @@
       const districtSel = document.getElementById("district");
       const subdistrictSel = document.getElementById("subdistrict");
       const postalInput = document.getElementById("postal_code");
+      const provinceNameInput = document.getElementById("province_name");
+      const districtNameInput = document.getElementById("district_name");
+      const subdistrictNameInput = document.getElementById("subdistrict_name");
 
       if (!provinceSel || !districtSel || !subdistrictSel || !postalInput) {
         console.warn("Address elements not found (province/district/subdistrict/postal_code).");
@@ -227,13 +250,18 @@
       function resetDistrict() {
         districtSel.innerHTML = '<option value="">-- เลือกอำเภอ --</option>';
         districtSel.disabled = true;
+        districtNameInput.value = "";
       }
       function resetSubdistrict() {
         subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล --</option>';
         subdistrictSel.disabled = true;
+        subdistrictNameInput.value = "";
       }
       function resetPostal() {
         postalInput.value = "";
+      }
+      function selectedText(select) {
+        return select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : "";
       }
 
       // load provinces
@@ -246,9 +274,11 @@
         resetDistrict();
         resetSubdistrict();
         resetPostal();
+        provinceNameInput.value = "";
 
         const p = list.find(x => x.provinceCode === provinceSel.value);
         if (!p) return;
+        provinceNameInput.value = selectedText(provinceSel);
 
         p.districts.forEach(d => {
           districtSel.add(new Option(d.districtNameTh, d.districtCode));
@@ -259,12 +289,14 @@
       districtSel.addEventListener("change", () => {
         resetSubdistrict();
         resetPostal();
+        districtNameInput.value = "";
 
         const p = list.find(x => x.provinceCode === provinceSel.value);
         if (!p) return;
 
         const d = p.districts.find(x => x.districtCode === districtSel.value);
         if (!d) return;
+        districtNameInput.value = selectedText(districtSel);
 
         d.subdistricts.forEach(s => {
           subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode));
@@ -274,6 +306,7 @@
 
       subdistrictSel.addEventListener("change", () => {
         resetPostal();
+        subdistrictNameInput.value = "";
 
         const p = list.find(x => x.provinceCode === provinceSel.value);
         if (!p) return;
@@ -283,6 +316,7 @@
 
         const s = d.subdistricts.find(x => x.subdistrictCode === subdistrictSel.value);
         if (!s) return;
+        subdistrictNameInput.value = selectedText(subdistrictSel);
 
         postalInput.value = s.postalCode || "";
       });

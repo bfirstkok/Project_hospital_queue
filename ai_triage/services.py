@@ -1,5 +1,5 @@
 ﻿from django.utils import timezone
-from ai_triage.rules import rule_based_triage
+from ai_triage.rules import infer_urgent_symptoms, rule_based_triage
 from ai_triage.ml.predictor import dt_predict
 from queues.models import TriageResult
 
@@ -38,6 +38,11 @@ def explain_vitals(v):
 
     if v.sys_bp is not None and v.sys_bp < 90:
         reasons.append(f"Systolic BP {v.sys_bp} < 90")
+    elif v.sys_bp is not None and v.sys_bp >= 180:
+        reasons.append(f"Systolic BP {v.sys_bp} >= 180")
+
+    if v.dia_bp is not None and v.dia_bp >= 120:
+        reasons.append(f"Diastolic BP {v.dia_bp} >= 120")
 
     if v.pr is not None and v.pr >= 120:
         reasons.append(f"PR/BPM {v.pr} >= 120")
@@ -60,6 +65,15 @@ def explain_vitals(v):
 
     return "; ".join(reasons) or "No critical vital-sign trigger detected"
 
+
+def explain_symptoms(symptoms_text):
+    inferred = infer_urgent_symptoms(symptoms_text)
+    if not inferred:
+        return ""
+
+    labels = [URGENT_SYMPTOM_LABELS.get(x, x) for x in sorted(inferred)]
+    return "พบคำสำคัญจากอาการผู้ป่วย: " + ", ".join(labels)
+
 def apply_ai_triage(visit):
     """
     - อ่าน vital sign
@@ -71,8 +85,12 @@ def apply_ai_triage(visit):
     if not hasattr(visit, "vitals"):
         return None  # ไม่มี vitals
 
-    rule_sev, rule_conf, rule_reason = rule_based_triage(visit.vitals)
+    symptoms_text = getattr(visit, "note", "") or ""
+    rule_sev, rule_conf, rule_reason = rule_based_triage(visit.vitals, symptoms_text=symptoms_text)
     clinical_reason = explain_vitals(visit.vitals)
+    symptom_reason = explain_symptoms(symptoms_text)
+    if symptom_reason:
+        clinical_reason = f"{clinical_reason}; {symptom_reason}"
 
     try:
         model_sev, model_conf, model_reason = dt_predict(visit.vitals)

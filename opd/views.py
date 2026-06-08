@@ -226,7 +226,10 @@ def visit_assessment(request, visit_id: int):
 # -----------------------------
 @login_required
 def opd_visit_detail(request, visit_id: int):
-    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=visit_id)
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "vitals", "triage_result"),
+        pk=visit_id,
+    )
     logs = TelemetryLog.objects.filter(visit=visit).select_related("device").order_by("-ts")[:50]
 
     # ดึงข้อมูล assessment ถ้ามี
@@ -328,7 +331,10 @@ def post_opd_monitor_api(request):
 # -----------------------------
 @login_required
 def post_opd_visit_detail(request, visit_id: int):
-    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=visit_id)
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "vitals", "triage_result"),
+        pk=visit_id,
+    )
 
     # ต้องเป็นเคส FOLLOWUP เท่านั้น
     q = getattr(visit, "queue", None)

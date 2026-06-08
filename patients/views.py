@@ -40,6 +40,7 @@ def register_patient(request):
             visit = Visit.objects.create(
                 patient=patient,
                 registered_at=timezone.now(),
+                note=patient.note,
             )
 
             # สร้าง VitalSign จากข้อมูลที่กรอกในฟอร์ม

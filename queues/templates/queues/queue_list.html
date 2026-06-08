@@ -532,6 +532,24 @@
       background: rgba(0, 212, 170, 0.25);
     }
 
+    .delete-queue-form {
+      display: inline-flex;
+      margin: 0;
+    }
+
+    .action-btn.delete {
+      background: rgba(255, 95, 114, 0.12);
+      color: #ff8a98;
+      border: 1px solid rgba(255, 95, 114, 0.3);
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    .action-btn.delete:hover {
+      background: rgba(255, 95, 114, 0.25);
+      color: #ffd6dc;
+    }
+
     /* ===== EMPTY STATE ===== */
     .empty-state {
       text-align: center;
@@ -678,6 +696,10 @@
                   <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
                   <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
                   <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
+                  <form class="delete-queue-form" method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการรอคิวใช่ไหม?');">
+                    {% csrf_token %}
+                    <button class="action-btn delete" type="submit">ลบคิว</button>
+                  </form>
                 </div>
               </td>
             </tr>

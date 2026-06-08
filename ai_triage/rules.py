@@ -1,4 +1,28 @@
-def rule_based_triage(v):
+SYMPTOM_KEYWORDS = {
+    "chest_pain": ["เจ็บหน้าอก", "แน่นหน้าอก", "ปวดหน้าอก"],
+    "dyspnea": ["หอบ", "เหนื่อยหอบ", "หายใจลำบาก", "หายใจไม่ออก"],
+    "altered_consciousness": ["ซึม", "หมดสติ", "ไม่รู้สึกตัว", "เรียกไม่ตื่น"],
+    "seizure": ["ชัก", "เกร็งกระตุก"],
+    "major_bleeding": ["เลือดออกมาก", "เลือดไหลไม่หยุด", "เสียเลือด"],
+    "severe_pain": ["ปวดรุนแรง", "ปวดมาก", "ปวดที่สุด", "เจ็บมาก"],
+    "high_fever": ["ไข้สูง", "ตัวร้อนมาก"],
+    "severe_accident": ["อุบัติเหตุรุนแรง", "รถชน", "ตกจากที่สูง"],
+}
+
+
+def infer_urgent_symptoms(symptoms_text):
+    text = (symptoms_text or "").strip().lower()
+    if not text:
+        return set()
+
+    inferred = set()
+    for symptom, keywords in SYMPTOM_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            inferred.add(symptom)
+    return inferred
+
+
+def rule_based_triage(v, symptoms_text=""):
     """
     v = VitalSign instance (rr, pr, sys_bp, dia_bp, bt, o2sat)
     return: (severity, confidence, reason)
@@ -10,6 +34,7 @@ def rule_based_triage(v):
     o2 = v.o2sat
     pain_score = getattr(v, "pain_score", None)
     urgent_symptoms = set(getattr(v, "urgent_symptoms", None) or [])
+    urgent_symptoms.update(infer_urgent_symptoms(symptoms_text))
     risk_flags = set(getattr(v, "risk_flags", None) or [])
 
     reasons = []
@@ -54,6 +79,10 @@ def rule_based_triage(v):
         y.append("BT 38-38.9")
     if "high_fever" in urgent_symptoms:
         y.append("High fever symptom")
+    if sys_bp is not None and sys_bp >= 180:
+        y.append("SYS BP >= 180")
+    if v.dia_bp is not None and v.dia_bp >= 120:
+        y.append("DIA BP >= 120")
 
     yellow_risks = {
         "copd_asthma": "COPD/Asthma",

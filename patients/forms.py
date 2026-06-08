@@ -10,9 +10,9 @@ class PatientForm(forms.ModelForm):
             "gender", "age", "phone",
             "hn", "blood_type",
             "height_cm", "weight_kg", "bp_sys", "bp_dia",
-            "province","district","subdistrict",
+            "province","district","subdistrict","postal_code",
             "chronic_diseases", "allergies", "medications",
-            "emergency_name", "emergency_phone",
+            "emergency_name", "emergency_relationship", "emergency_phone",
             "note",
         ]
         widgets = {

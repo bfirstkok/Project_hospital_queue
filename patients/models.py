@@ -16,6 +16,18 @@ class Patient(models.Model):
         ("UNKNOWN", "ไม่ทราบ"),
     ]
 
+    EMERGENCY_RELATIONSHIP_CHOICES = [
+        ("FATHER", "พ่อ"),
+        ("MOTHER", "แม่"),
+        ("SPOUSE", "คู่สมรส"),
+        ("CHILD", "บุตร"),
+        ("SIBLING", "พี่น้อง"),
+        ("RELATIVE", "ญาติ"),
+        ("FRIEND", "เพื่อน"),
+        ("CAREGIVER", "ผู้ดูแล"),
+        ("OTHER", "อื่น ๆ"),
+    ]
+
     # ที่อยู่แบบกดเลือก (ปรับได้ตามจริง)
     ADDRESS_AREA_CHOICES = [
         ("AREA1", "โซน 1"),
@@ -71,6 +83,12 @@ class Patient(models.Model):
     bp_dia = models.PositiveIntegerField(null=True, blank=True)
 
     emergency_name = models.CharField(max_length=120, blank=True, default="")
+    emergency_relationship = models.CharField(
+        max_length=20,
+        choices=EMERGENCY_RELATIONSHIP_CHOICES,
+        blank=True,
+        default="",
+    )
     emergency_phone = models.CharField(max_length=20, blank=True, default="")
 
     note = models.TextField(blank=True, default="")

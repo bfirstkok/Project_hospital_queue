@@ -200,6 +200,17 @@ def discharge_visit(request, visit_id: int):
 
 @login_required
 @require_POST
+def cancel_queue(request, visit_id: int):
+    visit = get_object_or_404(Visit, id=visit_id)
+    q = getattr(visit, "queue", None)
+    if q and q.status == Queue.Status.WAITING:
+        q.status = Queue.Status.CANCELLED
+        q.save(update_fields=["status"])
+    return redirect("queue_list")
+
+
+@login_required
+@require_POST
 def update_severity_api(request, visit_id: int):
     """
     API สำหรับ Dashboard เปลี่ยนสี severity

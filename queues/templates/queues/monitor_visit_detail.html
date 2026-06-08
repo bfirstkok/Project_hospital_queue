@@ -430,19 +430,45 @@
       </div>
       <div class="card-body">
         <div class="profile-grid">
-          <div class="mini"><div class="mini-label">เพศ</div><div class="mini-value">{{ visit.patient.gender|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">ชื่อ</div><div class="mini-value">{{ visit.patient.first_name|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">นามสกุล</div><div class="mini-value">{{ visit.patient.last_name|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">HN</div><div class="mini-value mono">{{ visit.patient.hn|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">เพศ</div><div class="mini-value">{{ visit.patient.get_gender_display|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">อายุ</div><div class="mini-value">{{ visit.patient.age|default:"-" }} ปี</div></div>
           <div class="mini"><div class="mini-label">เลขบัตรประชาชน</div><div class="mini-value mono">{{ visit.patient.national_id|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">เบอร์โทร</div><div class="mini-value mono">{{ visit.patient.phone|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">ส่วนสูง</div><div class="mini-value">{{ visit.patient.height_cm|default:"-" }} cm</div></div>
           <div class="mini"><div class="mini-label">น้ำหนัก</div><div class="mini-value">{{ visit.patient.weight_kg|default:"-" }} kg</div></div>
-          <div class="mini"><div class="mini-label">หมู่เลือด</div><div class="mini-value">{{ visit.patient.blood_type|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">หมู่เลือด</div><div class="mini-value">{{ visit.patient.get_blood_type_display|default:"-" }}</div></div>
+          <div class="mini"><div class="mini-label">ความดันที่กรอก</div><div class="mini-value">{% if visit.patient.bp_sys %}{{ visit.patient.bp_sys }}{% else %}-{% endif %}/{% if visit.patient.bp_dia %}{{ visit.patient.bp_dia }}{% else %}-{% endif %}</div></div>
         </div>
         <div class="wide-note">
+          <div class="note"><b>อาการที่ผู้ป่วยกรอก</b>{% if visit.note %}{{ visit.note }}{% elif visit.patient.note %}{{ visit.patient.note }}{% else %}-{% endif %}</div>
           <div class="note"><b>โรคประจำตัว</b>{{ visit.patient.chronic_diseases|default:"-" }}</div>
           <div class="note"><b>แพ้ยา / อาหาร</b>{{ visit.patient.allergies|default:"-" }}</div>
           <div class="note"><b>ยาที่ใช้ประจำ</b>{{ visit.patient.medications|default:"-" }}</div>
         </div>
+        <div class="wide-note">
+          <div class="note"><b>ที่อยู่</b>
+            {% if visit.patient.subdistrict or visit.patient.district or visit.patient.province or visit.patient.postal_code %}
+              {{ visit.patient.subdistrict|default:"" }}
+              {{ visit.patient.district|default:"" }}
+              {{ visit.patient.province|default:"" }}
+              {{ visit.patient.postal_code|default:"" }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="note"><b>ผู้ติดต่อฉุกเฉิน</b>{{ visit.patient.emergency_name|default:"-" }}</div>
+          <div class="note"><b>ความสัมพันธ์ / เบอร์โทรฉุกเฉิน</b>{{ visit.patient.get_emergency_relationship_display|default:"-" }} / {{ visit.patient.emergency_phone|default:"-" }}</div>
+        </div>
+        {% if visit.triage_result %}
+          <div class="wide-note">
+            <div class="note"><b>AI Severity</b>{{ visit.triage_result.ai_severity|default:"-" }}</div>
+            <div class="note"><b>เหตุผล AI</b>{{ visit.triage_result.ai_reason|default:"-" }}</div>
+            <div class="note"><b>ความมั่นใจ / โมเดล</b>{{ visit.triage_result.confidence|default:"-" }} / {{ visit.triage_result.model_name|default:"-" }}</div>
+          </div>
+        {% endif %}
       </div>
     </section>
 

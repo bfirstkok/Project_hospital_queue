@@ -14,6 +14,7 @@ urlpatterns = [
     path("call/<int:visit_id>/", views.call_visit, name="call_visit"),
     path("monitoring/<int:visit_id>/", views.send_to_monitoring, name="send_to_monitoring"),
     path("discharge/<int:visit_id>/", views.discharge_visit, name="discharge_visit"),
+    path("cancel/<int:visit_id>/", views.cancel_queue, name="cancel_queue"),
     path("api/update-severity/<int:visit_id>/", views.update_severity_api, name="update_severity_api"),
 
     # ✅ /queues/monitor/ = FOLLOWUP monitor (หลัง OPD)
