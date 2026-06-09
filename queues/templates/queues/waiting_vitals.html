@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รอวัดค่าสัญญาณชีพ</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { display: inline-flex; min-height: 34px; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 700; background: rgba(255,255,255,.06); }
+    .btn.primary { background: linear-gradient(135deg, #20d6b5, #4aa3ff); color: #061522; border: 0; }
+    h1 { margin: 0 0 4px; font-size: 26px; }
+    .muted { color: rgba(237,244,255,.62); }
+    .table { width: 100%; border-collapse: collapse; background: rgba(16,27,45,.78); border: 1px solid rgba(174,194,220,.14); border-radius: 10px; overflow: hidden; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid rgba(174,194,220,.1); text-align: left; vertical-align: middle; }
+    th { font-size: 11px; color: #9aa9bd; text-transform: uppercase; letter-spacing: .6px; background: rgba(255,255,255,.04); }
+    .queue-no { color: #5ac8ff; font-weight: 900; }
+    .status { display: inline-flex; padding: 5px 10px; border-radius: 999px; color: #fde68a; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.28); font-weight: 800; font-size: 12px; }
+    .vitals { display: flex; flex-wrap: wrap; gap: 6px; }
+    .vital { padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); font-size: 12px; white-space: nowrap; }
+    .empty { padding: 50px 18px; text-align: center; color: rgba(237,244,255,.55); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <div>
+        <h1>รอวัดค่าสัญญาณชีพ</h1>
+        <div class="muted">ผู้ป่วยที่ลงทะเบียนแล้ว แต่ยังไม่พร้อมเข้าคิวตรวจตามระดับความเร่งด่วน</div>
+      </div>
+      {% include "includes/main_nav.html" %}
+      <a class="btn primary" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>เลขคิวรับข้อมูล</th>
+          <th>ชื่อผู้ป่วย</th>
+          <th>เวลาลงทะเบียน</th>
+          <th>สถานะ</th>
+          <th>Vital signs ล่าสุด</th>
+          <th>คำสั่ง</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in q_items %}
+          {% with v=q.visit vs=q.visit.vitals %}
+          <tr>
+            <td><span class="queue-no">#{{ q.id }}</span></td>
+            <td>{{ v.patient.first_name }} {{ v.patient.last_name }}</td>
+            <td>{{ v.registered_at|date:"H:i" }}</td>
+            <td><span class="status">รอวัดค่า</span></td>
+            <td>
+              <div class="vitals">
+                <span class="vital">HR {{ vs.pr|default:"-" }}</span>
+                <span class="vital">SpO2 {{ vs.o2sat|default:"-" }}</span>
+                <span class="vital">Temp {{ vs.bt|default:"-" }}</span>
+                <span class="vital">RR {{ vs.rr|default:"-" }}</span>
+                <span class="vital">BP {{ vs.sys_bp|default:"-" }}/{{ vs.dia_bp|default:"-" }}</span>
+              </div>
+            </td>
+            <td><a class="btn primary" href="{% url 'nurse_triage_assessment' v.id %}">กรอกค่าด้วยตนเอง</a></td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="6"><div class="empty">ไม่มีผู้ป่วยรอวัดค่าสัญญาณชีพ</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รอยืนยันผล AI</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .nav, .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-flex; min-height: 34px; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 800; background: rgba(255,255,255,.06); cursor: pointer; }
+    .btn.red { color: #fecaca; background: rgba(239,68,68,.17); border-color: rgba(239,68,68,.35); }
+    .btn.yellow { color: #fde68a; background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.34); }
+    .btn.green { color: #86efac; background: rgba(34,197,94,.16); border-color: rgba(34,197,94,.34); }
+    h1 { margin: 0 0 4px; font-size: 26px; }
+    .muted { color: rgba(237,244,255,.62); }
+    .table { width: 100%; border-collapse: collapse; background: rgba(16,27,45,.78); border: 1px solid rgba(174,194,220,.14); border-radius: 10px; overflow: hidden; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid rgba(174,194,220,.1); text-align: left; vertical-align: top; }
+    th { font-size: 11px; color: #9aa9bd; text-transform: uppercase; letter-spacing: .6px; background: rgba(255,255,255,.04); }
+    .ai { display: inline-flex; padding: 5px 10px; border-radius: 999px; background: rgba(138,99,255,.15); color: #c4b5fd; border: 1px solid rgba(138,99,255,.28); font-weight: 900; }
+    .reason { max-width: 360px; line-height: 1.5; color: rgba(237,244,255,.78); }
+    .red-alert { margin-top: 8px; color: #fecaca; font-weight: 900; }
+    .empty { padding: 50px 18px; text-align: center; color: rgba(237,244,255,.55); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <div>
+        <h1>รอยืนยันผล AI</h1>
+        <div class="muted">AI เป็นคำแนะนำ พยาบาลต้องยืนยันหรือปรับระดับก่อนเข้าคิวตรวจ</div>
+      </div>
+      {% include "includes/main_nav.html" %}
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>เลขคิวรับข้อมูล</th>
+          <th>ชื่อผู้ป่วย</th>
+          <th>AI recommendation</th>
+          <th>เหตุผล</th>
+          <th>คำสั่ง</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in q_items %}
+          {% with v=q.visit tr=q.visit.triage_result %}
+          <tr>
+            <td>#{{ q.id }}</td>
+            <td>{{ v.patient.first_name }} {{ v.patient.last_name }}</td>
+            <td>
+              <span class="ai">{{ tr.ai_severity|default:"-" }}</span>
+              {% if tr.ai_severity == "RED" %}<div class="red-alert">แจ้งเตือน RED: ควรพิจารณาเร่งด่วน/monitoring</div>{% endif %}
+            </td>
+            <td><div class="reason">{{ tr.ai_reason|default:"-" }}</div></td>
+            <td>
+              <form method="post" action="{% url 'triage_visit' v.id %}" class="actions">
+                {% csrf_token %}
+                {% if tr.ai_severity %}
+                  <button class="btn" type="submit" name="severity" value="{{ tr.ai_severity }}">ยืนยันตาม AI</button>
+                {% endif %}
+                <button class="btn red" type="submit" name="severity" value="RED">RED</button>
+                <button class="btn yellow" type="submit" name="severity" value="YELLOW">YELLOW</button>
+                <button class="btn green" type="submit" name="severity" value="GREEN">GREEN</button>
+              </form>
+            </td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="5"><div class="empty">ไม่มีรายการรอยืนยันผล AI</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

@@ -337,10 +337,7 @@
       <h1>รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
       <div class="muted">ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
     </div>
-    <div class="detail-actions">
-      <a class="btn-back" href="/queues/monitor/">← กลับหน้าติดตาม</a>
-      <a class="btn-back" href="/queues/">← กลับหน้าคิว</a>
-    </div>
+    {% include "includes/main_nav.html" %}
   </div>
 
   <div class="detail-grid">
@@ -356,10 +353,6 @@
         {% endwith %}
       </div>
     </div>
-    <nav class="toolbar">
-      <a class="btn-link" href="/queues/monitor/">กลับหน้าติดตาม</a>
-      <a class="btn-link" href="/queues/">กลับหน้าคิว</a>
-    </nav>
   </header>
 
   <section class="overview">

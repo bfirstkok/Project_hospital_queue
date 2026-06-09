@@ -20,13 +20,7 @@
         <div class="logo-sub">จัดการคิว · คัดกรอง · เรียกคิว</div>
       </div>
     </div>
-    <div class="nav-pills">
-      <a class="nav-pill" href="{% url 'queue_list' %}">คิว</a>
-      <a class="nav-pill" href="{% url 'opd_list' %}">ห้องตรวจ</a>
-      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
-      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
-      <a class="nav-pill active" href="/patients/register/">ลงทะเบียน</a>
-    </div>
+    {% include "includes/main_nav.html" %}
   </div>
 
   <div class="content">
@@ -37,7 +31,7 @@
           <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก</div>
         {% endif %}
 
-        <form method="post" autocomplete="off">
+        <form id="patientRegisterForm" method="post" autocomplete="off">
           {% csrf_token %}
 
           <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
@@ -211,7 +205,7 @@
 
           <!-- ================= FOOTER ================= -->
           <div class="footer">
-            <button class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
+            <button id="submitPatientBtn" class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
             <a class="btn ghost" href="{% url 'queue_list' %}">ยกเลิก</a>
           </div>
 
@@ -227,6 +221,15 @@
   if (nid) {
     nid.addEventListener("input", () => {
       nid.value = nid.value.replace(/\s+/g, "");
+    });
+  }
+
+  const registerForm = document.getElementById("patientRegisterForm");
+  const submitPatientBtn = document.getElementById("submitPatientBtn");
+  if (registerForm && submitPatientBtn) {
+    registerForm.addEventListener("submit", () => {
+      submitPatientBtn.disabled = true;
+      submitPatientBtn.textContent = "กำลังบันทึก...";
     });
   }
 

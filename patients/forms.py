@@ -8,7 +8,7 @@ class PatientForm(forms.ModelForm):
         fields = [
             "first_name", "last_name", "national_id",
             "gender", "age", "phone",
-            "hn", "blood_type",
+            "blood_type",
             "height_cm", "weight_kg", "bp_sys", "bp_dia",
             "province","district","subdistrict","postal_code",
             "chronic_diseases", "allergies", "medications",

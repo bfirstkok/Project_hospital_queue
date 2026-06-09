@@ -12,9 +12,10 @@ class Visit(models.Model):
 
     registered_at = models.DateTimeField(auto_now_add=True)
     triaged_at = models.DateTimeField(blank=True, null=True)
+    confirmed_at = models.DateTimeField(blank=True, null=True)
     called_at = models.DateTimeField(blank=True, null=True)
 
-    final_severity = models.CharField(max_length=10, choices=Severity.choices, default=Severity.GREEN)
+    final_severity = models.CharField(max_length=10, choices=Severity.choices, blank=True, null=True)
     note = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -43,6 +44,9 @@ class VitalSign(models.Model):
 
 class Queue(models.Model):
     class Status(models.TextChoices):
+        WAITING_VITALS = "WAITING_VITALS", "Waiting vitals"
+        WAITING_CONFIRMATION = "WAITING_CONFIRMATION", "Waiting confirmation"
+        WAITING_QUEUE = "WAITING_QUEUE", "Waiting queue"
         WAITING = "WAITING", "Waiting"
         CALLED = "CALLED", "Called"
         MONITORING = "MONITORING", "Monitoring"
@@ -52,7 +56,7 @@ class Queue(models.Model):
         CANCELLED = "CANCELLED", "Cancelled"
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.WAITING)
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.WAITING_VITALS)
 
     priority = models.IntegerField(default=3)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)

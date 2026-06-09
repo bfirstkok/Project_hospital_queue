@@ -20,6 +20,27 @@ from patients.models import Patient
 from .forms import DevicePairingForm, NurseTriageAssessmentForm
 from .models import Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
 
+SEVERITY_PRIORITY = {"RED": 1, "YELLOW": 2, "GREEN": 3}
+QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
+REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
+
+
+def has_required_vitals(vitals):
+    return bool(vitals and all(getattr(vitals, field) is not None for field in REQUIRED_VITAL_FIELDS))
+
+
+def evaluate_visit_if_vitals_complete(visit):
+    vitals = getattr(visit, "vitals", None)
+    if not has_required_vitals(vitals):
+        return None
+
+    result = apply_ai_triage(visit)
+    q = getattr(visit, "queue", None)
+    if q and q.status == Queue.Status.WAITING_VITALS:
+        q.status = Queue.Status.WAITING_CONFIRMATION
+        q.save(update_fields=["status"])
+    return result
+
 
 # -----------------------------
 # QUEUE
@@ -28,9 +49,9 @@ from .models import Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalS
 def queue_list(request):
     q_items = (
         Queue.objects
-        .select_related("visit", "visit__patient")
-        .filter(status="WAITING")
-        .order_by("priority", "created_at")
+        .select_related("visit", "visit__patient", "visit__triage_result")
+        .filter(status__in=QUEUE_READY_STATUSES)
+        .order_by("priority", "visit__confirmed_at", "created_at")
     )
     
     # Count by severity
@@ -44,6 +65,41 @@ def queue_list(request):
         "yellow_count": yellow_count,
         "green_count": green_count,
     })
+
+
+def _vitals_payload(vitals):
+    if not vitals:
+        return {"hr": None, "o2sat": None, "bt": None, "rr": None, "sys_bp": None, "dia_bp": None}
+    return {
+        "hr": vitals.pr,
+        "o2sat": vitals.o2sat,
+        "bt": vitals.bt,
+        "rr": vitals.rr,
+        "sys_bp": vitals.sys_bp,
+        "dia_bp": vitals.dia_bp,
+    }
+
+
+@login_required
+def waiting_vitals(request):
+    q_items = (
+        Queue.objects
+        .select_related("visit", "visit__patient", "visit__vitals")
+        .filter(status=Queue.Status.WAITING_VITALS)
+        .order_by("created_at")
+    )
+    return render(request, "queues/waiting_vitals.html", {"q_items": q_items})
+
+
+@login_required
+def waiting_confirmation(request):
+    q_items = (
+        Queue.objects
+        .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
+        .filter(status=Queue.Status.WAITING_CONFIRMATION)
+        .order_by("visit__triaged_at", "created_at")
+    )
+    return render(request, "queues/waiting_confirmation.html", {"q_items": q_items})
 
 
 @login_required
@@ -63,8 +119,8 @@ def call_visit(request, visit_id: int):
                 "error": "กรุณาเลือกห้องตรวจ",
             })
 
-        if q.status == "WAITING":
-            q.status = "CALLED"
+        if q.status == Queue.Status.WAITING_QUEUE:
+            q.status = Queue.Status.CALLED
         q.exam_room = int(room)
         q.save(update_fields=["status", "exam_room"])
 
@@ -73,7 +129,7 @@ def call_visit(request, visit_id: int):
 
         return redirect("opd_list")
 
-    if q and q.status == "WAITING":
+    if q and q.status == Queue.Status.WAITING_QUEUE:
         return render(request, "queues/select_exam_room.html", {
             "visit": visit,
             "queue": q,
@@ -136,8 +192,9 @@ def nurse_triage_assessment(request, visit_id: int):
                 ai_result = apply_ai_triage(visit)
                 triage_result = getattr(visit, "triage_result", None)
                 if q:
-                    q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(visit.final_severity, 3)
-                    q.save(update_fields=["priority"])
+                    q.status = Queue.Status.WAITING_CONFIRMATION
+                    q.save(update_fields=["status"])
+                    return redirect("waiting_confirmation")
             else:
                 ai_result = {"draft": True}
     else:
@@ -161,12 +218,13 @@ def triage_visit(request, visit_id: int):
 
     if new_sev in ["RED", "YELLOW", "GREEN"]:
         visit.final_severity = new_sev
-        visit.triaged_at = timezone.now()
-        visit.save(update_fields=["final_severity", "triaged_at"])
+        visit.confirmed_at = timezone.now()
+        visit.save(update_fields=["final_severity", "confirmed_at"])
 
         q = visit.queue
-        q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}[new_sev]
-        q.save(update_fields=["priority"])
+        q.priority = SEVERITY_PRIORITY[new_sev]
+        q.status = Queue.Status.WAITING_QUEUE
+        q.save(update_fields=["priority", "status"])
 
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
@@ -203,7 +261,11 @@ def discharge_visit(request, visit_id: int):
 def cancel_queue(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
     q = getattr(visit, "queue", None)
-    if q and q.status == Queue.Status.WAITING:
+    if q and q.status in {
+        Queue.Status.WAITING_VITALS,
+        Queue.Status.WAITING_CONFIRMATION,
+        Queue.Status.WAITING_QUEUE,
+    }:
         q.status = Queue.Status.CANCELLED
         q.save(update_fields=["status"])
     return redirect("queue_list")
@@ -227,12 +289,13 @@ def update_severity_api(request, visit_id: int):
             return JsonResponse({"ok": False, "error": "Invalid severity"}, status=400)
 
         visit.final_severity = new_sev
-        visit.triaged_at = timezone.now()
-        visit.save(update_fields=["final_severity", "triaged_at"])
+        visit.confirmed_at = timezone.now()
+        visit.save(update_fields=["final_severity", "confirmed_at"])
 
         q = visit.queue
-        q.priority = {"RED": 1, "YELLOW": 2, "GREEN": 3}[new_sev]
-        q.save(update_fields=["priority"])
+        q.priority = SEVERITY_PRIORITY[new_sev]
+        q.status = Queue.Status.WAITING_QUEUE
+        q.save(update_fields=["priority", "status"])
 
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
@@ -345,7 +408,16 @@ def iot_telemetry(request):
         vs.o2sat = vitals.get("o2sat")
     vs.save()
 
-    return JsonResponse({"ok": True, "log_id": log.id})
+    triage_result = evaluate_visit_if_vitals_complete(visit)
+    queue_status = getattr(getattr(visit, "queue", None), "status", None)
+
+    return JsonResponse({
+        "ok": True,
+        "log_id": log.id,
+        "vitals_complete": has_required_vitals(vs),
+        "queue_status": queue_status,
+        "ai": triage_result,
+    })
 
 
 # -----------------------------
@@ -444,7 +516,7 @@ def monitor_latest_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
-        .filter(status="WAITING")
+        .filter(status=Queue.Status.WAITING_QUEUE)
         .annotate(
             last_log_ts=Subquery(latest_log.values("ts")[:1]),
             last_device_id=Subquery(latest_log.values("device__device_id")[:1]),
@@ -496,8 +568,8 @@ def monitor_summary_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient")
-        .filter(status="WAITING")
-        .order_by("priority", "created_at")[:200]
+        .filter(status=Queue.Status.WAITING_QUEUE)
+        .order_by("priority", "visit__confirmed_at", "created_at")[:200]
     )
 
     visit_ids = [q.visit_id for q in q_items]
@@ -621,13 +693,14 @@ def demo_create_visit_queue(request):
     visit = Visit.objects.create(
         patient=patient,
         final_severity=random.choice(["GREEN", "YELLOW", "RED"]),
+        confirmed_at=timezone.now(),
     )
 
     # 3) สร้าง Queue
     priority_map = {"RED": 1, "YELLOW": 2, "GREEN": 3}
     Queue.objects.create(
         visit=visit,
-        status="WAITING",
+        status=Queue.Status.WAITING_QUEUE,
         priority=priority_map.get(visit.final_severity, 3),
     )
 
@@ -670,13 +743,14 @@ def dashboard_demo_create(request):
         patient=patient,
         final_severity=sev,
         triaged_at=timezone.now(),  # ถ้าไม่อยากให้เหมือนคัดกรองแล้ว ลบบรรทัดนี้ได้
+        confirmed_at=timezone.now(),
     )
 
     # --- 4) สร้าง Queue (WAITING) ---
     priority_map = {"RED": 1, "YELLOW": 2, "GREEN": 3}
     q = Queue.objects.create(
         visit=visit,
-        status="WAITING",
+        status=Queue.Status.WAITING_QUEUE,
         priority=priority_map.get(sev, 3),
     )
 

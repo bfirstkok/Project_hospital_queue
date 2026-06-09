@@ -1,6 +1,8 @@
 import json
 
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+from django.urls import reverse
 
 from patients.models import Patient
 from queues.models import Device, DeviceAssignment, Queue, TelemetryLog, Visit, VitalSign
@@ -73,3 +75,111 @@ class IotTelemetryAssignmentTests(TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(TelemetryLog.objects.count(), 0)
+
+    def test_complete_iot_vitals_moves_waiting_vitals_to_confirmation(self):
+        waiting_visit = Visit.objects.create(patient=self.patient, final_severity=None)
+        queue = Queue.objects.create(visit=waiting_visit, status=Queue.Status.WAITING_VITALS)
+        DeviceAssignment.objects.create(device=self.device, visit=waiting_visit)
+
+        response = self.post_telemetry({
+            "visit_id": waiting_visit.id,
+            "vitals": {
+                "bpm": 92,
+                "o2sat": 98,
+                "bt": 37.1,
+                "rr": 18,
+                "sys_bp": 121,
+                "dia_bp": 77,
+            },
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["vitals_complete"])
+
+        queue.refresh_from_db()
+        waiting_visit.refresh_from_db()
+        self.assertEqual(queue.status, Queue.Status.WAITING_CONFIRMATION)
+        self.assertIsNone(waiting_visit.final_severity)
+        self.assertEqual(waiting_visit.triage_result.ai_severity, "GREEN")
+
+
+class QueueWorkflowTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = get_user_model().objects.create_user(
+            username="nurse",
+            password="secret",
+        )
+        self.client.force_login(self.user)
+
+    def register_patient(self):
+        return self.client.post(reverse("register_patient"), {
+            "first_name": "Demo",
+            "last_name": "Queue",
+            "national_id": "1234567890999",
+            "gender": "M",
+            "age": "31",
+            "phone": "0812345678",
+            "blood_type": "UNKNOWN",
+            "bp_sys": "118",
+            "bp_dia": "76",
+            "note": "เวียนหัวเล็กน้อย",
+        })
+
+    def test_qr_registration_starts_waiting_vitals_without_default_green(self):
+        response = self.register_patient()
+
+        self.assertRedirects(response, reverse("waiting_vitals"))
+        visit = Visit.objects.select_related("queue").get()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_VITALS)
+        self.assertIsNone(visit.final_severity)
+        self.assertFalse(hasattr(visit, "triage_result"))
+
+        vitals = VitalSign.objects.get(visit=visit)
+        self.assertEqual(vitals.sys_bp, 118)
+        self.assertEqual(vitals.dia_bp, 76)
+        self.assertIsNone(vitals.rr)
+
+    def test_manual_vitals_then_ai_then_nurse_confirmation_enters_prioritized_queue(self):
+        self.register_patient()
+        visit = Visit.objects.select_related("queue").get()
+
+        response = self.client.post(reverse("nurse_triage_assessment", args=[visit.id]), {
+            "action": "evaluate",
+            "rr": "18",
+            "pr": "84",
+            "sys_bp": "118",
+            "dia_bp": "76",
+            "bt": "37.0",
+            "o2sat": "98",
+            "pain_score": "2",
+            "symptoms": "เวียนหัวเล็กน้อย",
+        })
+        self.assertRedirects(response, reverse("waiting_confirmation"))
+
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_CONFIRMATION)
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.triage_result.ai_severity, "GREEN")
+        self.assertIsNone(visit.triage_result.nurse_severity)
+
+        response = self.client.post(reverse("triage_visit", args=[visit.id]), {
+            "severity": "YELLOW",
+            "nurse_note": "ปรับตามอาการหน้าห้อง",
+        })
+        self.assertRedirects(response, reverse("queue_list"))
+
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        triage = visit.triage_result
+        self.assertEqual(triage.nurse_severity, "YELLOW")
+        self.assertEqual(visit.final_severity, "YELLOW")
+        self.assertIsNotNone(visit.confirmed_at)
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+        self.assertEqual(visit.queue.priority, 2)
+
+        response = self.client.get(reverse("queue_list"))
+        self.assertContains(response, "Demo Queue")
+        self.assertContains(response, "YELLOW")

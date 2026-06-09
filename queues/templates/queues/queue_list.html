@@ -580,13 +580,7 @@
         <div class="logo-sub">จัดการคิว · คัดกรอง · เรียกคิว</div>
       </div>
     </div>
-    <div class="nav-pills">
-      <a class="nav-pill active" href="{% url 'queue_list' %}">คิว</a>
-      <a class="nav-pill" href="{% url 'opd_list' %}">ห้องตรวจ</a>
-      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
-      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
-    </div>
-    <a class="add-btn" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
+    {% include "includes/main_nav.html" %}
   </div>
 
   <div class="content">
@@ -646,7 +640,7 @@
     <div class="main">
       <div class="queue-header">
         <div>
-          <div class="queue-title">รายการคิวรอ</div>
+          <div class="queue-title">รายการคิวพร้อมตรวจ</div>
           <div class="queue-meta">อัปเดตล่าสุด: เพิ่งตอนนี้</div>
         </div>
         <div class="filter-bar">
@@ -660,8 +654,8 @@
             <tr>
               <th>ลำดับ</th>
               <th>ชื่อผู้ป่วย</th>
-              <th>ระดับสุดท้าย</th>
-              <th>AI</th>
+              <th>ระดับที่ยืนยัน</th>
+              <th>AI แนะนำ</th>
               <th>เวลาลงทะเบียน</th>
               <th>คำสั่ง</th>
             </tr>
@@ -673,15 +667,18 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">เลขคิว: {{ q.id }}</div>
+                <div class="patient-age">เลขคิว: {{ q.id }} · {{ q.get_status_display }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}
                   <span class="triage-badge red"><span class="dot"></span>RED</span>
+                  <div class="patient-age" style="color:#ff9aa8; margin-top:6px; font-weight:700;">RED alert</div>
                 {% elif v.final_severity == "YELLOW" %}
                   <span class="triage-badge yellow"><span class="dot"></span>YELLOW</span>
-                {% else %}
+                {% elif v.final_severity == "GREEN" %}
                   <span class="triage-badge green"><span class="dot"></span>GREEN</span>
+                {% else %}
+                  <span class="triage-badge"><span class="dot"></span>-</span>
                 {% endif %}
               </td>
               <td>
@@ -693,6 +690,12 @@
                   <a class="action-btn call" href="{% url 'call_visit' v.id %}">เรียก</a>
                   <a class="action-btn triage" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
                   <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
+                  {% if v.final_severity == "RED" %}
+                    <form class="delete-queue-form" method="post" action="{% url 'send_to_monitoring' v.id %}">
+                      {% csrf_token %}
+                      <button class="action-btn red" type="submit">Monitoring</button>
+                    </form>
+                  {% endif %}
                   <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
                   <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
                   <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>

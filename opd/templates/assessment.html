@@ -287,10 +287,7 @@
       </div>
     </div>
 
-    <nav class="header-actions">
-      <a class="btn" href="{% url 'opd_list' %}">🏥 ห้องตรวจ</a>
-      <a class="btn" href="/queues/">📋 คิว</a>
-    </nav>
+    {% include "includes/main_nav.html" %}
   </header>
 
   <section class="card assessment-card summary-card">

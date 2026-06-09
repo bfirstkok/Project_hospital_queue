@@ -101,6 +101,7 @@
     <div class="patient">
       Visit #{{ visit.id }} · {{ visit.patient.first_name }} {{ visit.patient.last_name }}
     </div>
+    {% include "includes/main_nav.html" %}
 
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
@@ -116,7 +117,6 @@
       </div>
     </form>
 
-    <a class="back" href="{% url 'queue_list' %}">กลับหน้าคิว</a>
   </main>
 </body>
 </html>

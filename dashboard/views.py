@@ -8,7 +8,7 @@ from queues.models import Queue, Visit
 
 @login_required
 def dashboard_view(request):
-    waiting = Queue.objects.filter(status="WAITING")
+    waiting = Queue.objects.filter(status="WAITING_QUEUE")
     called = Queue.objects.filter(status="CALLED")
 
     context = {
@@ -62,7 +62,8 @@ def waiting_time_report(request):
         triage_wait = _minutes_between(visit.registered_at, visit.triaged_at)
         called_wait = _minutes_between(visit.registered_at, visit.called_at)
         status = getattr(getattr(visit, "queue", None), "status", "-")
-        severity_counts[visit.final_severity] = severity_counts.get(visit.final_severity, 0) + 1
+        if visit.final_severity:
+            severity_counts[visit.final_severity] = severity_counts.get(visit.final_severity, 0) + 1
 
         if triage_wait is not None:
             triage_minutes.append(triage_wait)
@@ -108,7 +109,7 @@ def waiting_time_report_csv(request):
         writer.writerow([
             visit.id,
             f"{visit.patient.first_name} {visit.patient.last_name}",
-            visit.final_severity,
+            visit.final_severity or "",
             queue.status if queue else "",
             visit.registered_at,
             visit.triaged_at,

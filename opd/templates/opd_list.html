@@ -287,12 +287,7 @@
         <div class="brand-sub">ประเมินผู้ป่วยตามห้องตรวจ</div>
       </div>
     </div>
-    <nav class="nav-pills">
-      <a class="nav-pill" href="{% url 'queue_list' %}">คิว</a>
-      <a class="nav-pill active" href="{% url 'opd_list' %}">ห้องตรวจ</a>
-      <a class="nav-pill" href="/queues/monitor/">ติดตาม</a>
-      <a class="nav-pill" href="/dashboard/">แดชบอร์ด</a>
-    </nav>
+    {% include "includes/main_nav.html" %}
   </header>
 
   <main class="content">

@@ -77,10 +77,9 @@ def explain_symptoms(symptoms_text):
 def apply_ai_triage(visit):
     """
     - อ่าน vital sign
-    - คำนวณ AI severity
+    - คำนวณ AI severity recommendation
     - บันทึกลง TriageResult
-    - อัปเดต visit.final_severity + triaged_at
-    - อัปเดต queue.priority
+    - ไม่อัปเดต final_severity อัตโนมัติ เพราะต้องให้พยาบาลยืนยัน
     """
     if not hasattr(visit, "vitals"):
         return None  # ไม่มี vitals
@@ -115,13 +114,7 @@ def apply_ai_triage(visit):
     triage_obj.ai_reason = clinical_reason
     triage_obj.save()
 
-    # แนะนำสีเข้า visit (พยาบาลยังแก้ได้ภายหลัง)
-    visit.final_severity = sev
     visit.triaged_at = timezone.now()
-    visit.save()
-
-    if hasattr(visit, "queue"):
-        visit.queue.priority = SEV_TO_PRIORITY[sev]
-        visit.queue.save()
+    visit.save(update_fields=["triaged_at"])
 
     return {"severity": sev, "confidence": conf, "reason": reason}

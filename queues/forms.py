@@ -79,7 +79,7 @@ class NurseTriageAssessmentForm(forms.Form):
 class DevicePairingForm(forms.Form):
     visit = forms.ModelChoiceField(
         queryset=Visit.objects.select_related("patient", "queue").filter(
-            queue__status__in=["WAITING", "MONITORING", "FOLLOWUP"]
+            queue__status__in=["WAITING_VITALS", "WAITING_QUEUE", "MONITORING", "FOLLOWUP"]
         ).exclude(device_assignments__is_active=True).order_by("queue__priority", "registered_at"),
         label="Visit",
         required=True,

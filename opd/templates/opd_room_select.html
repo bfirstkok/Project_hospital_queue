@@ -107,6 +107,7 @@
     <div class="eyebrow">Doctor workspace</div>
     <h1>เลือกห้องตรวจ</h1>
     <p class="hint">หลังเลือกห้อง ระบบจะแสดงเฉพาะรายชื่อผู้ป่วยที่ถูกเรียกเข้าห้องนั้น</p>
+    {% include "includes/main_nav.html" %}
 
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
@@ -122,10 +123,6 @@
       </div>
     </form>
 
-    <div class="nav">
-      <a class="link" href="{% url 'queue_list' %}">กลับหน้าคิว</a>
-      <a class="link" href="/dashboard/">แดชบอร์ด</a>
-    </div>
   </main>
 </body>
 </html>

@@ -78,7 +78,7 @@
         <h1>OPD Triage Assessment</h1>
         <div class="muted">รหัส Visit #{{ visit.id }} - {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
       </div>
-      <a href="{% url 'queue_list' %}">กลับหน้าคิว</a>
+      {% include "includes/main_nav.html" %}
     </div>
 
     <form method="post" class="card" novalidate>

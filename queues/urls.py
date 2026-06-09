@@ -7,6 +7,8 @@ from opd import views as opd_views
 
 urlpatterns = [
     path("", views.queue_list, name="queue_list"),
+    path("waiting-vitals/", views.waiting_vitals, name="waiting_vitals"),
+    path("waiting-confirmation/", views.waiting_confirmation, name="waiting_confirmation"),
 
     # queue actions
     path("assessment/<int:visit_id>/", views.nurse_triage_assessment, name="nurse_triage_assessment"),
