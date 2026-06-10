@@ -7,13 +7,30 @@ The current concept focuses on clinical monitoring and queue prioritization. GPS
 ## Core Workflow
 
 1. Staff registers a patient.
-2. Nurse opens OPD Triage Assessment and enters symptoms plus vital signs.
-3. AI suggests RED, YELLOW, or GREEN severity.
-4. Nurse confirms or overrides the AI result.
-5. Queue is ordered by severity priority and registration time.
-6. RED patients or patients selected by the nurse can be sent to Monitoring Zone.
-7. Monitoring Zone shows live vital signs, online/offline status, and clinical alerts.
-8. Dashboard provides AI evaluation and waiting-time reports.
+2. The visit starts in `WAITING_VITALS`.
+3. Nurse opens OPD Triage Assessment and enters symptoms plus vital signs.
+4. AI suggests RED, YELLOW, or GREEN severity after required vital signs are complete.
+5. The visit moves to `WAITING_CONFIRMATION` so the nurse can confirm or override the AI result.
+6. Confirmed visits move to `WAITING_QUEUE`, ordered by severity priority and confirmation time.
+7. Staff calls a patient and selects OPD exam room 1, 2, or 3.
+8. OPD staff complete the room assessment, including OPD urgency and follow-up information.
+9. Cases can finish as `OPD_DONE`, move to `FOLLOWUP`, or be sent to `MONITORING`.
+10. Monitoring pages show live vital signs, online/offline status, and clinical alerts.
+11. Dashboard provides AI evaluation and waiting-time reports.
+
+## Queue States
+
+```text
+WAITING_VITALS        Patient registered, waiting for vital signs
+WAITING_CONFIRMATION  AI triage completed, waiting for nurse confirmation
+WAITING_QUEUE         Confirmed and ready to be called
+CALLED                Sent to an OPD exam room
+MONITORING            Active post-OPD monitoring case
+OPD_DONE              OPD visit completed
+FOLLOWUP              Follow-up required
+DISCHARGED            Monitoring case discharged
+CANCELLED             Queue cancelled before completion
+```
 
 ## Severity Logic
 
@@ -37,16 +54,34 @@ Rule-based fallback thresholds:
 - YELLOW: `O2Sat 95-96`, `RR 21-30`, `PR/BPM >= 120`, `BT 38-38.9`
 - GREEN: no RED/YELLOW trigger
 
-The Decision Tree model is used first. If the model cannot be loaded, the system falls back to the rule-based triage logic.
+The Decision Tree model is attempted during AI triage, but the final AI recommendation is guarded by rule-based clinical logic. If the model cannot be loaded, the system falls back to the rule-based triage logic.
+
+## OPD Urgency Logic
+
+OPD room assessment stores a separate `VisitAssessment` and computes OPD urgency:
+
+```text
+RED    Known COPD/Asthma, pain score >= 7, FBS >= 300, K < 3.5, BT >= 39
+YELLOW Monk, age >= 80, child under 5
+NORMAL No OPD urgency trigger
+```
+
+If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD assessment.
 
 ## Key Features
 
 - Patient registration
+- Auto-generated 6-digit HN
 - OPD Triage Assessment
 - AI result with confidence and clinical reason
 - Nurse confirmation stored separately from AI prediction
-- Queue ordered by priority and registration time
-- Monitoring Zone for active monitoring cases
+- Queue ordered by severity priority and confirmation time
+- Waiting-vitals and waiting-confirmation worklists
+- OPD exam room selection
+- OPD room queue with live refresh API
+- OPD assessment and visit detail pages
+- Post-OPD Monitoring Zone for active monitoring cases
+- Separate waiting-monitor endpoints for pre-OPD monitoring
 - IoT telemetry for BPM, SpO2, temperature, RR, and BP
 - Device Pairing page
 - Before-After Waiting Time Report
@@ -59,16 +94,26 @@ The Decision Tree model is used first. If the model cannot be loaded, the system
 
 ```text
 /                         Login
-/queues/                  Queue
+/queues/                  Confirmed Queue
+/queues/waiting-vitals/   Waiting Vitals
+/queues/waiting-confirmation/ Waiting Confirmation
 /queues/assessment/<id>/  OPD Triage Assessment
-/queues/monitor/          Monitoring Zone
+/queues/call/<id>/        Select OPD Exam Room
+/queues/monitor/          Post-OPD Monitoring Zone
+/queues/monitor/waiting/  Waiting Queue Monitor
 /queues/devices/pairing/  Device Pairing
+/api/iot/telemetry/       IoT Telemetry API
+/queues/api/iot/telemetry/ IoT Telemetry API alias
 /dashboard/               Dashboard
 /dashboard/reports/waiting-time/      Waiting Time Report
 /dashboard/reports/waiting-time.csv   Waiting Time CSV Export
 /dashboard/ai-evaluation/             AI Evaluation
 /patients/register/       Patient Registration
-/opd/                     OPD List
+/opd/rooms/               OPD Room Selection
+/opd/                     OPD Room Queue
+/opd/api/list/            OPD Room Queue API
+/opd/visit/<id>/assessment/ OPD Assessment
+/opd/visit/<id>/detail/   OPD Visit Detail
 ```
 
 ## Tech Stack
@@ -103,7 +148,11 @@ Project_hospital_queue/
 ├── opd/
 ├── patients/
 ├── queues/
+├── scripts/
 ├── static/
+│   ├── css/
+│   ├── data/
+│   └── images/
 ├── manage.py
 └── requirements.txt
 ```
@@ -183,6 +232,16 @@ If using the existing Supabase data, `seed_demo` and `createsuperuser` are optio
 
 ## Run Locally
 
+macOS/Linux:
+
+```bash
+cd /Volumes/externalhhd/Project_hospital_queue
+.venv/bin/python manage.py migrate
+DEBUG=True ALLOWED_HOSTS=127.0.0.1,localhost .venv/bin/python manage.py runserver 127.0.0.1:8000
+```
+
+Windows PowerShell:
+
 ```powershell
 cd "F:\Code\code web\Project_hospital_queue"
 .\.venv\Scripts\python.exe manage.py migrate
@@ -212,6 +271,14 @@ Change the demo password before production or public deployment.
 
 ## Seed Demo Data
 
+macOS/Linux:
+
+```bash
+.venv/bin/python manage.py seed_demo
+```
+
+Windows PowerShell:
+
 ```powershell
 .\.venv\Scripts\python.exe manage.py seed_demo
 ```
@@ -227,6 +294,14 @@ This creates:
 ## AI Training
 
 Train or regenerate the model:
+
+macOS/Linux:
+
+```bash
+.venv/bin/python ai_triage/ml/train_dt.py
+```
+
+Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\python.exe ai_triage\ml\train_dt.py
