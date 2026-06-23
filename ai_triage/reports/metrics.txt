@@ -1,17 +1,26 @@
-Accuracy: 0.98
+Dataset: ai_triage/data/triage_dataset.csv
+Model name: RandomForestClassifier
+Label source: KTAS_expert
+Severity mapping: KTAS 1-2=RED, KTAS 3=YELLOW, KTAS 4-5=GREEN
+Data leakage columns excluded: KTAS_expert, KTAS_RN, Error_group, mistriage, Diagnosis in ED, Disposition, Length of stay_min, KTAS duration_min
+Rows after cleaning: 564
+Numeric features: group, age, patients_number_per_hour, nrs_pain, rr, pr, sys_bp, dia_bp, bt, o2sat
+Text features: chief_complain
+Categorical features: sex, arrival_mode, injury, mental, pain
+Accuracy: 0.7256637168141593
 
 Confusion Matrix (labels = GREEN, YELLOW, RED):
-[[  0  20   0]
- [  0 177   0]
- [  0   0 803]]
+[[30  7  3]
+ [ 8 29  6]
+ [ 0  7 23]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-       GREEN       0.00      0.00      0.00        20
-      YELLOW       0.90      1.00      0.95       177
-         RED       1.00      1.00      1.00       803
+       GREEN       0.79      0.75      0.77        40
+      YELLOW       0.67      0.67      0.67        43
+         RED       0.72      0.77      0.74        30
 
-    accuracy                           0.98      1000
-   macro avg       0.63      0.67      0.65      1000
-weighted avg       0.96      0.98      0.97      1000
+    accuracy                           0.73       113
+   macro avg       0.73      0.73      0.73       113
+weighted avg       0.73      0.73      0.73       113
