@@ -93,7 +93,7 @@ def apply_ai_triage(visit):
 
     try:
         model_sev, model_conf, model_reason = dt_predict(visit.vitals)
-        model_name = "decision_tree_v1_guarded_by_rules"
+        model_name = f"{model_reason}_guarded_by_rules"
     except Exception:
         model_sev, model_conf, model_reason = rule_sev, rule_conf, rule_reason
         model_name = "rule_based_fallback"
