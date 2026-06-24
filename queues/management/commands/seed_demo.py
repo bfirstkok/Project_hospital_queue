@@ -10,11 +10,66 @@ from queues.models import Device, DeviceAssignment, Queue, TelemetryLog, TriageR
 
 
 SEED_PATIENTS = [
-    ("Demo Red", "Patient", "9000000000001", "RED", {"rr": 34, "pr": 128, "sys_bp": 86, "dia_bp": 58, "bt": 39.2, "o2sat": 91}),
-    ("Demo Yellow", "Patient", "9000000000002", "YELLOW", {"rr": 24, "pr": 118, "sys_bp": 112, "dia_bp": 74, "bt": 38.4, "o2sat": 95}),
-    ("Demo Green", "Patient", "9000000000003", "GREEN", {"rr": 18, "pr": 82, "sys_bp": 122, "dia_bp": 78, "bt": 36.8, "o2sat": 98}),
-    ("Monitor Red", "Patient", "9000000000004", "RED", {"rr": 32, "pr": 132, "sys_bp": 92, "dia_bp": 60, "bt": 38.9, "o2sat": 93}),
-    ("Follow Up", "Patient", "9000000000005", "YELLOW", {"rr": 22, "pr": 104, "sys_bp": 130, "dia_bp": 84, "bt": 37.8, "o2sat": 96}),
+    {
+        "name": ("Demo Red", "Emergency"),
+        "national_id": "9000000000001",
+        "ai_severity": "RED",
+        "nurse_severity": "RED",
+        "confidence": 0.91,
+        "note": "Severe dyspnea with low oxygen saturation",
+        "ai_reason": "O2Sat 91% < 95; RR 34 > 30; Systolic BP 86 < 90; rule guardrail active",
+        "nurse_note": "Confirmed RED due to unstable vital signs.",
+        "queue_status": Queue.Status.WAITING_QUEUE,
+        "vitals": {"rr": 34, "pr": 128, "sys_bp": 86, "dia_bp": 58, "bt": 39.2, "o2sat": 91},
+    },
+    {
+        "name": ("Demo Yellow", "Override"),
+        "national_id": "9000000000002",
+        "ai_severity": "GREEN",
+        "nurse_severity": "YELLOW",
+        "confidence": 0.64,
+        "note": "Fever with persistent abdominal pain",
+        "ai_reason": "Model suggested GREEN; Rule guardrail applied (model suggested GREEN, rule result YELLOW)",
+        "nurse_note": "Override to YELLOW because pain and fever need urgent review.",
+        "queue_status": Queue.Status.WAITING_QUEUE,
+        "vitals": {"rr": 24, "pr": 118, "sys_bp": 112, "dia_bp": 74, "bt": 38.4, "o2sat": 95},
+    },
+    {
+        "name": ("Demo Green", "Stable"),
+        "national_id": "9000000000003",
+        "ai_severity": "GREEN",
+        "nurse_severity": "GREEN",
+        "confidence": 0.88,
+        "note": "Mild cough, stable vital signs",
+        "ai_reason": "No critical vital-sign trigger detected; rule guardrail active",
+        "nurse_note": "Confirmed GREEN after assessment.",
+        "queue_status": Queue.Status.WAITING_QUEUE,
+        "vitals": {"rr": 18, "pr": 82, "sys_bp": 122, "dia_bp": 78, "bt": 36.8, "o2sat": 98},
+    },
+    {
+        "name": ("Demo Pending", "Confirmation"),
+        "national_id": "9000000000004",
+        "ai_severity": "RED",
+        "nurse_severity": None,
+        "confidence": 0.86,
+        "note": "Shortness of breath, waiting for nurse confirmation",
+        "ai_reason": "O2Sat 93% < 95; RR 32 > 30; nurse confirmation required",
+        "nurse_note": "",
+        "queue_status": Queue.Status.WAITING_CONFIRMATION,
+        "vitals": {"rr": 32, "pr": 132, "sys_bp": 92, "dia_bp": 60, "bt": 38.9, "o2sat": 93},
+    },
+    {
+        "name": ("Monitor Yellow", "Followup"),
+        "national_id": "9000000000005",
+        "ai_severity": "YELLOW",
+        "nurse_severity": "YELLOW",
+        "confidence": 0.79,
+        "note": "Follow-up case with borderline respiratory rate",
+        "ai_reason": "RR 22 elevated; O2Sat 96% borderline; rule guardrail active",
+        "nurse_note": "Confirmed YELLOW for follow-up monitoring.",
+        "queue_status": Queue.Status.FOLLOWUP,
+        "vitals": {"rr": 22, "pr": 104, "sys_bp": 130, "dia_bp": 84, "bt": 37.8, "o2sat": 96},
+    },
 ]
 
 
@@ -33,7 +88,11 @@ class Command(BaseCommand):
             )
             devices.append(device)
 
-        for idx, (first_name, last_name, national_id, severity, vitals) in enumerate(SEED_PATIENTS):
+        for idx, demo in enumerate(SEED_PATIENTS):
+            first_name, last_name = demo["name"]
+            national_id = demo["national_id"]
+            final_severity = demo["nurse_severity"]
+            vitals = demo["vitals"]
             patient, _ = Patient.objects.update_or_create(
                 national_id=national_id,
                 defaults={
@@ -55,37 +114,36 @@ class Command(BaseCommand):
                     registered_at=now - timedelta(minutes=45 - idx * 6),
                     triaged_at=now - timedelta(minutes=35 - idx * 5),
                     called_at=now - timedelta(minutes=20 - idx * 3) if idx in [1, 2, 4] else None,
-                    final_severity=severity,
-                    note="Demo clinical symptoms for presentation",
+                    confirmed_at=now - timedelta(minutes=30 - idx * 4) if final_severity else None,
+                    final_severity=final_severity,
+                    note=demo["note"],
                 )
             else:
-                visit.final_severity = severity
+                visit.final_severity = final_severity
                 visit.triaged_at = visit.triaged_at or now - timedelta(minutes=20)
-                visit.save(update_fields=["final_severity", "triaged_at"])
+                visit.confirmed_at = visit.confirmed_at or (now - timedelta(minutes=15) if final_severity else None)
+                visit.note = demo["note"]
+                visit.save(update_fields=["final_severity", "triaged_at", "confirmed_at", "note"])
 
             VitalSign.objects.update_or_create(visit=visit, defaults=vitals)
 
             TriageResult.objects.update_or_create(
                 visit=visit,
                 defaults={
-                    "ai_severity": severity,
-                    "nurse_severity": severity,
-                    "model_name": "decision_tree_v1",
-                    "confidence": 0.86,
+                    "ai_severity": demo["ai_severity"],
+                    "nurse_severity": demo["nurse_severity"],
+                    "model_name": "random_forest_v1_guarded_by_rules",
+                    "confidence": demo["confidence"],
+                    "ai_reason": demo["ai_reason"],
+                    "nurse_note": demo["nurse_note"],
                 },
             )
-
-            status = "WAITING"
-            if idx == 3:
-                status = "MONITORING"
-            elif idx == 4:
-                status = "FOLLOWUP"
 
             queue, _ = Queue.objects.update_or_create(
                 visit=visit,
                 defaults={
-                    "status": status,
-                    "priority": {"RED": 1, "YELLOW": 2, "GREEN": 3}[severity],
+                    "status": demo["queue_status"],
+                    "priority": {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(final_severity or demo["ai_severity"], 3),
                 },
             )
 
@@ -113,6 +171,10 @@ class Command(BaseCommand):
                     dia_bp=max(35, vitals["dia_bp"] + random.randint(-3, 3)),
                 )
 
-            self.stdout.write(f"Seeded visit #{visit.id} queue #{queue.id} {severity} {status}")
+            self.stdout.write(
+                f"Seeded visit #{visit.id} queue #{queue.id} "
+                f"AI={demo['ai_severity']} nurse={final_severity or 'PENDING'} "
+                f"status={demo['queue_status']}"
+            )
 
         self.stdout.write(self.style.SUCCESS("Demo data seeded."))

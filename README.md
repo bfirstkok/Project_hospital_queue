@@ -32,6 +32,16 @@ The AI result is decision support only. The final triage decision still requires
 10. Monitoring pages show live vital signs, online/offline status, and clinical alerts.
 11. Dashboard provides AI evaluation and waiting-time reports.
 
+## Demo Flow
+
+For presentation, show the clinical workflow in this order:
+
+```text
+Patient registration -> Nurse vital signs -> AI suggestion -> Rule guardrail -> Nurse confirmation -> Queue
+```
+
+The demo data includes RED, YELLOW, and GREEN cases, plus a nurse override example where the AI suggestion differs from the final nurse-confirmed triage level.
+
 ## Queue States
 
 ```text

@@ -230,7 +230,7 @@
             {% endif %}
           </div>
           <div class="summary-item">
-            <div class="summary-label">Nurse Final Decision</div>
+            <div class="summary-label">Nurse Final Confirmation</div>
             <div class="summary-value">{{ triage_result.nurse_severity|default:"Pending confirmation" }}</div>
             {% if visit.final_severity %}
               <div class="summary-note">Final queue severity: {{ visit.final_severity }}</div>
