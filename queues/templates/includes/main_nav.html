@@ -82,9 +82,11 @@
 </style>
 <nav class="opd-main-tabs" aria-label="หลัก">
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_vitals' %}active{% endif %}" href="{% url 'waiting_vitals' %}">รอวัดค่า</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'queue_list' %}active{% endif %}" href="{% url 'queue_list' %}">คิว</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_confirmation' %}active{% endif %}" href="{% url 'waiting_confirmation' %}">รอยืนยัน</a>
+  <a class="opd-main-tab {% if request.resolver_match.url_name == 'queue_list' %}active{% endif %}" href="{% url 'queue_list' %}">คิว</a>
+  <a class="opd-main-tab {% if request.resolver_match.url_name == 'patient_search' or request.resolver_match.url_name == 'patient_history' %}active{% endif %}" href="{% url 'patient_search' %}">ผู้ป่วย</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'opd_list' or request.resolver_match.url_name == 'opd_room_select' or request.resolver_match.url_name == 'visit_assessment' or request.resolver_match.url_name == 'opd_visit_detail' %}active{% endif %}" href="{% url 'opd_list' %}">ห้องตรวจ</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'monitor_dashboard' or request.resolver_match.url_name == 'followup_visit_detail' or request.resolver_match.url_name == 'waiting_monitor_dashboard' or request.resolver_match.url_name == 'waiting_monitor_visit_detail' %}active{% endif %}" href="/queues/monitor/">ติดตาม</a>
   <a class="opd-main-tab {% if request.resolver_match.app_name == 'dashboard' or request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}" href="/dashboard/">แดชบอร์ด</a>
+  <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_time_report' %}active{% endif %}" href="{% url 'dashboard:waiting_time_report' %}">รายงาน</a>
 </nav>

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
     body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
     .top { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 18px; }
     .nav, .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .btn { display: inline-flex; min-height: 34px; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 800; background: rgba(255,255,255,.06); cursor: pointer; }
@@ -25,6 +25,37 @@
     .reason { max-width: 360px; line-height: 1.5; color: rgba(237,244,255,.78); }
     .red-alert { margin-top: 8px; color: #fecaca; font-weight: 900; }
     .empty { padding: 50px 18px; text-align: center; color: rgba(237,244,255,.55); }
+    .patient-name { font-weight: 900; color: #f8fbff; }
+    .detail-box { margin-top: 10px; }
+    .detail-open { color: #dbeafe; background: rgba(56,189,248,.11); border-color: rgba(56,189,248,.28); }
+    .patient-modal { width: min(920px, calc(100vw - 32px)); max-height: min(820px, calc(100vh - 48px)); padding: 0; color: #edf4ff; background: #0b1628; border: 1px solid rgba(174,194,220,.22); border-radius: 12px; box-shadow: 0 24px 90px rgba(0,0,0,.52); overflow: hidden; }
+    .patient-modal::backdrop { background: rgba(2,8,20,.72); backdrop-filter: blur(3px); }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid rgba(174,194,220,.12); background: rgba(255,255,255,.04); }
+    .modal-title { margin: 0; font-size: 20px; color: #f8fbff; }
+    .modal-subtitle { margin-top: 4px; color: rgba(237,244,255,.62); font-size: 13px; }
+    .modal-close { min-width: 38px; justify-content: center; padding: 0 10px; }
+    .detail-content { max-height: calc(100vh - 190px); padding: 18px 20px 20px; overflow: auto; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .detail-section { min-width: 0; padding: 12px; border: 1px solid rgba(174,194,220,.12); border-radius: 10px; background: rgba(255,255,255,.035); }
+    .detail-section h3 { margin: 0 0 8px; font-size: 13px; color: #7dd3fc; }
+    .info-list { display: grid; gap: 7px; margin: 0; }
+    .info-row { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; line-height: 1.45; }
+    .info-row dt { color: rgba(237,244,255,.58); }
+    .info-row dd { margin: 0; color: rgba(237,244,255,.88); overflow-wrap: anywhere; }
+    .vital-value { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
+    .badge.red { color: #fecaca; background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.38); }
+    .badge.yellow { color: #fde68a; background: rgba(245,158,11,.17); border: 1px solid rgba(245,158,11,.36); }
+    @media (max-width: 860px) {
+      .top { align-items: flex-start; flex-direction: column; }
+      .table { display: block; overflow-x: auto; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .info-row { grid-template-columns: 112px minmax(0, 1fr); }
+      .actions { min-width: 230px; }
+      .patient-modal { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+      .modal-head { padding: 14px; }
+      .detail-content { padding: 14px; }
+    }
   </style>
 </head>
 <body>
@@ -49,10 +80,106 @@
       </thead>
       <tbody>
         {% for q in q_items %}
-          {% with v=q.visit tr=q.visit.triage_result %}
+          {% with v=q.visit tr=q.visit.triage_result vs=q.visit.vitals p=q.visit.patient %}
           <tr>
             <td>#{{ q.id }}</td>
-            <td>{{ v.patient.first_name }} {{ v.patient.last_name }}</td>
+            <td>
+              <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
+              <div class="detail-box">
+                <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย / Vital signs</button>
+                <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
+                  <div class="modal-head">
+                    <div>
+                      <h2 class="modal-title">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</h2>
+                      <div class="modal-subtitle">คิว #{{ q.id }} · Visit #{{ v.id }} · ตรวจข้อมูลก่อนยืนยันผล AI</div>
+                    </div>
+                    <form method="dialog">
+                      <button class="btn modal-close" type="submit">ปิด</button>
+                    </form>
+                  </div>
+                  <div class="detail-content">
+                    <div class="detail-grid">
+                      <section class="detail-section">
+                        <h3>ข้อมูลผู้ป่วย</h3>
+                        <dl class="info-list">
+                          <div class="info-row"><dt>ชื่อ-นามสกุล</dt><dd>{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</dd></div>
+                          <div class="info-row"><dt>อายุ</dt><dd>{{ p.age|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>เพศ</dt><dd>{{ p.get_gender_display|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>เบอร์โทร</dt><dd>{{ p.phone|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>HN</dt><dd>{{ p.hn|default:"-" }}</dd></div>
+                        </dl>
+                      </section>
+
+                      <section class="detail-section">
+                        <h3>อาการและข้อมูลสุขภาพ</h3>
+                        <dl class="info-list">
+                          <div class="info-row"><dt>อาการ</dt><dd>{{ v.note|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>โรคประจำตัว</dt><dd>{{ p.chronic_diseases|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>แพ้ยา/อาหาร</dt><dd>{{ p.allergies|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>ยาที่ใช้ประจำ</dt><dd>{{ p.medications|default:"-" }}</dd></div>
+                        </dl>
+                      </section>
+
+                      <section class="detail-section">
+                        <h3>Vital signs</h3>
+                        <dl class="info-list">
+                          <div class="info-row">
+                            <dt>RR</dt>
+                            <dd><span class="vital-value">{{ vs.rr|default:"-" }}{% if vs.rr > 30 %}<span class="badge red">RED</span>{% endif %}</span></dd>
+                          </div>
+                          <div class="info-row">
+                            <dt>PR/BPM</dt>
+                            <dd><span class="vital-value">{{ vs.pr|default:"-" }}{% if vs.pr >= 120 %}<span class="badge yellow">YELLOW/RED</span>{% endif %}</span></dd>
+                          </div>
+                          <div class="info-row">
+                            <dt>Systolic BP</dt>
+                            <dd><span class="vital-value">{{ vs.sys_bp|default:"-" }}{% if vs.sys_bp < 90 %}<span class="badge red">RED</span>{% endif %}</span></dd>
+                          </div>
+                          <div class="info-row"><dt>Diastolic BP</dt><dd>{{ vs.dia_bp|default:"-" }}</dd></div>
+                          <div class="info-row">
+                            <dt>BT</dt>
+                            <dd>
+                              <span class="vital-value">
+                                {{ vs.bt|default:"-" }}
+                                {% if vs.bt >= 39 %}
+                                  <span class="badge red">RED</span>
+                                {% elif vs.bt >= 38 %}
+                                  <span class="badge yellow">YELLOW</span>
+                                {% endif %}
+                              </span>
+                            </dd>
+                          </div>
+                          <div class="info-row">
+                            <dt>O2 Sat</dt>
+                            <dd><span class="vital-value">{{ vs.o2sat|default:"-" }}{% if vs.o2sat < 95 %}<span class="badge red">RED</span>{% endif %}</span></dd>
+                          </div>
+                          <div class="info-row"><dt>pain_score</dt><dd>{{ vs.pain_score|default:"-" }}</dd></div>
+                        </dl>
+                      </section>
+
+                      <section class="detail-section">
+                        <h3>ข้อมูลจากฟอร์มคัดกรอง</h3>
+                        <dl class="info-list">
+                          <div class="info-row"><dt>urgent_symptoms</dt><dd>{{ vs.urgent_symptoms|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>risk_flags</dt><dd>{{ vs.risk_flags|default:"-" }}</dd></div>
+                        </dl>
+                      </section>
+
+                      <section class="detail-section">
+                        <h3>ผล AI</h3>
+                        <dl class="info-list">
+                          <div class="info-row"><dt>ai_severity</dt><dd>{{ tr.ai_severity|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>confidence</dt><dd>{{ tr.confidence|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>ai_reason</dt><dd>{{ tr.ai_reason|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>nurse_severity</dt><dd>{{ tr.nurse_severity|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>nurse_note</dt><dd>{{ tr.nurse_note|default:"-" }}</dd></div>
+                        </dl>
+                      </section>
+                    </div>
+                  </div>
+                </dialog>
+              </div>
+            </td>
             <td>
               <span class="ai">{{ tr.ai_severity|default:"-" }}</span>
               {% if tr.ai_severity == "RED" %}<div class="red-alert">แจ้งเตือน RED: ควรพิจารณาเร่งด่วน/monitoring</div>{% endif %}
@@ -77,5 +204,23 @@
       </tbody>
     </table>
   </main>
+  <script>
+    document.querySelectorAll(".js-open-modal").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.target);
+        if (modal && typeof modal.showModal === "function") {
+          modal.showModal();
+        }
+      });
+    });
+
+    document.querySelectorAll(".patient-modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          modal.close();
+        }
+      });
+    });
+  </script>
 </body>
 </html>
