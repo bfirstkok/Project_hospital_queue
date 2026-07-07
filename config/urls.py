@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-from queues import views
+from queues import device_views, views
 from accounts import views as accounts_views
 
 urlpatterns = [
@@ -19,6 +19,7 @@ urlpatterns = [
     path("dashboard/", include("dashboard.urls")),
     path("patients/", include("patients.urls")),
     path("opd/", include("opd.urls")),
+    path("device/", device_views.device_management, name="device_management"),
 
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
 

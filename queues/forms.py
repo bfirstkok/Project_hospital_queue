@@ -1,6 +1,11 @@
 from django import forms
 
-from .models import Device, Visit
+from .models import Device, Queue, Visit
+
+
+PAIRABLE_QUEUE_STATUSES = [
+    Queue.Status.MONITORING,
+]
 
 
 class NurseTriageAssessmentForm(forms.Form):
@@ -89,3 +94,64 @@ class DevicePairingForm(forms.Form):
         label="Device",
         required=True,
     )
+
+
+class DeviceCreateForm(forms.ModelForm):
+    class Meta:
+        model = Device
+        fields = ["device_id", "api_key", "is_active"]
+        widgets = {
+            "device_id": forms.TextInput(attrs={"placeholder": "WATCH001"}),
+            "api_key": forms.TextInput(attrs={"placeholder": "เว้นว่างเพื่อสร้างอัตโนมัติ"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["device_id"].required = True
+        self.fields["api_key"].required = False
+        self.fields["is_active"].required = False
+        self.fields["is_active"].initial = True
+
+    def clean_device_id(self):
+        device_id = (self.cleaned_data.get("device_id") or "").strip()
+        if not device_id:
+            raise forms.ValidationError("กรุณากรอก device_id")
+        if Device.objects.filter(device_id=device_id).exists():
+            raise forms.ValidationError("device_id นี้มีอยู่แล้ว")
+        return device_id
+
+    def clean_api_key(self):
+        return (self.cleaned_data.get("api_key") or "").strip()
+
+
+class DeviceManagementPairForm(forms.Form):
+    device = forms.ModelChoiceField(
+        queryset=Device.objects.none(),
+        label="Device",
+        required=True,
+    )
+    visit = forms.ModelChoiceField(
+        queryset=Visit.objects.none(),
+        label="Visit",
+        required=True,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(is_active=True).order_by("device_id")
+        self.fields["visit"].queryset = (
+            Visit.objects
+            .select_related("patient", "queue")
+            .filter(queue__status__in=PAIRABLE_QUEUE_STATUSES)
+            .order_by("queue__priority", "-registered_at")
+        )
+        self.fields["device"].label_from_instance = lambda device: device.device_id
+        self.fields["visit"].label_from_instance = self.visit_label
+
+    @staticmethod
+    def visit_label(visit):
+        patient = visit.patient
+        patient_name = f"{patient.first_name} {patient.last_name}".strip()
+        severity = visit.final_severity or "-"
+        queue_status = getattr(getattr(visit, "queue", None), "status", "-")
+        return f"{patient_name} | Visit #{visit.id} | {severity} | {queue_status}"

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการอุปกรณ์ IoT</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    .muted { color: rgba(237,244,255,.62); }
+    .grid { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 16px; align-items: start; margin-bottom: 18px; }
+    .card { background: rgba(16,27,45,.78); border: 1px solid rgba(174,194,220,.14); border-radius: 10px; padding: 16px; }
+    .card h2 { margin: 0 0 14px; font-size: 18px; color: #f8fbff; }
+    .form-grid { display: grid; gap: 12px; }
+    label { display: block; margin-bottom: 6px; color: rgba(237,244,255,.72); font-size: 13px; font-weight: 800; }
+    input[type="text"], select { width: 100%; min-height: 38px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(174,194,220,.18); color: #edf4ff; background: rgba(3,10,22,.72); outline: none; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: #20d6b5; }
+    select option { color: #07131f; }
+    .check-row { display: flex; align-items: center; gap: 8px; }
+    .errors { margin: 6px 0 0; color: #fecaca; font-size: 12px; line-height: 1.45; }
+    .btn { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 800; background: rgba(255,255,255,.06); cursor: pointer; }
+    .btn.primary { color: #061522; background: linear-gradient(135deg, #20d6b5, #4aa3ff); border: 0; }
+    .btn.warn { color: #fde68a; background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.34); }
+    .btn.danger { color: #fecaca; background: rgba(239,68,68,.17); border-color: rgba(239,68,68,.35); }
+    .btn.small { min-height: 30px; padding: 0 10px; font-size: 12px; }
+    .messages { display: grid; gap: 8px; margin-bottom: 16px; }
+    .message { padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(174,194,220,.16); background: rgba(255,255,255,.05); font-weight: 800; }
+    .message.success { color: #86efac; border-color: rgba(34,197,94,.32); background: rgba(34,197,94,.12); }
+    .message.error { color: #fecaca; border-color: rgba(239,68,68,.34); background: rgba(239,68,68,.12); }
+    .table-wrap { overflow-x: auto; border: 1px solid rgba(174,194,220,.14); border-radius: 10px; background: rgba(16,27,45,.78); }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid rgba(174,194,220,.1); text-align: left; vertical-align: top; }
+    th { font-size: 11px; color: #9aa9bd; text-transform: uppercase; letter-spacing: .6px; background: rgba(255,255,255,.04); }
+    tr:last-child td { border-bottom: 0; }
+    .device-id { font-weight: 900; color: #f8fbff; }
+    .pill { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 900; white-space: nowrap; }
+    .pill.on { color: #86efac; background: rgba(34,197,94,.14); border: 1px solid rgba(34,197,94,.3); }
+    .pill.off { color: #fecaca; background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.3); }
+    .pair-text { line-height: 1.45; color: rgba(237,244,255,.82); }
+    .actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .key-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .empty { padding: 40px 16px; text-align: center; color: rgba(237,244,255,.55); }
+    @media (max-width: 900px) {
+      .top { flex-direction: column; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <div>
+        <h1>จัดการอุปกรณ์ IoT</h1>
+        <div class="muted">สร้างอุปกรณ์ จับคู่กับ Visit และส่งผู้ป่วยเข้า Monitoring Zone</div>
+      </div>
+      {% include "includes/main_nav.html" %}
+    </div>
+
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="grid">
+      <section class="card">
+        <h2>สร้าง Device ใหม่</h2>
+        <form method="post" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_device">
+          <div>
+            <label for="{{ create_form.device_id.id_for_label }}">device_id</label>
+            {{ create_form.device_id }}
+            {% if create_form.device_id.errors %}<div class="errors">{{ create_form.device_id.errors }}</div>{% endif %}
+          </div>
+          <div>
+            <label for="{{ create_form.api_key.id_for_label }}">api_key</label>
+            {{ create_form.api_key }}
+            <div class="muted" style="font-size:12px;margin-top:6px;">เว้นว่างได้ ระบบจะสร้าง token ให้อัตโนมัติ</div>
+            {% if create_form.api_key.errors %}<div class="errors">{{ create_form.api_key.errors }}</div>{% endif %}
+          </div>
+          <div class="check-row">
+            {{ create_form.is_active }}
+            <label for="{{ create_form.is_active.id_for_label }}" style="margin:0;">เปิดใช้งานทันที</label>
+          </div>
+          <button class="btn primary" type="submit">สร้าง Device</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>ผูก Device กับผู้ป่วย/Visit</h2>
+        <form method="post" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="pair_device">
+          <div>
+            <label for="{{ pair_form.device.id_for_label }}">Device ที่ใช้งานได้</label>
+            {{ pair_form.device }}
+            {% if pair_form.device.errors %}<div class="errors">{{ pair_form.device.errors }}</div>{% endif %}
+          </div>
+          <div>
+            <label for="{{ pair_form.visit.id_for_label }}">Visit ที่ผูกได้</label>
+            {{ pair_form.visit }}
+            {% if pair_form.visit.errors %}<div class="errors">{{ pair_form.visit.errors }}</div>{% endif %}
+          </div>
+          <button class="btn primary" type="submit">ผูกอุปกรณ์</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>API Key</th>
+            <th>Active</th>
+            <th>Last seen</th>
+            <th>Paired Visit</th>
+            <th>คำสั่ง</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for device in devices %}
+            <tr>
+              <td><span class="device-id">{{ device.device_id }}</span></td>
+              <td>
+                <div class="key-row">
+                  <span>{{ device.masked_api_key }}</span>
+                  {% if device.api_key %}
+                    <button class="btn small" type="button" data-copy="{{ device.api_key }}">copy</button>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                {% if device.is_active %}
+                  <span class="pill on">active</span>
+                {% else %}
+                  <span class="pill off">inactive</span>
+                {% endif %}
+              </td>
+              <td>{{ device.last_seen|date:"Y-m-d H:i:s"|default:"-" }}</td>
+              <td>
+                {% if device.active_assignment %}
+                  <div class="pair-text">
+                    <strong>{{ device.active_assignment.visit.patient.first_name }} {{ device.active_assignment.visit.patient.last_name }}</strong><br>
+                    Visit #{{ device.active_assignment.visit.id }}
+                    · {{ device.active_assignment.visit.final_severity|default:"-" }}
+                    · {{ device.active_assignment.visit.queue.status|default:"-" }}
+                  </div>
+                {% else %}
+                  <span class="muted">ยังไม่ผูก</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="actions">
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_device">
+                    <input type="hidden" name="device_id" value="{{ device.id }}">
+                    <button class="btn small {% if device.is_active %}warn{% else %}primary{% endif %}" type="submit">
+                      {% if device.is_active %}deactivate{% else %}activate{% endif %}
+                    </button>
+                  </form>
+                  {% if device.active_assignment %}
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="unpair_device">
+                      <input type="hidden" name="assignment_id" value="{{ device.active_assignment.id }}">
+                      <button class="btn small danger" type="submit">unpair</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6"><div class="empty">ยังไม่มี Device</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = button.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = "copied";
+          setTimeout(() => { button.textContent = "copy"; }, 1200);
+        } catch (error) {
+          window.prompt("Copy API key:", text);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
