@@ -183,6 +183,34 @@ Project_hospital_queue/
 
 ## Environment Setup
 
+For a fresh clone on another machine, use the local SQLite fallback first. You only need Python, the requirements, and an `.env` file copied from `.env.example`.
+
+### Quick Start
+
+PowerShell:
+
+```powershell
+git clone <your-repo-url>
+Set-Location Project_hospital_queue
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+python manage.py migrate
+python manage.py runserver
+```
+
+```bash
+git clone <your-repo-url>
+cd Project_hospital_queue
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+python manage.py migrate
+python manage.py runserver
+```
+
 Create `.env` from `.env.example`:
 
 ```env
@@ -194,7 +222,7 @@ DATABASE_URL=
 DB_SSLMODE=require
 ```
 
-Leave `DATABASE_URL` empty to use SQLite.
+Leave `DATABASE_URL` empty to use SQLite. This is the recommended local setup for a fresh clone.
 
 For Neon PostgreSQL:
 
@@ -211,6 +239,10 @@ DB_SSLMODE=require
 ```
 
 Do not commit `.env`.
+
+If you want to use PostgreSQL instead of SQLite, fill in `DATABASE_URL` and keep `DB_SSLMODE=require`.
+
+If `Activate.ps1` is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once in PowerShell.
 
 ## Deploy Publicly on Render
 

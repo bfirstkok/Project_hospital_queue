@@ -66,7 +66,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
 
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'patients',
     'queues',
     'ai_triage',
@@ -111,11 +111,13 @@ def database_from_url(database_url):
     if parsed.scheme not in ("postgres", "postgresql"):
         raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
     query_options = dict(parse_qsl(parsed.query))
-    options = {"sslmode": query_options.get("sslmode", os.getenv("DB_SSLMODE", "require"))}
-    if "channel_binding" in query_options:
-        options["channel_binding"] = query_options["channel_binding"]
+    options = dict(query_options)
+    options.setdefault("sslmode", os.getenv("DB_SSLMODE", "require"))
+    engine = "django.db.backends.postgresql"
+    if parsed.hostname and "cockroachlabs.cloud" in parsed.hostname:
+        engine = "config.db_backends.cockroach"
     return {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": engine,
         "NAME": parsed.path.lstrip("/"),
         "USER": parsed.username or "",
         "PASSWORD": parsed.password or "",
@@ -157,6 +159,19 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+]
+
+PASSWORD_HASHERS = [
+    'config.hashers.PBKDF2PasswordHasher600k',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+]
+
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.CockroachModelBackend',
 ]
 
 
