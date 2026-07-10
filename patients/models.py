@@ -113,15 +113,24 @@ class Patient(models.Model):
 
 
 class Appointment(models.Model):
+    class Status(models.TextChoices):
+        SCHEDULED = "SCHEDULED", "Scheduled"
+        ATTENDED = "ATTENDED", "Attended"
+        MISSED = "MISSED", "Missed"
+        CANCELLED = "CANCELLED", "Cancelled"
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="appointments")
     date = models.DateField()
     time = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SCHEDULED)
     note = models.CharField(max_length=255, blank=True, default="")
+    attended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         t = self.time.strftime("%H:%M") if self.time else "-"
-        return f"Appointment {self.date} {t} - Patient#{self.patient_id}"
+        return f"Appointment {self.date} {t} {self.status} - Patient#{self.patient_id}"
 
 
 class Assessment(models.Model):

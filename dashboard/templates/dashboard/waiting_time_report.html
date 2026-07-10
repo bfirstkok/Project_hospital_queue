@@ -31,13 +31,58 @@
       </div>
       {% include "includes/main_nav.html" %}
     </div>
-    <div style="margin-top:12px"><a href="{% url 'dashboard:waiting_time_report_csv' %}">ส่งออก CSV</a></div>
+    <div style="margin-top:12px">
+      <a href="{% url 'dashboard:waiting_time_report_csv' %}">ส่งออก CSV</a>
+      · <a href="{% url 'dashboard:waiting_time_report_xls' %}">ส่งออก Excel</a>
+      · <a href="{% url 'dashboard:waiting_time_report_pdf' %}">ส่งออก PDF</a>
+    </div>
 
     <div class="cards">
       <div class="card"><div class="label">รายการทั้งหมด</div><div class="num">{{ total }}</div></div>
       <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงคัดกรอง</div><div class="num">{{ avg_triage|default:"-" }} นาที</div></div>
+      <div class="card"><div class="label">เฉลี่ยคัดกรองถึงยืนยัน</div><div class="num">{{ avg_confirmation|default:"-" }} นาที</div></div>
       <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงเรียกคิว</div><div class="num">{{ avg_called|default:"-" }} นาที</div></div>
       <div class="card"><div class="label">RED / YELLOW / GREEN</div><div class="num">{{ severity_counts.RED }} / {{ severity_counts.YELLOW }} / {{ severity_counts.GREEN }}</div></div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <h2>Bottleneck</h2>
+        <table>
+          <thead><tr><th>ช่วงงาน</th><th>เฉลี่ย (นาที)</th><th>จำนวน</th></tr></thead>
+          <tbody>
+            {% for row in bottlenecks %}
+              <tr><td>{{ row.name }}</td><td>{{ row.avg|default:"-" }}</td><td>{{ row.count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>รายวัน</h2>
+        <table>
+          <thead><tr><th>วัน</th><th>เฉลี่ยรอถึงเรียกคิว</th><th>จำนวน</th></tr></thead>
+          <tbody>
+            {% for row in daily_rows %}
+              <tr><td>{{ row.period }}</td><td>{{ row.avg_called }}</td><td>{{ row.count }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>รายเดือน</h2>
+        <table>
+          <thead><tr><th>เดือน</th><th>เฉลี่ยรอถึงเรียกคิว</th><th>จำนวน</th></tr></thead>
+          <tbody>
+            {% for row in monthly_rows %}
+              <tr><td>{{ row.period }}</td><td>{{ row.avg_called }}</td><td>{{ row.count }}</td></tr>
+            {% empty %}
+              <tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
@@ -46,7 +91,7 @@
           <tr>
             <th>รหัส Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th>
             <th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th>
-            <th>ลงทะเบียน -> คัดกรอง</th><th>ลงทะเบียน -> เรียกคิว</th>
+            <th>ลงทะเบียน -> คัดกรอง</th><th>คัดกรอง -> ยืนยัน</th><th>ลงทะเบียน -> เรียกคิว</th>
           </tr>
         </thead>
         <tbody>
@@ -60,10 +105,11 @@
               <td>{{ row.visit.triaged_at|date:"Y-m-d H:i"|default:"-" }}</td>
               <td>{{ row.visit.called_at|date:"Y-m-d H:i"|default:"-" }}</td>
               <td>{{ row.triage_wait|default:"-" }}</td>
+              <td>{{ row.confirmation_wait|default:"-" }}</td>
               <td>{{ row.called_wait|default:"-" }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="9" class="muted">ยังไม่มีรายการ</td></tr>
+            <tr><td colspan="10" class="muted">ยังไม่มีรายการ</td></tr>
           {% endfor %}
         </tbody>
       </table>

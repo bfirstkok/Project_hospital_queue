@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ติดตามผู้ป่วย</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <style>
     /* ===== RESET ===== */
     * {
@@ -238,6 +239,16 @@
       background: rgba(0, 212, 170, 0.25);
     }
 
+    .btn.done {
+      margin-left: 6px;
+      background: rgba(134, 239, 172, 0.14);
+      color: #86efac;
+    }
+
+    .btn.done:hover {
+      background: rgba(134, 239, 172, 0.24);
+    }
+
     /* ===== TYPOGRAPHY ===== */
     .mono {
       font-family: monospace;
@@ -308,10 +319,43 @@
 
 <script>
   const API_URL = "/queues/monitor/api/latest/";
-  const DETAIL_URL = (visitId) => `/queues/monitor/visit/${visitId}/`;
+  const DETAIL_URL = (visitId) => `/queues/monitor/visit/${encodeURIComponent(String(visitId))}/`;
+  const DISCHARGE_URL = (visitId) => `/queues/discharge/${encodeURIComponent(String(visitId))}/`;
 
   function fmt(v){
     return (v === null || v === undefined || v === "") ? "-" : v;
+  }
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+    return "";
+  }
+
+  function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta?.content || getCookie("csrftoken");
+  }
+
+  async function finishTreatment(visitId) {
+    if (!confirm("ยืนยันเสร็จสิ้นการรักษาและนำออกจาก Monitoring?")) return;
+
+    const res = await fetch(DISCHARGE_URL(visitId), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": getCsrfToken(),
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    });
+
+    if (!res.ok && !res.redirected) {
+      alert(`บันทึกไม่สำเร็จ (${res.status})`);
+      return;
+    }
+
+    load();
   }
 
   async function load() {
@@ -330,7 +374,7 @@
       const rows = data.rows || [];
       if (!rows.length) {
         tbody.innerHTML =
-          `<tr><td colspan="11" class="muted">
+          `<tr><td colspan="12" class="muted">
             ยังไม่มีผู้ป่วยใน Monitoring Zone
           </td></tr>`;
         return;
@@ -364,13 +408,14 @@
           <td class="muted">${created}</td>
           <td class="td-action">
             <a class="btn" href="${DETAIL_URL(r.visit_id)}">ดูรายละเอียด</a>
+            <button class="btn done" type="button" onclick="finishTreatment('${String(r.visit_id).replace(/'/g, "\\'")}')">เสร็จสิ้น</button>
           </td>
         </tr>`;
       }).join("");
     } catch (err) {
       console.error("Error loading data:", err);
       tbody.innerHTML =
-        `<tr><td colspan="11" class="muted">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
+        `<tr><td colspan="12" class="muted">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
     }
   }
 

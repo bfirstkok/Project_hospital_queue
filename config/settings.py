@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import socket
 from pathlib import Path
 from urllib.parse import parse_qsl, urlparse
 
@@ -26,7 +27,7 @@ def load_env_file(path):
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 
 load_env_file(BASE_DIR / ".env")
@@ -45,6 +46,23 @@ ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split("
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+if DEBUG:
+    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "0.0.0.0"])
+    probe_socket = None
+    try:
+        probe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe_socket.connect(("8.8.8.8", 80))
+        local_lan_ip = probe_socket.getsockname()[0]
+        if local_lan_ip:
+            ALLOWED_HOSTS.append(local_lan_ip)
+    except OSError:
+        pass
+    finally:
+        if probe_socket:
+            probe_socket.close()
+
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
@@ -200,7 +218,11 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 
@@ -216,3 +238,4 @@ LOGIN_REDIRECT_URL = "/queues/"
 LOGOUT_REDIRECT_URL = "/"
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

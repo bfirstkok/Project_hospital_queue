@@ -183,3 +183,26 @@ class QueueWorkflowTests(TestCase):
         response = self.client.get(reverse("queue_list"))
         self.assertContains(response, "Demo Queue")
         self.assertContains(response, "YELLOW")
+
+    def test_waiting_confirmation_can_return_to_waiting_vitals(self):
+        self.register_patient()
+        visit = Visit.objects.select_related("queue").get()
+
+        response = self.client.post(reverse("nurse_triage_assessment", args=[visit.id]), {
+            "action": "evaluate",
+            "rr": "18",
+            "pr": "84",
+            "sys_bp": "118",
+            "dia_bp": "76",
+            "bt": "37.0",
+            "o2sat": "98",
+            "pain_score": "2",
+            "symptoms": "เวียนหัวเล็กน้อย",
+        })
+        self.assertRedirects(response, reverse("waiting_confirmation"))
+
+        response = self.client.post(reverse("return_to_waiting_vitals", args=[visit.id]))
+        self.assertRedirects(response, reverse("waiting_vitals"))
+
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_VITALS)

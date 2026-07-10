@@ -1,7 +1,10 @@
 from datetime import timedelta
 import json
+import secrets
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.db.models import OuterRef, Subquery
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -17,12 +20,20 @@ from django.apps import apps
 
 from ai_triage.services import apply_ai_triage
 from patients.models import Patient
-from .forms import DevicePairingForm, NurseTriageAssessmentForm
-from .models import Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
+from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
+from .models import CriticalAlert, IoTVital, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
 
 SEVERITY_PRIORITY = {"RED": 1, "YELLOW": 2, "GREEN": 3}
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
 REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
+
+
+def mask_api_key(api_key):
+    if not api_key:
+        return "-"
+    if len(api_key) <= 8:
+        return f"{api_key[:2]}***{api_key[-2:]}"
+    return f"{api_key[:4]}...{api_key[-4:]}"
 
 
 def has_required_vitals(vitals):
@@ -40,6 +51,54 @@ def evaluate_visit_if_vitals_complete(visit):
         q.status = Queue.Status.WAITING_CONFIRMATION
         q.save(update_fields=["status"])
     return result
+
+
+def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
+    checks = [
+        (
+            CriticalAlert.AlertType.LOW_O2,
+            vitals.o2sat,
+            lambda value: value is not None and value < 95,
+            "SpO2 ต่ำกว่า 95%",
+            "< 95",
+        ),
+        (
+            CriticalAlert.AlertType.LOW_BP,
+            vitals.sys_bp,
+            lambda value: value is not None and value < 90,
+            "ความดันตัวบนต่ำกว่า 90 mmHg",
+            "< 90",
+        ),
+        (
+            CriticalAlert.AlertType.HIGH_RR,
+            vitals.rr,
+            lambda value: value is not None and value > 30,
+            "อัตราการหายใจสูงกว่า 30 ครั้ง/นาที",
+            "> 30",
+        ),
+    ]
+
+    created = []
+    for alert_type, value, is_critical, message, threshold in checks:
+        if not is_critical(value):
+            continue
+        exists = CriticalAlert.objects.filter(
+            visit=visit,
+            alert_type=alert_type,
+            status=CriticalAlert.Status.NEW,
+        ).exists()
+        if exists:
+            continue
+        created.append(CriticalAlert.objects.create(
+            visit=visit,
+            alert_type=alert_type,
+            severity=Visit.Severity.RED,
+            message=message,
+            value=value,
+            threshold=threshold,
+            source=source,
+        ))
+    return created
 
 
 # -----------------------------
@@ -100,6 +159,20 @@ def waiting_confirmation(request):
         .order_by("visit__triaged_at", "created_at")
     )
     return render(request, "queues/waiting_confirmation.html", {"q_items": q_items})
+
+
+@login_required
+@require_POST
+def return_to_waiting_vitals(request, visit_id: int):
+    visit = get_object_or_404(Visit.objects.select_related("patient"), id=visit_id)
+    q = getattr(visit, "queue", None)
+
+    if q and q.status == Queue.Status.WAITING_CONFIRMATION:
+        q.status = Queue.Status.WAITING_VITALS
+        q.save(update_fields=["status"])
+        messages.info(request, "ส่งกลับไปหน้ารอวัดค่าแล้ว สามารถแก้ vital signs และประเมิน AI ใหม่ได้")
+
+    return redirect("waiting_vitals")
 
 
 @login_required
@@ -184,6 +257,7 @@ def nurse_triage_assessment(request, visit_id: int):
             vitals.urgent_symptoms = form.cleaned_data.get("urgent_symptoms") or []
             vitals.risk_flags = form.cleaned_data.get("risk_flags") or []
             vitals.save()
+            create_critical_alerts_for_visit(visit, vitals, source="triage")
 
             visit.note = form.cleaned_data.get("symptoms", "")
             visit.save(update_fields=["note"])
@@ -407,6 +481,7 @@ def iot_telemetry(request):
     if vitals.get("o2sat") is not None:
         vs.o2sat = vitals.get("o2sat")
     vs.save()
+    alerts = create_critical_alerts_for_visit(visit, vs, source="iot")
 
     triage_result = evaluate_visit_if_vitals_complete(visit)
     queue_status = getattr(getattr(visit, "queue", None), "status", None)
@@ -416,7 +491,140 @@ def iot_telemetry(request):
         "log_id": log.id,
         "vitals_complete": has_required_vitals(vs),
         "queue_status": queue_status,
+        "critical_alerts": [alert.id for alert in alerts],
         "ai": triage_result,
+    })
+
+
+def _parse_optional_int(value):
+    if value in (None, ""):
+        return None
+    return int(value)
+
+
+def _find_patient_by_iot_id(patient_id):
+    patient_id = str(patient_id).strip()
+
+    patient = Patient.objects.filter(hn=patient_id).first()
+    if patient:
+        return patient
+
+    patient = Patient.objects.filter(national_id=patient_id).first()
+    if patient:
+        return patient
+
+    if patient_id.isdigit():
+        return Patient.objects.filter(id=int(patient_id)).first()
+
+    return None
+
+
+@csrf_exempt
+@require_POST
+def iot_vitals(request):
+    """
+    POST /api/iot/vitals/
+    Header:
+      X-API-Key: <device api_key>
+    Expected JSON:
+      {
+        "device_id": "IOT001",
+        "patient_id": "P0001",
+        "heart_rate": 118,
+        "spo2": 94,
+        "temperature": 38.9,
+        "respiratory_rate": 31,
+        "blood_pressure_sys": 90,
+        "blood_pressure_dia": 60
+      }
+    """
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
+
+    required_fields = ["device_id", "patient_id", "heart_rate", "spo2", "temperature"]
+    missing_fields = [field for field in required_fields if data.get(field) in (None, "")]
+    if missing_fields:
+        return JsonResponse({
+            "success": False,
+            "message": "Missing required fields",
+            "missing_fields": missing_fields,
+        }, status=400)
+
+    try:
+        device_id = str(data["device_id"]).strip()
+        patient_id = str(data["patient_id"]).strip()
+        heart_rate = int(data["heart_rate"])
+        spo2 = int(data["spo2"])
+        temperature = float(data["temperature"])
+        respiratory_rate = _parse_optional_int(data.get("respiratory_rate"))
+        blood_pressure_sys = _parse_optional_int(data.get("blood_pressure_sys"))
+        blood_pressure_dia = _parse_optional_int(data.get("blood_pressure_dia"))
+    except (TypeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid vital sign value"}, status=400)
+
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        return JsonResponse({"success": False, "message": "Missing X-API-Key"}, status=401)
+
+    try:
+        device = Device.objects.get(device_id=device_id)
+    except Device.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Invalid device credentials"}, status=403)
+
+    if not device.is_active:
+        return JsonResponse({"success": False, "message": "Device is not active"}, status=403)
+
+    if device.api_key != api_key:
+        return JsonResponse({"success": False, "message": "Invalid device credentials"}, status=403)
+
+    patient = _find_patient_by_iot_id(patient_id)
+    if not patient:
+        return JsonResponse({"success": False, "message": "Patient not found"}, status=404)
+
+    device.last_seen = timezone.now()
+    device.save(update_fields=["last_seen"])
+
+    vital = IoTVital.objects.create(
+        device_identifier=device_id,
+        patient_identifier=patient_id,
+        device_db_id=device.id,
+        patient_db_id=patient.id,
+        heart_rate=heart_rate,
+        spo2=spo2,
+        temperature=temperature,
+        respiratory_rate=respiratory_rate,
+        blood_pressure_sys=blood_pressure_sys,
+        blood_pressure_dia=blood_pressure_dia,
+    )
+
+    visit = (
+        Visit.objects
+        .filter(patient=patient)
+        .exclude(queue__status__in=[Queue.Status.OPD_DONE, Queue.Status.DISCHARGED, Queue.Status.CANCELLED])
+        .order_by("-registered_at")
+        .first()
+    )
+    if visit:
+        vs, _ = VitalSign.objects.get_or_create(visit=visit)
+        vs.pr = heart_rate
+        vs.o2sat = spo2
+        vs.bt = temperature
+        if respiratory_rate is not None:
+            vs.rr = respiratory_rate
+        if blood_pressure_sys is not None:
+            vs.sys_bp = blood_pressure_sys
+        if blood_pressure_dia is not None:
+            vs.dia_bp = blood_pressure_dia
+        vs.save()
+        create_critical_alerts_for_visit(visit, vs, source="iot_vitals")
+        evaluate_visit_if_vitals_complete(visit)
+
+    return JsonResponse({
+        "success": True,
+        "message": "Vital signs received successfully",
+        "id": vital.id,
     })
 
 
@@ -459,6 +667,114 @@ def _get_ai_severity(visit):
 @login_required
 def monitor_dashboard(request):
     return render(request, "queues/monitor_dashboard.html")
+
+
+@login_required
+def device_management(request):
+    create_form = DeviceCreateForm()
+    pair_form = DeviceManagementPairForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "create_device":
+            create_form = DeviceCreateForm(request.POST)
+            if create_form.is_valid():
+                try:
+                    device = create_form.save(commit=False)
+                    if not device.api_key:
+                        device.api_key = secrets.token_urlsafe(24)
+                    device.save()
+                    messages.success(request, f"สร้างอุปกรณ์ {device.device_id} สำเร็จ")
+                    return redirect("device_management")
+                except IntegrityError:
+                    messages.error(request, "สร้างอุปกรณ์ไม่สำเร็จ: device_id ซ้ำหรือข้อมูลชนกับฐานข้อมูล")
+            else:
+                messages.error(request, "กรุณาตรวจสอบข้อมูลสร้างอุปกรณ์")
+
+        elif action == "pair_device":
+            pair_form = DeviceManagementPairForm(request.POST)
+            if pair_form.is_valid():
+                device = pair_form.cleaned_data["device"]
+                visit = pair_form.cleaned_data["visit"]
+                now = timezone.now()
+
+                with transaction.atomic():
+                    DeviceAssignment.objects.filter(device=device, is_active=True).update(
+                        is_active=False,
+                        unpaired_at=now,
+                    )
+                    DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
+                        is_active=False,
+                        unpaired_at=now,
+                    )
+                    DeviceAssignment.objects.create(device=device, visit=visit, is_active=True)
+
+                    q = getattr(visit, "queue", None)
+                    if q:
+                        q.status = Queue.Status.MONITORING
+                        q.save(update_fields=["status"])
+
+                messages.success(request, "ผูกอุปกรณ์สำเร็จ")
+                return redirect("device_management")
+            messages.error(request, "กรุณาเลือกอุปกรณ์และ Visit ให้ถูกต้อง")
+
+        elif action == "toggle_device":
+            device = get_object_or_404(Device, id=request.POST.get("device_id"))
+            device.is_active = not device.is_active
+            device.save(update_fields=["is_active"])
+            state = "เปิดใช้งาน" if device.is_active else "ปิดใช้งาน"
+            messages.success(request, f"{state} {device.device_id} แล้ว")
+            return redirect("device_management")
+
+        elif action == "delete_device":
+            device = get_object_or_404(Device, id=request.POST.get("device_id"))
+            device_code = device.device_id
+            try:
+                with transaction.atomic():
+                    DeviceAssignment.objects.filter(device=device, is_active=True).update(
+                        is_active=False,
+                        unpaired_at=timezone.now(),
+                    )
+                    device.delete()
+                messages.success(request, f"Deleted device {device_code}")
+            except IntegrityError:
+                messages.error(request, f"Cannot delete device {device_code}")
+            return redirect("device_management")
+
+        elif action == "unpair_device":
+            assignment = get_object_or_404(
+                DeviceAssignment.objects.select_related("device", "visit"),
+                id=request.POST.get("assignment_id"),
+                is_active=True,
+            )
+            assignment.is_active = False
+            assignment.unpaired_at = timezone.now()
+            assignment.save(update_fields=["is_active", "unpaired_at"])
+            messages.success(request, f"ยกเลิกการผูก {assignment.device.device_id} แล้ว")
+            return redirect("device_management")
+
+        else:
+            messages.error(request, "คำสั่งไม่ถูกต้อง")
+
+    active_assignments = {
+        assignment.device_id: assignment
+        for assignment in (
+            DeviceAssignment.objects
+            .select_related("device", "visit", "visit__patient", "visit__queue")
+            .filter(is_active=True)
+        )
+    }
+    devices = Device.objects.order_by("device_id")
+    for device in devices:
+        device.active_assignment = active_assignments.get(device.id)
+        device.masked_api_key = mask_api_key(device.api_key)
+
+    return render(request, "queues/device_management.html", {
+        "create_form": create_form,
+        "pair_form": pair_form,
+        "devices": devices,
+    })
 
 
 @login_required
@@ -550,11 +866,27 @@ def monitor_latest_api(request):
             "rr": q.last_rr,
             "sys_bp": q.last_sys_bp,
             "dia_bp": q.last_dia_bp,
+            "critical_alerts": list(
+                CriticalAlert.objects
+                .filter(visit=visit, status=CriticalAlert.Status.NEW)
+                .values("id", "alert_type", "message", "value", "threshold")
+            ),
 
             "registered_at": visit.registered_at.isoformat() if visit.registered_at else None,
         })
 
     return JsonResponse({"ok": True, "rows": rows})
+
+
+@login_required
+@require_POST
+def acknowledge_alert(request, alert_id: int):
+    alert = get_object_or_404(CriticalAlert, id=alert_id)
+    alert.status = CriticalAlert.Status.ACKNOWLEDGED
+    alert.acknowledged_at = timezone.now()
+    alert.acknowledged_by = request.user
+    alert.save(update_fields=["status", "acknowledged_at", "acknowledged_by"])
+    return JsonResponse({"ok": True, "alert_id": alert.id, "status": alert.status})
 
 
 @login_required

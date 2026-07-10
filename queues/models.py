@@ -145,3 +145,70 @@ class TelemetryLog(models.Model):
         indexes = [
             models.Index(fields=["visit", "ts"]),
         ]
+
+
+class IoTVital(models.Model):
+    device_identifier = models.CharField(max_length=50)
+    patient_identifier = models.CharField(max_length=50)
+    device_db_id = models.IntegerField(null=True, blank=True, db_column="device_id")
+    patient_db_id = models.IntegerField(null=True, blank=True, db_column="patient_id")
+
+    heart_rate = models.IntegerField()
+    spo2 = models.IntegerField()
+    temperature = models.FloatField()
+    respiratory_rate = models.IntegerField(null=True, blank=True)
+    blood_pressure_sys = models.IntegerField(null=True, blank=True)
+    blood_pressure_dia = models.IntegerField(null=True, blank=True)
+
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["device_identifier", "created_at"], name="queues_iotv_device__e34e63_idx"),
+            models.Index(fields=["patient_identifier", "created_at"], name="queues_iotv_patient_d84c96_idx"),
+            models.Index(fields=["patient_db_id", "created_at"], name="queues_iotv_patient_53d99b_idx"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.patient_identifier} {self.device_identifier} {self.created_at:%Y-%m-%d %H:%M:%S}"
+
+
+class CriticalAlert(models.Model):
+    class Status(models.TextChoices):
+        NEW = "NEW", "New"
+        ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+
+    class AlertType(models.TextChoices):
+        LOW_O2 = "LOW_O2", "Low SpO2"
+        LOW_BP = "LOW_BP", "Low systolic BP"
+        HIGH_RR = "HIGH_RR", "High respiratory rate"
+
+    visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="critical_alerts")
+    alert_type = models.CharField(max_length=24, choices=AlertType.choices)
+    severity = models.CharField(max_length=10, default=Visit.Severity.RED)
+    message = models.CharField(max_length=255)
+    value = models.FloatField(null=True, blank=True)
+    threshold = models.CharField(max_length=50, blank=True, default="")
+    source = models.CharField(max_length=32, blank=True, default="vitals")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    created_at = models.DateTimeField(auto_now_add=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acknowledged_critical_alerts",
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["visit", "status"]),
+            models.Index(fields=["alert_type", "status"]),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.alert_type} Visit#{self.visit_id} {self.status}"

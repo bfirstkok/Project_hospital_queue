@@ -690,12 +690,6 @@
                   <a class="action-btn call" href="{% url 'call_visit' v.id %}">เรียก</a>
                   <a class="action-btn triage" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
                   <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  {% if v.final_severity == "RED" %}
-                    <form class="delete-queue-form" method="post" action="{% url 'send_to_monitoring' v.id %}">
-                      {% csrf_token %}
-                      <button class="action-btn red" type="submit">Monitoring</button>
-                    </form>
-                  {% endif %}
                   <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
                   <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
                   <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>

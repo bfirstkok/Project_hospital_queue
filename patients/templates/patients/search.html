@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ค้นหาผู้ป่วย</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .panel { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; }
+    form.search { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+    input { width: 100%; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #fff; border-radius: 8px; padding: 12px; font-size: 15px; }
+    button, .btn { border: 0; border-radius: 8px; padding: 11px 14px; background: #20d6b5; color: #07131f; font-weight: 700; text-decoration: none; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
+    th { color: rgba(255,255,255,.55); font-size: 12px; }
+    .muted { color: rgba(255,255,255,.55); }
+    @media (max-width: 720px) { form.search { grid-template-columns: 1fr; } .top { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>ค้นหาผู้ป่วย</h1>
+        <div class="muted">ค้นด้วย HN, ชื่อ, เลขบัตรประชาชน หรือเบอร์โทร</div>
+      </div>
+      {% include "includes/main_nav.html" %}
+    </div>
+
+    <div class="panel">
+      <form class="search" method="get">
+        <input name="q" value="{{ query }}" placeholder="เช่น HN, สมชาย, 9000000000001, 080..." autofocus>
+        <button type="submit">ค้นหา</button>
+      </form>
+
+      <table>
+        <thead>
+          <tr>
+            <th>HN</th>
+            <th>ชื่อ-สกุล</th>
+            <th>เลขบัตร</th>
+            <th>เบอร์โทร</th>
+            <th>อายุ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for patient in patients %}
+            <tr>
+              <td>{{ patient.hn }}</td>
+              <td>{{ patient.first_name }} {{ patient.last_name }}</td>
+              <td>{{ patient.national_id }}</td>
+              <td>{{ patient.phone|default:"-" }}</td>
+              <td>{{ patient.age|default:"-" }}</td>
+              <td><a class="btn" href="{% url 'patient_history' patient.id %}">ประวัติ</a></td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="muted">
+                {% if query %}ไม่พบข้อมูล{% else %}กรอกคำค้นหาเพื่อเริ่มค้นผู้ป่วย{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

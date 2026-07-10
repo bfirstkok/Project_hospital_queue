@@ -23,6 +23,73 @@
     <p class="muted">ผลประเมินโมเดล Decision Tree จากชุดข้อมูลคัดกรองจำลอง</p>
 
     <div class="card">
+      <h2>ผลเทียบกับข้อมูลใช้งานจริง</h2>
+      <p class="muted">เทียบ `ai_severity` กับ `nurse_severity` ที่บันทึกหลังพยาบาลยืนยันหรือ override</p>
+      <table style="width:100%; border-collapse:collapse">
+        <tr>
+          <td>จำนวนเคสที่เทียบได้</td>
+          <td><strong>{{ actual_total }}</strong></td>
+        </tr>
+        <tr>
+          <td>AI ตรงกับพยาบาล</td>
+          <td><strong>{{ actual_matches }}</strong></td>
+        </tr>
+        <tr>
+          <td>Nurse override</td>
+          <td><strong>{{ actual_overrides }}</strong></td>
+        </tr>
+        <tr>
+          <td>Accuracy จากข้อมูลจริง</td>
+          <td><strong>{{ actual_accuracy|default:"-" }}%</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Accuracy รายเดือน</h2>
+      <table style="width:100%; border-collapse:collapse">
+        <thead>
+          <tr><th>เดือน</th><th>จำนวน</th><th>ตรงกัน</th><th>Override</th><th>Accuracy</th></tr>
+        </thead>
+        <tbody>
+          {% for row in monthly_rows %}
+            <tr>
+              <td>{{ row.month }}</td>
+              <td>{{ row.total }}</td>
+              <td>{{ row.matches }}</td>
+              <td>{{ row.overrides }}</td>
+              <td>{{ row.accuracy }}%</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">ยังไม่มีข้อมูล nurse confirmation สำหรับประเมิน</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>รายการ Nurse Override ล่าสุด</h2>
+      <table style="width:100%; border-collapse:collapse">
+        <thead>
+          <tr><th>Visit</th><th>ผู้ป่วย</th><th>AI</th><th>Nurse</th><th>หมายเหตุ</th></tr>
+        </thead>
+        <tbody>
+          {% for result in recent_overrides %}
+            <tr>
+              <td>#{{ result.visit_id }}</td>
+              <td>{{ result.visit.patient.first_name }} {{ result.visit.patient.last_name }}</td>
+              <td>{{ result.ai_severity }}</td>
+              <td>{{ result.nurse_severity }}</td>
+              <td>{{ result.nurse_note|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">ยังไม่มี override</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
       <h2>ตัวชี้วัด</h2>
       <pre>{{ metrics }}</pre>
     </div>

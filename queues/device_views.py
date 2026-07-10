@@ -76,6 +76,21 @@ def device_management(request):
             messages.success(request, f"{state} {device.device_id} แล้ว")
             return redirect("device_management")
 
+        elif action == "delete_device":
+            device = get_object_or_404(Device, id=request.POST.get("device_id"))
+            device_code = device.device_id
+            try:
+                with transaction.atomic():
+                    DeviceAssignment.objects.filter(device=device, is_active=True).update(
+                        is_active=False,
+                        unpaired_at=timezone.now(),
+                    )
+                    device.delete()
+                messages.success(request, f"Deleted device {device_code}")
+            except IntegrityError:
+                messages.error(request, f"Cannot delete device {device_code}")
+            return redirect("device_management")
+
         elif action == "unpair_device":
             assignment = get_object_or_404(
                 DeviceAssignment.objects.select_related("device", "visit"),

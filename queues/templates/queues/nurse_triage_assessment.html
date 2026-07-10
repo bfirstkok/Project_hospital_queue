@@ -272,12 +272,6 @@
             </div>
           </div>
         </form>
-        <div class="monitor-row">
-          <form method="post" action="{% url 'send_to_monitoring' visit.id %}">
-            {% csrf_token %}
-            <button class="btn dark" type="submit">ส่งไปโซนติดตาม</button>
-          </form>
-        </div>
       {% else %}
         <p class="muted">กรอกอาการและสัญญาณชีพ แล้วกดประเมินระดับความเร่งด่วน</p>
       {% endif %}

@@ -1,11 +1,13 @@
 # patients/views.py
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.db import transaction
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .forms import PatientForm
-from .models import Patient
+from .models import Appointment, Patient
 from queues.models import Visit, Queue, VitalSign
 
 
@@ -55,3 +57,71 @@ def register_patient(request):
 
     # GET
     return render(request, "patients/register.html", {"form": PatientForm()})
+
+
+@login_required
+def patient_search(request):
+    query = request.GET.get("q", "").strip()
+    patients = Patient.objects.none()
+
+    if query:
+        patients = (
+            Patient.objects
+            .filter(
+                Q(hn__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+                | Q(national_id__icontains=query)
+                | Q(phone__icontains=query)
+            )
+            .order_by("hn", "first_name")[:80]
+        )
+
+    return render(request, "patients/search.html", {
+        "query": query,
+        "patients": patients,
+    })
+
+
+@login_required
+def patient_history(request, patient_id: int):
+    patient = get_object_or_404(Patient, id=patient_id)
+    visits = (
+        Visit.objects
+        .filter(patient=patient)
+        .select_related("queue", "triage_result", "opd_assessment", "vitals")
+        .prefetch_related("critical_alerts")
+        .order_by("-registered_at")
+    )
+    appointments = patient.appointments.order_by("-date", "-time", "-created_at")
+
+    return render(request, "patients/history.html", {
+        "patient": patient,
+        "visits": visits,
+        "appointments": appointments,
+        "appointment_statuses": Appointment.Status.choices,
+    })
+
+
+@login_required
+@require_POST
+def create_appointment(request, patient_id: int):
+    patient = get_object_or_404(Patient, id=patient_id)
+    date = request.POST.get("date")
+    time = request.POST.get("time") or None
+    note = request.POST.get("note", "").strip()
+    if date:
+        Appointment.objects.create(patient=patient, date=date, time=time, note=note)
+    return redirect("patient_history", patient_id=patient.id)
+
+
+@login_required
+@require_POST
+def update_appointment_status(request, appointment_id: int):
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    status = request.POST.get("status")
+    if status in Appointment.Status.values:
+        appointment.status = status
+        appointment.attended_at = timezone.now() if status == Appointment.Status.ATTENDED else None
+        appointment.save(update_fields=["status", "attended_at", "updated_at"])
+    return redirect("patient_history", patient_id=appointment.patient_id)

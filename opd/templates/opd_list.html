@@ -400,9 +400,9 @@
                 <div class="actions">
                   <a class="btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
                   <a class="btn" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  <button class="btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
-                  <button class="btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
-                  <button class="btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
+                  <button class="btn red" onclick="setSeverity('{{ v.id }}', 'RED')">แดง</button>
+                  <button class="btn yellow" onclick="setSeverity('{{ v.id }}', 'YELLOW')">เหลือง</button>
+                  <button class="btn green" onclick="setSeverity('{{ v.id }}', 'GREEN')">เขียว</button>
                 </div>
               </td>
             </tr>
@@ -483,12 +483,13 @@
 
     tbody.innerHTML = rows.map((row) => {
       const reason = row.ai_reason || "ยังไม่มีเหตุผลจากการคัดกรอง";
+      const visitId = encodeURIComponent(String(row.visit_id));
       return `
         <tr>
           <td><span class="visit-badge">#${row.index}</span></td>
           <td>
             <div class="patient-name">${escapeHtml(row.patient_name)}</div>
-            <div class="patient-meta">เลขคิว: ${row.queue_id} · Visit #${row.visit_id}</div>
+            <div class="patient-meta">เลขคิว: ${escapeHtml(row.queue_id)} · Visit #${escapeHtml(row.visit_id)}</div>
           </td>
           <td>${severityBadge(row.severity)}</td>
           <td>
@@ -510,11 +511,11 @@
           <td>${escapeHtml(row.called_at || "-")}</td>
           <td>
             <div class="actions">
-              <a class="btn primary" href="/opd/visit/${row.visit_id}/assessment/">ประเมิน</a>
-              <a class="btn" href="/opd/visit/${row.visit_id}/detail/">ดู</a>
-              <button class="btn red" onclick="setSeverity(${row.visit_id}, 'RED')">แดง</button>
-              <button class="btn yellow" onclick="setSeverity(${row.visit_id}, 'YELLOW')">เหลือง</button>
-              <button class="btn green" onclick="setSeverity(${row.visit_id}, 'GREEN')">เขียว</button>
+              <a class="btn primary" href="/opd/visit/${visitId}/assessment/">ประเมิน</a>
+              <a class="btn" href="/opd/visit/${visitId}/detail/">ดู</a>
+              <button class="btn red" onclick="setSeverity('${visitId}', 'RED')">แดง</button>
+              <button class="btn yellow" onclick="setSeverity('${visitId}', 'YELLOW')">เหลือง</button>
+              <button class="btn green" onclick="setSeverity('${visitId}', 'GREEN')">เขียว</button>
             </div>
           </td>
         </tr>
@@ -560,7 +561,8 @@
 
   async function setSeverity(visitId, sev) {
     try {
-      const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
+      const safeVisitId = encodeURIComponent(String(visitId));
+      const res = await fetch(`/queues/api/update-severity/${safeVisitId}/`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {

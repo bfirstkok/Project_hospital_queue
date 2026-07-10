@@ -46,12 +46,121 @@
     .badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
     .badge.red { color: #fecaca; background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.38); }
     .badge.yellow { color: #fde68a; background: rgba(245,158,11,.17); border: 1px solid rgba(245,158,11,.36); }
+    .hero-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 18px;
+      border: 1px solid rgba(174,194,220,.14);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(13,25,43,.94), rgba(16,34,55,.72));
+      box-shadow: 0 16px 34px rgba(0,0,0,.22);
+    }
+    .title-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .title-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #20d6b5, #4aa3ff);
+      color: #061522;
+      font-weight: 900;
+      box-shadow: 0 12px 28px rgba(32,214,181,.18);
+      flex: 0 0 auto;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(116px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      padding: 14px;
+      border: 1px solid rgba(174,194,220,.12);
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+    }
+    .stat-label {
+      color: rgba(237,244,255,.56);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      margin-top: 7px;
+      color: #f8fbff;
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .table-shell {
+      overflow: hidden;
+      border: 1px solid rgba(174,194,220,.14);
+      border-radius: 12px;
+      background: rgba(16,27,45,.78);
+      box-shadow: 0 16px 34px rgba(0,0,0,.18);
+    }
+    .table { border: 0; border-radius: 0; background: transparent; }
+    tbody tr:hover td { background: rgba(255,255,255,.026); }
+    .queue-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: #7dd3fc;
+      background: rgba(56,189,248,.11);
+      border: 1px solid rgba(56,189,248,.24);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .visit-meta {
+      margin-top: 5px;
+      color: rgba(237,244,255,.52);
+      font-size: 12px;
+    }
+    .ai.red { color: #fecaca; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.38); }
+    .ai.yellow { color: #fde68a; background: rgba(245,158,11,.17); border-color: rgba(245,158,11,.36); }
+    .ai.green { color: #86efac; background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.32); }
+    .actions-panel { min-width: 250px; }
+    .confirm-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .confirm-actions .btn { justify-content: center; }
+    .btn.ai-confirm {
+      grid-column: 1 / -1;
+      color: #061522;
+      background: linear-gradient(135deg, #20d6b5, #4aa3ff);
+      border-color: transparent;
+    }
+    .btn.back {
+      width: 100%;
+      justify-content: center;
+      color: #dbeafe;
+      background: rgba(56,189,248,.1);
+      border-color: rgba(56,189,248,.24);
+    }
+    .empty {
+      margin: 14px;
+      border: 1px dashed rgba(174,194,220,.18);
+      border-radius: 12px;
+      background: rgba(255,255,255,.025);
+    }
     @media (max-width: 860px) {
       .top { align-items: flex-start; flex-direction: column; }
+      .hero-card { display: block; }
+      .hero-card .nav-pills, .hero-card .main-nav { margin-top: 14px; }
+      .stats { grid-template-columns: 1fr; }
       .table { display: block; overflow-x: auto; }
       .detail-grid { grid-template-columns: 1fr; }
       .info-row { grid-template-columns: 112px minmax(0, 1fr); }
       .actions { min-width: 230px; }
+      .confirm-actions { grid-template-columns: 1fr; }
       .patient-modal { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
       .modal-head { padding: 14px; }
       .detail-content { padding: 14px; }
@@ -60,14 +169,33 @@
 </head>
 <body>
   <main class="wrap">
-    <div class="top">
-      <div>
-        <h1>รอยืนยันผล AI</h1>
-        <div class="muted subtitle">AI เป็นคำแนะนำ พยาบาลต้องยืนยันหรือปรับระดับก่อนเข้าคิวตรวจ</div>
+    <div class="hero-card">
+      <div class="title-row">
+        <div class="title-icon">AI</div>
+        <div>
+          <h1>รอยืนยันผล AI</h1>
+          <div class="muted subtitle">ตรวจข้อมูลก่อนยืนยันระดับคัดกรองขั้นสุดท้ายโดยพยาบาล</div>
+        </div>
       </div>
       {% include "includes/main_nav.html" %}
     </div>
 
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">รอยืนยัน</div>
+        <div class="stat-value">{{ q_items|length }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">AI Decision Support</div>
+        <div class="stat-value">ON</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Final Decision</div>
+        <div class="stat-value">Nurse</div>
+      </div>
+    </div>
+
+    <div class="table-shell">
     <table class="table">
       <thead>
         <tr>
@@ -82,9 +210,10 @@
         {% for q in q_items %}
           {% with v=q.visit tr=q.visit.triage_result vs=q.visit.vitals p=q.visit.patient %}
           <tr>
-            <td>#{{ q.id }}</td>
+            <td><span class="queue-chip">#{{ q.id }}</span></td>
             <td>
               <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
+              <div class="visit-meta">Visit #{{ v.id }}</div>
               <div class="detail-box">
                 <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย / Vital signs</button>
                 <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
@@ -181,19 +310,23 @@
               </div>
             </td>
             <td>
-              <span class="ai">{{ tr.ai_severity|default:"-" }}</span>
+              <span class="ai {% if tr.ai_severity == 'RED' %}red{% elif tr.ai_severity == 'YELLOW' %}yellow{% elif tr.ai_severity == 'GREEN' %}green{% endif %}">{{ tr.ai_severity|default:"-" }}</span>
               {% if tr.ai_severity == "RED" %}<div class="red-alert">แจ้งเตือน RED: ควรพิจารณาเร่งด่วน/monitoring</div>{% endif %}
             </td>
             <td><div class="reason">{{ tr.ai_reason|default:"-" }}</div></td>
-            <td>
-              <form method="post" action="{% url 'triage_visit' v.id %}" class="actions">
+            <td class="actions-panel">
+              <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-actions">
                 {% csrf_token %}
                 {% if tr.ai_severity %}
-                  <button class="btn" type="submit" name="severity" value="{{ tr.ai_severity }}">ยืนยันตาม AI</button>
+                  <button class="btn ai-confirm" type="submit" name="severity" value="{{ tr.ai_severity }}">ยืนยันตาม AI: {{ tr.ai_severity }}</button>
                 {% endif %}
                 <button class="btn red" type="submit" name="severity" value="RED">RED</button>
                 <button class="btn yellow" type="submit" name="severity" value="YELLOW">YELLOW</button>
                 <button class="btn green" type="submit" name="severity" value="GREEN">GREEN</button>
+              </form>
+              <form method="post" action="{% url 'return_to_waiting_vitals' v.id %}" class="actions" style="margin-top:8px;">
+                {% csrf_token %}
+                <button class="btn back" type="submit">กลับไปแก้ค่าวัด</button>
               </form>
             </td>
           </tr>
@@ -203,6 +336,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </main>
   <script>
     document.querySelectorAll(".js-open-modal").forEach((button) => {

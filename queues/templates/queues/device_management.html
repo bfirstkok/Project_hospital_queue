@@ -134,7 +134,7 @@
                 <div class="key-row">
                   <span>{{ device.masked_api_key }}</span>
                   {% if device.api_key %}
-                    <button class="btn small" type="button" data-copy="{{ device.api_key }}">copy</button>
+                    <button class="btn small" type="button" data-copy="{{ device.api_key }}">copy API key</button>
                   {% endif %}
                 </div>
               </td>
@@ -176,6 +176,12 @@
                       <button class="btn small danger" type="submit">unpair</button>
                     </form>
                   {% endif %}
+                  <form method="post" onsubmit="return confirm('Delete device {{ device.device_id }}?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_device">
+                    <input type="hidden" name="device_id" value="{{ device.id }}">
+                    <button class="btn small danger" type="submit">delete</button>
+                  </form>
                 </div>
               </td>
             </tr>
@@ -194,7 +200,7 @@
         try {
           await navigator.clipboard.writeText(text);
           button.textContent = "copied";
-          setTimeout(() => { button.textContent = "copy"; }, 1200);
+          setTimeout(() => { button.textContent = "copy API key"; }, 1200);
         } catch (error) {
           window.prompt("Copy API key:", text);
         }

@@ -337,8 +337,16 @@
       <h1>รายละเอียดรายการตรวจ #{{ visit.id }}</h1>
       <div class="muted">ผู้ป่วย: {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
     </div>
-    {% include "includes/main_nav.html" %}
-  </div>
+    <div class="toolbar">
+      {% if q and q.status == "MONITORING" %}
+        <form method="post" action="{% url 'discharge_visit' visit.id %}" onsubmit="return confirm('ยืนยันเสร็จสิ้นการรักษาและนำออกจาก Monitoring?');">
+          {% csrf_token %}
+          <button class="btn-link" type="submit">เสร็จสิ้นการรักษา</button>
+        </form>
+      {% endif %}
+      {% include "includes/main_nav.html" %}
+    </div>
+  </header>
 
   <div class="detail-grid">
     <div class="card">

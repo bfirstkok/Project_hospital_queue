@@ -22,5 +22,6 @@ urlpatterns = [
     path("device/", device_views.device_management, name="device_management"),
 
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
+    path("api/iot/vitals/", views.iot_vitals, name="iot_vitals"),
 
 ]

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ประวัติผู้ป่วย {{ patient.hn }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 14px; align-items: start; }
+    .panel, .visit { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; }
+    .visit { margin-bottom: 12px; }
+    .muted { color: rgba(255,255,255,.55); }
+    .row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .row:last-child { border-bottom: 0; }
+    .badge { display: inline-block; padding: 4px 9px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+    .RED, .LOW_O2, .LOW_BP, .HIGH_RR { background: rgba(255,95,114,.18); color: #ff7b8b; }
+    .YELLOW { background: rgba(255,184,48,.18); color: #ffca63; }
+    .GREEN { background: rgba(32,214,181,.16); color: #20d6b5; }
+    .NORMAL, .SCHEDULED { background: rgba(90,200,255,.14); color: #8ad8ff; }
+    .ATTENDED { background: rgba(32,214,181,.16); color: #20d6b5; }
+    .MISSED, .CANCELLED { background: rgba(255,95,114,.18); color: #ff7b8b; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; vertical-align: top; }
+    th { color: rgba(255,255,255,.55); font-size: 12px; }
+    input, select { width: 100%; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #fff; border-radius: 8px; padding: 9px; }
+    button, .btn { border: 0; border-radius: 8px; padding: 9px 12px; background: #20d6b5; color: #07131f; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .mini-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .mini-form .wide { grid-column: 1 / -1; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .top { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>{{ patient.first_name }} {{ patient.last_name }}</h1>
+        <div class="muted">HN {{ patient.hn }} | CID {{ patient.national_id }} | โทร {{ patient.phone|default:"-" }}</div>
+      </div>
+      {% include "includes/main_nav.html" %}
+    </div>
+
+    <div class="grid">
+      <aside class="panel">
+        <h2>ข้อมูลผู้ป่วย</h2>
+        <div class="row"><span class="muted">อายุ</span><strong>{{ patient.age|default:"-" }}</strong></div>
+        <div class="row"><span class="muted">เพศ</span><strong>{{ patient.gender }}</strong></div>
+        <div class="row"><span class="muted">โรคประจำตัว</span><strong>{{ patient.chronic_diseases|default:"-" }}</strong></div>
+        <div class="row"><span class="muted">แพ้ยา</span><strong>{{ patient.allergies|default:"-" }}</strong></div>
+        <div class="row"><span class="muted">ผู้ติดต่อฉุกเฉิน</span><strong>{{ patient.emergency_name|default:"-" }} {{ patient.emergency_phone|default:"" }}</strong></div>
+
+        <h2 style="margin-top:18px">นัดติดตาม</h2>
+        <form class="mini-form" method="post" action="{% url 'create_appointment' patient.id %}">
+          {% csrf_token %}
+          <input type="date" name="date" required>
+          <input type="time" name="time">
+          <input class="wide" name="note" placeholder="หมายเหตุการนัด">
+          <button class="wide" type="submit">เพิ่มนัด</button>
+        </form>
+
+        <table>
+          <thead><tr><th>วันเวลา</th><th>สถานะ</th><th></th></tr></thead>
+          <tbody>
+            {% for appointment in appointments %}
+              <tr>
+                <td>{{ appointment.date|date:"Y-m-d" }} {{ appointment.time|time:"H:i"|default:"" }}<br><span class="muted">{{ appointment.note }}</span></td>
+                <td><span class="badge {{ appointment.status }}">{{ appointment.status }}</span></td>
+                <td>
+                  <form method="post" action="{% url 'update_appointment_status' appointment.id %}">
+                    {% csrf_token %}
+                    <select name="status" onchange="this.form.submit()">
+                      {% for value, label in appointment_statuses %}
+                        <option value="{{ value }}" {% if appointment.status == value %}selected{% endif %}>{{ value }}</option>
+                      {% endfor %}
+                    </select>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="muted">ยังไม่มีนัดติดตาม</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </aside>
+
+      <main>
+        {% for visit in visits %}
+          <section class="visit">
+            <h2>Visit #{{ visit.id }} <span class="badge {{ visit.final_severity }}">{{ visit.final_severity|default:"ยังไม่สรุป" }}</span></h2>
+            <div class="muted">
+              ลงทะเบียน {{ visit.registered_at|date:"Y-m-d H:i" }} |
+              คัดกรอง {{ visit.triaged_at|date:"Y-m-d H:i"|default:"-" }} |
+              เรียกคิว {{ visit.called_at|date:"Y-m-d H:i"|default:"-" }} |
+              สถานะ {{ visit.queue.status|default:"-" }}
+            </div>
+
+            <table>
+              <thead><tr><th>Vitals</th><th>AI/Nurse</th><th>OPD</th><th>Alerts</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>
+                    RR {{ visit.vitals.rr|default:"-" }},
+                    PR {{ visit.vitals.pr|default:"-" }},
+                    SpO2 {{ visit.vitals.o2sat|default:"-" }},
+                    BP {{ visit.vitals.sys_bp|default:"-" }}/{{ visit.vitals.dia_bp|default:"-" }},
+                    BT {{ visit.vitals.bt|default:"-" }}
+                  </td>
+                  <td>
+                    AI: <span class="badge {{ visit.triage_result.ai_severity }}">{{ visit.triage_result.ai_severity|default:"-" }}</span><br>
+                    Nurse: <span class="badge {{ visit.triage_result.nurse_severity }}">{{ visit.triage_result.nurse_severity|default:"-" }}</span><br>
+                    <span class="muted">{{ visit.triage_result.nurse_note|default:"" }}</span>
+                  </td>
+                  <td>
+                    <span class="badge {{ visit.opd_assessment.opd_urgency }}">{{ visit.opd_assessment.opd_urgency|default:"-" }}</span><br>
+                    <span class="muted">{{ visit.opd_assessment.diagnosis|default:"" }}</span>
+                  </td>
+                  <td>
+                    {% for alert in visit.critical_alerts.all %}
+                      <div><span class="badge {{ alert.alert_type }}">{{ alert.alert_type }}</span> {{ alert.message }} <span class="muted">({{ alert.status }})</span></div>
+                    {% empty %}
+                      <span class="muted">ไม่มี alert</span>
+                    {% endfor %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        {% empty %}
+          <section class="visit muted">ยังไม่มี visit</section>
+        {% endfor %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

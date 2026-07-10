@@ -432,6 +432,23 @@
         <div class="muted" id="serverTime">loading...</div>
       </div>
 
+      <div class="card">
+        <div class="kpi">
+          <div>
+            <div class="label">Critical Alerts</div>
+            <div class="val" id="alertCount">{{ new_alert_total }}</div>
+          </div>
+          <div class="pill"><span class="dot bad"></span>NEW</div>
+        </div>
+        <div id="alertList" class="chips">
+          {% for alert in latest_alerts %}
+            <span class="chip"><span class="dot bad"></span>#{{ alert.visit_id }} {{ alert.message }}</span>
+          {% empty %}
+            <span class="chip muted">ไม่มี alert ใหม่</span>
+          {% endfor %}
+        </div>
+      </div>
+
       <!-- Table Card -->
       <div class="card table-card">
         <div class="table-header">
@@ -579,8 +596,42 @@
     render();
   }
 
+  async function ackAlert(alertId) {
+    await fetch(`/queues/api/alerts/${alertId}/ack/`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'X-CSRFToken': getCsrfToken()}
+    });
+    await loadLiveDashboard();
+  }
+
+  async function loadLiveDashboard() {
+    try {
+      const res = await fetch('/dashboard/api/live-summary/', {credentials: 'same-origin'});
+      const data = await res.json();
+      if (!data.ok) return;
+      document.getElementById('alertCount').textContent = data.new_alert_total;
+      const alertList = document.getElementById('alertList');
+      if (!data.alerts.length) {
+        alertList.innerHTML = '<span class="chip muted">ไม่มี alert ใหม่</span>';
+        return;
+      }
+      alertList.innerHTML = data.alerts.map(a => `
+        <span class="chip">
+          <span class="dot bad"></span>
+          #${a.visit_id} ${a.patient}: ${a.message}
+          <button class="action-btn action-btn-blue" onclick="ackAlert(${a.id})">รับทราบ</button>
+        </span>
+      `).join('');
+    } catch (err) {
+      console.error('live dashboard failed', err);
+    }
+  }
+
   loadSummary();
+  loadLiveDashboard();
   setInterval(loadSummary, 5000);
+  setInterval(loadLiveDashboard, 5000);
 </script>
 </body>
 </html>

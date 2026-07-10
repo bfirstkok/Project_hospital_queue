@@ -55,6 +55,36 @@ def _compute_opd(assessment):
     return ("GREEN", ["No urgency rule method found on VisitAssessment"])
 
 
+def _assessment_initial_from_triage(visit):
+    vitals = _get_related(visit, "vitals")
+    patient = visit.patient
+    risk_flags = set(vitals.risk_flags or []) if vitals else set()
+
+    initial = {
+        "chief_complaint": visit.note or "",
+        "age": patient.age,
+        "known_copd_asthma": "copd_asthma" in risk_flags,
+        "child_under_5": "child_under_5" in risk_flags or (patient.age is not None and patient.age < 5),
+        "pregnant": "pregnant" in risk_flags,
+        "low_immunity": "immunocompromised" in risk_flags,
+    }
+
+    if vitals:
+        initial.update({
+            "pain_score": vitals.pain_score,
+            "bt": vitals.bt,
+            "sys_bp": vitals.sys_bp if vitals.sys_bp is not None else patient.bp_sys,
+            "dia_bp": vitals.dia_bp if vitals.dia_bp is not None else patient.bp_dia,
+        })
+    else:
+        initial.update({
+            "sys_bp": patient.bp_sys,
+            "dia_bp": patient.bp_dia,
+        })
+
+    return initial
+
+
 def _opd_queue_queryset(selected_room):
     return (
         Queue.objects
@@ -79,8 +109,8 @@ def _opd_queue_payload(q_items):
 
         rows.append({
             "index": index,
-            "queue_id": q.id,
-            "visit_id": v.id,
+            "queue_id": str(q.id),
+            "visit_id": str(v.id),
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": severity,
             "ai_severity": triage.ai_severity if triage else None,
@@ -166,7 +196,10 @@ def opd_room_select(request):
 @login_required
 @transaction.atomic
 def visit_assessment(request, visit_id: int):
-    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=visit_id)
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "vitals", "triage_result"),
+        pk=visit_id,
+    )
 
     q = getattr(visit, "queue", None)
     if not q or q.status != "CALLED":
@@ -191,9 +224,13 @@ def visit_assessment(request, visit_id: int):
                 visit.save(update_fields=["final_severity", "triaged_at"])
 
             # ตรวจสอบว่ามีนัดครั้งต่อไปหรือไม่
+            send_to_monitoring = form.cleaned_data.get("send_to_monitoring")
             next_appt = getattr(assessment, "next_appointment_at", None)
 
-            if next_appt:
+            if send_to_monitoring:
+                q.status = "MONITORING"
+                q.save(update_fields=["status"])
+            elif next_appt:
                 # ถ้ามีนัด -> เปลี่ยน Queue status เป็น FOLLOWUP (ใช้ Visit เดิม)
                 q.status = "FOLLOWUP"
                 q.save(update_fields=["status"])
@@ -205,7 +242,8 @@ def visit_assessment(request, visit_id: int):
             # Redirect ไปหน้ารายละเอียด Visit เพื่อให้เห็น Assessment ที่บันทึกไป
             return redirect("opd_visit_detail", visit_id=visit.id)
     else:
-        form = VisitAssessmentForm(instance=assessment)
+        initial = None if assessment else _assessment_initial_from_triage(visit)
+        form = VisitAssessmentForm(instance=assessment, initial=initial)
 
     color, reasons = _compute_opd(assessment)
 
@@ -303,7 +341,7 @@ def post_opd_monitor_api(request):
         alerts = _monitor_alerts(v)
 
         rows.append({
-            "visit_id": v.id,
+            "visit_id": str(v.id),
             "name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "device_id": v.last_device_id,
@@ -318,7 +356,7 @@ def post_opd_monitor_api(request):
                 "sys_bp": v.last_sys,
                 "dia_bp": v.last_dia,
             },
-            "queue_id": q.id,
+            "queue_id": str(q.id),
             "created_at": q.created_at.isoformat() if q.created_at else None,
         })
 
@@ -357,6 +395,7 @@ def post_opd_visit_detail(request, visit_id: int):
     # ถ้าอยากแยกไฟล์ใหม่ค่อยทำ templates/opd/followup_detail.html ภายหลัง
     return render(request, "queues/monitor_visit_detail.html", {
         "visit": visit,
+        "q": q,
         "logs": logs,
         "assessment": assessment,
     })

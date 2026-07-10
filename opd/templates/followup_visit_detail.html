@@ -44,7 +44,15 @@
       <h1>รายละเอียดผู้ป่วยติดตาม</h1>
       <div class="muted">ข้อมูลนัดหมายและ telemetry จาก IoT</div>
     </div>
-    {% include "includes/main_nav.html" %}
+    <div class="actions">
+      {% if q and q.status == "MONITORING" %}
+        <form method="post" action="{% url 'discharge_visit' visit.id %}" onsubmit="return confirm('ยืนยันเสร็จสิ้นการรักษาและนำออกจาก Monitoring?');">
+          {% csrf_token %}
+          <button class="btn primary" type="submit">เสร็จสิ้นการรักษา</button>
+        </form>
+      {% endif %}
+      {% include "includes/main_nav.html" %}
+    </div>
   </div>
 
   {% if error %}
