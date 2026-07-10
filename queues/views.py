@@ -529,7 +529,6 @@ def iot_vitals(request):
     Expected JSON:
       {
         "device_id": "IOT001",
-        "patient_id": "P0001",
         "heart_rate": 118,
         "spo2": 94,
         "temperature": 38.9,
@@ -543,7 +542,7 @@ def iot_vitals(request):
     except Exception:
         return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
 
-    required_fields = ["device_id", "patient_id", "heart_rate", "spo2", "temperature"]
+    required_fields = ["device_id", "heart_rate", "spo2", "temperature"]
     missing_fields = [field for field in required_fields if data.get(field) in (None, "")]
     if missing_fields:
         return JsonResponse({
@@ -554,7 +553,7 @@ def iot_vitals(request):
 
     try:
         device_id = str(data["device_id"]).strip()
-        patient_id = str(data["patient_id"]).strip()
+        patient_id = str(data.get("patient_id", "")).strip()
         heart_rate = int(data["heart_rate"])
         spo2 = int(data["spo2"])
         temperature = float(data["temperature"])
@@ -579,16 +578,39 @@ def iot_vitals(request):
     if device.api_key != api_key:
         return JsonResponse({"success": False, "message": "Invalid device credentials"}, status=403)
 
-    patient = _find_patient_by_iot_id(patient_id)
-    if not patient:
-        return JsonResponse({"success": False, "message": "Patient not found"}, status=404)
+    assignment = (
+        DeviceAssignment.objects
+        .select_related("visit", "visit__patient", "visit__queue")
+        .filter(device=device, is_active=True)
+        .first()
+    )
+    if not assignment:
+        return JsonResponse({
+            "success": False,
+            "message": "Device is not paired to an active visit",
+        }, status=409)
+
+    visit = assignment.visit
+    patient = visit.patient
+
+    if patient_id:
+        posted_patient = _find_patient_by_iot_id(patient_id)
+        if not posted_patient:
+            return JsonResponse({"success": False, "message": "Patient not found"}, status=404)
+        if posted_patient.id != patient.id:
+            return JsonResponse({
+                "success": False,
+                "message": "Posted patient_id does not match active device assignment",
+            }, status=409)
+
+    patient_identifier = patient_id or patient.hn or patient.national_id or str(patient.id)
 
     device.last_seen = timezone.now()
     device.save(update_fields=["last_seen"])
 
     vital = IoTVital.objects.create(
         device_identifier=device_id,
-        patient_identifier=patient_id,
+        patient_identifier=patient_identifier,
         device_db_id=device.id,
         patient_db_id=patient.id,
         heart_rate=heart_rate,
@@ -599,32 +621,38 @@ def iot_vitals(request):
         blood_pressure_dia=blood_pressure_dia,
     )
 
-    visit = (
-        Visit.objects
-        .filter(patient=patient)
-        .exclude(queue__status__in=[Queue.Status.OPD_DONE, Queue.Status.DISCHARGED, Queue.Status.CANCELLED])
-        .order_by("-registered_at")
-        .first()
+    telemetry_log = TelemetryLog.objects.create(
+        visit=visit,
+        device=device,
+        bpm=heart_rate,
+        o2sat=spo2,
+        bt=temperature,
+        rr=respiratory_rate,
+        sys_bp=blood_pressure_sys,
+        dia_bp=blood_pressure_dia,
     )
-    if visit:
-        vs, _ = VitalSign.objects.get_or_create(visit=visit)
-        vs.pr = heart_rate
-        vs.o2sat = spo2
-        vs.bt = temperature
-        if respiratory_rate is not None:
-            vs.rr = respiratory_rate
-        if blood_pressure_sys is not None:
-            vs.sys_bp = blood_pressure_sys
-        if blood_pressure_dia is not None:
-            vs.dia_bp = blood_pressure_dia
-        vs.save()
-        create_critical_alerts_for_visit(visit, vs, source="iot_vitals")
-        evaluate_visit_if_vitals_complete(visit)
+
+    vs, _ = VitalSign.objects.get_or_create(visit=visit)
+    vs.pr = heart_rate
+    vs.o2sat = spo2
+    vs.bt = temperature
+    if respiratory_rate is not None:
+        vs.rr = respiratory_rate
+    if blood_pressure_sys is not None:
+        vs.sys_bp = blood_pressure_sys
+    if blood_pressure_dia is not None:
+        vs.dia_bp = blood_pressure_dia
+    vs.save()
+    create_critical_alerts_for_visit(visit, vs, source="iot_vitals")
+    evaluate_visit_if_vitals_complete(visit)
 
     return JsonResponse({
         "success": True,
         "message": "Vital signs received successfully",
         "id": vital.id,
+        "telemetry_log_id": telemetry_log.id,
+        "visit_id": visit.id,
+        "patient_id": patient_identifier,
     })
 
 

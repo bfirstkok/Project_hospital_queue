@@ -48,7 +48,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 if DEBUG:
-    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "0.0.0.0"])
+    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "0.0.0.0", "*"])
     probe_socket = None
     try:
         probe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

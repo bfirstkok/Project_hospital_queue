@@ -5,7 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from patients.models import Patient
-from queues.models import Device, DeviceAssignment, Queue, TelemetryLog, Visit, VitalSign
+from queues.models import Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, Visit, VitalSign
 
 
 class IotTelemetryAssignmentTests(TestCase):
@@ -32,6 +32,14 @@ class IotTelemetryAssignmentTests(TestCase):
             data=json.dumps(payload),
             content_type="application/json",
             HTTP_X_DEVICE_ID=self.device.device_id,
+            HTTP_X_API_KEY=self.device.api_key,
+        )
+
+    def post_vitals(self, payload):
+        return self.client.post(
+            "/api/iot/vitals/",
+            data=json.dumps(payload),
+            content_type="application/json",
             HTTP_X_API_KEY=self.device.api_key,
         )
 
@@ -102,6 +110,44 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(queue.status, Queue.Status.WAITING_CONFIRMATION)
         self.assertIsNone(waiting_visit.final_severity)
         self.assertEqual(waiting_visit.triage_result.ai_severity, "GREEN")
+
+    def test_iot_vitals_uses_active_device_assignment_without_patient_id(self):
+        DeviceAssignment.objects.create(device=self.device, visit=self.visit)
+
+        response = self.post_vitals({
+            "device_id": self.device.device_id,
+            "heart_rate": 92,
+            "spo2": 98,
+            "temperature": 37.1,
+            "respiratory_rate": 18,
+            "blood_pressure_sys": 121,
+            "blood_pressure_dia": 77,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["visit_id"], self.visit.id)
+
+        vital = IoTVital.objects.get()
+        self.assertEqual(vital.patient_db_id, self.patient.id)
+        self.assertEqual(vital.patient_identifier, self.patient.hn)
+
+        log = TelemetryLog.objects.get()
+        self.assertEqual(log.visit, self.visit)
+        self.assertEqual(log.device, self.device)
+
+    def test_iot_vitals_rejects_unpaired_device_without_patient_id(self):
+        response = self.post_vitals({
+            "device_id": self.device.device_id,
+            "heart_rate": 92,
+            "spo2": 98,
+            "temperature": 37.1,
+        })
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(IoTVital.objects.count(), 0)
+        self.assertEqual(TelemetryLog.objects.count(), 0)
 
 
 class QueueWorkflowTests(TestCase):

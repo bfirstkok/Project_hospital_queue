@@ -37,12 +37,12 @@ def explain_vitals(v):
         reasons.append(f"RR {v.rr} elevated")
 
     if v.sys_bp is not None and v.sys_bp < 90:
-        reasons.append(f"Systolic BP {v.sys_bp} < 90")
+        reasons.append(f"BP ตัวบน {v.sys_bp} < 90")
     elif v.sys_bp is not None and v.sys_bp >= 180:
-        reasons.append(f"Systolic BP {v.sys_bp} >= 180")
+        reasons.append(f"BP ตัวบน {v.sys_bp} >= 180")
 
     if v.dia_bp is not None and v.dia_bp >= 120:
-        reasons.append(f"Diastolic BP {v.dia_bp} >= 120")
+        reasons.append(f"BP ตัวล่าง {v.dia_bp} >= 120")
 
     if v.pr is not None and v.pr >= 120:
         reasons.append(f"PR/BPM {v.pr} >= 120")

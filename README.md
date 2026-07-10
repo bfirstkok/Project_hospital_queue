@@ -74,7 +74,7 @@ priority, created_at
 
 Rule-based fallback thresholds:
 
-- RED: `O2Sat < 95`, `RR > 30`, `Systolic BP < 90`, `BT >= 39`
+- RED: `O2Sat < 95`, `RR > 30`, `BP ตัวบน < 90`, `BT >= 39`
 - YELLOW: `O2Sat 95-96`, `RR 21-30`, `PR/BPM >= 120`, `BT 38-38.9`
 - GREEN: no RED/YELLOW trigger
 

@@ -45,7 +45,7 @@ def rule_based_triage(v, symptoms_text=""):
     if rr is not None and rr > 30:
         reasons.append("RR > 30")
     if sys_bp is not None and sys_bp < 90:
-        reasons.append("SYS BP < 90")
+        reasons.append("BP ตัวบน < 90")
     if bt is not None and bt >= 39:
         reasons.append("BT >= 39")
     if pain_score is not None and pain_score >= 7:
@@ -80,9 +80,9 @@ def rule_based_triage(v, symptoms_text=""):
     if "high_fever" in urgent_symptoms:
         y.append("High fever symptom")
     if sys_bp is not None and sys_bp >= 180:
-        y.append("SYS BP >= 180")
+        y.append("BP ตัวบน >= 180")
     if v.dia_bp is not None and v.dia_bp >= 120:
-        y.append("DIA BP >= 120")
+        y.append("BP ตัวล่าง >= 120")
 
     yellow_risks = {
         "copd_asthma": "COPD/Asthma",

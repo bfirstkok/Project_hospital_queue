@@ -17,7 +17,7 @@ SEED_PATIENTS = [
         "nurse_severity": "RED",
         "confidence": 0.91,
         "note": "Severe dyspnea with low oxygen saturation",
-        "ai_reason": "O2Sat 91% < 95; RR 34 > 30; Systolic BP 86 < 90; rule guardrail active",
+        "ai_reason": "O2Sat 91% < 95; RR 34 > 30; BP ตัวบน 86 < 90; rule guardrail active",
         "nurse_note": "Confirmed RED due to unstable vital signs.",
         "queue_status": Queue.Status.WAITING_QUEUE,
         "vitals": {"rr": 34, "pr": 128, "sys_bp": 86, "dia_bp": 58, "bt": 39.2, "o2sat": 91},

@@ -301,7 +301,7 @@
               <th style="width:60px">BPM</th>
               <th style="width:60px">O2</th>
               <th style="width:60px">BT</th>
-              <th style="width:80px">SYS/DIA</th>
+              <th style="width:80px">BP</th>
               <th style="width:60px">RR</th>
               <th style="width:160px">Alert</th>
               <th style="width:140px">เวลาสร้าง</th>
@@ -388,7 +388,7 @@
         const created = r.created_at
           ? new Date(r.created_at).toLocaleString()
           : "-";
-        const device = (r.device_id && String(r.device_id).trim()) ? r.device_id : "DEV001";
+        const device = (r.device_id && String(r.device_id).trim()) ? r.device_id : "-";
         const alerts = r.alerts || [];
         const alertHtml = alerts.length
           ? `<span class="alert">${alerts.join(", ")}</span>`

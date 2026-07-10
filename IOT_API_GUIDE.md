@@ -52,7 +52,7 @@ X-API-Key: <API KEY ของ device>
 Required fields:
 
 ```text
-device_id, patient_id, heart_rate, spo2, temperature
+device_id, heart_rate, spo2, temperature
 ```
 
 Body ตัวอย่าง:
@@ -60,7 +60,6 @@ Body ตัวอย่าง:
 ```json
 {
   "device_id": "WT001",
-  "patient_id": "P0001",
   "heart_rate": 118,
   "spo2": 94,
   "temperature": 38.9,
@@ -136,7 +135,7 @@ Device ไม่ active `403`:
 curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <API_KEY_OF_WT001>" \
-  -d "{\"device_id\":\"WT001\",\"patient_id\":\"833298\",\"heart_rate\":118,\"spo2\":94,\"temperature\":38.9,\"respiratory_rate\":31,\"blood_pressure_sys\":90,\"blood_pressure_dia\":60}"
+  -d "{\"device_id\":\"WT001\",\"heart_rate\":118,\"spo2\":94,\"temperature\":38.9,\"respiratory_rate\":31,\"blood_pressure_sys\":90,\"blood_pressure_dia\":60}"
 ```
 
 ในหน้า Device Management สามารถกดปุ่ม `copy API key` เพื่อคัดลอก API key ของแต่ละ device ได้
@@ -148,3 +147,11 @@ curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
 - ถ้าพบ `patient_id` ระบบบันทึก `IoTVital`
 - ถ้าผู้ป่วยมี visit ล่าสุดที่ยังไม่จบ ระบบ sync ค่าเข้า `VitalSign` ของ visit นั้น และเรียก AI/guardrail evaluation ต่อ
 - ถ้าผู้ป่วยไม่มี visit ที่ยังไม่จบ ระบบยังบันทึก `IoTVital` ไว้ แต่ไม่ sync เข้า `VitalSign`
+
+## Device-only payload update
+
+ตอนนี้ทีม IoT ไม่จำเป็นต้องส่ง `patient_id` แล้ว ให้ส่งแค่ `device_id` พร้อม `X-API-Key` ของอุปกรณ์นั้น ระบบจะใช้ active pairing ในหน้า Device Management เพื่อหา Visit/Patient เอง
+
+- ถ้า device ยังไม่ได้ผูกกับ Visit ระบบตอบ `409 Device is not paired to an active visit` และไม่บันทึกข้อมูล
+- ถ้า device ผูกอยู่ ระบบบันทึก `IoTVital`, `TelemetryLog` และ sync เข้า `VitalSign` ของ Visit ที่ผูกกับ device นั้น
+- ถ้ายังส่ง `patient_id` มาด้วย ระบบจะใช้เป็นตัวตรวจซ้ำ ถ้าไม่ตรงกับ pairing จะตอบ `409 Posted patient_id does not match active device assignment`

@@ -8,7 +8,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
-from queues.models import Queue, Visit, TelemetryLog, VitalSign
+from queues.models import DeviceAssignment, Queue, Visit, TelemetryLog, VitalSign
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
 
@@ -31,7 +31,7 @@ def _monitor_alerts(v):
     if v.last_bt is not None and float(v.last_bt) >= 39:
         alerts.append("Temp >= 39")
     if v.last_sys is not None and v.last_sys < 90:
-        alerts.append("Systolic BP < 90")
+        alerts.append("BP ตัวบน < 90")
     if v.last_bpm is not None and v.last_bpm >= 120:
         alerts.append("BPM >= 120")
     return alerts
@@ -306,6 +306,14 @@ def post_opd_monitor_api(request):
     )
 
     visit_ids = [q.visit_id for q in monitor_qs]
+    active_assignments = {
+        assignment.visit_id: assignment.device.device_id
+        for assignment in (
+            DeviceAssignment.objects
+            .select_related("device")
+            .filter(visit_id__in=visit_ids, is_active=True)
+        )
+    }
 
     latest_log = (
         TelemetryLog.objects
@@ -344,7 +352,7 @@ def post_opd_monitor_api(request):
             "visit_id": str(v.id),
             "name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
-            "device_id": v.last_device_id,
+            "device_id": v.last_device_id or active_assignments.get(v.id),
             "online": online,
             "alerts": alerts,
             "alert_level": "critical" if alerts else "normal",

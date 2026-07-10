@@ -261,10 +261,10 @@
                             <dd><span class="vital-value">{{ vs.pr|default:"-" }}{% if vs.pr >= 120 %}<span class="badge yellow">YELLOW/RED</span>{% endif %}</span></dd>
                           </div>
                           <div class="info-row">
-                            <dt>Systolic BP</dt>
+                            <dt>BP ตัวบน</dt>
                             <dd><span class="vital-value">{{ vs.sys_bp|default:"-" }}{% if vs.sys_bp < 90 %}<span class="badge red">RED</span>{% endif %}</span></dd>
                           </div>
-                          <div class="info-row"><dt>Diastolic BP</dt><dd>{{ vs.dia_bp|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>BP ตัวล่าง</dt><dd>{{ vs.dia_bp|default:"-" }}</dd></div>
                           <div class="info-row">
                             <dt>BT</dt>
                             <dd>
