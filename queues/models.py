@@ -1,4 +1,5 @@
-﻿from django.db import models
+﻿import re
+from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
@@ -86,6 +87,25 @@ class Device(models.Model):
     api_key = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
     last_seen = models.DateTimeField(blank=True, null=True)
+
+    DEVICE_ID_PATTERN = re.compile(r"^([A-Za-z]+)(\d+)$")
+
+    @classmethod
+    def suggest_next_device_id(cls, default_prefix="WATCH", default_width=3):
+        """ดูเลข device_id ที่มากที่สุดที่มีอยู่ (เช่น WATCH011) แล้วเดาตัวถัดไป (WATCH012)."""
+        best_prefix, best_width, best_num = default_prefix, default_width, 0
+
+        for device_id in cls.objects.values_list("device_id", flat=True):
+            match = cls.DEVICE_ID_PATTERN.match((device_id or "").strip())
+            if not match:
+                continue
+            prefix, digits = match.group(1), match.group(2)
+            num = int(digits)
+            if num > best_num:
+                best_prefix, best_width, best_num = prefix, len(digits), num
+
+        next_num = best_num + 1
+        return f"{best_prefix}{next_num:0{best_width}d}"
 
     def __str__(self):
         return self.device_id

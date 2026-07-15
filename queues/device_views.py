@@ -20,7 +20,7 @@ def mask_api_key(api_key):
 
 @login_required
 def device_management(request):
-    create_form = DeviceCreateForm()
+    create_form = DeviceCreateForm(initial={"device_id": Device.suggest_next_device_id()})
     pair_form = DeviceManagementPairForm()
 
     if request.method == "POST":
