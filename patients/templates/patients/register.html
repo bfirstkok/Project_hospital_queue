@@ -28,7 +28,7 @@
       <div class="card">
 
         {% if form.errors %}
-          <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก</div>
+          <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก (ดูข้อความสีแดงใต้แต่ละช่อง)</div>
         {% endif %}
 
         <form id="patientRegisterForm" method="post" autocomplete="off">
@@ -40,42 +40,55 @@
             <div class="field">
               <label>ชื่อ</label>
               <input name="first_name" required placeholder="เช่น สมชาย"
+                     class="{% if form.first_name.errors %}has-error{% endif %}"
                      value="{{ form.first_name.value|default:'' }}">
+              {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>นามสกุล</label>
               <input name="last_name" required placeholder="เช่น ใจดี"
+                     class="{% if form.last_name.errors %}has-error{% endif %}"
                      value="{{ form.last_name.value|default:'' }}">
+              {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field full">
               <label>เลขบัตรประชาชน</label>
               <input name="national_id" required inputmode="numeric"
                      placeholder="13 หลัก ไม่ต้องใส่ขีด"
+                     class="{% if form.national_id.errors %}has-error{% endif %}"
                      value="{{ form.national_id.value|default:'' }}">
               <div class="hint">ใช้ตรวจสอบผู้ป่วยซ้ำในระบบ</div>
+              {% if form.national_id.errors %}<div class="field-error">{{ form.national_id.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>เพศ</label>
-              <select name="gender">
-                <option value="">-- เลือก --</option>
-                <option value="M">ชาย</option>
-                <option value="F">หญิง</option>
-                <option value="O">อื่นๆ</option>
-                <option value="UNKNOWN">ไม่ระบุ</option>
+              <select name="gender" class="{% if form.gender.errors %}has-error{% endif %}">
+                <option value="" {% if not form.gender.value %}selected{% endif %}>-- เลือก --</option>
+                <option value="M" {% if form.gender.value == "M" %}selected{% endif %}>ชาย</option>
+                <option value="F" {% if form.gender.value == "F" %}selected{% endif %}>หญิง</option>
+                <option value="O" {% if form.gender.value == "O" %}selected{% endif %}>อื่นๆ</option>
+                <option value="UNKNOWN" {% if form.gender.value == "UNKNOWN" %}selected{% endif %}>ไม่ระบุ</option>
               </select>
+              {% if form.gender.errors %}<div class="field-error">{{ form.gender.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>อายุ</label>
-              <input name="age" type="number" min="0" placeholder="ปี">
+              <input name="age" type="number" min="0" placeholder="ปี"
+                     class="{% if form.age.errors %}has-error{% endif %}"
+                     value="{{ form.age.value|default:'' }}">
+              {% if form.age.errors %}<div class="field-error">{{ form.age.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>เบอร์โทร</label>
-              <input name="phone" placeholder="08xxxxxxxx">
+              <input name="phone" placeholder="08xxxxxxxx"
+                     class="{% if form.phone.errors %}has-error{% endif %}"
+                     value="{{ form.phone.value|default:'' }}">
+              {% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}
             </div>
           </div>
 
@@ -85,55 +98,67 @@
             <div class="field">
               <label>หมู่เลือด</label>
               <select name="blood_type">
-                <option value="UNKNOWN">ไม่ทราบ</option>
-                <option>A</option>
-                <option>B</option>
-                <option>AB</option>
-                <option>O</option>
+                <option value="UNKNOWN" {% if not form.blood_type.value or form.blood_type.value == "UNKNOWN" %}selected{% endif %}>ไม่ทราบ</option>
+                <option value="A" {% if form.blood_type.value == "A" %}selected{% endif %}>A</option>
+                <option value="B" {% if form.blood_type.value == "B" %}selected{% endif %}>B</option>
+                <option value="AB" {% if form.blood_type.value == "AB" %}selected{% endif %}>AB</option>
+                <option value="O" {% if form.blood_type.value == "O" %}selected{% endif %}>O</option>
               </select>
             </div>
 
             <div class="field">
               <label>ส่วนสูง (cm)</label>
-              <input name="height_cm" type="number" step="0.01">
+              <input name="height_cm" type="number" step="0.01"
+                     class="{% if form.height_cm.errors %}has-error{% endif %}"
+                     value="{{ form.height_cm.value|default:'' }}">
+              {% if form.height_cm.errors %}<div class="field-error">{{ form.height_cm.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>น้ำหนัก (kg)</label>
-              <input name="weight_kg" type="number" step="0.01">
+              <input name="weight_kg" type="number" step="0.01"
+                     class="{% if form.weight_kg.errors %}has-error{% endif %}"
+                     value="{{ form.weight_kg.value|default:'' }}">
+              {% if form.weight_kg.errors %}<div class="field-error">{{ form.weight_kg.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>BP ตัวบน</label>
-              <input name="bp_sys" type="number" min="0" placeholder="เช่น 120">
+              <input name="bp_sys" type="number" min="0" placeholder="เช่น 120"
+                     class="{% if form.bp_sys.errors %}has-error{% endif %}"
+                     value="{{ form.bp_sys.value|default:'' }}">
+              {% if form.bp_sys.errors %}<div class="field-error">{{ form.bp_sys.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>BP ตัวล่าง</label>
-              <input name="bp_dia" type="number" min="0" placeholder="เช่น 80">
+              <input name="bp_dia" type="number" min="0" placeholder="เช่น 80"
+                     class="{% if form.bp_dia.errors %}has-error{% endif %}"
+                     value="{{ form.bp_dia.value|default:'' }}">
+              {% if form.bp_dia.errors %}<div class="field-error">{{ form.bp_dia.errors.0 }}</div>{% endif %}
             </div>
           </div>
 
           <div class="field full">
             <label>โรคประจำตัว</label>
-            <textarea name="chronic_diseases"></textarea>
+            <textarea name="chronic_diseases">{{ form.chronic_diseases.value|default:'' }}</textarea>
           </div>
 
           <div class="field full">
             <label>แพ้ยา / อาหาร</label>
-            <textarea name="allergies"></textarea>
+            <textarea name="allergies">{{ form.allergies.value|default:'' }}</textarea>
           </div>
 
           <div class="field full">
             <label>ยาที่ใช้ประจำ</label>
-            <textarea name="medications"></textarea>
+            <textarea name="medications">{{ form.medications.value|default:'' }}</textarea>
           </div>
 
           <!-- ================= SECTION 3: อาการที่มารับบริการ ================= -->
           <h3>อาการที่มารับบริการ</h3>
           <div class="field full">
             <label>อาการของผู้ป่วย</label>
-            <textarea name="note" placeholder="ระบุอาการสำคัญหรือเหตุผลที่มารับบริการ"></textarea>
+            <textarea name="note" placeholder="ระบุอาการสำคัญหรือเหตุผลที่มารับบริการ">{{ form.note.value|default:'' }}</textarea>
           </div>
 
           <!-- ================= SECTION 4: ที่อยู่ ================= -->
@@ -162,12 +187,13 @@
 
             <div class="field">
               <label>รหัสไปรษณีย์ (อัตโนมัติ)</label>
-              <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน">
+              <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน"
+                     value="{{ form.postal_code.value|default:'' }}">
             </div>
           </div>
-          <input id="province_name" name="province" type="hidden">
-          <input id="district_name" name="district" type="hidden">
-          <input id="subdistrict_name" name="subdistrict" type="hidden">
+          <input id="province_name" name="province" type="hidden" value="{{ form.province.value|default:'' }}">
+          <input id="district_name" name="district" type="hidden" value="{{ form.district.value|default:'' }}">
+          <input id="subdistrict_name" name="subdistrict" type="hidden" value="{{ form.subdistrict.value|default:'' }}">
           <div class="hint">
             • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
             • ระบบจะบันทึกชื่อจังหวัด อำเภอ ตำบล และรหัสไปรษณีย์ไว้ในข้อมูลผู้ป่วย
@@ -178,28 +204,28 @@
           <div class="grid">
             <div class="field">
               <label>ชื่อผู้ติดต่อ</label>
-              <input name="emergency_name">
+              <input name="emergency_name" value="{{ form.emergency_name.value|default:'' }}">
             </div>
 
             <div class="field">
               <label>ความสัมพันธ์กับผู้ป่วย</label>
               <select name="emergency_relationship">
-                <option value="">-- เลือก --</option>
-                <option value="FATHER">พ่อ</option>
-                <option value="MOTHER">แม่</option>
-                <option value="SPOUSE">คู่สมรส</option>
-                <option value="CHILD">บุตร</option>
-                <option value="SIBLING">พี่น้อง</option>
-                <option value="RELATIVE">ญาติ</option>
-                <option value="FRIEND">เพื่อน</option>
-                <option value="CAREGIVER">ผู้ดูแล</option>
-                <option value="OTHER">อื่น ๆ</option>
+                <option value="" {% if not form.emergency_relationship.value %}selected{% endif %}>-- เลือก --</option>
+                <option value="FATHER" {% if form.emergency_relationship.value == "FATHER" %}selected{% endif %}>พ่อ</option>
+                <option value="MOTHER" {% if form.emergency_relationship.value == "MOTHER" %}selected{% endif %}>แม่</option>
+                <option value="SPOUSE" {% if form.emergency_relationship.value == "SPOUSE" %}selected{% endif %}>คู่สมรส</option>
+                <option value="CHILD" {% if form.emergency_relationship.value == "CHILD" %}selected{% endif %}>บุตร</option>
+                <option value="SIBLING" {% if form.emergency_relationship.value == "SIBLING" %}selected{% endif %}>พี่น้อง</option>
+                <option value="RELATIVE" {% if form.emergency_relationship.value == "RELATIVE" %}selected{% endif %}>ญาติ</option>
+                <option value="FRIEND" {% if form.emergency_relationship.value == "FRIEND" %}selected{% endif %}>เพื่อน</option>
+                <option value="CAREGIVER" {% if form.emergency_relationship.value == "CAREGIVER" %}selected{% endif %}>ผู้ดูแล</option>
+                <option value="OTHER" {% if form.emergency_relationship.value == "OTHER" %}selected{% endif %}>อื่น ๆ</option>
               </select>
             </div>
 
             <div class="field">
               <label>เบอร์โทร</label>
-              <input name="emergency_phone">
+              <input name="emergency_phone" value="{{ form.emergency_phone.value|default:'' }}">
             </div>
           </div>
 
@@ -272,6 +298,41 @@
       list.forEach(p => {
         provinceSel.add(new Option(p.provinceNameTh, p.provinceCode));
       });
+
+      // ===== คืนค่าที่อยู่เดิม ถ้า submit ฟอร์มไม่ผ่านและมีข้อมูลที่กรอกไว้แล้ว =====
+      const savedProvince = provinceNameInput.value;
+      const savedDistrict = districtNameInput.value;
+      const savedSubdistrict = subdistrictNameInput.value;
+
+      if (savedProvince) {
+        const p = list.find(x => x.provinceNameTh === savedProvince);
+        if (p) {
+          provinceSel.value = p.provinceCode;
+
+          districtSel.innerHTML = '<option value="">-- เลือกอำเภอ --</option>';
+          p.districts.forEach(d => districtSel.add(new Option(d.districtNameTh, d.districtCode)));
+          districtSel.disabled = false;
+
+          if (savedDistrict) {
+            const d = p.districts.find(x => x.districtNameTh === savedDistrict);
+            if (d) {
+              districtSel.value = d.districtCode;
+
+              subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล --</option>';
+              d.subdistricts.forEach(s => subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode)));
+              subdistrictSel.disabled = false;
+
+              if (savedSubdistrict) {
+                const s = d.subdistricts.find(x => x.subdistrictNameTh === savedSubdistrict);
+                if (s) {
+                  subdistrictSel.value = s.subdistrictCode;
+                  // postal_code ถูกคืนค่าจาก Django ไว้แล้วในตอน render ไม่ต้องเซ็ตซ้ำ
+                }
+              }
+            }
+          }
+        }
+      }
 
       provinceSel.addEventListener("change", () => {
         resetDistrict();
