@@ -147,6 +147,14 @@ class DeviceManagementPairForm(forms.Form):
         )
         self.fields["device"].label_from_instance = lambda device: device.device_id
         self.fields["visit"].label_from_instance = self.visit_label
+        self.fields["device"].widget.attrs.update({
+            "class": "combo-select",
+            "data-placeholder": "พิมพ์เพื่อค้นหา device...",
+        })
+        self.fields["visit"].widget.attrs.update({
+            "class": "combo-select",
+            "data-placeholder": "พิมพ์เพื่อค้นหาผู้ป่วย/visit...",
+        })
 
     @staticmethod
     def visit_label(visit):

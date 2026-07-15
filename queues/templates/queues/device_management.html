@@ -45,6 +45,14 @@
     .actions { display: flex; flex-wrap: wrap; gap: 7px; }
     .key-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .empty { padding: 40px 16px; text-align: center; color: rgba(237,244,255,.55); }
+    .combo-wrap { position: relative; }
+    .combo-input { width: 100%; min-height: 38px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(174,194,220,.18); color: #edf4ff; background: rgba(3,10,22,.72); outline: none; }
+    .combo-input:focus { border-color: rgba(74,163,255,.55); }
+    .combo-list { display: none; position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; max-height: 240px; overflow-y: auto; background: #0b1626; border: 1px solid rgba(174,194,220,.22); border-radius: 8px; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+    .combo-list.open { display: block; }
+    .combo-option { padding: 9px 12px; cursor: pointer; font-size: 14px; color: #edf4ff; }
+    .combo-option:hover, .combo-option.active { background: rgba(74,163,255,.18); }
+    .combo-option.empty { padding: 12px; color: rgba(237,244,255,.5); cursor: default; }
     @media (max-width: 900px) {
       .top { flex-direction: column; }
       .grid { grid-template-columns: 1fr; }
@@ -205,6 +213,77 @@
           window.prompt("Copy API key:", text);
         }
       });
+    });
+
+    document.querySelectorAll("select.combo-select").forEach((select) => {
+      const parent = select.parentElement;
+      parent.classList.add("combo-wrap");
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "combo-input";
+      input.autocomplete = "off";
+      input.placeholder = select.dataset.placeholder || "พิมพ์เพื่อค้นหา...";
+
+      const list = document.createElement("div");
+      list.className = "combo-list";
+
+      const options = Array.from(select.options).filter((opt) => opt.value !== "");
+
+      function currentLabel() {
+        const selected = options.find((opt) => opt.value === select.value);
+        return selected ? selected.textContent : "";
+      }
+
+      function renderList(filterText) {
+        const q = filterText.trim().toLowerCase();
+        list.innerHTML = "";
+        const matches = options.filter((opt) => opt.textContent.toLowerCase().includes(q));
+
+        if (matches.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "combo-option empty";
+          empty.textContent = "ไม่พบรายการ";
+          list.appendChild(empty);
+          return;
+        }
+
+        matches.forEach((opt) => {
+          const item = document.createElement("div");
+          item.className = "combo-option" + (opt.value === select.value ? " active" : "");
+          item.textContent = opt.textContent;
+          item.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            select.value = opt.value;
+            input.value = opt.textContent;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            list.classList.remove("open");
+          });
+          list.appendChild(item);
+        });
+      }
+
+      input.addEventListener("focus", () => {
+        renderList("");
+        list.classList.add("open");
+      });
+      input.addEventListener("input", () => {
+        renderList(input.value);
+        list.classList.add("open");
+      });
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          list.classList.remove("open");
+          input.value = currentLabel();
+        }, 120);
+      });
+
+      select.style.display = "none";
+      select.removeAttribute("required");
+      select.insertAdjacentElement("afterend", list);
+      select.insertAdjacentElement("afterend", input);
+
+      input.value = currentLabel();
     });
   </script>
 </body>
