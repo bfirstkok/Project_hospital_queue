@@ -616,16 +616,16 @@ pre {
    Calm, high-contrast surfaces intended for long clinical work sessions. */
 :root {
   color-scheme: light;
-  --bg: #ffffff;
-  --bg-soft: #f7f9fa;
+  --bg: #f3f7f8;
+  --bg-soft: #edf3f5;
   --surface: #ffffff;
   --surface-strong: #ffffff;
-  --surface-hover: #f5fafb;
-  --border: #dce7eb;
-  --border-strong: #c5d7dd;
+  --surface-hover: #eef6f7;
+  --border: #cad9de;
+  --border-strong: #adc4cc;
   --text: #183044;
-  --muted: #607784;
-  --faint: #82949e;
+  --muted: #536b77;
+  --faint: #657b86;
   --teal: #087f75;
   --blue: #176b9c;
   --red: #c83737;
@@ -840,7 +840,7 @@ textarea {
 textarea { min-height: 94px; }
 
 input::placeholder,
-textarea::placeholder { color: #91a1a9 !important; }
+textarea::placeholder { color: #687d87 !important; }
 
 input:focus,
 select:focus,
@@ -1137,12 +1137,15 @@ pre {
 .confidence-track { background: #e4ecef !important; }
 
 body,
-.shell,
+.shell {
+  background-color: var(--bg) !important;
+}
+
 .content,
 .main,
 .wrap,
 .content-wrapper {
-  background-color: #ffffff !important;
+  background-color: transparent !important;
 }
 
 /* Readable typography for the monitoring and management dashboards. */
@@ -1245,3 +1248,131 @@ body,
 .device-page .errors {
   color: #a62929 !important;
 }
+
+/* Legacy templates originally used white text on a dark background. These
+   aliases keep their typography readable after the shared light theme loads. */
+.brand-title,
+.section-title,
+.modal-title,
+.summary-value,
+.table-title,
+.visit-title,
+.detail-value,
+.vital-value,
+.stat-value,
+.mini-value,
+.card-title,
+.room-name,
+.patient-name,
+.queue-title,
+.stat-number,
+.val,
+.num,
+.info-row dd {
+  color: var(--text) !important;
+}
+
+.brand-sub,
+.hint,
+.link,
+.back,
+.patient-meta,
+.summary-label,
+.summary-note,
+.legend-desc,
+.time-text,
+.empty-state,
+#serverTime {
+  color: var(--muted) !important;
+}
+
+.red-alert {
+  color: var(--red) !important;
+}
+
+.link:hover,
+.back:hover {
+  color: var(--teal) !important;
+}
+
+/* White cards need a visible edge against the clinical canvas. */
+.card,
+.panel,
+.visit,
+.stat-card,
+.triage-legend,
+.queue-table-wrap,
+.table-wrap,
+.table-shell,
+.room-card,
+.summary-card,
+.detail-section,
+.info-card,
+.result-card {
+  border-color: var(--border) !important;
+  box-shadow: 0 5px 20px rgba(31, 65, 78, .075) !important;
+}
+
+/* Waiting confirmation: override the remaining dark-template text colors. */
+.waiting-confirmation-page .visit-meta,
+.waiting-confirmation-page .reason,
+.waiting-confirmation-page .modal-subtitle,
+.waiting-confirmation-page .info-row dt,
+.waiting-confirmation-page .empty {
+  color: var(--muted) !important;
+}
+
+.waiting-confirmation-page td,
+.waiting-confirmation-page .info-row dd,
+.waiting-confirmation-page .vital-value {
+  color: var(--text) !important;
+}
+
+.waiting-confirmation-page .detail-section h3,
+.waiting-confirmation-page .queue-chip,
+.waiting-confirmation-page .detail-open,
+.waiting-confirmation-page .btn.back {
+  color: var(--blue) !important;
+}
+
+/* Nurse and doctor room selectors. */
+.exam-room-select-page .patient,
+.exam-room-select-page .room-label,
+.opd-room-select-page .hint,
+.opd-room-select-page .room-label {
+  color: var(--muted) !important;
+}
+
+.exam-room-select-page .room-btn,
+.opd-room-select-page .room-btn {
+  background: #edf8f6 !important;
+  color: #075f59 !important;
+  border-color: #b6dcd7 !important;
+  box-shadow: 0 4px 14px rgba(20, 91, 86, .07) !important;
+}
+
+.exam-room-select-page .room-btn:hover,
+.opd-room-select-page .room-btn:hover,
+.opd-room-select-page .room-btn.active {
+  background: #dff2ef !important;
+  color: #064f4a !important;
+  border-color: #72b8af !important;
+}
+
+/* OPD examination room table and live status. */
+.opd-room-page td,
+.opd-room-page .mini-chip {
+  color: var(--text) !important;
+}
+
+.opd-room-page .stat-label,
+.opd-room-page .patient-meta,
+.opd-room-page .legend-desc,
+.opd-room-page .reason,
+.opd-room-page .empty-state {
+  color: var(--muted) !important;
+}
+
+.opd-room-page #redCount { color: var(--red) !important; }
+.opd-room-page #yellowCount { color: var(--yellow) !important; }
+.opd-room-page #greenCount { color: var(--green) !important; }
