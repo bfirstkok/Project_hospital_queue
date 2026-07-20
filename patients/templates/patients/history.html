@@ -5,7 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ประวัติผู้ป่วย {{ patient.hn }}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
     .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
@@ -32,6 +31,7 @@
     .mini-form .wide { grid-column: 1 / -1; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .top { flex-direction: column; } }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
 <body>
   <div class="wrap">
