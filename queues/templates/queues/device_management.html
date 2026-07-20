@@ -5,7 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จัดการอุปกรณ์ IoT</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
@@ -58,8 +57,9 @@
       .grid { grid-template-columns: 1fr; }
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
-<body>
+<body class="device-page">
   <main class="wrap">
     <div class="top">
       <div>

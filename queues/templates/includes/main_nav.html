@@ -8,10 +8,10 @@
     max-width: 100%;
     margin: 0;
     padding: 5px;
-    border: 1px solid rgba(174, 194, 220, 0.16);
-    border-radius: 8px;
-    background: rgba(18, 31, 51, 0.82);
-    box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
+    border: 1px solid #dbe7ea;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(38, 75, 89, .07);
     overflow-x: auto;
   }
 
@@ -22,7 +22,7 @@
     min-height: 32px;
     padding: 0 13px;
     border-radius: 7px;
-    color: #aebbd0 !important;
+    color: #526d79 !important;
     font-size: 12px;
     font-weight: 700;
     line-height: 1;
@@ -35,13 +35,13 @@
   }
 
   .opd-main-tab:hover {
-    color: #edf4ff !important;
-    background: rgba(255,255,255,.07);
+    color: #087f75 !important;
+    background: #edf7f6;
   }
 
   .opd-main-tab.active {
-    color: #07131f !important;
-    background: linear-gradient(135deg, #20d6b5, #4aa3ff);
+    color: #ffffff !important;
+    background: #087f75;
   }
 
   .topbar > .opd-main-tabs,
@@ -77,6 +77,27 @@
       position: static;
       transform: none;
       margin-top: 12px;
+    }
+  }
+
+  /* Keep the main workflow tabs in exactly the same viewport position on
+     every page, regardless of which page header includes this partial. */
+  .opd-main-tabs {
+    position: fixed !important;
+    top: 14px !important;
+    left: 50% !important;
+    z-index: 100 !important;
+    width: max-content !important;
+    max-width: calc(100vw - 32px) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  @media (max-width: 760px) {
+    .opd-main-tabs {
+      top: 10px !important;
+      width: calc(100vw - 24px) !important;
+      justify-content: flex-start !important;
     }
   }
 </style>

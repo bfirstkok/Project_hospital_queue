@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap");
+
 /* Unified Hospital Queue UI */
 :root {
   color-scheme: dark;
@@ -24,8 +26,19 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+body *,
+button,
+input,
+select,
+textarea {
+  font-family: "Sarabun", "Noto Sans Thai", Tahoma, sans-serif !important;
+}
+
 html {
   background: var(--bg);
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -597,4 +610,638 @@ pre {
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* Hospital light theme ---------------------------------------------------
+   Calm, high-contrast surfaces intended for long clinical work sessions. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-soft: #f7f9fa;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-hover: #f5fafb;
+  --border: #dce7eb;
+  --border-strong: #c5d7dd;
+  --text: #183044;
+  --muted: #607784;
+  --faint: #82949e;
+  --teal: #087f75;
+  --blue: #176b9c;
+  --red: #c83737;
+  --yellow: #9a6500;
+  --green: #18794e;
+  --shadow: 0 14px 38px rgba(32, 70, 86, .08);
+  --radius: 14px;
+}
+
+html,
+body,
+.shell {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+body::before {
+  background: none !important;
+  mask-image: none;
+}
+
+a { color: var(--teal); }
+a:hover { color: #075f59; }
+
+h1, h2, h3, h4,
+.logo-text,
+.queue-title,
+.patient-name,
+.stat-number,
+.num {
+  color: var(--text) !important;
+}
+
+h1 { font-weight: 700; }
+h2, h3, h4 { font-weight: 650; }
+
+.topbar {
+  min-height: 68px;
+  padding: 12px clamp(16px, 3vw, 36px) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: 0 4px 20px rgba(35, 73, 88, .06) !important;
+  backdrop-filter: blur(14px);
+}
+
+.logo-icon,
+.brand-mark,
+.title-icon {
+  background: #e4f4f2 !important;
+  color: var(--teal) !important;
+  border: 1px solid #c8e7e3 !important;
+  box-shadow: none !important;
+}
+
+.logo-text { font-size: 16px !important; }
+.logo-sub { color: var(--muted) !important; }
+
+.nav-pills {
+  padding: 5px !important;
+  background: #f7f9fa !important;
+  border: 1px solid #e0eaed !important;
+}
+
+.nav-pill {
+  min-height: 36px;
+  color: #536b77 !important;
+  font-weight: 600 !important;
+}
+
+.nav-pill.active,
+.nav-pill:hover {
+  color: #ffffff !important;
+  background: var(--teal) !important;
+  box-shadow: 0 5px 14px rgba(8, 127, 117, .18) !important;
+}
+
+.wrap,
+.content-wrapper {
+  width: min(1240px, calc(100vw - 40px));
+  padding: 30px 0 44px;
+}
+
+.page-head,
+.hero {
+  padding: 22px 24px !important;
+  margin-bottom: 20px !important;
+  background: #ffffff !important;
+  border-color: #d7e8e7 !important;
+}
+
+.card,
+.stat-card,
+.triage-legend,
+.queue-table-wrap,
+.tableWrap,
+table,
+.login-box,
+.page-head,
+.hero,
+.statusbar,
+.panel,
+.visit,
+.table-wrap,
+.table-shell,
+.summary-card,
+.result-card,
+.room-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel,
+.modal-head,
+.modal-body,
+.message {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+.card,
+.panel,
+.visit,
+.room-card,
+.summary-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel {
+  padding: 18px 20px !important;
+}
+
+.stat-card:hover,
+.triage-legend:hover,
+.card:hover,
+.panel:hover,
+.visit:hover,
+.room-card:hover,
+.summary-card:hover,
+.detail-section:hover,
+.mini:hover,
+.info-card:hover {
+  background: #ffffff !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.eyebrow,
+.summary-eyebrow,
+.card-kicker,
+.mini-label,
+.stat-label,
+.result-subtitle,
+.modal-subtitle,
+.muted,
+.queue-meta,
+.stat-sub,
+.patient-age,
+.triage-desc,
+.label,
+.unit,
+.subtitle,
+.desc,
+.empty,
+.reason,
+.note b,
+.info-row dt {
+  color: var(--muted) !important;
+}
+
+table { border-collapse: separate; border-spacing: 0; }
+
+thead,
+.queue-table th {
+  background: #eef5f7 !important;
+}
+
+th {
+  color: #506b78 !important;
+  font-size: 12px !important;
+  letter-spacing: .45px;
+}
+
+td,
+th {
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+  border-color: #e5edef !important;
+}
+
+tbody tr:hover td { background: #f5fafb !important; }
+
+input,
+select,
+textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid #cddce1 !important;
+  box-shadow: 0 1px 2px rgba(31, 61, 73, .035) !important;
+}
+
+textarea { min-height: 94px; }
+
+input::placeholder,
+textarea::placeholder { color: #91a1a9 !important; }
+
+input:focus,
+select:focus,
+textarea:focus {
+  background: #ffffff !important;
+  border-color: var(--teal) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 117, .12) !important;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+input[readonly] {
+  background: #f1f5f6 !important;
+  color: #617681 !important;
+}
+
+label { color: #334f5d !important; font-weight: 600 !important; }
+
+.primary,
+.add-btn,
+button[type="submit"],
+.action-btn.call,
+.filter-chip.active {
+  background: var(--teal) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--teal) !important;
+  box-shadow: 0 7px 16px rgba(8, 127, 117, .16) !important;
+}
+
+.primary:hover,
+.add-btn:hover,
+button[type="submit"]:hover,
+.action-btn.call:hover { background: #076d65 !important; }
+
+.ghost,
+.dark,
+.action-btn.triage {
+  background: #ffffff !important;
+  color: #405d6b !important;
+  border: 1px solid #cddce1 !important;
+}
+
+.red,
+.sev.red,
+.triage-badge.red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border-color: #f4c3c3 !important;
+}
+
+.yellow,
+.sev.yellow,
+.triage-badge.yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border-color: #efd99c !important;
+}
+
+.green,
+.sev.green,
+.triage-badge.green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border-color: #bfe3ce !important;
+}
+
+button.red,
+.btn.red,
+.action-btn.red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border: 1px solid #f1bcbc !important;
+}
+
+button.yellow,
+.btn.yellow,
+.action-btn.yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border: 1px solid #ead493 !important;
+}
+
+button.green,
+.btn.green,
+.action-btn.green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border: 1px solid #b9dfc9 !important;
+}
+
+.summary-item,
+.info-row,
+.vital,
+.mini-chip,
+.room-link,
+.check-item,
+.checks label,
+.control,
+.note,
+.kv,
+.filter-chip,
+.status,
+.pill {
+  background: #f5f9fa !important;
+  color: var(--text) !important;
+  border-color: #dbe7ea !important;
+}
+
+.login-box {
+  max-width: 460px !important;
+  padding: 36px !important;
+  box-shadow: 0 18px 55px rgba(38, 75, 89, .12) !important;
+}
+
+.login-image img {
+  background: #eef7f6;
+  border: 1px solid #d5e9e6;
+  box-shadow: none;
+}
+
+.message.success {
+  color: #176b45 !important;
+  border-color: #b8dfc7 !important;
+  background: #eaf8f0 !important;
+}
+
+.message.error,
+.error {
+  color: #a62929 !important;
+  border-color: #efc0c0 !important;
+  background: #fff0f0 !important;
+}
+
+.btn.danger,
+.action-btn.delete,
+button.danger {
+  color: #a62929 !important;
+  background: #fff0f0 !important;
+  border-color: #efc0c0 !important;
+}
+
+.btn.warn,
+button.warn {
+  color: #855700 !important;
+  background: #fff7df !important;
+  border-color: #e8d18b !important;
+}
+
+dialog,
+.patient-modal {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 24px 70px rgba(28, 56, 68, .22) !important;
+}
+
+dialog::backdrop,
+.patient-modal::backdrop {
+  background: rgba(24, 48, 68, .34) !important;
+}
+
+pre {
+  background: #f2f6f7 !important;
+  color: #294b5a !important;
+  border-color: #d8e4e8 !important;
+}
+
+@media (max-width: 860px) {
+  .wrap,
+  .content-wrapper { width: min(100% - 24px, 1240px); }
+
+  .topbar { padding: 12px !important; }
+
+  .page-head,
+  .hero { padding: 18px !important; }
+}
+
+/* Page-specific surfaces used by older templates. Keeping these here makes
+   every workflow use the same white clinical canvas. */
+.header,
+.sidebar,
+.section,
+.legend,
+.table-container,
+.hero-card,
+.card-head,
+.result-head,
+.combo-list,
+.modal-content,
+#cards {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+#cards { box-shadow: none !important; }
+
+.btn:not(.primary):not(.red):not(.yellow):not(.green):not(.danger):not(.warn):not(.ai-confirm),
+.room-link,
+.room-btn,
+.btn-link,
+.btn-back,
+.detail-open,
+.draft {
+  background: #ffffff !important;
+  color: #365765 !important;
+  border: 1px solid #cddce1 !important;
+  box-shadow: none !important;
+}
+
+.btn:not(.primary):not(.red):not(.yellow):not(.green):not(.danger):not(.warn):not(.ai-confirm):hover,
+.room-link:hover,
+.room-btn:hover,
+.btn-link:hover,
+.btn-back:hover,
+.detail-open:hover {
+  background: #f4f8f9 !important;
+  color: var(--teal) !important;
+  border-color: #aac7c6 !important;
+}
+
+.room-btn.active,
+.room-current,
+.sync-status,
+.online,
+.onlineTag.online,
+.pill.on {
+  background: #eaf8f0 !important;
+  color: var(--green) !important;
+  border-color: #b9dfc9 !important;
+}
+
+.offline,
+.onlineTag.offline,
+.pill.off {
+  background: #fff0f0 !important;
+  color: var(--red) !important;
+  border-color: #efc0c0 !important;
+}
+
+.status,
+.badge.yellow,
+.severity.yellow,
+.severity-chip.yellow,
+.YELLOW {
+  background: #fff7df !important;
+  color: var(--yellow) !important;
+  border-color: #e8d18b !important;
+}
+
+.severity.red,
+.severity-chip.red,
+.RED,
+.LOW_O2,
+.LOW_BP,
+.HIGH_RR,
+.MISSED,
+.CANCELLED {
+  background: #fff0f0 !important;
+  color: var(--red) !important;
+  border-color: #efc0c0 !important;
+}
+
+.severity.green,
+.severity-chip.green,
+.GREEN,
+.ATTENDED {
+  background: #eaf8f0 !important;
+  color: var(--green) !important;
+  border-color: #b9dfc9 !important;
+}
+
+.NORMAL,
+.SCHEDULED,
+.ai,
+.visit-badge,
+.queue-chip {
+  background: #edf6fb !important;
+  color: var(--blue) !important;
+  border-color: #c7dfea !important;
+}
+
+.combo-option { color: var(--text) !important; }
+.combo-option:hover,
+.combo-option.active { background: #edf6fb !important; }
+
+.result-head,
+.card-head,
+.modal-head,
+.detail-table th { background: #f5f9fa !important; }
+
+.confidence-track { background: #e4ecef !important; }
+
+body,
+.shell,
+.content,
+.main,
+.wrap,
+.content-wrapper {
+  background-color: #ffffff !important;
+}
+
+/* Readable typography for the monitoring and management dashboards. */
+.dashboard-page,
+.monitor-page,
+.dashboard-page .shell,
+.monitor-page .shell {
+  color: var(--text) !important;
+}
+
+.dashboard-page .val,
+.dashboard-page .table-title,
+.dashboard-page td,
+.dashboard-page .chip,
+.monitor-page td,
+.monitor-page .kv,
+.monitor-page #status,
+.monitor-page .mono {
+  color: var(--text) !important;
+}
+
+.dashboard-page .label,
+.dashboard-page .muted,
+.dashboard-page .logo-sub,
+.monitor-page .muted,
+.monitor-page .logo-sub,
+.monitor-page .stat-label {
+  color: var(--muted) !important;
+}
+
+.dashboard-page .pill,
+.monitor-page .pill {
+  color: #405d6b !important;
+}
+
+.dashboard-page th,
+.monitor-page th {
+  color: #506b78 !important;
+}
+
+.dashboard-page .action-btn-blue {
+  color: var(--blue) !important;
+  background: #edf6fb !important;
+  border: 1px solid #c7dfea !important;
+}
+
+.dashboard-page .action-btn-red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border: 1px solid #efc0c0 !important;
+}
+
+.dashboard-page .action-btn-yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border: 1px solid #e8d18b !important;
+}
+
+.dashboard-page .action-btn-green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border: 1px solid #b9dfc9 !important;
+}
+
+.monitor-page [style*="background:rgba(255,255,255,.04)"] {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+/* Device management pages: readable labels and values on white surfaces. */
+.device-page,
+.device-page td,
+.device-page .device-id,
+.device-page .pair-text,
+.device-page .combo-option {
+  color: var(--text) !important;
+}
+
+.device-page .muted,
+.device-page .empty,
+.device-page .combo-option.empty {
+  color: var(--muted) !important;
+}
+
+.device-page th {
+  color: #506b78 !important;
+  background: #eef5f7 !important;
+}
+
+.device-page label {
+  color: #334f5d !important;
+}
+
+.device-page select option {
+  background: #ffffff !important;
+  color: var(--text) !important;
+}
+
+.device-page .errors {
+  color: #a62929 !important;
 }
