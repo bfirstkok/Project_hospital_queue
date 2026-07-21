@@ -179,6 +179,7 @@
       border-radius: 4px;
       font-size: 11px;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .offline {
@@ -188,6 +189,7 @@
       border-radius: 4px;
       font-size: 11px;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .alert {
@@ -198,6 +200,7 @@
       color: #fecaca;
       font-size: 11px;
       font-weight: 700;
+      white-space: nowrap;
     }
 
     .ok {
@@ -208,11 +211,14 @@
       color: #86efac;
       font-size: 11px;
       font-weight: 700;
+      white-space: nowrap;
     }
 
     /* ===== COLUMN STYLES ===== */
     .col-name {
       font-weight: 600;
+      min-width: 220px;
+      white-space: nowrap;
     }
 
     .td-action {
@@ -259,7 +265,7 @@
     .table-container {
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
-      overflow: hidden;
+      overflow-x: auto;
       background: rgba(255, 255, 255, 0.04);
     }
 

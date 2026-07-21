@@ -321,3 +321,6 @@ body {
     padding: 10px 16px;
   }
 }
+.shell {
+  zoom: 1.3 !important;
+}

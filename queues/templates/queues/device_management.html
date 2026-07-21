@@ -181,7 +181,7 @@
                       {% csrf_token %}
                       <input type="hidden" name="action" value="unpair_device">
                       <input type="hidden" name="assignment_id" value="{{ device.active_assignment.id }}">
-                      <button class="btn small danger" type="submit">unpair</button>
+                      <button class="btn small blue" type="submit">unpair</button>
                     </form>
                   {% endif %}
                   <form method="post" onsubmit="return confirm('Delete device {{ device.device_id }}?');">
