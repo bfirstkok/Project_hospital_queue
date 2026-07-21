@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from queues import device_views, views
+from patients import views as patient_views
 from accounts import views as accounts_views
 
 urlpatterns = [
@@ -23,5 +24,7 @@ urlpatterns = [
 
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
     path("api/iot/vitals/", views.iot_vitals, name="iot_vitals"),
+    path("api/patient/register/", patient_views.public_register, name="public_patient_register"),
+    path("api/patient/queue/<uuid:tracking_token>/", patient_views.public_queue_status, name="public_patient_queue_status"),
 
 ]

@@ -69,6 +69,15 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+
+PATIENT_APP_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "PATIENT_APP_ORIGINS",
+        "http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io",
+    ).split(",")
+    if origin.strip()
+}
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 

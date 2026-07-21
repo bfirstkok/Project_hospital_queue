@@ -1,4 +1,5 @@
 ﻿import re
+import uuid
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -10,6 +11,7 @@ class Visit(models.Model):
         GREEN = "GREEN", "เขียว"
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="visits")
+    tracking_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
 
     registered_at = models.DateTimeField(auto_now_add=True)
     triaged_at = models.DateTimeField(blank=True, null=True)

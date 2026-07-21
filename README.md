@@ -95,6 +95,8 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 ## Key Features
 
 - Patient registration
+- Public patient registration API with private tracking token
+- Patient queue-status API that does not expose name, symptoms, or severity
 - Auto-generated 6-digit HN
 - OPD Triage Assessment
 - AI result with confidence and clinical reason
@@ -133,6 +135,8 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 /dashboard/reports/waiting-time.csv   Waiting Time CSV Export
 /dashboard/ai-evaluation/             AI Evaluation
 /patients/register/       Patient Registration
+/api/patient/register/    Public patient registration API
+/api/patient/queue/<tracking-token>/ Public patient queue status API
 /opd/rooms/               OPD Room Selection
 /opd/                     OPD Room Queue
 /opd/api/list/            OPD Room Queue API
@@ -218,6 +222,7 @@ SECRET_KEY=change-me
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
+PATIENT_APP_ORIGINS=http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io
 DATABASE_URL=
 DB_SSLMODE=require
 ```
@@ -270,6 +275,7 @@ DATABASE_URL=postgresql://<user>:<password>@<host>/<database>?sslmode=require
 DB_SSLMODE=require
 ALLOWED_HOSTS=.onrender.com
 CSRF_TRUSTED_ORIGINS=https://*.onrender.com
+PATIENT_APP_ORIGINS=https://bfirstkok.github.io
 ```
 
 Render build command:
