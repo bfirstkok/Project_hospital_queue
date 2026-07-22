@@ -107,6 +107,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/hospital-patient/dist:/srv/patient:ro
       - caddy_data:/data
       - caddy_config:/config
 

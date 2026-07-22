@@ -1,6 +1,23 @@
 hospital.bfirstkok.me {
 	encode zstd gzip
-	reverse_proxy web:8000
+	redir /patient /patient/ permanent
+
+	header /patient/* {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+	}
+	header /patient/runtime-config.js Cache-Control "no-store"
+
+	handle_path /patient/* {
+		root * /srv/patient
+		file_server
+	}
+
+	handle {
+		reverse_proxy web:8000
+	}
 
 	log {
 		format filter {
