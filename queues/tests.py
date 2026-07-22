@@ -1,17 +1,15 @@
 import json
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-from django.utils import timezone
 
 from patients.models import Patient
 from queues.models import Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, Visit, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
-    def test_number_starts_at_ten_and_restarts_each_day(self):
+    def test_number_starts_at_ten_and_never_duplicates(self):
         patient = Patient.objects.create(
             first_name="Queue",
             last_name="Number",
@@ -19,15 +17,12 @@ class QueueDisplayNumberTests(TestCase):
         )
         first = Queue.objects.create(visit=Visit.objects.create(patient=patient))
         second = Queue.objects.create(visit=Visit.objects.create(patient=patient))
-        previous_day = Queue.objects.create(visit=Visit.objects.create(patient=patient))
-        Queue.objects.filter(pk=previous_day.pk).update(
-            created_at=timezone.now() - timedelta(days=1),
-        )
-        previous_day.refresh_from_db()
+        third = Queue.objects.create(visit=Visit.objects.create(patient=patient))
 
         self.assertEqual(first.display_number, "Q-10")
         self.assertEqual(second.display_number, "Q-11")
-        self.assertEqual(previous_day.display_number, "Q-10")
+        self.assertEqual(third.display_number, "Q-12")
+        self.assertEqual(len({first.display_number, second.display_number, third.display_number}), 3)
 
 
 class IotTelemetryAssignmentTests(TestCase):
