@@ -78,6 +78,8 @@ PATIENT_APP_ORIGINS = {
     ).split(",")
     if origin.strip()
 }
+PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", "43200"))
+
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 

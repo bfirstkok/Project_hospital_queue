@@ -25,6 +25,9 @@ urlpatterns = [
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
     path("api/iot/vitals/", views.iot_vitals, name="iot_vitals"),
     path("api/patient/register/", patient_views.public_register, name="public_patient_register"),
+    path("api/patient/login/", patient_views.public_login, name="public_patient_login"),
+    path("api/patient/me/", patient_views.public_me, name="public_patient_me"),
+    path("api/patient/queue/", patient_views.public_authenticated_queue, name="public_authenticated_patient_queue"),
     path("api/patient/queue/<uuid:tracking_token>/", patient_views.public_queue_status, name="public_patient_queue_status"),
 
 ]
