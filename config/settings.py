@@ -14,6 +14,7 @@ import os
 import socket
 from pathlib import Path
 from urllib.parse import parse_qsl, urlparse
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,11 +37,16 @@ load_env_file(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-f2c$n+g06pr02rfos&ci-bcaiee^=qj%(&og!ks*v-_%k@8@%c')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes", "on")
+
+# Production must provide its own secret; the development fallback is intentionally non-secret.
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-development-only-not-for-production"
+    else:
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG=False")
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
@@ -78,8 +84,7 @@ PATIENT_APP_ORIGINS = {
     ).split(",")
     if origin.strip()
 }
-PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", "43200"))
-
+PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", str(60 * 60 * 12)))
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 

@@ -1,4 +1,5 @@
 from django.utils.deprecation import MiddlewareMixin
+from django.utils.cache import patch_vary_headers
 
 class NoCacheMiddleware(MiddlewareMixin):
     """
@@ -16,6 +17,6 @@ class NoCacheMiddleware(MiddlewareMixin):
 
         # ป้องกัน bfcache (back-forward cache) ของ Safari และ Firefox
         if hasattr(response, 'status_code') and response.status_code == 200:
-            response['Vary'] = 'Cookie'
+            patch_vary_headers(response, ['Cookie'])
 
         return response

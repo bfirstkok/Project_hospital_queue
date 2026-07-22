@@ -136,6 +136,9 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 /dashboard/ai-evaluation/             AI Evaluation
 /patients/register/       Patient Registration
 /api/patient/register/    Public patient registration API
+/api/patient/login/       Patient portal login API
+/api/patient/me/          Bearer-authenticated patient profile API
+/api/patient/queue/       Bearer-authenticated latest patient queue API
 /api/patient/queue/<tracking-token>/ Public patient queue status API
 /opd/rooms/               OPD Room Selection
 /opd/                     OPD Room Queue
@@ -223,6 +226,7 @@ DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 PATIENT_APP_ORIGINS=http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io
+PATIENT_TOKEN_MAX_AGE=43200
 DATABASE_URL=
 DB_SSLMODE=require
 ```
@@ -276,6 +280,7 @@ DB_SSLMODE=require
 ALLOWED_HOSTS=.onrender.com
 CSRF_TRUSTED_ORIGINS=https://*.onrender.com
 PATIENT_APP_ORIGINS=https://bfirstkok.github.io
+PATIENT_TOKEN_MAX_AGE=43200
 ```
 
 Render build command:

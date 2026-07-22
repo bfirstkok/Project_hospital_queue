@@ -38,7 +38,7 @@
     <div class="top">
       <div>
         <h1>{{ patient.first_name }} {{ patient.last_name }}</h1>
-        <div class="muted">HN {{ patient.hn }} | CID {{ patient.national_id }} | โทร {{ patient.phone|default:"-" }}</div>
+        <div class="muted">HN {{ patient.hn }} | เลขบัตรประชาชน {{ patient.national_id|default:"-" }} | โทร {{ patient.phone|default:"-" }}</div>
       </div>
       {% include "includes/main_nav.html" %}
     </div>
@@ -46,6 +46,7 @@
     <div class="grid">
       <aside class="panel">
         <h2>ข้อมูลผู้ป่วย</h2>
+        <div class="row"><span class="muted">เลขบัตรประชาชน</span><strong>{{ patient.national_id|default:"-" }}</strong></div>
         <div class="row"><span class="muted">อายุ</span><strong>{{ patient.age|default:"-" }}</strong></div>
         <div class="row"><span class="muted">เพศ</span><strong>{{ patient.gender }}</strong></div>
         <div class="row"><span class="muted">โรคประจำตัว</span><strong>{{ patient.chronic_diseases|default:"-" }}</strong></div>

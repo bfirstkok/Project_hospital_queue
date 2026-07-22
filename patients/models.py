@@ -112,6 +112,19 @@ class Patient(models.Model):
     postal_code = models.CharField(max_length=5, blank=True, default="")
 
 
+class PatientAccessToken(models.Model):
+    """Stores only a hash of a patient portal bearer token."""
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="access_tokens")
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"PatientAccessToken(patient={self.patient_id}, expires={self.expires_at:%Y-%m-%d %H:%M})"
+
+
 class Appointment(models.Model):
     class Status(models.TextChoices):
         SCHEDULED = "SCHEDULED", "Scheduled"

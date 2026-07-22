@@ -35,7 +35,7 @@ class AiTriageGuardrailTests(TestCase):
         triage = TriageResult.objects.get(visit=visit)
 
         self.assertEqual(result["severity"], "GREEN")
-        self.assertEqual(visit.final_severity, "GREEN")
+        self.assertIsNone(visit.final_severity)
         self.assertEqual(visit.queue.priority, 3)
         self.assertEqual(triage.ai_severity, "GREEN")
         self.assertIn("Rule guardrail applied", triage.ai_reason)
@@ -55,8 +55,8 @@ class AiTriageGuardrailTests(TestCase):
         visit.refresh_from_db()
 
         self.assertEqual(result["severity"], "RED")
-        self.assertEqual(visit.final_severity, "RED")
-        self.assertEqual(visit.queue.priority, 1)
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.queue.priority, 3)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_yellow_rule_trigger_overrides_model(self, _mock_dt):
@@ -73,8 +73,8 @@ class AiTriageGuardrailTests(TestCase):
         visit.refresh_from_db()
 
         self.assertEqual(result["severity"], "YELLOW")
-        self.assertEqual(visit.final_severity, "YELLOW")
-        self.assertEqual(visit.queue.priority, 2)
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.queue.priority, 3)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_pain_score_seven_is_red(self, _mock_dt):

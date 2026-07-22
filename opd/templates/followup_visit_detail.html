@@ -64,6 +64,7 @@
       <h2>ข้อมูลผู้ป่วย</h2>
       <div class="data-row"><span>รหัส Visit</span><b class="mono">#{{ visit.id }}</b></div>
       <div class="data-row"><span>ชื่อ</span><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></div>
+      <div class="data-row"><span>เลขบัตรประชาชน</span><b class="mono">{{ visit.patient.national_id|default:"-" }}</b></div>
       {% if q %}<div class="data-row"><span>คิว Follow-up</span><b class="mono">#{{ q.id }}</b></div>{% endif %}
     </div>
 
