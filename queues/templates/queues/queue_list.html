@@ -667,7 +667,7 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">เลขคิว: {{ q.id }} · {{ q.get_status_display }}</div>
+                <div class="patient-age">เลขคิว: {{ q.display_number }} · {{ q.get_status_display }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}

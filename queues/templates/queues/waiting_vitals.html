@@ -51,7 +51,7 @@
         {% for q in q_items %}
           {% with v=q.visit vs=q.visit.vitals %}
           <tr>
-            <td><span class="queue-no">#{{ q.id }}</span></td>
+            <td><span class="queue-no">{{ q.display_number }}</span></td>
             <td>{{ v.patient.first_name }} {{ v.patient.last_name }}</td>
             <td>{{ v.registered_at|date:"H:i" }}</td>
             <td><span class="status">รอวัดค่า</span></td>

@@ -112,7 +112,7 @@ class PatientPortalApiTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["profile"]["first_name"], self.patient.first_name)
         self.assertEqual(payload["profile"]["national_id"], "1-xxxx-xxxxx-xx-3")
-        self.assertEqual(payload["active_queue"]["queue_number"], f"Q-{self.visit.id:04d}")
+        self.assertEqual(payload["active_queue"]["queue_number"], "Q-10")
         self.assertEqual(len(payload["visits"]), 1)
 
     def test_queue_returns_latest_queue_for_token_owner(self):
@@ -121,8 +121,9 @@ class PatientPortalApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["queue_number"], f"Q-{self.visit.id:04d}")
+        self.assertEqual(payload["queue_number"], "Q-10")
         self.assertEqual(payload["status"], Queue.Status.WAITING_QUEUE)
+        self.assertEqual(payload["queue_position"], 1)
         self.assertEqual(payload["room"], "ห้องตรวจ 2")
         self.assertIn("people_ahead", payload)
         self.assertIn("updated_at", payload)
@@ -152,8 +153,9 @@ class PatientPortalApiTests(TestCase):
         queue_response = self.client.get(reverse("public_authenticated_patient_queue"), **self.bearer(token))
         me_response = self.client.get(reverse("public_patient_me"), **self.bearer(token))
 
-        self.assertEqual(queue_response.json()["queue_number"], f"Q-{self.visit.id:04d}")
-        self.assertNotEqual(queue_response.json()["queue_number"], f"Q-{other_visit.id:04d}")
+        self.assertEqual(queue_response.json()["queue_number"], "Q-10")
+        self.assertEqual(other_visit.queue.display_number, "Q-11")
+        self.assertNotEqual(queue_response.json()["queue_number"], other_visit.queue.display_number)
         self.assertEqual(me_response.json()["profile"]["first_name"], self.patient.first_name)
         self.assertNotIn(other.national_id, me_response.content.decode())
 

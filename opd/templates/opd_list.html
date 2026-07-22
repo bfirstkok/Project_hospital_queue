@@ -366,7 +366,7 @@
               <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
               <td>
                 <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-meta">เลขคิว: {{ q.id }} · Visit #{{ v.id }}</div>
+                <div class="patient-meta">เลขคิว: {{ q.display_number }} · Visit #{{ v.id }}</div>
               </td>
               <td>
                 {% if v.final_severity == "RED" %}
@@ -489,7 +489,7 @@
           <td><span class="visit-badge">#${row.index}</span></td>
           <td>
             <div class="patient-name">${escapeHtml(row.patient_name)}</div>
-            <div class="patient-meta">เลขคิว: ${escapeHtml(row.queue_id)} · Visit #${escapeHtml(row.visit_id)}</div>
+            <div class="patient-meta">เลขคิว: ${escapeHtml(row.queue_number)} · Visit #${escapeHtml(row.visit_id)}</div>
           </td>
           <td>${severityBadge(row.severity)}</td>
           <td>

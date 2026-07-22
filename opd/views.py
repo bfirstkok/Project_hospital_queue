@@ -110,6 +110,7 @@ def _opd_queue_payload(q_items):
         rows.append({
             "index": index,
             "queue_id": str(q.id),
+            "queue_number": q.display_number,
             "visit_id": str(v.id),
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": severity,
@@ -365,6 +366,7 @@ def post_opd_monitor_api(request):
                 "dia_bp": v.last_dia,
             },
             "queue_id": str(q.id),
+            "queue_number": q.display_number,
             "created_at": q.created_at.isoformat() if q.created_at else None,
         })
 

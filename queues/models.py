@@ -1,5 +1,6 @@
 ﻿import re
 import uuid
+from datetime import timedelta
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -64,6 +65,28 @@ class Queue(models.Model):
     priority = models.IntegerField(default=3)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def daily_sequence(self):
+        """Return a short queue sequence that restarts at 10 each local day."""
+        if not self.created_at:
+            return 10
+
+        local_created_at = timezone.localtime(self.created_at)
+        day_start = local_created_at.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        earlier_queues = Queue.objects.filter(
+            created_at__gte=day_start,
+            created_at__lt=day_end,
+        ).filter(
+            Q(created_at__lt=self.created_at)
+            | Q(created_at=self.created_at, pk__lt=self.pk)
+        ).count()
+        return 10 + earlier_queues
+
+    @property
+    def display_number(self):
+        return f"Q-{self.daily_sequence}"
 
 
 class TriageResult(models.Model):

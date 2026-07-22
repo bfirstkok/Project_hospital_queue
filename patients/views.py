@@ -58,8 +58,8 @@ def _cors_json(request, payload, status=200):
     return response
 
 
-def _queue_number(visit):
-    return f"Q-{visit.id:04d}"
+def _queue_number(queue):
+    return queue.display_number
 
 
 def _json_body(request):
@@ -122,12 +122,13 @@ def _serialize_queue(queue):
         (queue.get_status_display(), "กรุณาติดต่อเจ้าหน้าที่"),
     )
     return {
-        "queue_number": _queue_number(queue.visit),
+        "queue_number": _queue_number(queue),
         "status": queue.status,
         "status_label": label,
         "instruction": instruction,
         "room": f"ห้องตรวจ {queue.exam_room}" if queue.exam_room else None,
         "people_ahead": _people_ahead(queue),
+        "queue_position": _queue_position(queue),
         "updated_at": timezone.now().isoformat(),
     }
 
@@ -162,7 +163,7 @@ def _serialize_visit(visit):
         if queue else "ไม่พบข้อมูลคิว"
     )
     return {
-        "queue_number": _queue_number(visit),
+        "queue_number": _queue_number(queue) if queue else None,
         "registered_at": visit.registered_at.isoformat(),
         "note": visit.note or "",
         "status": queue.status if queue else None,
@@ -183,6 +184,12 @@ def _people_ahead(queue):
         Q(priority__lt=queue.priority)
         | Q(priority=queue.priority, created_at__lt=queue.created_at)
     ).count()
+
+
+def _queue_position(queue):
+    if queue.status not in {Queue.Status.WAITING_QUEUE, Queue.Status.WAITING}:
+        return None
+    return _people_ahead(queue) + 1
 
 
 @csrf_exempt
@@ -262,11 +269,12 @@ def public_queue_status(request, tracking_token):
     label, instruction = PUBLIC_STATUS.get(queue.status, ("กำลังตรวจสอบสถานะ", "กรุณาติดต่อเจ้าหน้าที่"))
     return _cors_json(request, {
         "ok": True,
-        "queue_number": _queue_number(visit),
+        "queue_number": _queue_number(queue),
         "status": queue.status,
         "status_label": label,
         "instruction": instruction,
         "people_ahead": _people_ahead(queue),
+        "queue_position": _queue_position(queue),
         "room": f"ห้องตรวจ {queue.exam_room}" if queue.exam_room else None,
         "updated_at": timezone.now().isoformat(),
     })
