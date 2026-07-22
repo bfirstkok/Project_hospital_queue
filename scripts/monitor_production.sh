@@ -59,6 +59,9 @@ http_code="$(curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http
 web_5xx="$(docker compose logs --since "$since_rfc3339" --no-color web 2>/dev/null | grep -Ec '" [5][0-9][0-9] ' || true)"
 (( web_5xx > 0 )) && add_alert "$web_5xx HTTP 5xx response(s) since $since_rfc3339"
 
+caddy_5xx="$(docker compose logs --since "$since_rfc3339" --no-color caddy 2>/dev/null | grep -Ec '"status":[[:space:]]*5[0-9][0-9]' || true)"
+(( caddy_5xx > 0 )) && add_alert "$caddy_5xx proxy HTTP 5xx response(s) since $since_rfc3339"
+
 db_errors="$(docker compose logs --since "$since_rfc3339" --no-color db 2>/dev/null | grep -Ec 'ERROR|FATAL|PANIC' || true)"
 (( db_errors > 0 )) && add_alert "$db_errors database error(s) since $since_rfc3339"
 
