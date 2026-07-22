@@ -1,0 +1,4 @@
+hospital.bfirstkok.me {
+    encode zstd gzip
+    reverse_proxy web:8000
+}

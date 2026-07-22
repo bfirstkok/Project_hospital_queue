@@ -172,8 +172,8 @@ class TelemetryLog(models.Model):
 class IoTVital(models.Model):
     device_identifier = models.CharField(max_length=50)
     patient_identifier = models.CharField(max_length=50)
-    device_db_id = models.IntegerField(null=True, blank=True, db_column="device_id")
-    patient_db_id = models.IntegerField(null=True, blank=True, db_column="patient_id")
+    device_db_id = models.BigIntegerField(null=True, blank=True, db_column="device_id")
+    patient_db_id = models.BigIntegerField(null=True, blank=True, db_column="patient_id")
 
     heart_rate = models.IntegerField()
     spo2 = models.IntegerField()
