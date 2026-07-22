@@ -1,7 +1,6 @@
 # patients/views.py
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
-from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.db import transaction
@@ -18,6 +17,7 @@ import secrets
 
 from .forms import PatientForm, PublicPatientRegistrationForm
 from .models import Appointment, Patient, PatientAccessToken
+from .security import rate_limited
 from queues.models import Visit, Queue, VitalSign
 
 
@@ -56,11 +56,6 @@ def _cors_json(request, payload, status=200):
     response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response["Access-Control-Max-Age"] = "86400"
     return response
-
-
-def _client_ip(request):
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    return (forwarded.split(",", 1)[0] if forwarded else request.META.get("REMOTE_ADDR", "unknown")).strip()
 
 
 def _queue_number(visit):
@@ -199,11 +194,8 @@ def public_register(request):
     if int(request.META.get("CONTENT_LENGTH") or 0) > 16384:
         return _cors_json(request, {"ok": False, "error": "ข้อมูลมีขนาดใหญ่เกินไป"}, status=413)
 
-    throttle_key = f"patient-register:{_client_ip(request)}"
-    request_count = cache.get(throttle_key, 0)
-    if request_count >= 30:
+    if rate_limited(request, "patient-register", limit=30, window_seconds=300):
         return _cors_json(request, {"ok": False, "error": "ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่"}, status=429)
-    cache.set(throttle_key, request_count + 1, 300)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -287,16 +279,12 @@ def patient_login(request):
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
-    throttle_key = f"patient-login:{_client_ip(request)}"
-    request_count = cache.get(throttle_key, 0)
-    if request_count >= 10:
+    if rate_limited(request, "patient-login", limit=10, window_seconds=300):
         return _cors_json(
             request,
             {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"},
             status=429,
         )
-    cache.set(throttle_key, request_count + 1, 300)
-
     payload, error, error_status = _json_body(request)
     if error:
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)

@@ -64,6 +64,26 @@ class PatientPortalApiTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertFalse(response.json()["ok"])
 
+    def test_login_rate_limit_blocks_request_after_ten_attempts(self):
+        login_url = reverse("public_patient_login")
+        for _ in range(10):
+            response = self.post_json(login_url, {})
+            self.assertEqual(response.status_code, 400)
+
+        blocked = self.post_json(login_url, {})
+        self.assertEqual(blocked.status_code, 429)
+
+    def test_security_audit_does_not_log_patient_id_or_access_token(self):
+        with self.assertLogs("security.audit", level="INFO") as captured:
+            response = self.login()
+
+        self.assertEqual(response.status_code, 200)
+        output = "\n".join(captured.output)
+        self.assertIn('"route":"public_patient_login"', output)
+        self.assertIn('"outcome":"success"', output)
+        self.assertNotIn(self.patient.national_id, output)
+        self.assertNotIn(response.json()["access_token"], output)
+
     def test_missing_bearer_token_returns_401(self):
         for url_name in ("public_patient_me", "public_authenticated_patient_queue"):
             with self.subTest(url_name=url_name):
