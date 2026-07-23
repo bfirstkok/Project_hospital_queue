@@ -1376,9 +1376,7 @@ body,
 .opd-room-page #redCount { color: var(--red) !important; }
 .opd-room-page #yellowCount { color: var(--yellow) !important; }
 .opd-room-page #greenCount { color: var(--green) !important; }
-html {
-  zoom: 1.4 !important;
-}
+
 
 /* ===== ปุ่มสีฟ้า: ใช้กับ action ที่ยกเลิก/ถอดออกได้ ไม่ใช่ลบถาวร (เช่น unpair) ===== */
 button.blue, .btn.blue, .action-btn.blue {

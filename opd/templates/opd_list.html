@@ -201,7 +201,7 @@
       font-weight: 800;
       white-space: nowrap;
     }
-    .patient-name { color: #fff; font-weight: 800; }
+    .patient-name { color: #fff; font-weight: 800; font-size: 22px; }
     .patient-meta { margin-top: 3px; color: rgba(255,255,255,.42); font-size: 12px; }
     .triage-badge {
       display: inline-flex;
@@ -227,7 +227,7 @@
       background: rgba(255,255,255,.06);
       border: 1px solid rgba(255,255,255,.08);
       color: rgba(255,255,255,.74);
-      font-size: 11px;
+      font-size: 15px;
       white-space: nowrap;
     }
     .reason {
@@ -236,7 +236,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       color: rgba(255,255,255,.46);
-      font-size: 12px;
+      font-size: 18px;
     }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; }
     .btn {
@@ -258,6 +258,7 @@
     .btn.red { color: #ff6b7d; background: rgba(255,95,114,.13); border-color: rgba(255,95,114,.22); }
     .btn.yellow { color: #ffbf42; background: rgba(255,184,48,.13); border-color: rgba(255,184,48,.22); }
     .btn.green { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.22); }
+    .called-time { font-size: 18px; font-weight: 700; }
     .btn:hover { filter: brightness(1.14); }
     .empty-state {
       display: grid;
@@ -395,7 +396,7 @@
                   </div>
                 </div>
               </td>
-              <td>{{ v.called_at|date:"H:i"|default:"-" }}</td>
+              <td class="called-time">{{ v.called_at|date:"H:i"|default:"-" }}</td>
               <td>
                 <div class="actions">
                   <a class="btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
