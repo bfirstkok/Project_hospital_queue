@@ -103,6 +103,7 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 - Nurse confirmation stored separately from AI prediction
 - Queue ordered by severity priority and confirmation time
 - Waiting-vitals and waiting-confirmation worklists
+- Staff-only patient detail modals on both waiting worklists
 - OPD exam room selection
 - OPD room queue with live refresh API
 - OPD assessment and visit detail pages
@@ -115,6 +116,18 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 - AI Evaluation page with metrics and confusion matrix
 - PostgreSQL support with SQLite fallback
 - Demo data seeding command
+
+## Waiting Worklist Patient Details
+
+Authenticated staff can open a patient detail modal directly from each row on:
+
+- `/queues/waiting-vitals/`
+- `/queues/waiting-confirmation/`
+
+The waiting-vitals modal shows patient demographics, current symptoms, health
+information, and the latest available vital signs without leaving the worklist.
+The page remains protected by Django login, and opening the modal does not
+create or modify patient records.
 
 ## Main Pages
 
