@@ -204,6 +204,17 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(vitals.dia_bp, 76)
         self.assertIsNone(vitals.rr)
 
+    def test_waiting_vitals_shows_patient_detail_modal(self):
+        self.register_patient()
+        patient = Patient.objects.get()
+
+        response = self.client.get(reverse("waiting_vitals"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ดูข้อมูลผู้ป่วย")
+        self.assertContains(response, f'id="patient-modal-{patient.visits.get().queue.id}"')
+        self.assertContains(response, patient.phone)
+
     def test_manual_vitals_then_ai_then_nurse_confirmation_enters_prioritized_queue(self):
         self.register_patient()
         visit = Visit.objects.select_related("queue").get()
