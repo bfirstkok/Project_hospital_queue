@@ -18,6 +18,39 @@ GREEN   Non-urgent / lower priority
 
 The AI result is decision support only. The final triage decision still requires nurse confirmation.
 
+## Online and Offline Workflow
+
+The project connects two parts of the patient journey. **Online** covers the website, APIs, cloud processing, AI recommendation, queue status, dashboard, and alerts. **Offline (on-site)** covers identity verification, real vital-sign measurement, nurse assessment, wearable assignment, and medical examination.
+
+| Online: website and system | Offline: hospital service point |
+| --- | --- |
+| Patient registers in advance and receives a queue number. | Walk-in patients register with staff, while online patients verify their queue number. |
+| The system stores patient, visit, symptom, and queue information. | Staff measure HR, SpO2, blood pressure, temperature, respiratory rate, and other clinical information. |
+| AI analyzes the available symptoms and vital signs and produces a preliminary severity recommendation. | A nurse reviews the real patient condition together with the AI recommendation and confirms or overrides the result. |
+| The dashboard shows queue order, latest vital signs, device status, and alerts. | YELLOW patients may wear a monitoring device while waiting. RED patients must not wait for device assignment. |
+| The system receives wearable telemetry and raises an alert when abnormal data or a fall event is detected. | A nurse reassesses the patient after an alert. The alert is not an automatic clinical diagnosis. |
+| Patients can check their current queue status through the patient portal. | A doctor calls the patient, records the examination, and completes the visit. |
+
+Information moves between the two sides as follows:
+
+```text
+Online registration -> On-site identity and queue verification
+On-site vital signs -> API / database -> AI recommendation
+AI recommendation -> Nurse review and final confirmation
+YELLOW wearable data -> Dashboard -> Alert -> Nurse reassessment
+Queue status -> Patient portal and staff dashboard
+```
+
+Target severity flow:
+
+```text
+RED     -> Immediate emergency escalation; no normal queue and no wearable wait
+YELLOW  -> Urgent/observation queue; wearable monitoring may be assigned
+GREEN   -> Normal queue and routine call for examination
+```
+
+AI and wearable alerts are decision-support tools only. A nurse remains responsible for the final triage decision. The three-level RED/YELLOW/GREEN model is an educational prototype that groups levels from five-level triage guidance for the scope of this project.
+
 ## Core Workflow
 
 1. Staff registers a patient.
