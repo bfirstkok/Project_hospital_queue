@@ -62,7 +62,7 @@ AI and wearable alerts are decision-support tools only. A nurse remains responsi
    - RED moves to `EMERGENCY_TRANSFER` immediately, bypasses the normal OPD queue, and cannot receive a wearable.
    - YELLOW moves to the urgent/observation queue and is the only group eligible for wearable pairing.
    - GREEN moves to the normal `WAITING_QUEUE` and does not receive a wearable.
-7. Pairing a wearable to a YELLOW visit moves it to `MONITORING`.
+7. Pairing a wearable to a YELLOW visit moves it to `OBSERVATION_MONITORING`; the existing `MONITORING` state remains reserved for post-OPD monitoring.
 8. Abnormal wearable data creates an alert and moves the visit to `REASSESSMENT_REQUIRED`; it does not automatically diagnose or change the nurse-confirmed severity.
 9. A nurse reassesses the patient and confirms RED, YELLOW, or GREEN again.
 10. Staff calls eligible waiting patients and selects OPD exam room 1, 2, or 3.
@@ -85,10 +85,11 @@ The demo data includes RED, YELLOW, and GREEN cases, plus a nurse override examp
 WAITING_VITALS          Patient registered, waiting for vital signs
 WAITING_CONFIRMATION    AI triage completed, waiting for nurse confirmation
 WAITING_QUEUE           Nurse-confirmed YELLOW/GREEN visit ready for the next service step
-MONITORING              YELLOW observation visit with an active wearable
+OBSERVATION_MONITORING  YELLOW observation visit with an active wearable
 REASSESSMENT_REQUIRED   Wearable alert detected; nurse must reassess
 EMERGENCY_TRANSFER      RED visit sent for immediate emergency care; not in the OPD queue
 CALLED                  Sent to an OPD exam room
+MONITORING              Active post-OPD monitoring case
 OPD_DONE              OPD visit completed
 FOLLOWUP              Follow-up required
 DISCHARGED            Monitoring case discharged
