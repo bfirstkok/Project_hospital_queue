@@ -35,9 +35,9 @@ class IotTelemetryAssignmentTests(TestCase):
             national_id="1234567890123",
         )
         self.visit = Visit.objects.create(patient=self.patient, final_severity=Visit.Severity.YELLOW)
-        Queue.objects.create(visit=self.visit, status=Queue.Status.MONITORING, priority=2)
+        Queue.objects.create(visit=self.visit, status=Queue.Status.OBSERVATION_MONITORING, priority=2)
         self.other_visit = Visit.objects.create(patient=self.patient, final_severity=Visit.Severity.YELLOW)
-        Queue.objects.create(visit=self.other_visit, status=Queue.Status.MONITORING, priority=2)
+        Queue.objects.create(visit=self.other_visit, status=Queue.Status.OBSERVATION_MONITORING, priority=2)
         self.device = Device.objects.create(
             device_id="DEV-001",
             api_key="secret",
@@ -328,7 +328,7 @@ class ConfirmedTriageFlowTests(TestCase):
 
         self.assertRedirects(response, reverse("device_management"))
         visit.queue.refresh_from_db()
-        self.assertEqual(visit.queue.status, Queue.Status.MONITORING)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
         self.assertTrue(DeviceAssignment.objects.filter(visit=visit, device=self.device, is_active=True).exists())
 
     def test_green_enters_normal_queue_and_cannot_pair_wearable(self):
@@ -341,7 +341,7 @@ class ConfirmedTriageFlowTests(TestCase):
         self.assertNotIn(visit, DeviceManagementPairForm().fields["visit"].queryset)
 
     def test_abnormal_yellow_wearable_data_requires_nurse_reassessment(self):
-        visit = self.make_visit(status=Queue.Status.MONITORING, severity=Visit.Severity.YELLOW)
+        visit = self.make_visit(status=Queue.Status.OBSERVATION_MONITORING, severity=Visit.Severity.YELLOW)
         DeviceAssignment.objects.create(device=self.device, visit=visit)
 
         response = self.client.post(
@@ -375,5 +375,5 @@ class ConfirmedTriageFlowTests(TestCase):
         self.confirm(visit, Visit.Severity.YELLOW)
 
         visit.queue.refresh_from_db()
-        self.assertEqual(visit.queue.status, Queue.Status.MONITORING)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
 
