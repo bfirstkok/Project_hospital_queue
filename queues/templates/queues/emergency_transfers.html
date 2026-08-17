@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ส่งต่อฉุกเฉินทันที</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=triage-flow-20260817">
+  <style>
+    body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .hero { padding: 24px; border: 1px solid rgba(248,113,113,.35); border-radius: 18px; background: linear-gradient(135deg, rgba(127,29,29,.48), rgba(15,23,42,.96)); }
+    h1 { margin: 0 0 8px; font-size: 34px; color: #fecaca; }
+    .rule { color: #fca5a5; font-size: 20px; font-weight: 800; }
+    .notice { margin: 18px 0; padding: 14px 18px; border-radius: 12px; background: rgba(239,68,68,.16); border: 1px solid rgba(248,113,113,.3); }
+    .table-shell { margin-top: 20px; overflow-x: auto; border: 1px solid rgba(174,194,220,.15); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; background: rgba(16,27,45,.86); }
+    th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(174,194,220,.12); }
+    th { color: #fca5a5; font-size: 13px; }
+    .queue { font-size: 22px; font-weight: 900; color: #f87171; }
+    .name { font-size: 20px; font-weight: 900; }
+    .status { display: inline-flex; padding: 7px 11px; border-radius: 999px; color: #fff; background: #b91c1c; font-weight: 900; }
+    .empty { padding: 42px; text-align: center; color: rgba(237,244,255,.62); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>RED · ส่งต่อฉุกเฉินทันที</h1>
+      <div class="rule">ไม่เข้าคิว OPD · ไม่รอสวมนาฬิกา · ให้บุคลากรรับช่วงทันที</div>
+      {% include "includes/main_nav.html" %}
+    </section>
+
+    {% if messages %}
+      {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+    {% endif %}
+
+    <div class="table-shell">
+      <table>
+        <thead>
+          <tr><th>เลขอ้างอิง</th><th>ผู้ป่วย</th><th>เวลายืนยัน</th><th>ผลยืนยันโดยพยาบาล</th><th>การดำเนินการ</th></tr>
+        </thead>
+        <tbody>
+          {% for q in q_items %}
+            <tr>
+              <td><span class="queue">{{ q.display_number }}</span></td>
+              <td><div class="name">{{ q.visit.patient.first_name }} {{ q.visit.patient.last_name }}</div><div>Visit #{{ q.visit.id }}</div></td>
+              <td>{{ q.visit.confirmed_at|date:"d/m/Y H:i" }}</td>
+              <td><span class="status">RED</span></td>
+              <td>ส่งต่อ ER / ทีมฉุกเฉินทันที และบันทึกการรับช่วงตามแนวทางหน่วยบริการ</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5"><div class="empty">ไม่มีผู้ป่วยที่รอส่งต่อฉุกเฉิน</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
