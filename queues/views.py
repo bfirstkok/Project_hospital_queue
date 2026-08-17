@@ -197,7 +197,10 @@ def waiting_confirmation(request):
         .filter(status=Queue.Status.WAITING_CONFIRMATION)
         .order_by("visit__triaged_at", "created_at")
     )
-    return render(request, "queues/waiting_confirmation.html", {"q_items": q_items})
+    return render(request, "queues/waiting_confirmation.html", {
+        "q_items": q_items,
+        "risk_flag_choices": NurseTriageAssessmentForm.RISK_FLAG_CHOICES,
+    })
 
 
 @login_required
@@ -330,6 +333,7 @@ def nurse_triage_assessment(request, visit_id: int):
         "form": form,
         "ai_result": ai_result,
         "triage_result": triage_result,
+        "risk_flag_choices": NurseTriageAssessmentForm.RISK_FLAG_CHOICES,
     })
 
 
@@ -345,12 +349,26 @@ def triage_visit(request, visit_id: int):
         messages.error(request, "ระดับความเร่งด่วนไม่ถูกต้อง")
         return redirect("waiting_confirmation")
 
+    triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
+    if triage_result.ai_severity and new_sev != triage_result.ai_severity and not nurse_note:
+        messages.error(request, "กรุณาระบุเหตุผลเพิ่มเติมเมื่อยืนยันระดับต่างจากคำแนะนำของ AI")
+        return redirect("waiting_confirmation")
+
+    if request.POST.get("risk_flags_present") == "1":
+        allowed_risk_flags = {value for value, _label in NurseTriageAssessmentForm.RISK_FLAG_CHOICES}
+        selected_risk_flags = request.POST.getlist("risk_flags")
+        if any(value not in allowed_risk_flags for value in selected_risk_flags):
+            messages.error(request, "ข้อมูลกลุ่มพิเศษไม่ถูกต้อง")
+            return redirect("waiting_confirmation")
+        vitals, _ = VitalSign.objects.get_or_create(visit=visit)
+        vitals.risk_flags = selected_risk_flags
+        vitals.save(update_fields=["risk_flags", "updated_at"])
+
     visit.final_severity = new_sev
     visit.confirmed_at = timezone.now()
     visit.save(update_fields=["final_severity", "confirmed_at"])
     q = route_after_nurse_confirmation(visit, new_sev)
 
-    triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
     triage_result.nurse_severity = new_sev
     triage_result.nurse_note = nurse_note
     triage_result.save(update_fields=["nurse_severity", "nurse_note"])

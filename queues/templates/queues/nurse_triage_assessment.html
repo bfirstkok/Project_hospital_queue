@@ -152,7 +152,7 @@
       </div>
 
       <div class="section">
-        <h3>กลุ่มเสี่ยง</h3>
+        <h3>กลุ่มพิเศษ <span class="muted">(พยาบาลเป็นผู้ตรวจสอบและยืนยัน)</span></h3>
         <div class="checks">{{ form.risk_flags }}</div>
       </div>
 
@@ -262,8 +262,21 @@
           {% csrf_token %}
           <div class="confirm-panel">
             <div>
-            <label for="nurse_note">หมายเหตุการปรับผล</label>
-            <textarea id="nurse_note" name="nurse_note">{{ triage_result.nurse_note }}</textarea>
+            <strong>กลุ่มพิเศษที่พยาบาลยืนยัน</strong>
+            <input type="hidden" name="risk_flags_present" value="1">
+            <div class="checks" style="margin-top:8px">
+              {% for value, label in risk_flag_choices %}
+                <label for="confirm-risk-{{ value }}">
+                  <input id="confirm-risk-{{ value }}" type="checkbox" name="risk_flags" value="{{ value }}" {% if visit.vitals and value in visit.vitals.risk_flags %}checked{% endif %}>
+                  {{ label }}
+                </label>
+              {% endfor %}
+            </div>
+            </div>
+            <div>
+            <label for="nurse_note">เหตุผลเพิ่มเติม</label>
+            <textarea id="nurse_note" name="nurse_note" placeholder="หากเลือกระดับต่างจาก AI ต้องระบุเหตุผล">{{ triage_result.nurse_note }}</textarea>
+            <div class="muted" style="margin-top:6px">จำเป็นเมื่อพยาบาลยืนยันระดับต่างจากคำแนะนำของ AI</div>
             </div>
             <div class="confirm-actions">
               <button class="btn red" type="submit" name="severity" value="RED">สีแดง</button>

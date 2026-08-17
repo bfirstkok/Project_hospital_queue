@@ -340,6 +340,40 @@ class ConfirmedTriageFlowTests(TestCase):
         self.assertNotIn(visit, DevicePairingForm().fields["visit"].queryset)
         self.assertNotIn(visit, DeviceManagementPairForm().fields["visit"].queryset)
 
+    def test_nurse_override_requires_additional_reason(self):
+        visit = self.make_visit()
+
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            {"severity": Visit.Severity.RED, "nurse_note": ""},
+        )
+
+        self.assertRedirects(response, reverse("waiting_confirmation"))
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_CONFIRMATION)
+        self.assertIsNone(visit.triage_result.nurse_severity)
+
+    def test_nurse_confirmation_updates_special_groups(self):
+        visit = self.make_visit()
+
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            {
+                "severity": Visit.Severity.YELLOW,
+                "nurse_note": "",
+                "risk_flags_present": "1",
+                "risk_flags": ["elderly_80", "pregnant"],
+            },
+        )
+
+        self.assertRedirects(response, reverse("queue_list"))
+        self.assertEqual(
+            visit.vitals.risk_flags,
+            ["elderly_80", "pregnant"],
+        )
+
     def test_abnormal_yellow_wearable_data_requires_nurse_reassessment(self):
         visit = self.make_visit(status=Queue.Status.OBSERVATION_MONITORING, severity=Visit.Severity.YELLOW)
         DeviceAssignment.objects.create(device=self.device, visit=visit)

@@ -54,13 +54,13 @@ class NurseTriageAssessmentForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
     )
     risk_flags = forms.MultipleChoiceField(
-        label="กลุ่มเสี่ยง",
+        label="กลุ่มพิเศษ",
         choices=RISK_FLAG_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     symptoms = forms.CharField(
-        label="รายละเอียดอาการเพิ่มเติม",
+        label="เหตุผล/รายละเอียดเพิ่มเติม",
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
     )

@@ -131,6 +131,35 @@
       gap: 8px;
     }
     .confirm-actions .btn { justify-content: center; }
+    .confirmation-fields {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .confirmation-fields strong { font-size: 13px; }
+    .risk-checks { display: grid; gap: 6px; }
+    .risk-checks label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border: 1px solid rgba(174,194,220,.18);
+      border-radius: 8px;
+      background: rgba(255,255,255,.035);
+      font-size: 12px;
+    }
+    .confirmation-fields textarea {
+      width: 100%;
+      min-height: 68px;
+      padding: 9px;
+      border: 1px solid rgba(174,194,220,.22);
+      border-radius: 8px;
+      color: #edf4ff;
+      background: rgba(255,255,255,.055);
+      resize: vertical;
+    }
+    .confirmation-hint { color: rgba(237,244,255,.58); font-size: 11px; }
     .btn.ai-confirm {
       grid-column: 1 / -1;
       color: #061522;
@@ -318,6 +347,25 @@
             <td class="actions-panel">
               <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-actions">
                 {% csrf_token %}
+                <div class="confirmation-fields">
+                  <div>
+                    <strong>กลุ่มพิเศษที่พยาบาลยืนยัน</strong>
+                    <input type="hidden" name="risk_flags_present" value="1">
+                    <div class="risk-checks" style="margin-top:6px">
+                      {% for value, label in risk_flag_choices %}
+                        <label for="risk-{{ v.id }}-{{ value }}">
+                          <input id="risk-{{ v.id }}-{{ value }}" type="checkbox" name="risk_flags" value="{{ value }}" {% if vs and value in vs.risk_flags %}checked{% endif %}>
+                          {{ label }}
+                        </label>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  <div>
+                    <label for="nurse-note-{{ v.id }}"><strong>เหตุผลเพิ่มเติม</strong></label>
+                    <textarea id="nurse-note-{{ v.id }}" name="nurse_note" placeholder="ระบุเหตุผลประกอบการยืนยัน โดยเฉพาะเมื่อเลือกต่างจาก AI">{{ tr.nurse_note }}</textarea>
+                    <div class="confirmation-hint">จำเป็นเมื่อยืนยันระดับต่างจากคำแนะนำของ AI</div>
+                  </div>
+                </div>
                 {% if tr.ai_severity %}
                   <button class="btn ai-confirm" type="submit" name="severity" value="{{ tr.ai_severity }}">ยืนยันตาม AI: {{ tr.ai_severity }}</button>
                 {% endif %}
