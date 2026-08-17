@@ -23,8 +23,9 @@ log "Checking repository state"
 log "Pulling origin/$BRANCH with fast-forward only"
 git pull --ff-only origin "$BRANCH"
 
-log "Building a temporary image and running patient tests against the pulled source"
-docker compose run --rm --build web python manage.py test patients --verbosity 1
+log "Building a temporary image, collecting static assets, and running queue/patient tests"
+docker compose run --rm --build web /bin/sh -c \
+    "python manage.py collectstatic --noinput && python manage.py test queues patients --verbosity 1"
 
 log "Building and starting the production services"
 docker compose up -d --build
