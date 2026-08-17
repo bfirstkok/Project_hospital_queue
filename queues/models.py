@@ -52,14 +52,17 @@ class Queue(models.Model):
         WAITING_QUEUE = "WAITING_QUEUE", "Waiting queue"
         WAITING = "WAITING", "Waiting"
         CALLED = "CALLED", "Called"
-        MONITORING = "MONITORING", "Monitoring"
+        MONITORING = "MONITORING", "Post-OPD monitoring"
+        OBSERVATION_MONITORING = "OBSERVATION_MONITORING", "Observation monitoring"
+        REASSESSMENT_REQUIRED = "REASSESSMENT_REQUIRED", "Reassessment required"
+        EMERGENCY_TRANSFER = "EMERGENCY_TRANSFER", "Emergency transfer"
         OPD_DONE = "OPD_DONE", "OPD Done"
         FOLLOWUP = "FOLLOWUP", "Follow-up"
         DISCHARGED = "DISCHARGED", "Discharged"
         CANCELLED = "CANCELLED", "Cancelled"
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")
-    status = models.CharField(max_length=24, choices=Status.choices, default=Status.WAITING_VITALS)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.WAITING_VITALS)
 
     priority = models.IntegerField(default=3)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)

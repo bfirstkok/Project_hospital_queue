@@ -58,12 +58,16 @@ AI and wearable alerts are decision-support tools only. A nurse remains responsi
 3. Nurse opens OPD Triage Assessment and enters symptoms plus vital signs.
 4. AI suggests RED, YELLOW, or GREEN severity after required vital signs are complete.
 5. The visit moves to `WAITING_CONFIRMATION` so the nurse can confirm or override the AI result.
-6. Confirmed visits move to `WAITING_QUEUE`, ordered by severity priority and confirmation time.
-7. Staff calls a patient and selects OPD exam room 1, 2, or 3.
-8. OPD staff complete the room assessment, including OPD urgency and follow-up information.
-9. Cases can finish as `OPD_DONE`, move to `FOLLOWUP`, or be sent to `MONITORING`.
-10. Monitoring pages show live vital signs, online/offline status, and clinical alerts.
-11. Dashboard provides AI evaluation and waiting-time reports.
+6. The nurse-confirmed severity controls the next route:
+   - RED moves to `EMERGENCY_TRANSFER` immediately, bypasses the normal OPD queue, and cannot receive a wearable.
+   - YELLOW moves to the urgent/observation queue and is the only group eligible for wearable pairing.
+   - GREEN moves to the normal `WAITING_QUEUE` and does not receive a wearable.
+7. Pairing a wearable to a YELLOW visit moves it to `OBSERVATION_MONITORING`; the existing `MONITORING` state remains reserved for post-OPD monitoring.
+8. Abnormal wearable data creates an alert and moves the visit to `REASSESSMENT_REQUIRED`; it does not automatically diagnose or change the nurse-confirmed severity.
+9. A nurse reassesses the patient and confirms RED, YELLOW, or GREEN again.
+10. Staff calls eligible waiting patients and selects OPD exam room 1, 2, or 3.
+11. OPD staff complete the room assessment, including OPD urgency and follow-up information.
+12. Dashboard provides monitoring, alerts, AI evaluation, and waiting-time reports.
 
 ## Demo Flow
 
@@ -78,11 +82,14 @@ The demo data includes RED, YELLOW, and GREEN cases, plus a nurse override examp
 ## Queue States
 
 ```text
-WAITING_VITALS        Patient registered, waiting for vital signs
-WAITING_CONFIRMATION  AI triage completed, waiting for nurse confirmation
-WAITING_QUEUE         Confirmed and ready to be called
-CALLED                Sent to an OPD exam room
-MONITORING            Active post-OPD monitoring case
+WAITING_VITALS          Patient registered, waiting for vital signs
+WAITING_CONFIRMATION    AI triage completed, waiting for nurse confirmation
+WAITING_QUEUE           Nurse-confirmed YELLOW/GREEN visit ready for the next service step
+OBSERVATION_MONITORING  YELLOW observation visit with an active wearable
+REASSESSMENT_REQUIRED   Wearable alert detected; nurse must reassess
+EMERGENCY_TRANSFER      RED visit sent for immediate emergency care; not in the OPD queue
+CALLED                  Sent to an OPD exam room
+MONITORING              Active post-OPD monitoring case
 OPD_DONE              OPD visit completed
 FOLLOWUP              Follow-up required
 DISCHARGED            Monitoring case discharged
@@ -105,13 +112,13 @@ The queue is ordered by:
 priority, created_at
 ```
 
-Rule-based fallback thresholds:
+Prototype warning features used by the rule-based fallback (not universal single-value clinical decisions):
 
 - RED: `O2Sat < 95`, `RR > 30`, `BP ตัวบน < 90`, `BT >= 39`
 - YELLOW: `O2Sat 95-96`, `RR 21-30`, `PR/BPM >= 120`, `BT 38-38.9`
 - GREEN: no RED/YELLOW trigger
 
-The Random Forest model is attempted during AI triage, but the final AI recommendation is guarded by rule-based clinical logic in `services.py`. If the model cannot be loaded, the system falls back to the rule-based triage logic.
+The Random Forest model is attempted during AI triage, but the final AI recommendation is guarded by rule-based clinical logic in `services.py`. If the model cannot be loaded, the system falls back to the rule-based triage logic. These values are combined with symptoms, risk factors, age, medical context, and nurse judgment; the nurse must always confirm the final route.
 
 ## OPD Urgency Logic
 

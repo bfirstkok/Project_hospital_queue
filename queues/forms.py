@@ -4,7 +4,7 @@ from .models import Device, Queue, Visit
 
 
 PAIRABLE_QUEUE_STATUSES = [
-    Queue.Status.MONITORING,
+    Queue.Status.WAITING_QUEUE,
 ]
 
 
@@ -84,7 +84,8 @@ class NurseTriageAssessmentForm(forms.Form):
 class DevicePairingForm(forms.Form):
     visit = forms.ModelChoiceField(
         queryset=Visit.objects.select_related("patient", "queue").filter(
-            queue__status__in=["WAITING_VITALS", "WAITING_QUEUE", "MONITORING", "FOLLOWUP"]
+            final_severity=Visit.Severity.YELLOW,
+            queue__status=Queue.Status.WAITING_QUEUE,
         ).exclude(device_assignments__is_active=True).order_by("queue__priority", "registered_at"),
         label="Visit",
         required=True,
@@ -138,11 +139,15 @@ class DeviceManagementPairForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["device"].queryset = Device.objects.filter(is_active=True).order_by("device_id")
+        self.fields["device"].queryset = Device.objects.filter(is_active=True).exclude(assignments__is_active=True).order_by("device_id")
         self.fields["visit"].queryset = (
             Visit.objects
             .select_related("patient", "queue")
-            .filter(queue__status__in=PAIRABLE_QUEUE_STATUSES)
+            .filter(
+                final_severity=Visit.Severity.YELLOW,
+                queue__status__in=PAIRABLE_QUEUE_STATUSES,
+            )
+            .exclude(device_assignments__is_active=True)
             .order_by("queue__priority", "-registered_at")
         )
         self.fields["device"].label_from_instance = lambda device: device.device_id

@@ -40,6 +40,33 @@ def has_required_vitals(vitals):
     return bool(vitals and all(getattr(vitals, field) is not None for field in REQUIRED_VITAL_FIELDS))
 
 
+def unpair_active_wearable(visit):
+    """Close active wearable assignments and keep the unpair timestamp as an audit trail."""
+    return DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
+        is_active=False,
+        unpaired_at=timezone.now(),
+    )
+
+
+def route_after_nurse_confirmation(visit, severity):
+    """Apply the nurse-confirmed flow. AI output never calls this function directly."""
+    q = visit.queue
+    has_active_wearable = DeviceAssignment.objects.filter(visit=visit, is_active=True).exists()
+
+    q.priority = SEVERITY_PRIORITY[severity]
+    if severity == Visit.Severity.RED:
+        unpair_active_wearable(visit)
+        q.status = Queue.Status.EMERGENCY_TRANSFER
+    elif severity == Visit.Severity.YELLOW:
+        q.status = Queue.Status.OBSERVATION_MONITORING if has_active_wearable else Queue.Status.WAITING_QUEUE
+    else:
+        unpair_active_wearable(visit)
+        q.status = Queue.Status.WAITING_QUEUE
+
+    q.save(update_fields=["priority", "status"])
+    return q
+
+
 def evaluate_visit_if_vitals_complete(visit):
     vitals = getattr(visit, "vitals", None)
     if not has_required_vitals(vitals):
@@ -98,6 +125,18 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
             threshold=threshold,
             source=source,
         ))
+
+    q = getattr(visit, "queue", None)
+    if (
+        created
+        and source.startswith("iot")
+        and visit.final_severity == Visit.Severity.YELLOW
+        and q
+        and q.status == Queue.Status.OBSERVATION_MONITORING
+    ):
+        q.status = Queue.Status.REASSESSMENT_REQUIRED
+        q.save(update_fields=["status"])
+
     return created
 
 
@@ -159,6 +198,17 @@ def waiting_confirmation(request):
         .order_by("visit__triaged_at", "created_at")
     )
     return render(request, "queues/waiting_confirmation.html", {"q_items": q_items})
+
+
+@login_required
+def emergency_transfers(request):
+    q_items = (
+        Queue.objects
+        .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
+        .filter(status=Queue.Status.EMERGENCY_TRANSFER)
+        .order_by("visit__confirmed_at", "created_at")
+    )
+    return render(request, "queues/emergency_transfers.html", {"q_items": q_items})
 
 
 @login_required
@@ -285,26 +335,33 @@ def nurse_triage_assessment(request, visit_id: int):
 
 @login_required
 @require_POST
+@transaction.atomic
 def triage_visit(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
     new_sev = request.POST.get("severity")
     nurse_note = request.POST.get("nurse_note", "").strip()
 
-    if new_sev in ["RED", "YELLOW", "GREEN"]:
-        visit.final_severity = new_sev
-        visit.confirmed_at = timezone.now()
-        visit.save(update_fields=["final_severity", "confirmed_at"])
+    if new_sev not in Visit.Severity.values:
+        messages.error(request, "ระดับความเร่งด่วนไม่ถูกต้อง")
+        return redirect("waiting_confirmation")
 
-        q = visit.queue
-        q.priority = SEVERITY_PRIORITY[new_sev]
-        q.status = Queue.Status.WAITING_QUEUE
-        q.save(update_fields=["priority", "status"])
+    visit.final_severity = new_sev
+    visit.confirmed_at = timezone.now()
+    visit.save(update_fields=["final_severity", "confirmed_at"])
+    q = route_after_nurse_confirmation(visit, new_sev)
 
-        triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
-        triage_result.nurse_severity = new_sev
-        triage_result.nurse_note = nurse_note
-        triage_result.save(update_fields=["nurse_severity", "nurse_note"])
+    triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
+    triage_result.nurse_severity = new_sev
+    triage_result.nurse_note = nurse_note
+    triage_result.save(update_fields=["nurse_severity", "nurse_note"])
 
+    if new_sev == Visit.Severity.RED:
+        messages.error(request, "RED: ส่งต่อฉุกเฉินทันที ไม่เข้าคิว OPD และไม่รอสวมนาฬิกา")
+        return redirect("emergency_transfers")
+    if new_sev == Visit.Severity.YELLOW:
+        messages.warning(request, "YELLOW: เข้ากลุ่มเฝ้าระวัง สามารถจับคู่นาฬิกาได้")
+    else:
+        messages.success(request, "GREEN: เข้าคิวปกติ ไม่ต้องสวมนาฬิกา")
     return redirect("queue_list")
 
 
@@ -313,10 +370,13 @@ def triage_visit(request, visit_id: int):
 def send_to_monitoring(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
     q = getattr(visit, "queue", None)
-    if q:
-        q.status = "MONITORING"
+    has_device = DeviceAssignment.objects.filter(visit=visit, is_active=True).exists()
+    if q and visit.final_severity == Visit.Severity.YELLOW and has_device:
+        q.status = Queue.Status.OBSERVATION_MONITORING
         q.save(update_fields=["status"])
-    return redirect("monitor_dashboard")
+    else:
+        messages.error(request, "เฉพาะผู้ป่วย YELLOW ที่จับคู่นาฬิกาแล้วเท่านั้นที่เริ่มติดตามได้")
+    return redirect("waiting_monitor_dashboard")
 
 
 @login_required
@@ -366,16 +426,19 @@ def update_severity_api(request, visit_id: int):
         visit.confirmed_at = timezone.now()
         visit.save(update_fields=["final_severity", "confirmed_at"])
 
-        q = visit.queue
-        q.priority = SEVERITY_PRIORITY[new_sev]
-        q.status = Queue.Status.WAITING_QUEUE
-        q.save(update_fields=["priority", "status"])
+        q = route_after_nurse_confirmation(visit, new_sev)
 
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
         triage_result.save(update_fields=["nurse_severity"])
 
-        return JsonResponse({"ok": True, "visit_id": visit.id, "severity": new_sev})
+        return JsonResponse({
+            "ok": True,
+            "visit_id": visit.id,
+            "severity": new_sev,
+            "queue_status": q.status,
+            "wearable_eligible": new_sev == Visit.Severity.YELLOW,
+        })
 
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
@@ -424,6 +487,17 @@ def iot_telemetry(request):
         return JsonResponse({"ok": False, "error": "Device is not paired to an active visit"}, status=409)
 
     visit = assignment.visit
+    q = getattr(visit, "queue", None)
+    if (
+        visit.final_severity != Visit.Severity.YELLOW
+        or not q
+        or q.status not in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+    ):
+        return JsonResponse({
+            "ok": False,
+            "error": "Wearable telemetry is allowed only for active YELLOW observation visits",
+        }, status=409)
+
     posted_visit_id = data.get("visit_id")
     if posted_visit_id:
         try:
@@ -591,6 +665,17 @@ def iot_vitals(request):
         }, status=409)
 
     visit = assignment.visit
+    q = getattr(visit, "queue", None)
+    if (
+        visit.final_severity != Visit.Severity.YELLOW
+        or not q
+        or q.status not in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+    ):
+        return JsonResponse({
+            "success": False,
+            "message": "Wearable vitals are allowed only for active YELLOW observation visits",
+        }, status=409)
+
     patient = visit.patient
 
     if patient_id:
@@ -740,7 +825,7 @@ def device_management(request):
 
                     q = getattr(visit, "queue", None)
                     if q:
-                        q.status = Queue.Status.MONITORING
+                        q.status = Queue.Status.OBSERVATION_MONITORING
                         q.save(update_fields=["status"])
 
                 messages.success(request, "ผูกอุปกรณ์สำเร็จ")
@@ -779,6 +864,10 @@ def device_management(request):
             assignment.is_active = False
             assignment.unpaired_at = timezone.now()
             assignment.save(update_fields=["is_active", "unpaired_at"])
+            q = getattr(assignment.visit, "queue", None)
+            if q and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
+                q.status = Queue.Status.WAITING_QUEUE
+                q.save(update_fields=["status"])
             messages.success(request, f"ยกเลิกการผูก {assignment.device.device_id} แล้ว")
             return redirect("device_management")
 
@@ -823,6 +912,9 @@ def device_pairing(request):
                 unpaired_at=now,
             )
             DeviceAssignment.objects.create(visit=visit, device=device)
+            q = visit.queue
+            q.status = Queue.Status.OBSERVATION_MONITORING
+            q.save(update_fields=["status"])
             device.last_seen = timezone.now()
             device.save(update_fields=["last_seen"])
             return redirect("device_pairing")
@@ -860,7 +952,7 @@ def monitor_latest_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
-        .filter(status=Queue.Status.WAITING_QUEUE)
+        .filter(status__in=[Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED])
         .annotate(
             last_log_ts=Subquery(latest_log.values("ts")[:1]),
             last_device_id=Subquery(latest_log.values("device__device_id")[:1]),
@@ -884,6 +976,8 @@ def monitor_latest_api(request):
             "visit_id": visit.id,
             "name": f"{visit.patient.first_name} {visit.patient.last_name}",
             "severity": visit.final_severity,
+            "queue_status": q.status,
+            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
             "ai": _get_ai_severity(visit),
             "device_id": q.last_device_id,
             "online": online,
@@ -928,7 +1022,7 @@ def monitor_summary_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient")
-        .filter(status=Queue.Status.WAITING_QUEUE)
+        .filter(status__in=[Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED])
         .order_by("priority", "visit__confirmed_at", "created_at")[:200]
     )
 
@@ -954,6 +1048,8 @@ def monitor_summary_api(request):
             "visit_id": v.id,
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
+            "queue_status": q.status,
+            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
             "online": online,
             "device_id": v.last_device_id,

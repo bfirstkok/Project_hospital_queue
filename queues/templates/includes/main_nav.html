@@ -104,6 +104,7 @@
 <nav class="opd-main-tabs" aria-label="หลัก">
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_vitals' %}active{% endif %}" href="{% url 'waiting_vitals' %}">รอวัดค่า</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_confirmation' %}active{% endif %}" href="{% url 'waiting_confirmation' %}">รอยืนยัน</a>
+  <a class="opd-main-tab {% if request.resolver_match.url_name == 'emergency_transfers' %}active{% endif %}" href="{% url 'emergency_transfers' %}">ส่งต่อฉุกเฉิน</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'queue_list' %}active{% endif %}" href="{% url 'queue_list' %}">คิว</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'patient_search' or request.resolver_match.url_name == 'patient_history' %}active{% endif %}" href="{% url 'patient_search' %}">ผู้ป่วย</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'opd_list' or request.resolver_match.url_name == 'opd_room_select' or request.resolver_match.url_name == 'visit_assessment' or request.resolver_match.url_name == 'opd_visit_detail' %}active{% endif %}" href="{% url 'opd_list' %}">ห้องตรวจ</a>
