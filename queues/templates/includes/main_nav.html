@@ -6,6 +6,14 @@
     box-sizing: border-box;
   }
 
+  /* backdrop-filter creates a containing block for fixed descendants.
+     Disable it on shared headers so the tabs stay fixed to the viewport,
+     exactly like pages where the navigation sits directly in the page head. */
+  .topbar:has(> .opd-main-tabs) {
+    top: 62px !important;
+    backdrop-filter: none !important;
+  }
+
   .opd-main-tabs {
     display: inline-flex;
     align-items: center;
@@ -74,6 +82,10 @@
   @media (max-width: 760px) {
     body {
       padding-top: 58px !important;
+    }
+
+    .topbar:has(> .opd-main-tabs) {
+      top: 58px !important;
     }
 
     .opd-main-tabs {

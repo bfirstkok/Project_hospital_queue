@@ -319,6 +319,7 @@ class ConfirmedTriageFlowTests(TestCase):
         page = self.client.get(reverse("emergency_transfers"))
         self.assertContains(page, 'class="topbar"')
         self.assertContains(page, "ผู้ป่วย RED ที่ต้องส่งต่อให้บุคลากรทันที")
+        self.assertContains(page, "backdrop-filter: none")
 
     def test_yellow_enters_observation_queue_and_can_pair_wearable(self):
         visit = self.make_visit()
