@@ -139,7 +139,7 @@ class DeviceManagementPairForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["device"].queryset = Device.objects.filter(is_active=True).order_by("device_id")
+        self.fields["device"].queryset = Device.objects.filter(is_active=True).exclude(assignments__is_active=True).order_by("device_id")
         self.fields["visit"].queryset = (
             Visit.objects
             .select_related("patient", "queue")
