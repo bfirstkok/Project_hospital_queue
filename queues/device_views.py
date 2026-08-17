@@ -100,6 +100,10 @@ def device_management(request):
             assignment.is_active = False
             assignment.unpaired_at = timezone.now()
             assignment.save(update_fields=["is_active", "unpaired_at"])
+            q = getattr(assignment.visit, "queue", None)
+            if q and q.status in {Queue.Status.MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
+                q.status = Queue.Status.WAITING_QUEUE
+                q.save(update_fields=["status"])
             messages.success(request, f"ยกเลิกการผูก {assignment.device.device_id} แล้ว")
             return redirect("device_management")
 
