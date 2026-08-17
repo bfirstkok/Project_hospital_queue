@@ -8,6 +8,7 @@ on:
       - "opd/**"
       - "config/**"
       - "requirements.txt"
+      - "scripts/deploy_production.sh"
       - ".github/workflows/triage-flow-tests.yml"
   workflow_dispatch:
 
@@ -19,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DEBUG: "True"
+      DEBUG: "False"
+      SECRET_KEY: "ci-only-not-a-production-secret"
+      ALLOWED_HOSTS: "testserver,localhost,127.0.0.1"
       DATABASE_URL: "sqlite"
 
     steps:
@@ -30,6 +33,8 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Collect static assets with production settings
+        run: python manage.py collectstatic --noinput
       - name: Django system check
         run: python manage.py check
       - name: Verify migrations
