@@ -8,6 +8,7 @@
   <style>
     body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .waiting-vitals-page .wrap { padding-top: 78px !important; }
     .top { display: flex; justify-content: space-between; align-items: flex-start;   gap: 14px; margin-bottom: 24px;}
     .nav { display: flex;gap: 8px; flex-wrap: wrap; margin-top: 2px;           }
     .btn { display: inline-flex; min-height: 34px; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 700; background: rgba(255,255,255,.06); }
@@ -42,6 +43,7 @@
     .info-row dd { margin: 0; color: rgba(237,244,255,.88); overflow-wrap: anywhere; }
     .action-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
     @media (max-width: 760px) {
+      .waiting-vitals-page .wrap { padding-top: 70px !important; }
       .detail-grid { grid-template-columns: 1fr; }
       .info-row { grid-template-columns: 112px minmax(0, 1fr); }
       .patient-modal { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
@@ -50,7 +52,7 @@
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
-<body>
+<body class="waiting-vitals-page">
   <main class="wrap">
     <div class="top">
       <div>

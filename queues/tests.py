@@ -205,6 +205,7 @@ class QueueWorkflowTests(TestCase):
         response = self.client.get(reverse("waiting_vitals"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="waiting-vitals-page"')
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, f'id="patient-modal-{patient.visits.get().queue.id}"')
         self.assertContains(response, patient.phone)
