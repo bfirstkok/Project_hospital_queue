@@ -5,7 +5,8 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from patients.models import Patient
-from queues.models import Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, Visit, VitalSign
+from queues.forms import DeviceManagementPairForm, DevicePairingForm
+from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, TriageResult, Visit, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -33,10 +34,10 @@ class IotTelemetryAssignmentTests(TestCase):
             last_name="Patient",
             national_id="1234567890123",
         )
-        self.visit = Visit.objects.create(patient=self.patient)
-        Queue.objects.create(visit=self.visit, status=Queue.Status.MONITORING)
-        self.other_visit = Visit.objects.create(patient=self.patient)
-        Queue.objects.create(visit=self.other_visit, status=Queue.Status.MONITORING)
+        self.visit = Visit.objects.create(patient=self.patient, final_severity=Visit.Severity.YELLOW)
+        Queue.objects.create(visit=self.visit, status=Queue.Status.MONITORING, priority=2)
+        self.other_visit = Visit.objects.create(patient=self.patient, final_severity=Visit.Severity.YELLOW)
+        Queue.objects.create(visit=self.other_visit, status=Queue.Status.MONITORING, priority=2)
         self.device = Device.objects.create(
             device_id="DEV-001",
             api_key="secret",
@@ -101,9 +102,9 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(TelemetryLog.objects.count(), 0)
 
-    def test_complete_iot_vitals_moves_waiting_vitals_to_confirmation(self):
+    def test_wearable_rejects_visit_before_nurse_confirms_yellow(self):
         waiting_visit = Visit.objects.create(patient=self.patient, final_severity=None)
-        queue = Queue.objects.create(visit=waiting_visit, status=Queue.Status.WAITING_VITALS)
+        Queue.objects.create(visit=waiting_visit, status=Queue.Status.WAITING_VITALS)
         DeviceAssignment.objects.create(device=self.device, visit=waiting_visit)
 
         response = self.post_telemetry({
@@ -118,15 +119,8 @@ class IotTelemetryAssignmentTests(TestCase):
             },
         })
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload["vitals_complete"])
-
-        queue.refresh_from_db()
-        waiting_visit.refresh_from_db()
-        self.assertEqual(queue.status, Queue.Status.WAITING_CONFIRMATION)
-        self.assertIsNone(waiting_visit.final_severity)
-        self.assertEqual(waiting_visit.triage_result.ai_severity, "GREEN")
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(TelemetryLog.objects.count(), 0)
 
     def test_iot_vitals_uses_active_device_assignment_without_patient_id(self):
         DeviceAssignment.objects.create(device=self.device, visit=self.visit)
@@ -280,3 +274,106 @@ class QueueWorkflowTests(TestCase):
 
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.WAITING_VITALS)
+
+class ConfirmedTriageFlowTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = get_user_model().objects.create_user(username="flow-nurse", password="secret")
+        self.client.force_login(self.user)
+        self.patient = Patient.objects.create(
+            first_name="Flow",
+            last_name="Patient",
+            national_id="1234567890888",
+        )
+        self.device = Device.objects.create(device_id="WATCH-FLOW", api_key="flow-secret", is_active=True)
+
+    def make_visit(self, status=Queue.Status.WAITING_CONFIRMATION, severity=None):
+        visit = Visit.objects.create(patient=self.patient, final_severity=severity)
+        Queue.objects.create(visit=visit, status=status)
+        TriageResult.objects.create(visit=visit, ai_severity=Visit.Severity.YELLOW)
+        return visit
+
+    def confirm(self, visit, severity):
+        return self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            {"severity": severity, "nurse_note": "ยืนยันโดยพยาบาล"},
+        )
+
+    def test_red_bypasses_opd_queue_and_unpairs_wearable(self):
+        visit = self.make_visit()
+        assignment = DeviceAssignment.objects.create(device=self.device, visit=visit)
+
+        response = self.confirm(visit, Visit.Severity.RED)
+
+        self.assertRedirects(response, reverse("emergency_transfers"))
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        assignment.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.EMERGENCY_TRANSFER)
+        self.assertEqual(visit.queue.priority, 1)
+        self.assertFalse(assignment.is_active)
+        self.assertIsNotNone(assignment.unpaired_at)
+
+    def test_yellow_enters_observation_queue_and_can_pair_wearable(self):
+        visit = self.make_visit()
+        self.confirm(visit, Visit.Severity.YELLOW)
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+
+        response = self.client.post(reverse("device_management"), {
+            "action": "pair_device",
+            "device": self.device.id,
+            "visit": visit.id,
+        })
+
+        self.assertRedirects(response, reverse("device_management"))
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.MONITORING)
+        self.assertTrue(DeviceAssignment.objects.filter(visit=visit, device=self.device, is_active=True).exists())
+
+    def test_green_enters_normal_queue_and_cannot_pair_wearable(self):
+        visit = self.make_visit()
+        self.confirm(visit, Visit.Severity.GREEN)
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+
+        self.assertNotIn(visit, DevicePairingForm().fields["visit"].queryset)
+        self.assertNotIn(visit, DeviceManagementPairForm().fields["visit"].queryset)
+
+    def test_abnormal_yellow_wearable_data_requires_nurse_reassessment(self):
+        visit = self.make_visit(status=Queue.Status.MONITORING, severity=Visit.Severity.YELLOW)
+        DeviceAssignment.objects.create(device=self.device, visit=visit)
+
+        response = self.client.post(
+            reverse("iot_telemetry"),
+            data=json.dumps({
+                "visit_id": visit.id,
+                "vitals": {
+                    "bpm": 100,
+                    "o2sat": 90,
+                    "bt": 37.2,
+                    "rr": 20,
+                    "sys_bp": 120,
+                    "dia_bp": 80,
+                },
+            }),
+            content_type="application/json",
+            HTTP_X_DEVICE_ID=self.device.device_id,
+            HTTP_X_API_KEY=self.device.api_key,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+        self.assertTrue(CriticalAlert.objects.filter(visit=visit, status=CriticalAlert.Status.NEW).exists())
+        self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
+
+    def test_reassessment_can_return_yellow_patient_to_monitoring(self):
+        visit = self.make_visit(status=Queue.Status.REASSESSMENT_REQUIRED, severity=Visit.Severity.YELLOW)
+        DeviceAssignment.objects.create(device=self.device, visit=visit)
+
+        self.confirm(visit, Visit.Severity.YELLOW)
+
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.MONITORING)
+
