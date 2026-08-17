@@ -1,4 +1,11 @@
 <style>
+  /* The workflow navigation is fixed to the viewport, so reserve vertical
+     space on every page that includes it instead of letting it cover titles. */
+  body {
+    padding-top: 62px !important;
+    box-sizing: border-box;
+  }
+
   .opd-main-tabs {
     display: inline-flex;
     align-items: center;
@@ -65,6 +72,10 @@
   }
 
   @media (max-width: 760px) {
+    body {
+      padding-top: 58px !important;
+    }
+
     .opd-main-tabs {
       justify-content: flex-start;
       width: 100%;
