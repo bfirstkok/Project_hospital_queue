@@ -9,9 +9,9 @@
   <style>
     body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
     .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
-    .hero { padding: 24px; border: 1px solid rgba(248,113,113,.35); border-radius: 18px; background: linear-gradient(135deg, rgba(127,29,29,.48), rgba(15,23,42,.96)); }
-    h1 { margin: 0 0 8px; font-size: 34px; color: #fecaca; }
-    .rule { color: #fca5a5; font-size: 20px; font-weight: 800; }
+    .emergency-transfer-page .hero { padding: 24px; border: 1px solid #fecaca !important; border-radius: 18px; background: #fff5f5 !important; }
+    .emergency-transfer-page .hero h1 { margin: 0 0 8px; font-size: 34px; color: #b91c1c !important; }
+    .emergency-transfer-page .rule { color: #dc2626 !important; font-size: 20px; font-weight: 800; }
     .notice { margin: 18px 0; padding: 14px 18px; border-radius: 12px; background: rgba(239,68,68,.16); border: 1px solid rgba(248,113,113,.3); }
     .table-shell { margin-top: 20px; overflow-x: auto; border: 1px solid rgba(174,194,220,.15); border-radius: 14px; }
     table { width: 100%; border-collapse: collapse; background: rgba(16,27,45,.86); }
@@ -23,12 +23,23 @@
     .empty { padding: 42px; text-align: center; color: rgba(237,244,255,.62); }
   </style>
 </head>
-<body>
+<body class="emergency-transfer-page">
+<div class="shell">
+  <header class="topbar">
+    <div class="logo-area">
+      <div class="logo-icon">🚑</div>
+      <div>
+        <div class="logo-text">ส่งต่อฉุกเฉิน</div>
+        <div class="logo-sub">ผู้ป่วย RED ที่ต้องส่งต่อให้บุคลากรทันที</div>
+      </div>
+    </div>
+    {% include "includes/main_nav.html" %}
+  </header>
+
   <main class="wrap">
     <section class="hero">
       <h1>RED · ส่งต่อฉุกเฉินทันที</h1>
       <div class="rule">ไม่เข้าคิว OPD · ไม่รอสวมนาฬิกา · ให้บุคลากรรับช่วงทันที</div>
-      {% include "includes/main_nav.html" %}
     </section>
 
     {% if messages %}
@@ -56,5 +67,6 @@
       </table>
     </div>
   </main>
+</div>
 </body>
 </html>
