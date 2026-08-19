@@ -53,7 +53,7 @@ class AiTriageGuardrailTests(TestCase):
         self.assertIn("ผลจากกฎความปลอดภัย RED", localized)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
-    def test_red_rule_trigger_overrides_model(self, _mock_dt):
+    def test_single_low_o2_is_yellow(self, _mock_dt):
         visit = self.make_visit(
             rr=18,
             pr=82,
@@ -66,9 +66,39 @@ class AiTriageGuardrailTests(TestCase):
         result = apply_ai_triage(visit)
         visit.refresh_from_db()
 
-        self.assertEqual(result["severity"], "RED")
+        self.assertEqual(result["severity"], "YELLOW")
         self.assertIsNone(visit.final_severity)
         self.assertEqual(visit.queue.priority, 3)
+
+    @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
+    def test_critical_low_o2_is_red(self, _mock_dt):
+        visit = self.make_visit(
+            rr=18,
+            pr=82,
+            sys_bp=114,
+            dia_bp=76,
+            bt=36.8,
+            o2sat=88,
+        )
+
+        result = apply_ai_triage(visit)
+
+        self.assertEqual(result["severity"], "RED")
+
+    @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
+    def test_multiple_danger_vitals_are_red(self, _mock_dt):
+        visit = self.make_visit(
+            rr=31,
+            pr=82,
+            sys_bp=114,
+            dia_bp=76,
+            bt=36.8,
+            o2sat=92,
+        )
+
+        result = apply_ai_triage(visit)
+
+        self.assertEqual(result["severity"], "RED")
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_yellow_rule_trigger_overrides_model(self, _mock_dt):
@@ -89,7 +119,7 @@ class AiTriageGuardrailTests(TestCase):
         self.assertEqual(visit.queue.priority, 3)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
-    def test_pain_score_seven_is_red(self, _mock_dt):
+    def test_pain_score_seven_is_yellow(self, _mock_dt):
         visit = self.make_visit(
             rr=18,
             pr=82,
@@ -102,7 +132,25 @@ class AiTriageGuardrailTests(TestCase):
 
         result = apply_ai_triage(visit)
 
-        self.assertEqual(result["severity"], "RED")
+        self.assertEqual(result["severity"], "YELLOW")
+
+    @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
+    def test_negated_danger_symptoms_do_not_trigger_red(self, _mock_dt):
+        visit = self.make_visit(
+            rr=20,
+            pr=105,
+            sys_bp=121,
+            dia_bp=78,
+            bt=36.8,
+            o2sat=98,
+            pain_score=8,
+        )
+        visit.note = "ปวดแขนรุนแรง ไม่มีอาการเจ็บหน้าอก ไม่หอบ ไม่มีชัก ไม่หมดสติ"
+        visit.save(update_fields=["note"])
+
+        result = apply_ai_triage(visit)
+
+        self.assertEqual(result["severity"], "YELLOW")
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_urgent_symptom_is_red(self, _mock_dt):
