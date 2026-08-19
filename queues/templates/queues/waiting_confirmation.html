@@ -19,47 +19,47 @@
     .summary-label { color: #607783; font-size: 12px; font-weight: 700; }
     .summary-note { display: flex; align-items: center; gap: 11px; color: #405d6b; }
     .summary-note-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: #e8f7f5; color: #087f75; font-weight: 900; }
-    .confirmation-list { display: grid; gap: 18px; }
-    .confirmation-card { overflow: hidden; border: 1px solid #cddfe3; border-radius: 15px; background: #fff; box-shadow: 0 8px 24px rgba(38,75,89,.07); }
-    .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
-    .patient-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .queue-chip { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid #b9dce5; border-radius: 999px; background: #eaf6fa; color: #116887; font-weight: 900; white-space: nowrap; }
-    .patient-name { color: #173242; font-size: 21px; font-weight: 800; }
+    .confirmation-list { display: grid; gap: 12px; }
+    .confirmation-card { overflow: hidden; border: 1px solid #cddfe3; border-radius: 12px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
+    .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
+    .patient-identity { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .queue-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 9px; border: 1px solid #b9dce5; border-radius: 999px; background: #eaf6fa; color: #116887; font-weight: 900; white-space: nowrap; }
+    .patient-name { color: #173242; font-size: 18px; font-weight: 800; }
     .visit-meta { margin-top: 2px; color: #738791; font-size: 12px; }
     .detail-open { white-space: nowrap; }
     .confirmation-body { display: grid; grid-template-columns: minmax(0, .95fr) minmax(390px, 1.05fr); gap: 0; }
-    .ai-column, .decision-column { min-width: 0; padding: 20px; }
+    .ai-column, .decision-column { min-width: 0; padding: 12px 14px; }
     .decision-column { border-left: 1px solid #e1ebed; background: #fbfdfd; }
-    .section-kicker { margin-bottom: 10px; color: #607783; font-size: 12px; font-weight: 800; letter-spacing: .35px; }
-    .ai-recommendation { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid #dbe7ea; border-radius: 12px; background: #f7fafb; }
-    .severity-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 88px; min-height: 42px; padding: 0 12px; border: 1px solid; border-radius: 10px; font-weight: 900; }
+    .section-kicker { margin-bottom: 6px; color: #607783; font-size: 11px; font-weight: 800; letter-spacing: .25px; }
+    .ai-recommendation { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid #dbe7ea; border-radius: 9px; background: #f7fafb; }
+    .severity-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 70px; min-height: 32px; padding: 0 9px; border: 1px solid; border-radius: 8px; font-weight: 900; }
     .severity-badge.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
     .severity-badge.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
     .severity-badge.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
-    .severity-copy strong { display: block; color: #173242; font-size: 17px; }
-    .severity-copy span { color: #607783; font-size: 12px; }
-    .reason-box { margin-top: 12px; padding: 14px 15px; border-left: 4px solid #8eb9c2; border-radius: 9px; background: #f4f8f9; }
-    .reason-box strong { display: block; margin-bottom: 5px; color: #334f5d; }
-    .reason { margin: 0; color: #405d6b; line-height: 1.65; overflow-wrap: anywhere; }
-    .warning-red { margin-top: 12px; padding: 10px 12px; border: 1px solid #efc0c0; border-radius: 9px; color: #a62929; background: #fff2f2; font-weight: 700; }
-    .decision-title { margin: 0 0 3px; color: #173242; font-size: 19px; }
-    .decision-help { margin: 0 0 15px; color: #607783; font-size: 12px; }
-    .confirm-form { display: grid; gap: 15px; }
-    .field-group > strong, .field-group > label { display: block; margin-bottom: 7px; color: #334f5d; font-size: 13px; font-weight: 700; }
-    .field-help { margin: -2px 0 8px; color: #738791; font-size: 11px; }
-    .risk-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-    .risk-checks label { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 10px; border: 1px solid #dbe7ea; border-radius: 9px; background: #fff; color: #405d6b; cursor: pointer; }
+    .severity-copy strong { display: block; color: #173242; font-size: 15px; }
+    .severity-copy span { color: #607783; font-size: 11px; }
+    .reason-box { margin-top: 8px; padding: 9px 10px; border-left: 3px solid #8eb9c2; border-radius: 7px; background: #f4f8f9; }
+    .reason-box strong { display: block; margin-bottom: 3px; color: #334f5d; font-size: 12px; }
+    .reason { margin: 0; color: #405d6b; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+    .warning-red { margin-top: 8px; padding: 7px 9px; border: 1px solid #efc0c0; border-radius: 7px; color: #a62929; background: #fff2f2; font-size: 12px; font-weight: 700; }
+    .decision-title { margin: 0 0 2px; color: #173242; font-size: 17px; }
+    .decision-help { margin: 0 0 8px; color: #607783; font-size: 11px; }
+    .confirm-form { display: grid; gap: 8px; }
+    .field-group > strong, .field-group > label { display: block; margin-bottom: 4px; color: #334f5d; font-size: 12px; font-weight: 700; }
+    .field-help { margin: -1px 0 5px; color: #738791; font-size: 10px; }
+    .risk-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+    .risk-checks label { display: flex; align-items: center; gap: 6px; min-height: 31px; padding: 4px 7px; border: 1px solid #dbe7ea; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; cursor: pointer; }
     .risk-checks label:has(input:checked) { border-color: #55aaa2; background: #e9f7f5; }
     .waiting-confirmation-page .risk-checks input[type="checkbox"] { width: 17px !important; height: 17px !important; min-height: 17px !important; flex: 0 0 17px; margin: 0; padding: 0 !important; box-shadow: none !important; }
-    .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 76px; resize: vertical; }
-    .primary-confirm { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; border: 0; border-radius: 9px; background: #087f75; color: #fff; font-weight: 800; cursor: pointer; }
-    .alternative-label { margin: -3px 0 0; color: #738791; font-size: 11px; text-align: center; }
-    .alternative-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 12px; border: 1px solid #cddce1; border-radius: 8px; background: #fff; color: #405d6b; text-decoration: none; font-weight: 700; cursor: pointer; }
+    .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 50px; padding: 8px 10px; resize: vertical; }
+    .primary-confirm { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 36px; border: 0; border-radius: 7px; background: #087f75; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .alternative-label { margin: -1px 0 0; color: #738791; font-size: 10px; text-align: center; }
+    .alternative-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 9px; border: 1px solid #cddce1; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; text-decoration: none; font-weight: 700; cursor: pointer; }
     .btn.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
     .btn.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
     .btn.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
-    .return-form { margin-top: 9px; }
+    .return-form { margin-top: 6px; }
     .return-form .btn { width: 100%; }
     .empty { padding: 48px 18px; border: 1px dashed #cddfe3; border-radius: 14px; background: #fff; color: #607783; text-align: center; }
     .patient-modal { width: min(900px, calc(100vw - 32px)); max-height: min(820px, calc(100vh - 40px)); padding: 0; border: 1px solid #cddfe3; border-radius: 14px; background: #fff; color: #173242; box-shadow: 0 24px 90px rgba(20,48,60,.28); overflow: hidden; }
@@ -83,6 +83,7 @@
       .hero-card, .confirmation-body { grid-template-columns: 1fr; }
       .decision-column { border-top: 1px solid #e1ebed; border-left: 0; }
       .flow-summary { grid-template-columns: 1fr; }
+      .risk-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 620px) {
       .wrap { padding: 14px; }
@@ -93,7 +94,7 @@
       .info-row { grid-template-columns: 105px minmax(0, 1fr); }
     }
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=confirmation-flow-20260819">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=confirmation-compact-20260819">
 </head>
 <body class="waiting-confirmation-page">
   <main class="wrap">
