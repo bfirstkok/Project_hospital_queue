@@ -18,7 +18,7 @@ from django.apps import apps
 
 
 
-from ai_triage.services import apply_ai_triage
+from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
 from .models import CriticalAlert, IoTVital, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
@@ -191,12 +191,17 @@ def waiting_vitals(request):
 
 @login_required
 def waiting_confirmation(request):
-    q_items = (
+    q_items = list(
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
         .filter(status=Queue.Status.WAITING_CONFIRMATION)
         .order_by("visit__triaged_at", "created_at")
     )
+    for queue_item in q_items:
+        triage_result = getattr(queue_item.visit, "triage_result", None)
+        queue_item.ai_reason_display = localize_ai_reason(
+            getattr(triage_result, "ai_reason", "")
+        )
     return render(request, "queues/waiting_confirmation.html", {
         "q_items": q_items,
         "risk_flag_choices": NurseTriageAssessmentForm.RISK_FLAG_CHOICES,

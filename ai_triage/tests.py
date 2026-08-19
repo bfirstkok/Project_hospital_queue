@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from ai_triage.services import apply_ai_triage
+from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from queues.models import Queue, TriageResult, Visit, VitalSign
 
@@ -38,7 +38,19 @@ class AiTriageGuardrailTests(TestCase):
         self.assertIsNone(visit.final_severity)
         self.assertEqual(visit.queue.priority, 3)
         self.assertEqual(triage.ai_severity, "GREEN")
-        self.assertIn("Rule guardrail applied", triage.ai_reason)
+        self.assertIn("ระบบกฎความปลอดภัยปรับระดับคำแนะนำ", triage.ai_reason)
+
+    def test_legacy_english_reason_is_localized_for_display(self):
+        reason = (
+            "No critical vital-sign trigger detected; Rule guardrail applied "
+            "(model suggested YELLOW, rule result RED)"
+        )
+
+        localized = localize_ai_reason(reason)
+
+        self.assertIn("ไม่พบค่าสัญญาณชีพที่เข้าเกณฑ์วิกฤต", localized)
+        self.assertIn("โมเดลแนะนำ YELLOW", localized)
+        self.assertIn("ผลจากกฎความปลอดภัย RED", localized)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_red_rule_trigger_overrides_model(self, _mock_dt):

@@ -4,404 +4,272 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>รอยืนยันผล AI</title>
+  <title>พยาบาลยืนยันผลคัดกรอง</title>
   <style>
-    body { margin: 0; background: #08111f; color: #edf4ff; font-family: "Sarabun", Arial, sans-serif; }
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
-    .top { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 18px; }
-    .nav, .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-flex; min-height: 34px; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); color: #eaf2ff; text-decoration: none; font-weight: 800; background: rgba(255,255,255,.06); cursor: pointer; }
-    .btn.red { color: #fecaca; background: rgba(239,68,68,.17); border-color: rgba(239,68,68,.35); }
-    .btn.yellow { color: #fde68a; background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.34); }
-    .btn.green { color: #86efac; background: rgba(34,197,94,.16); border-color: rgba(34,197,94,.34); }
-    h1 { margin: 0 0 4px; font-size: 26px; }
-    .muted { color: rgba(237,244,255,.62); }
-    .subtitle { margin-top: 12px; }
-    .table { width: 100%; border-collapse: collapse; background: rgba(16,27,45,.78); border: 1px solid rgba(174,194,220,.14); border-radius: 10px; overflow: hidden; }
-    th, td { padding: 13px 14px; border-bottom: 1px solid rgba(174,194,220,.1); text-align: left; vertical-align: top; }
-    th { font-size: 11px; color: #9aa9bd; text-transform: uppercase; letter-spacing: .6px; background: rgba(255,255,255,.04); }
-    .ai { display: inline-flex; padding: 5px 10px; border-radius: 999px; background: rgba(138,99,255,.15); color: #c4b5fd; border: 1px solid rgba(138,99,255,.28); font-weight: 900; }
-    .reason { max-width: 360px; line-height: 1.5; color: rgba(237,244,255,.78); font-size: 18px;}
-    .red-alert { margin-top: 8px; color: #fecaca; font-weight: 900; }
-    .empty { padding: 50px 18px; text-align: center; color: rgba(237,244,255,.55); }
-    .patient-name { font-weight: 900; color: #f8fbff; font-size: 22px;}
-    .detail-box { margin-top: 10px; }
-    .detail-open { color: #dbeafe; background: rgba(56,189,248,.11); border-color: rgba(56,189,248,.28); }
-    .patient-modal { width: min(920px, calc(100vw - 32px)); max-height: min(820px, calc(100vh - 48px)); padding: 0; color: #edf4ff; background: #0b1628; border: 1px solid rgba(174,194,220,.22); border-radius: 12px; box-shadow: 0 24px 90px rgba(0,0,0,.52); overflow: hidden; }
-    .patient-modal::backdrop { background: rgba(2,8,20,.72); backdrop-filter: blur(3px); }
-    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid rgba(174,194,220,.12); background: rgba(255,255,255,.04); }
-    .modal-title { margin: 0; font-size: 20px; color: #f8fbff; }
-    .modal-subtitle { margin-top: 4px; color: rgba(237,244,255,.62); font-size: 13px; }
-    .modal-close { min-width: 38px; justify-content: center; padding: 0 10px; }
-    .detail-content { max-height: calc(100vh - 190px); padding: 18px 20px 20px; overflow: auto; }
+    body { margin: 0; font-family: "Sarabun", Arial, sans-serif; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .hero-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; margin-bottom: 16px; padding: 18px 20px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; }
+    .title-row { display: flex; align-items: center; gap: 12px; }
+    .title-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 12px; background: #e4f4f2; color: #087f75; font-weight: 900; }
+    h1 { margin: 0 0 3px; font-size: 27px; }
+    .muted { color: #607783; }
+    .flow-summary { display: grid; grid-template-columns: 180px 1fr; gap: 12px; margin-bottom: 18px; }
+    .summary-count, .summary-note { padding: 15px 18px; border: 1px solid #d7e8e7; border-radius: 13px; background: #fff; }
+    .summary-count strong { display: block; margin-top: 2px; color: #173242; font-size: 25px; }
+    .summary-label { color: #607783; font-size: 12px; font-weight: 700; }
+    .summary-note { display: flex; align-items: center; gap: 11px; color: #405d6b; }
+    .summary-note-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: #e8f7f5; color: #087f75; font-weight: 900; }
+    .confirmation-list { display: grid; gap: 18px; }
+    .confirmation-card { overflow: hidden; border: 1px solid #cddfe3; border-radius: 15px; background: #fff; box-shadow: 0 8px 24px rgba(38,75,89,.07); }
+    .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
+    .patient-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .queue-chip { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid #b9dce5; border-radius: 999px; background: #eaf6fa; color: #116887; font-weight: 900; white-space: nowrap; }
+    .patient-name { color: #173242; font-size: 21px; font-weight: 800; }
+    .visit-meta { margin-top: 2px; color: #738791; font-size: 12px; }
+    .detail-open { white-space: nowrap; }
+    .confirmation-body { display: grid; grid-template-columns: minmax(0, .95fr) minmax(390px, 1.05fr); gap: 0; }
+    .ai-column, .decision-column { min-width: 0; padding: 20px; }
+    .decision-column { border-left: 1px solid #e1ebed; background: #fbfdfd; }
+    .section-kicker { margin-bottom: 10px; color: #607783; font-size: 12px; font-weight: 800; letter-spacing: .35px; }
+    .ai-recommendation { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid #dbe7ea; border-radius: 12px; background: #f7fafb; }
+    .severity-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 88px; min-height: 42px; padding: 0 12px; border: 1px solid; border-radius: 10px; font-weight: 900; }
+    .severity-badge.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
+    .severity-badge.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
+    .severity-badge.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
+    .severity-copy strong { display: block; color: #173242; font-size: 17px; }
+    .severity-copy span { color: #607783; font-size: 12px; }
+    .reason-box { margin-top: 12px; padding: 14px 15px; border-left: 4px solid #8eb9c2; border-radius: 9px; background: #f4f8f9; }
+    .reason-box strong { display: block; margin-bottom: 5px; color: #334f5d; }
+    .reason { margin: 0; color: #405d6b; line-height: 1.65; overflow-wrap: anywhere; }
+    .warning-red { margin-top: 12px; padding: 10px 12px; border: 1px solid #efc0c0; border-radius: 9px; color: #a62929; background: #fff2f2; font-weight: 700; }
+    .decision-title { margin: 0 0 3px; color: #173242; font-size: 19px; }
+    .decision-help { margin: 0 0 15px; color: #607783; font-size: 12px; }
+    .confirm-form { display: grid; gap: 15px; }
+    .field-group > strong, .field-group > label { display: block; margin-bottom: 7px; color: #334f5d; font-size: 13px; font-weight: 700; }
+    .field-help { margin: -2px 0 8px; color: #738791; font-size: 11px; }
+    .risk-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+    .risk-checks label { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 10px; border: 1px solid #dbe7ea; border-radius: 9px; background: #fff; color: #405d6b; cursor: pointer; }
+    .risk-checks label:has(input:checked) { border-color: #55aaa2; background: #e9f7f5; }
+    .waiting-confirmation-page .risk-checks input[type="checkbox"] { width: 17px !important; height: 17px !important; min-height: 17px !important; flex: 0 0 17px; margin: 0; padding: 0 !important; box-shadow: none !important; }
+    .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 76px; resize: vertical; }
+    .primary-confirm { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; border: 0; border-radius: 9px; background: #087f75; color: #fff; font-weight: 800; cursor: pointer; }
+    .alternative-label { margin: -3px 0 0; color: #738791; font-size: 11px; text-align: center; }
+    .alternative-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 12px; border: 1px solid #cddce1; border-radius: 8px; background: #fff; color: #405d6b; text-decoration: none; font-weight: 700; cursor: pointer; }
+    .btn.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
+    .btn.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
+    .btn.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
+    .return-form { margin-top: 9px; }
+    .return-form .btn { width: 100%; }
+    .empty { padding: 48px 18px; border: 1px dashed #cddfe3; border-radius: 14px; background: #fff; color: #607783; text-align: center; }
+    .patient-modal { width: min(900px, calc(100vw - 32px)); max-height: min(820px, calc(100vh - 40px)); padding: 0; border: 1px solid #cddfe3; border-radius: 14px; background: #fff; color: #173242; box-shadow: 0 24px 90px rgba(20,48,60,.28); overflow: hidden; }
+    .patient-modal::backdrop { background: rgba(22,42,52,.58); backdrop-filter: blur(3px); }
+    .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 17px 19px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
+    .modal-title { margin: 0; font-size: 20px; }
+    .modal-subtitle { margin-top: 3px; color: #607783; font-size: 12px; }
+    .detail-content { max-height: calc(100vh - 170px); padding: 18px; overflow: auto; }
     .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .detail-section { min-width: 0; padding: 12px; border: 1px solid rgba(174,194,220,.12); border-radius: 10px; background: rgba(255,255,255,.035); }
-    .detail-section h3 { margin: 0 0 8px; font-size: 13px; color: #7dd3fc; }
+    .detail-section { min-width: 0; padding: 13px; border: 1px solid #dbe7ea; border-radius: 11px; background: #fbfdfd; }
+    .detail-section h3 { margin: 0 0 9px; color: #087f75; font-size: 14px; }
     .info-list { display: grid; gap: 7px; margin: 0; }
-    .info-row { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; line-height: 1.45; }
-    .info-row dt { color: rgba(237,244,255,.58); }
-    .info-row dd { margin: 0; color: rgba(237,244,255,.88); overflow-wrap: anywhere; }
+    .info-row { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.45; }
+    .info-row dt { color: #738791; }
+    .info-row dd { margin: 0; color: #334f5d; overflow-wrap: anywhere; }
     .vital-value { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
-    .badge.red { color: #fecaca; background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.38); }
-    .badge.yellow { color: #fde68a; background: rgba(245,158,11,.17); border: 1px solid rgba(245,158,11,.36); }
-    .hero-card {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: center;
-      margin-bottom: 16px;
-      padding: 18px;
-      border: 1px solid rgba(174,194,220,.14);
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(13,25,43,.94), rgba(16,34,55,.72));
-      box-shadow: 0 16px 34px rgba(0,0,0,.22);
+    .mini-badge { padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+    .mini-badge.red { color: #bd2f2f; background: #fff0f0; }
+    .mini-badge.yellow { color: #946000; background: #fff7df; }
+    @media (max-width: 900px) {
+      .hero-card, .confirmation-body { grid-template-columns: 1fr; }
+      .decision-column { border-top: 1px solid #e1ebed; border-left: 0; }
+      .flow-summary { grid-template-columns: 1fr; }
     }
-    .title-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .title-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #20d6b5, #4aa3ff);
-      color: #061522;
-      font-weight: 900;
-      box-shadow: 0 12px 28px rgba(32,214,181,.18);
-      flex: 0 0 auto;
-    }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(116px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .stat-card {
-      padding: 14px;
-      border: 1px solid rgba(174,194,220,.12);
-      border-radius: 12px;
-      background: rgba(255,255,255,.04);
-    }
-    .stat-label {
-      color: rgba(237,244,255,.56);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .6px;
-      text-transform: uppercase;
-    }
-    .stat-value {
-      margin-top: 7px;
-      color: #f8fbff;
-      font-size: 24px;
-      font-weight: 900;
-    }
-    .table-shell {
-      overflow: hidden;
-      border: 1px solid rgba(174,194,220,.14);
-      border-radius: 12px;
-      background: rgba(16,27,45,.78);
-      box-shadow: 0 16px 34px rgba(0,0,0,.18);
-    }
-    .table { border: 0; border-radius: 0; background: transparent; }
-    tbody tr:hover td { background: rgba(255,255,255,.026); }
-    .queue-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 30px;
-      padding: 0 10px;
-      border-radius: 999px;
-      color: #7dd3fc;
-      background: rgba(56,189,248,.11);
-      border: 1px solid rgba(56,189,248,.24);
-      font-weight: 900;
-      white-space: nowrap;
-    }
-    .visit-meta {
-      margin-top: 5px;
-      color: rgba(237,244,255,.52);
-      font-size: 12px;
-    }
-    .ai.red { color: #fecaca; background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.38); }
-    .ai.yellow { color: #fde68a; background: rgba(245,158,11,.17); border-color: rgba(245,158,11,.36); }
-    .ai.green { color: #86efac; background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.32); }
-    .actions-panel { min-width: 250px; }
-    .confirm-actions {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .confirm-actions .btn { justify-content: center; }
-    .confirmation-fields {
-      grid-column: 1 / -1;
-      display: grid;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
-    .confirmation-fields strong { font-size: 13px; }
-    .risk-checks { display: grid; gap: 6px; }
-    .risk-checks label {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 9px;
-      border: 1px solid rgba(174,194,220,.18);
-      border-radius: 8px;
-      background: rgba(255,255,255,.035);
-      font-size: 12px;
-    }
-    .confirmation-fields textarea {
-      width: 100%;
-      min-height: 68px;
-      padding: 9px;
-      border: 1px solid rgba(174,194,220,.22);
-      border-radius: 8px;
-      color: #edf4ff;
-      background: rgba(255,255,255,.055);
-      resize: vertical;
-    }
-    .confirmation-hint { color: rgba(237,244,255,.58); font-size: 11px; }
-    .btn.ai-confirm {
-      grid-column: 1 / -1;
-      color: #061522;
-      background: linear-gradient(135deg, #20d6b5, #4aa3ff);
-      border-color: transparent;
-    }
-    .btn.back {
-      width: 100%;
-      justify-content: center;
-      color: #dbeafe;
-      background: rgba(56,189,248,.1);
-      border-color: rgba(56,189,248,.24);
-    }
-    .empty {
-      margin: 14px;
-      border: 1px dashed rgba(174,194,220,.18);
-      border-radius: 12px;
-      background: rgba(255,255,255,.025);
-    }
-    @media (max-width: 860px) {
-      .top { align-items: flex-start; flex-direction: column; }
-      .hero-card { display: block; }
-      .hero-card .nav-pills, .hero-card .main-nav { margin-top: 14px; }
-      .stats { grid-template-columns: 1fr; }
-      .table { display: block; overflow-x: auto; }
-      .detail-grid { grid-template-columns: 1fr; }
-      .info-row { grid-template-columns: 112px minmax(0, 1fr); }
-      .actions { min-width: 230px; }
-      .confirm-actions { grid-template-columns: 1fr; }
-      .patient-modal { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
-      .modal-head { padding: 14px; }
-      .detail-content { padding: 14px; }
+    @media (max-width: 620px) {
+      .wrap { padding: 14px; }
+      .patient-head { align-items: flex-start; flex-direction: column; }
+      .detail-open { width: 100%; }
+      .risk-checks, .detail-grid { grid-template-columns: 1fr; }
+      .ai-column, .decision-column { padding: 16px; }
+      .info-row { grid-template-columns: 105px minmax(0, 1fr); }
     }
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=contrast-20260720">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=confirmation-flow-20260819">
 </head>
 <body class="waiting-confirmation-page">
   <main class="wrap">
     <div class="hero-card">
       <div class="title-row">
-        <div class="title-icon">AI</div>
+        <div class="title-icon">✓</div>
         <div>
-          <h1>รอยืนยันผล AI</h1>
-          <div class="muted subtitle">ตรวจข้อมูลก่อนยืนยันระดับคัดกรองขั้นสุดท้ายโดยพยาบาล</div>
+          <h1>พยาบาลยืนยันผลคัดกรอง</h1>
+          <div class="muted">ตรวจคำแนะนำจากระบบ แล้วเลือกผลคัดกรองขั้นสุดท้าย</div>
         </div>
       </div>
       {% include "includes/main_nav.html" %}
     </div>
 
-    <div class="stats">
-      <div class="stat-card">
-        <div class="stat-label">รอยืนยัน</div>
-        <div class="stat-value">{{ q_items|length }}</div>
+    <div class="flow-summary">
+      <div class="summary-count">
+        <span class="summary-label">รายการที่รอยืนยัน</span>
+        <strong>{{ q_items|length }} ราย</strong>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">AI Decision Support</div>
-        <div class="stat-value">ON</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Final Decision</div>
-        <div class="stat-value">Nurse</div>
+      <div class="summary-note">
+        <span class="summary-note-icon">i</span>
+        <span><strong>AI เป็นเพียงผู้ช่วยแนะนำ</strong> พยาบาลเป็นผู้ตรวจข้อมูลและยืนยันระดับสุดท้ายเสมอ</span>
       </div>
     </div>
 
-    <div class="table-shell">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>เลขคิวรับข้อมูล</th>
-          <th>ชื่อผู้ป่วย</th>
-          <th>AI recommendation</th>
-          <th>เหตุผล</th>
-          <th>คำสั่ง</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for q in q_items %}
-          {% with v=q.visit tr=q.visit.triage_result vs=q.visit.vitals p=q.visit.patient %}
-          <tr>
-            <td><span class="queue-chip">{{ q.display_number }}</span></td>
-            <td>
-              <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
-              <div class="visit-meta">Visit #{{ v.id }}</div>
-              <div class="detail-box">
-                <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย / Vital signs</button>
-                <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
-                  <div class="modal-head">
-                    <div>
-                      <h2 class="modal-title">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</h2>
-                      <div class="modal-subtitle">คิว {{ q.display_number }} · Visit #{{ v.id }} · ตรวจข้อมูลก่อนยืนยันผล AI</div>
-                    </div>
-                    <form method="dialog">
-                      <button class="btn modal-close" type="submit">ปิด</button>
-                    </form>
-                  </div>
-                  <div class="detail-content">
-                    <div class="detail-grid">
-                      <section class="detail-section">
-                        <h3>ข้อมูลผู้ป่วย</h3>
-                        <dl class="info-list">
-                          <div class="info-row"><dt>ชื่อ-นามสกุล</dt><dd>{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</dd></div>
-                          <div class="info-row"><dt>อายุ</dt><dd>{{ p.age|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>เพศ</dt><dd>{{ p.get_gender_display|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>เบอร์โทร</dt><dd>{{ p.phone|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>HN</dt><dd>{{ p.hn|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>เลขบัตรประชาชน</dt><dd>{{ p.national_id|default:"-" }}</dd></div>
-                        </dl>
-                      </section>
-
-                      <section class="detail-section">
-                        <h3>อาการและข้อมูลสุขภาพ</h3>
-                        <dl class="info-list">
-                          <div class="info-row"><dt>อาการ</dt><dd>{{ v.note|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>โรคประจำตัว</dt><dd>{{ p.chronic_diseases|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>แพ้ยา/อาหาร</dt><dd>{{ p.allergies|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>ยาที่ใช้ประจำ</dt><dd>{{ p.medications|default:"-" }}</dd></div>
-                        </dl>
-                      </section>
-
-                      <section class="detail-section">
-                        <h3>Vital signs</h3>
-                        <dl class="info-list">
-                          <div class="info-row">
-                            <dt>RR</dt>
-                            <dd><span class="vital-value">{{ vs.rr|default:"-" }}{% if vs.rr > 30 %}<span class="badge red">RED</span>{% endif %}</span></dd>
-                          </div>
-                          <div class="info-row">
-                            <dt>PR/BPM</dt>
-                            <dd><span class="vital-value">{{ vs.pr|default:"-" }}{% if vs.pr >= 120 %}<span class="badge yellow">YELLOW/RED</span>{% endif %}</span></dd>
-                          </div>
-                          <div class="info-row">
-                            <dt>BP ตัวบน</dt>
-                            <dd><span class="vital-value">{{ vs.sys_bp|default:"-" }}{% if vs.sys_bp < 90 %}<span class="badge red">RED</span>{% endif %}</span></dd>
-                          </div>
-                          <div class="info-row"><dt>BP ตัวล่าง</dt><dd>{{ vs.dia_bp|default:"-" }}</dd></div>
-                          <div class="info-row">
-                            <dt>BT</dt>
-                            <dd>
-                              <span class="vital-value">
-                                {{ vs.bt|default:"-" }}
-                                {% if vs.bt >= 39 %}
-                                  <span class="badge red">RED</span>
-                                {% elif vs.bt >= 38 %}
-                                  <span class="badge yellow">YELLOW</span>
-                                {% endif %}
-                              </span>
-                            </dd>
-                          </div>
-                          <div class="info-row">
-                            <dt>O2 Sat</dt>
-                            <dd><span class="vital-value">{{ vs.o2sat|default:"-" }}{% if vs.o2sat < 95 %}<span class="badge red">RED</span>{% endif %}</span></dd>
-                          </div>
-                          <div class="info-row"><dt>pain_score</dt><dd>{{ vs.pain_score|default:"-" }}</dd></div>
-                        </dl>
-                      </section>
-
-                      <section class="detail-section">
-                        <h3>ข้อมูลจากฟอร์มคัดกรอง</h3>
-                        <dl class="info-list">
-                          <div class="info-row"><dt>urgent_symptoms</dt><dd>{{ vs.urgent_symptoms|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>risk_flags</dt><dd>{{ vs.risk_flags|default:"-" }}</dd></div>
-                        </dl>
-                      </section>
-
-                      <section class="detail-section">
-                        <h3>ผล AI</h3>
-                        <dl class="info-list">
-                          <div class="info-row"><dt>ai_severity</dt><dd>{{ tr.ai_severity|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>confidence</dt><dd>{{ tr.confidence|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>ai_reason</dt><dd>{{ tr.ai_reason|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>nurse_severity</dt><dd>{{ tr.nurse_severity|default:"-" }}</dd></div>
-                          <div class="info-row"><dt>nurse_note</dt><dd>{{ tr.nurse_note|default:"-" }}</dd></div>
-                        </dl>
-                      </section>
-                    </div>
-                  </div>
-                </dialog>
+    <div class="confirmation-list">
+      {% for q in q_items %}
+        {% with v=q.visit tr=q.visit.triage_result vs=q.visit.vitals p=q.visit.patient %}
+        <article class="confirmation-card">
+          <header class="patient-head">
+            <div class="patient-identity">
+              <span class="queue-chip">{{ q.display_number }}</span>
+              <div>
+                <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
+                <div class="visit-meta">Visit #{{ v.id }}</div>
               </div>
-            </td>
-            <td>
-              <span class="ai {% if tr.ai_severity == 'RED' %}red{% elif tr.ai_severity == 'YELLOW' %}yellow{% elif tr.ai_severity == 'GREEN' %}green{% endif %}">{{ tr.ai_severity|default:"-" }}</span>
-              {% if tr.ai_severity == "RED" %}<div class="red-alert">แจ้งเตือน RED: ควรพิจารณาเร่งด่วน/monitoring</div>{% endif %}
-            </td>
-            <td><div class="reason">{{ tr.ai_reason|default:"-" }}</div></td>
-            <td class="actions-panel">
-              <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-actions">
+            </div>
+            <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วยและสัญญาณชีพ</button>
+          </header>
+
+          <div class="confirmation-body">
+            <section class="ai-column">
+              <div class="section-kicker">1 · คำแนะนำจากระบบ</div>
+              <div class="ai-recommendation">
+                <span class="severity-badge {% if tr.ai_severity == 'RED' %}red{% elif tr.ai_severity == 'YELLOW' %}yellow{% else %}green{% endif %}">
+                  {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% elif tr.ai_severity == 'GREEN' %}สีเขียว{% else %}-{% endif %}
+                </span>
+                <div class="severity-copy">
+                  <strong>{% if tr.ai_severity == 'RED' %}ส่งต่อฉุกเฉิน{% elif tr.ai_severity == 'YELLOW' %}กลุ่มเฝ้าระวัง{% elif tr.ai_severity == 'GREEN' %}คิวปกติ{% else %}ยังไม่มีคำแนะนำ{% endif %}</strong>
+                  <span>พยาบาลต้องตรวจสอบก่อนยืนยัน</span>
+                </div>
+              </div>
+              <div class="reason-box">
+                <strong>เหตุผลประกอบคำแนะนำ</strong>
+                <p class="reason">{{ q.ai_reason_display|default:"ไม่พบเหตุผลประกอบ" }}</p>
+              </div>
+              {% if tr.ai_severity == "RED" %}
+                <div class="warning-red">ระดับสีแดงต้องได้รับการประเมินเร่งด่วน หากยืนยันแล้วระบบจะส่งไปหน้าส่งต่อฉุกเฉิน</div>
+              {% endif %}
+            </section>
+
+            <section class="decision-column">
+              <div class="section-kicker">2 · พยาบาลตรวจและยืนยัน</div>
+              <h2 class="decision-title">ผลคัดกรองขั้นสุดท้าย</h2>
+              <p class="decision-help">ตรวจกลุ่มพิเศษและเพิ่มเหตุผลหากเลือกต่างจากคำแนะนำของระบบ</p>
+
+              <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-form">
                 {% csrf_token %}
-                <div class="confirmation-fields">
-                  <div>
-                    <strong>กลุ่มพิเศษที่พยาบาลยืนยัน</strong>
-                    <input type="hidden" name="risk_flags_present" value="1">
-                    <div class="risk-checks" style="margin-top:6px">
-                      {% for value, label in risk_flag_choices %}
-                        <label for="risk-{{ v.id }}-{{ value }}">
-                          <input id="risk-{{ v.id }}-{{ value }}" type="checkbox" name="risk_flags" value="{{ value }}" {% if vs and value in vs.risk_flags %}checked{% endif %}>
-                          {{ label }}
-                        </label>
-                      {% endfor %}
-                    </div>
-                  </div>
-                  <div>
-                    <label for="nurse-note-{{ v.id }}"><strong>เหตุผลเพิ่มเติม</strong></label>
-                    <textarea id="nurse-note-{{ v.id }}" name="nurse_note" placeholder="ระบุเหตุผลประกอบการยืนยัน โดยเฉพาะเมื่อเลือกต่างจาก AI">{{ tr.nurse_note }}</textarea>
-                    <div class="confirmation-hint">จำเป็นเมื่อยืนยันระดับต่างจากคำแนะนำของ AI</div>
+                <div class="field-group">
+                  <strong>กลุ่มพิเศษ</strong>
+                  <div class="field-help">เลือกเฉพาะข้อมูลที่พยาบาลตรวจสอบแล้ว</div>
+                  <input type="hidden" name="risk_flags_present" value="1">
+                  <div class="risk-checks">
+                    {% for value, label in risk_flag_choices %}
+                      <label for="risk-{{ v.id }}-{{ value }}">
+                        <input id="risk-{{ v.id }}-{{ value }}" type="checkbox" name="risk_flags" value="{{ value }}" {% if vs and value in vs.risk_flags %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                      </label>
+                    {% endfor %}
                   </div>
                 </div>
+
+                <div class="field-group">
+                  <label for="nurse-note-{{ v.id }}">เหตุผลเพิ่มเติม</label>
+                  <textarea id="nurse-note-{{ v.id }}" name="nurse_note" placeholder="จำเป็นเมื่อเลือกระดับต่างจากคำแนะนำของระบบ">{{ tr.nurse_note }}</textarea>
+                </div>
+
                 {% if tr.ai_severity %}
-                  <button class="btn ai-confirm" type="submit" name="severity" value="{{ tr.ai_severity }}">ยืนยันตาม AI: {{ tr.ai_severity }}</button>
+                  <button class="primary-confirm" type="submit" name="severity" value="{{ tr.ai_severity }}">
+                    ยืนยันตามคำแนะนำ · {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% else %}สีเขียว{% endif %}
+                  </button>
                 {% endif %}
-                <button class="btn red" type="submit" name="severity" value="RED">RED</button>
-                <button class="btn yellow" type="submit" name="severity" value="YELLOW">YELLOW</button>
-                <button class="btn green" type="submit" name="severity" value="GREEN">GREEN</button>
+                <div class="alternative-label">หรือเลือกผลอื่น</div>
+                <div class="alternative-actions">
+                  {% if tr.ai_severity != 'RED' %}<button class="btn red" type="submit" name="severity" value="RED">สีแดง · ฉุกเฉิน</button>{% endif %}
+                  {% if tr.ai_severity != 'YELLOW' %}<button class="btn yellow" type="submit" name="severity" value="YELLOW">สีเหลือง · เฝ้าระวัง</button>{% endif %}
+                  {% if tr.ai_severity != 'GREEN' %}<button class="btn green" type="submit" name="severity" value="GREEN">สีเขียว · คิวปกติ</button>{% endif %}
+                </div>
               </form>
-              <form method="post" action="{% url 'return_to_waiting_vitals' v.id %}" class="actions" style="margin-top:8px;">
+
+              <form method="post" action="{% url 'return_to_waiting_vitals' v.id %}" class="return-form">
                 {% csrf_token %}
-                <button class="btn back" type="submit">กลับไปแก้ค่าวัด</button>
+                <button class="btn" type="submit">กลับไปแก้ข้อมูลสุขภาพ</button>
               </form>
-            </td>
-          </tr>
-          {% endwith %}
-        {% empty %}
-          <tr><td colspan="5"><div class="empty">ไม่มีรายการรอยืนยันผล AI</div></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            </section>
+          </div>
+        </article>
+
+        <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
+          <div class="modal-head">
+            <div>
+              <h2 class="modal-title">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</h2>
+              <div class="modal-subtitle">คิว {{ q.display_number }} · Visit #{{ v.id }}</div>
+            </div>
+            <form method="dialog"><button class="btn" type="submit">ปิด</button></form>
+          </div>
+          <div class="detail-content">
+            <div class="detail-grid">
+              <section class="detail-section">
+                <h3>ข้อมูลผู้ป่วย</h3>
+                <dl class="info-list">
+                  <div class="info-row"><dt>ชื่อ-นามสกุล</dt><dd>{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</dd></div>
+                  <div class="info-row"><dt>อายุ</dt><dd>{{ p.age|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>เพศ</dt><dd>{{ p.get_gender_display|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>เบอร์โทร</dt><dd>{{ p.phone|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>HN</dt><dd>{{ p.hn|default:"-" }}</dd></div>
+                </dl>
+              </section>
+              <section class="detail-section">
+                <h3>อาการและข้อมูลสุขภาพ</h3>
+                <dl class="info-list">
+                  <div class="info-row"><dt>อาการ</dt><dd>{{ v.note|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>โรคประจำตัว</dt><dd>{{ p.chronic_diseases|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>แพ้ยา/อาหาร</dt><dd>{{ p.allergies|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>ยาประจำ</dt><dd>{{ p.medications|default:"-" }}</dd></div>
+                </dl>
+              </section>
+              <section class="detail-section">
+                <h3>สัญญาณชีพ</h3>
+                <dl class="info-list">
+                  <div class="info-row"><dt>การหายใจ (RR)</dt><dd><span class="vital-value">{{ vs.rr|default:"-" }}{% if vs.rr > 30 %}<span class="mini-badge red">สูง</span>{% endif %}</span></dd></div>
+                  <div class="info-row"><dt>ชีพจร (PR)</dt><dd><span class="vital-value">{{ vs.pr|default:"-" }}{% if vs.pr >= 120 %}<span class="mini-badge yellow">เฝ้าระวัง</span>{% endif %}</span></dd></div>
+                  <div class="info-row"><dt>ความดัน</dt><dd>{{ vs.sys_bp|default:"-" }}/{{ vs.dia_bp|default:"-" }} mmHg</dd></div>
+                  <div class="info-row"><dt>อุณหภูมิ</dt><dd><span class="vital-value">{{ vs.bt|default:"-" }} °C{% if vs.bt >= 39 %}<span class="mini-badge red">สูง</span>{% elif vs.bt >= 38 %}<span class="mini-badge yellow">มีไข้</span>{% endif %}</span></dd></div>
+                  <div class="info-row"><dt>SpO₂</dt><dd><span class="vital-value">{{ vs.o2sat|default:"-" }}%{% if vs.o2sat < 95 %}<span class="mini-badge red">ต่ำ</span>{% endif %}</span></dd></div>
+                  <div class="info-row"><dt>ระดับความปวด</dt><dd>{{ vs.pain_score|default:"-" }}/10</dd></div>
+                </dl>
+              </section>
+              <section class="detail-section">
+                <h3>ข้อมูลคัดกรอง</h3>
+                <dl class="info-list">
+                  <div class="info-row"><dt>อาการเฝ้าระวัง</dt><dd>{{ vs.urgent_symptoms|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>กลุ่มพิเศษ</dt><dd>{{ vs.risk_flags|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>AI แนะนำ</dt><dd>{{ tr.ai_severity|default:"-" }}</dd></div>
+                  <div class="info-row"><dt>ความมั่นใจ</dt><dd>{{ tr.confidence|floatformat:2|default:"-" }}</dd></div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </dialog>
+        {% endwith %}
+      {% empty %}
+        <div class="empty">ไม่มีผู้ป่วยรอพยาบาลยืนยันผลคัดกรอง</div>
+      {% endfor %}
     </div>
   </main>
   <script>
     document.querySelectorAll(".js-open-modal").forEach((button) => {
       button.addEventListener("click", () => {
         const modal = document.getElementById(button.dataset.target);
-        if (modal && typeof modal.showModal === "function") {
-          modal.showModal();
-        }
+        if (modal && typeof modal.showModal === "function") modal.showModal();
       });
     });
-
     document.querySelectorAll(".patient-modal").forEach((modal) => {
       modal.addEventListener("click", (event) => {
-        if (event.target === modal) {
-          modal.close();
-        }
+        if (event.target === modal) modal.close();
       });
     });
   </script>

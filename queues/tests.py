@@ -251,6 +251,15 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(visit.triage_result.ai_severity, "GREEN")
         self.assertIsNone(visit.triage_result.nurse_severity)
 
+        confirmation_page = self.client.get(reverse("waiting_confirmation"))
+        self.assertEqual(confirmation_page.status_code, 200)
+        self.assertContains(confirmation_page, "พยาบาลยืนยันผลคัดกรอง")
+        self.assertContains(confirmation_page, "คำแนะนำจากระบบ")
+        self.assertContains(confirmation_page, "พยาบาลตรวจและยืนยัน")
+        self.assertContains(confirmation_page, "ยืนยันตามคำแนะนำ · สีเขียว")
+        self.assertNotContains(confirmation_page, "AI DECISION SUPPORT")
+        self.assertNotContains(confirmation_page, "FINAL DECISION")
+
         response = self.client.post(reverse("triage_visit", args=[visit.id]), {
             "severity": "YELLOW",
             "nurse_note": "ปรับตามอาการหน้าห้อง",
