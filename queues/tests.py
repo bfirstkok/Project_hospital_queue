@@ -213,6 +213,20 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, f'id="patient-modal-{patient.visits.get().queue.id}"')
         self.assertContains(response, patient.phone)
 
+    def test_health_assessment_has_clear_three_step_form(self):
+        self.register_patient()
+        visit = Visit.objects.get()
+
+        response = self.client.get(reverse("nurse_triage_assessment", args=[visit.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ประเมินสุขภาพผู้ป่วย")
+        self.assertContains(response, "กรอกข้อมูลตามลำดับ")
+        self.assertContains(response, "อาการและปัจจัยเสี่ยง")
+        self.assertContains(response, "ประเมินและส่งไปรอยืนยัน")
+        self.assertNotContains(response, "AI Suggested Severity")
+        self.assertNotContains(response, "Rule Guardrail Status")
+
     def test_manual_vitals_then_ai_then_nurse_confirmation_enters_prioritized_queue(self):
         self.register_patient()
         visit = Visit.objects.select_related("queue").get()

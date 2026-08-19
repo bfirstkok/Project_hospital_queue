@@ -4,7 +4,7 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OPD Triage Assessment</title>
+  <title>ประเมินสุขภาพผู้ป่วย</title>
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
     .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
@@ -67,30 +67,82 @@
     .confirm-panel textarea { min-height: 76px; }
     .confirm-actions { display: grid; grid-template-columns: repeat(3, minmax(88px, 1fr)); gap: 8px; }
     .monitor-row { margin-top: 12px; display: flex; justify-content: flex-end; }
+    .assessment-page .wrap { max-width: 1120px; }
+    .assessment-header h1 { margin-bottom: 4px; }
+    .assessment-form { padding: 0 !important; overflow: hidden; }
+    .assessment-intro { padding: 20px 22px; background: #eff8f7; border-bottom: 1px solid #d7e8e7; }
+    .assessment-intro h2 { margin: 0 0 4px; font-size: 21px; }
+    .step-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    .step-item { display: flex; align-items: center; gap: 9px; color: #405d6b; font-weight: 650; }
+    .step-number { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: #087f75; color: #fff; font-weight: 800; }
+    .form-section { margin: 0; padding: 24px 22px; border-bottom: 1px solid #e2ecee; }
+    .form-section:last-of-type { border-bottom: 0; }
+    .step-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+    .step-heading h2 { margin: 0; font-size: 20px; }
+    .step-heading p { margin: 3px 0 0; color: #607783; font-size: 13px; }
+    .assessment-page .field { padding: 14px; border: 1px solid #dbe7ea; border-radius: 12px; background: #f8fbfb; }
+    .assessment-page .field > label:first-child { font-size: 14px; color: #274755 !important; }
+    .assessment-page .control { background: #fff !important; }
+    .assessment-page .unmeasured { margin: 9px 0 0; padding: 0; color: #58707c !important; font-weight: 500 !important; }
+    .choice-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .choice-panel { padding: 18px; border: 1px solid #dbe7ea; border-radius: 12px; background: #f8fbfb; }
+    .choice-panel h3 { margin-bottom: 3px; font-size: 17px; }
+    .choice-help { margin: 0 0 12px; color: #607783; font-size: 12px; }
+    .assessment-page .checks { grid-template-columns: 1fr; gap: 8px; }
+    .assessment-page .checks label { min-height: 42px; padding: 9px 11px; background: #fff !important; cursor: pointer; }
+    .assessment-page .checks label:has(input:checked) { border-color: #55aaa2 !important; background: #e9f7f5 !important; }
+    .pain-help { display: flex; justify-content: space-between; margin-top: 7px; color: #607783; font-size: 12px; }
+    .details-label { display: block; margin-bottom: 7px; }
+    .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 22px 22px; background: #f8fbfb; }
+    .assessment-page .form-actions .draft { background: #fff !important; color: #405d6b !important; border: 1px solid #cddce1 !important; box-shadow: none !important; }
+    .assessment-page .form-actions .primary { min-width: 230px; }
+    .draft-notice { margin: 18px 22px 0; padding: 11px 13px; border-radius: 10px; color: #176b62; background: #e8f7f5; border: 1px solid #c4e7e2; }
+    .previous-result { border-left: 5px solid #087f75 !important; }
+    .previous-result .result-body { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+    .previous-result .summary-grid { margin: 0; }
+    .previous-result .result-link { white-space: nowrap; }
     @media (max-width: 760px) { .summary-grid, .confirm-panel { grid-template-columns: 1fr; } .result-head { align-items: flex-start; flex-direction: column; } }
-    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .wrap { padding: 16px; } }
+    @media (max-width: 760px) {
+      .grid, .choice-columns, .step-list, .previous-result .result-body { grid-template-columns: 1fr; }
+      .wrap { padding: 16px; }
+      .form-section { padding: 20px 16px; }
+      .assessment-intro { padding: 18px 16px; }
+      .form-actions { padding: 16px; }
+      .assessment-page .form-actions .btn { width: 100%; }
+    }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
-<body>
+<body class="assessment-page">
   <div class="wrap">
-    <div class="top">
+    <div class="top assessment-header">
       <div>
-        <h1>OPD Triage Assessment</h1>
-        <div class="muted">รหัส Visit #{{ visit.id }} - {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
+        <h1>ประเมินสุขภาพผู้ป่วย</h1>
+        <div class="muted">Visit #{{ visit.id }} · {{ visit.patient.first_name }} {{ visit.patient.last_name }}</div>
       </div>
       {% include "includes/main_nav.html" %}
     </div>
 
-    <form method="post" class="card" novalidate>
+    <form method="post" class="card assessment-form" novalidate>
       {% csrf_token %}
-      <h2>อาการและสัญญาณชีพ</h2>
+      <div class="assessment-intro">
+        <h2>กรอกข้อมูลตามลำดับ</h2>
+        <div class="muted">ระบบจะใช้ข้อมูลนี้เพื่อช่วยแนะนำระดับความเร่งด่วน ก่อนส่งให้พยาบาลยืนยัน</div>
+        <div class="step-list" aria-label="ขั้นตอนการประเมิน">
+          <div class="step-item"><span class="step-number">1</span> สัญญาณชีพ</div>
+          <div class="step-item"><span class="step-number">2</span> อาการและปัจจัยเสี่ยง</div>
+          <div class="step-item"><span class="step-number">3</span> รายละเอียดเพิ่มเติม</div>
+        </div>
+      </div>
       {% if ai_result.draft %}
-        <div class="card" style="background:rgba(0,212,170,.1); margin-bottom:14px">บันทึกแบบร่างแล้ว</div>
+        <div class="draft-notice">บันทึกข้อมูลไว้แล้ว คุณสามารถกลับมาแก้ไขและประเมินต่อได้</div>
       {% endif %}
 
-      <div class="section">
-        <h3>Vital Signs</h3>
+      <section class="form-section">
+        <div class="step-heading">
+          <span class="step-number">1</span>
+          <div><h2>สัญญาณชีพ</h2><p>กรอกค่าที่วัดได้ หากยังไม่ได้วัดให้เลือก “ยังไม่ได้วัด” ที่ช่องนั้น</p></div>
+        </div>
         <div class="grid">
           <div class="field" data-name="rr">
             <label for="{{ form.rr.id_for_label }}">{{ form.rr.label }}</label>
@@ -135,62 +187,69 @@
             {% for error in form.o2sat.errors %}<div class="error">{{ error }}</div>{% endfor %}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="section">
+      <section class="form-section">
+        <div class="step-heading">
+          <span class="step-number">2</span>
+          <div><h2>อาการและปัจจัยเสี่ยง</h2><p>เลือกเฉพาะข้อที่พบ สามารถเลือกได้มากกว่า 1 ข้อ</p></div>
+        </div>
+        <div class="choice-panel" style="margin-bottom:18px">
         <h3>ระดับความปวด</h3>
         <div class="pain-row">
           {{ form.pain_score }}
           <div class="pain-value" id="painValue">{{ form.pain_score.value|default:0 }}</div>
         </div>
+        <div class="pain-help"><span>0 = ไม่ปวด</span><span>10 = ปวดมากที่สุด</span></div>
         {% for error in form.pain_score.errors %}<div class="error">{{ error }}</div>{% endfor %}
-      </div>
+        </div>
+        <div class="choice-columns">
+          <div class="choice-panel">
+            <h3>อาการที่ต้องเฝ้าระวัง</h3>
+            <p class="choice-help">หากไม่พบอาการเหล่านี้ ไม่ต้องเลือก</p>
+            <div class="checks">{{ form.urgent_symptoms }}</div>
+          </div>
+          <div class="choice-panel">
+            <h3>กลุ่มพิเศษ</h3>
+            <p class="choice-help">พยาบาลเป็นผู้ตรวจสอบและยืนยันข้อมูล</p>
+            <div class="checks">{{ form.risk_flags }}</div>
+          </div>
+        </div>
+      </section>
 
-      <div class="section">
-        <h3>อาการอันตราย</h3>
-        <div class="checks">{{ form.urgent_symptoms }}</div>
-      </div>
-
-      <div class="section">
-        <h3>กลุ่มพิเศษ <span class="muted">(พยาบาลเป็นผู้ตรวจสอบและยืนยัน)</span></h3>
-        <div class="checks">{{ form.risk_flags }}</div>
-      </div>
-
-      <div class="section">
-        <h3>รายละเอียดเพิ่มเติม</h3>
-        <label for="{{ form.symptoms.id_for_label }}">{{ form.symptoms.label }}</label>
+      <section class="form-section">
+        <div class="step-heading">
+          <span class="step-number">3</span>
+          <div><h2>รายละเอียดเพิ่มเติม</h2><p>บันทึกอาการสำคัญ ระยะเวลาที่เป็น หรือข้อมูลที่ควรให้ผู้ประเมินทราบ</p></div>
+        </div>
+        <label class="details-label" for="{{ form.symptoms.id_for_label }}">อาการหรือข้อมูลเพิ่มเติม</label>
         {{ form.symptoms }}
         {% for error in form.symptoms.errors %}<div class="error">{{ error }}</div>{% endfor %}
-      </div>
+      </section>
 
-      <div class="actions">
-        <button class="btn draft" type="submit" name="action" value="draft">บันทึกแบบร่าง</button>
-        <button class="btn primary" type="submit" name="action" value="evaluate">ประเมินระดับความเร่งด่วน</button>
+      <div class="form-actions">
+        <button class="btn draft" type="submit" name="action" value="draft">บันทึกไว้ก่อน</button>
+        <button class="btn primary" type="submit" name="action" value="evaluate">ประเมินและส่งไปรอยืนยัน</button>
       </div>
     </form>
 
-    <div class="card result-card {% if triage_result.ai_severity == 'RED' %}result-red{% elif triage_result.ai_severity == 'YELLOW' %}result-yellow{% elif triage_result.ai_severity == 'GREEN' %}result-green{% endif %}">
+    {% if triage_result %}
+    <div class="card result-card previous-result {% if triage_result.ai_severity == 'RED' %}result-red{% elif triage_result.ai_severity == 'YELLOW' %}result-yellow{% elif triage_result.ai_severity == 'GREEN' %}result-green{% endif %}">
       <div class="result-head">
         <div>
-          <h2 class="result-title">ผลประเมิน / พยาบาลยืนยัน</h2>
-          <div class="result-subtitle">AI เป็นผู้ช่วยประเมิน พยาบาลเป็นผู้ยืนยันขั้นสุดท้าย</div>
+          <h2 class="result-title">ผลประเมินล่าสุด</h2>
+          <div class="result-subtitle">ผลนี้เป็นคำแนะนำเบื้องต้น พยาบาลต้องยืนยันที่หน้า “รอยืนยัน”</div>
         </div>
-        {% if triage_result %}
-          <div class="severity-chip {% if triage_result.ai_severity == 'RED' %}red{% elif triage_result.ai_severity == 'YELLOW' %}yellow{% else %}green{% endif %}">
-            {{ triage_result.ai_severity|default:"-" }}
-          </div>
-        {% endif %}
+        <div class="severity-chip {% if triage_result.ai_severity == 'RED' %}red{% elif triage_result.ai_severity == 'YELLOW' %}yellow{% else %}green{% endif %}">
+          {% if triage_result.ai_severity == 'RED' %}แดง · ส่งต่อฉุกเฉิน{% elif triage_result.ai_severity == 'YELLOW' %}เหลือง · เฝ้าระวัง{% elif triage_result.ai_severity == 'GREEN' %}เขียว · คิวปกติ{% else %}-{% endif %}
+        </div>
       </div>
       <div class="result-body">
-      {% if triage_result %}
-        <div class="summary-grid">
+        <div>
+        <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(160px,1fr))">
           <div class="summary-item">
             <div class="summary-label">AI แนะนำ</div>
-            <div class="summary-value">{{ triage_result.ai_severity|default:"-" }}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">พยาบาลยืนยัน</div>
-            <div class="summary-value">{{ triage_result.nurse_severity|default:"ยังไม่ยืนยัน" }}</div>
+            <div class="summary-value">{% if triage_result.ai_severity == 'RED' %}สีแดง{% elif triage_result.ai_severity == 'YELLOW' %}สีเหลือง{% elif triage_result.ai_severity == 'GREEN' %}สีเขียว{% else %}-{% endif %}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">ความมั่นใจ</div>
@@ -202,94 +261,15 @@
             {% endif %}
           </div>
         </div>
-
-        <div class="summary-grid">
-          <div class="summary-item">
-            <div class="summary-label">AI Suggested Severity</div>
-            <div class="summary-value">{{ triage_result.ai_severity|default:"-" }}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Confidence Score</div>
-            <div class="summary-value">{{ triage_result.confidence|floatformat:2|default:"-" }}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Model Name</div>
-            <div class="summary-value">{{ triage_result.model_name|default:"-" }}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Rule Guardrail Status</div>
-            {% if "rule_based_fallback" in triage_result.model_name %}
-              <div class="summary-value">Fallback active</div>
-              <div class="summary-note">ML model unavailable; rule-based triage was used.</div>
-            {% elif "Rule guardrail applied" in triage_result.ai_reason %}
-              <div class="summary-value">Applied</div>
-              <div class="summary-note">Rule-based guardrail adjusted the model suggestion.</div>
-            {% else %}
-              <div class="summary-value">Active</div>
-              <div class="summary-note">No model conflict recorded for this assessment.</div>
-            {% endif %}
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Nurse Final Confirmation</div>
-            <div class="summary-value">{{ triage_result.nurse_severity|default:"Pending confirmation" }}</div>
-            {% if visit.final_severity %}
-              <div class="summary-note">Final queue severity: {{ visit.final_severity }}</div>
-            {% else %}
-              <div class="summary-note">Nurse confirmation is still required.</div>
-            {% endif %}
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Override Reason</div>
-            {% if triage_result.nurse_severity and triage_result.nurse_severity != triage_result.ai_severity %}
-              <div class="summary-value">{{ triage_result.nurse_note|default:"No override reason entered" }}</div>
-            {% elif triage_result.nurse_severity %}
-              <div class="summary-value">No override</div>
-              <div class="summary-note">Nurse confirmed the AI suggested severity.</div>
-            {% else %}
-              <div class="summary-value">Pending</div>
-              <div class="summary-note">Override reason appears here if the nurse changes the AI result.</div>
-            {% endif %}
-          </div>
-        </div>
-
         <div class="reason-panel">
           <strong>เหตุผลประกอบการประเมิน</strong>
           <p class="reason-text">{{ triage_result.ai_reason|default:"-" }}</p>
-          <div class="muted" style="margin-top:10px; font-size:12px">Model: {{ triage_result.model_name|default:"-" }}</div>
         </div>
-
-        <form method="post" action="{% url 'triage_visit' visit.id %}">
-          {% csrf_token %}
-          <div class="confirm-panel">
-            <div>
-            <strong>กลุ่มพิเศษที่พยาบาลยืนยัน</strong>
-            <input type="hidden" name="risk_flags_present" value="1">
-            <div class="checks" style="margin-top:8px">
-              {% for value, label in risk_flag_choices %}
-                <label for="confirm-risk-{{ value }}">
-                  <input id="confirm-risk-{{ value }}" type="checkbox" name="risk_flags" value="{{ value }}" {% if visit.vitals and value in visit.vitals.risk_flags %}checked{% endif %}>
-                  {{ label }}
-                </label>
-              {% endfor %}
-            </div>
-            </div>
-            <div>
-            <label for="nurse_note">เหตุผลเพิ่มเติม</label>
-            <textarea id="nurse_note" name="nurse_note" placeholder="หากเลือกระดับต่างจาก AI ต้องระบุเหตุผล">{{ triage_result.nurse_note }}</textarea>
-            <div class="muted" style="margin-top:6px">จำเป็นเมื่อพยาบาลยืนยันระดับต่างจากคำแนะนำของ AI</div>
-            </div>
-            <div class="confirm-actions">
-              <button class="btn red" type="submit" name="severity" value="RED">สีแดง</button>
-              <button class="btn yellow" type="submit" name="severity" value="YELLOW">สีเหลือง</button>
-              <button class="btn green" type="submit" name="severity" value="GREEN">สีเขียว</button>
-            </div>
-          </div>
-        </form>
-      {% else %}
-        <p class="muted">กรอกอาการและสัญญาณชีพ แล้วกดประเมินระดับความเร่งด่วน</p>
-      {% endif %}
+        </div>
+        <a class="btn primary result-link" href="{% url 'waiting_confirmation' %}">ไปหน้ายืนยันผล</a>
       </div>
     </div>
+    {% endif %}
   </div>
 
   <script>

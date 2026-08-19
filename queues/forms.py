@@ -28,23 +28,24 @@ class NurseTriageAssessmentForm(forms.Form):
     ]
     VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
 
-    rr = forms.IntegerField(label="RR *", min_value=0, required=False)
+    rr = forms.IntegerField(label="อัตราการหายใจ (RR) *", min_value=0, required=False)
     rr_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
-    pr = forms.IntegerField(label="PR / BPM *", min_value=0, required=False)
+    pr = forms.IntegerField(label="ชีพจร (PR) *", min_value=0, required=False)
     pr_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
-    sys_bp = forms.IntegerField(label="BP ตัวบน *", min_value=0, required=False)
+    sys_bp = forms.IntegerField(label="ความดันตัวบน *", min_value=0, required=False)
     sys_bp_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
-    dia_bp = forms.IntegerField(label="BP ตัวล่าง *", min_value=0, required=False)
+    dia_bp = forms.IntegerField(label="ความดันตัวล่าง *", min_value=0, required=False)
     dia_bp_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
-    bt = forms.FloatField(label="BT *", min_value=30, max_value=45, required=False)
+    bt = forms.FloatField(label="อุณหภูมิร่างกาย *", min_value=30, max_value=45, required=False)
     bt_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
-    o2sat = forms.IntegerField(label="O₂ Sat *", min_value=0, max_value=100, required=False)
+    o2sat = forms.IntegerField(label="ออกซิเจนในเลือด (SpO₂) *", min_value=0, max_value=100, required=False)
     o2sat_unmeasured = forms.BooleanField(label="ยังไม่ได้วัด", required=False)
     pain_score = forms.IntegerField(
         label="Pain Score",
         min_value=0,
         max_value=10,
         required=False,
+        initial=0,
         widget=forms.NumberInput(attrs={"type": "range", "min": 0, "max": 10, "step": 1}),
     )
     urgent_symptoms = forms.MultipleChoiceField(
