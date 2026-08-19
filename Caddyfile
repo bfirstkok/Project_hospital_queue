@@ -27,3 +27,17 @@ hospital.bfirstkok.me {
 		}
 	}
 }
+
+cargu.bfirstkok.me {
+	encode zstd gzip
+	reverse_proxy cargu-web:8080
+
+	header {
+		Permissions-Policy "geolocation=(self), camera=(), microphone=()"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+	header /google-maps-config.js Cache-Control "no-store"
+	header /service-worker.js Cache-Control "no-cache"
+}
