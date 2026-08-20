@@ -1,8 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Sarabun:wght@300;400;500;600;700;800&display=swap");
 
-/* Unified Hospital Queue UI */
+/* Unified Medical & Hospital Queue UI */
 :root {
   color-scheme: dark;
+  --font-sans: 'IBM Plex Sans Thai', 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-numeric: 'Inter', 'JetBrains Mono', -apple-system, monospace;
   --bg: #08111f;
   --bg-soft: #0d1728;
   --surface: rgba(16, 27, 45, 0.78);
@@ -18,6 +20,15 @@
   --red: #ff5f72;
   --yellow: #ffc44d;
   --green: #22d3a6;
+  --red-alert: #ef4444;
+  --red-bg: rgba(239, 68, 68, 0.16);
+  --red-border: rgba(239, 68, 68, 0.45);
+  --yellow-alert: #f59e0b;
+  --yellow-bg: rgba(245, 158, 11, 0.16);
+  --yellow-border: rgba(245, 158, 11, 0.45);
+  --green-alert: #10b981;
+  --green-bg: rgba(16, 185, 129, 0.16);
+  --green-border: rgba(16, 185, 129, 0.45);
   --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
   --radius: 10px;
 }
@@ -33,7 +44,7 @@ button,
 input,
 select,
 textarea {
-  font-family: "Sarabun", "Noto Sans Thai", Tahoma, sans-serif !important;
+  font-family: var(--font-sans) !important;
 }
 
 html {
@@ -1384,4 +1395,339 @@ button.blue, .btn.blue, .action-btn.blue {
   background: #eaf4fb !important;
   border: 1px solid #b9d9ec !important;
   box-shadow: none !important;
+}
+
+/* ===== MEDICAL UI / CLINICAL ERGONOMICS ENHANCEMENTS ===== */
+.tabular-nums, .vital-num, .queue-num, .num, .stat-number {
+  font-family: var(--font-numeric) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+}
+
+.vital-metric-card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.vital-metric-card .label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.vital-metric-card .vital-val-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.vital-metric-card .vital-val {
+  font-family: var(--font-numeric) !important;
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.vital-metric-card .vital-unit {
+  font-size: 12px;
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.vital-metric-card.abnormal {
+  border-color: var(--red-border);
+  background: var(--red-bg);
+}
+
+.vital-metric-card.abnormal .vital-val {
+  color: var(--red-alert);
+}
+
+.vital-metric-card.warning {
+  border-color: var(--yellow-border);
+  background: var(--yellow-bg);
+}
+
+.vital-metric-card.warning .vital-val {
+  color: var(--yellow-alert);
+}
+
+.patient-quick-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  margin-bottom: 18px;
+}
+
+.triage-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-family: var(--font-numeric);
+}
+
+.triage-hero-badge.red {
+  background: var(--red-alert);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+}
+
+.triage-hero-badge.yellow {
+  background: var(--yellow-alert);
+  color: #1a1002;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+}
+
+.triage-hero-badge.green {
+  background: var(--green-alert);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+}
+
+/* Workflow navigation: keep frequent actions visible without covering page content. */
+body {
+  padding-top: 0 !important;
+}
+
+.workflow-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-nav__primary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid #d7e5e8;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.workflow-nav__link,
+.workflow-nav__more summary,
+.workflow-nav__menu a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: #365765 !important;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+
+.workflow-nav__link:hover,
+.workflow-nav__more summary:hover,
+.workflow-nav__menu a:hover {
+  color: #075f59 !important;
+  background: #edf8f6;
+}
+
+.workflow-nav__link.active,
+.workflow-nav__menu a.active {
+  color: #ffffff !important;
+  background: #087f75;
+}
+
+.workflow-nav__more {
+  position: relative;
+}
+
+.workflow-nav__more summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid #cddce1;
+  background: #ffffff;
+}
+
+.workflow-nav__more summary::-webkit-details-marker {
+  display: none;
+}
+
+.workflow-nav__more summary::after {
+  content: "▾";
+  margin-left: 7px;
+  font-size: 12px;
+}
+
+.workflow-nav__more[open] summary {
+  color: #075f59 !important;
+  border-color: #72b8af;
+  background: #edf8f6;
+}
+
+.workflow-nav__menu {
+  position: absolute;
+  right: 0;
+  z-index: 50;
+  display: grid;
+  min-width: 190px;
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid #cddce1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(31, 65, 78, .14);
+}
+
+.workflow-nav__menu a {
+  justify-content: flex-start;
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid rgba(8, 127, 117, .32);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .workflow-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .workflow-nav__primary {
+    max-width: calc(100% - 130px);
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 560px) {
+  .workflow-nav__link,
+  .workflow-nav__more summary {
+    min-height: 42px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .workflow-nav__more summary {
+    font-size: 0;
+  }
+
+  .workflow-nav__more summary::after {
+    margin-left: 0;
+    font-size: 16px;
+  }
+}
+
+/* One stable navigation bar on every screen. All workflows stay visible. */
+body {
+  padding-top: 76px !important;
+}
+
+.workflow-nav {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 100;
+  display: block;
+  width: min(1240px, calc(100vw - 32px));
+  min-height: 56px;
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid #d7e5e8;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 8px 24px rgba(31, 65, 78, .12);
+}
+
+.workflow-nav__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.workflow-nav__link {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  color: #365765 !important;
+  font-size: 13px;
+}
+
+.workflow-nav__link:hover {
+  border-color: #b6dcd7;
+  background: #edf8f6;
+}
+
+.workflow-nav__link.active {
+  border-color: #087f75;
+  background: #087f75;
+  color: #ffffff !important;
+}
+
+/* A filtered parent would make a fixed menu move with individual page headers. */
+.topbar:has(.workflow-nav) {
+  top: 76px !important;
+  backdrop-filter: none !important;
+}
+
+.workflow-nav__primary,
+.workflow-nav__more {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .workflow-nav__links {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 560px) {
+  body {
+    padding-top: 72px !important;
+  }
+
+  .workflow-nav {
+    top: 8px;
+    width: calc(100vw - 24px);
+    min-height: 56px;
+    padding: 6px;
+  }
+
+  .workflow-nav__link {
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .topbar:has(.workflow-nav) {
+    top: 72px !important;
+  }
 }

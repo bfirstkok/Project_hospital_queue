@@ -201,33 +201,35 @@
       font-weight: 800;
       white-space: nowrap;
     }
-    .patient-name { color: #fff; font-weight: 800; font-size: 22px; }
-    .patient-meta { margin-top: 3px; color: rgba(255,255,255,.42); font-size: 12px; }
+    .patient-name { color: #fff; font-weight: 700; font-size: 15px; }
+    .patient-meta { margin-top: 3px; color: rgba(255,255,255,.45); font-size: 12px; }
     .triage-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      min-height: 28px;
+      min-height: 26px;
       padding: 0 10px;
       border-radius: 8px;
-      font-weight: 900;
+      font-weight: 800;
       font-size: 12px;
+      font-family: var(--font-numeric);
     }
-    .triage-badge.red { background: rgba(255,95,114,.14); color: #ff6b7d; }
-    .triage-badge.yellow { background: rgba(255,184,48,.14); color: #ffbf42; }
-    .triage-badge.green { background: rgba(0,212,170,.14); color: #23d8b5; }
-    .nurse-summary { display: grid; gap: 7px; min-width: 280px; }
+    .triage-badge.red { background: rgba(239,68,68,.16); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+    .triage-badge.yellow { background: rgba(245,158,11,.16); color: #fde68a; border: 1px solid rgba(245,158,11,.3); }
+    .triage-badge.green { background: rgba(16,185,129,.16); color: #86efac; border: 1px solid rgba(16,185,129,.3); }
+    .nurse-summary { display: grid; gap: 6px; min-width: 260px; }
     .nurse-line { display: flex; gap: 6px; flex-wrap: wrap; }
     .mini-chip {
       display: inline-flex;
       align-items: center;
-      min-height: 24px;
+      min-height: 22px;
       padding: 0 8px;
       border-radius: 999px;
-      background: rgba(255,255,255,.06);
+      background: rgba(255,255,255,.05);
       border: 1px solid rgba(255,255,255,.08);
-      color: rgba(255,255,255,.74);
-      font-size: 15px;
+      color: rgba(255,255,255,.8);
+      font-size: 12px;
+      font-family: var(--font-numeric);
       white-space: nowrap;
     }
     .reason {
@@ -235,31 +237,32 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: rgba(255,255,255,.46);
-      font-size: 18px;
+      color: rgba(255,255,255,.55);
+      font-size: 13px;
     }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; }
     .btn {
       border: 1px solid rgba(255,255,255,.1);
-      min-height: 30px;
-      padding: 0 11px;
+      min-height: 32px;
+      padding: 0 12px;
       border-radius: 8px;
       cursor: pointer;
       font: inherit;
-      font-size: 12px;
-      font-weight: 800;
+      font-size: 13px;
+      font-weight: 700;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
-      color: rgba(255,255,255,.75);
+      color: rgba(255,255,255,.85);
       background: rgba(255,255,255,.06);
+      transition: all 0.15s ease;
     }
-    .btn.primary { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.24); }
-    .btn.red { color: #ff6b7d; background: rgba(255,95,114,.13); border-color: rgba(255,95,114,.22); }
-    .btn.yellow { color: #ffbf42; background: rgba(255,184,48,.13); border-color: rgba(255,184,48,.22); }
-    .btn.green { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.22); }
-    .called-time { font-size: 18px; font-weight: 700; }
-    .btn:hover { filter: brightness(1.14); }
+    .btn.primary { color: #04101d; background: linear-gradient(135deg, var(--teal), var(--blue)); border: 0; box-shadow: 0 4px 12px rgba(32,214,181,0.2); }
+    .btn.red { color: #fff; background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.35); }
+    .btn.yellow { color: #fde68a; background: rgba(245,158,11,.2); border-color: rgba(245,158,11,.35); }
+    .btn.green { color: #86efac; background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.35); }
+    .called-time { font-size: 13px; font-weight: 600; font-family: var(--font-numeric); }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
     .empty-state {
       display: grid;
       place-items: center;
