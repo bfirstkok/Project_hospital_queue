@@ -216,6 +216,8 @@ class QueueWorkflowTests(TestCase):
         self.assertNotContains(response, "กรอกค่าด้วยตนเอง")
         self.assertContains(response, f'id="patient-modal-{patient.visits.get().queue.id}"')
         self.assertContains(response, patient.phone)
+        self.assertContains(response, "ยังไม่มีข้อมูลวันเดือนปีเกิด")
+        self.assertContains(response, reverse("update_patient_birth_date", args=[patient.id]))
 
     def test_health_assessment_has_clear_three_step_form(self):
         self.register_patient()

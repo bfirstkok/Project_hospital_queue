@@ -1,4 +1,5 @@
 # patients/views.py
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -15,7 +16,7 @@ import json
 import re
 import secrets
 
-from .forms import PatientForm, PublicPatientRegistrationForm
+from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm
 from .models import Appointment, Patient, PatientAccessToken
 from .security import rate_limited
 from queues.models import Visit, Queue, VitalSign
@@ -472,6 +473,20 @@ def register_patient(request):
 
     # GET
     return render(request, "patients/register.html", {"form": PatientForm()})
+
+
+@login_required
+@require_POST
+def update_patient_birth_date(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    form = PatientBirthDateForm(request.POST, instance=patient)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f"บันทึกวันเกิดแล้ว อายุปัจจุบันคือ {patient.age_display}")
+    else:
+        error = form.errors.get("birth_date", ["กรุณาตรวจสอบวันเกิด"])[0]
+        messages.error(request, str(error))
+    return redirect("waiting_vitals")
 
 
 @login_required

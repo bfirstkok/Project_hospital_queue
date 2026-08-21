@@ -40,6 +40,14 @@
     .info-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 16px; line-height: 1.45; }
     .info-row dt { color: rgba(237,244,255,.58); }
     .info-row dd { margin: 0; color: rgba(237,244,255,.88); overflow-wrap: anywhere; }
+    .age-missing { margin-top: 3px; color: #fbbf24; font-size: 13px; font-weight: 700; }
+    .birth-date-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin-top: 8px; }
+    .birth-date-form input { min-width: 0; min-height: 36px; padding: 0 9px; border: 1px solid rgba(125,211,252,.35); border-radius: 7px; color: #edf4ff; background: #14233a; font: inherit; color-scheme: dark; }
+    .birth-date-form button { min-height: 36px; padding: 0 11px; border: 0; border-radius: 7px; color: #061522; background: #7dd3fc; font-weight: 800; cursor: pointer; }
+    .birth-date-caption { margin-top: 3px; color: rgba(237,244,255,.58); font-size: 13px; }
+    .page-messages { display: grid; gap: 8px; margin-bottom: 14px; }
+    .page-message { padding: 10px 12px; border: 1px solid rgba(125,211,252,.35); border-radius: 8px; color: #dff7ff; background: rgba(14,116,144,.22); font-size: 15px; font-weight: 700; }
+    .page-message.error { color: #fecaca; border-color: rgba(248,113,113,.45); background: rgba(127,29,29,.3); }
     .action-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
     @media (max-width: 760px) {
       .detail-grid { grid-template-columns: 1fr; }
@@ -52,6 +60,11 @@
 </head>
 <body class="waiting-vitals-page">
   <main class="wrap">
+    {% if messages %}
+      <div class="page-messages" role="alert">
+        {% for message in messages %}<div class="page-message {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
     <div class="top">
       <div>
         <h1>รอวัดค่าสัญญาณชีพ</h1>
@@ -97,7 +110,22 @@
                         <h3>ข้อมูลผู้ป่วย</h3>
                         <dl class="info-list">
                           <div class="info-row"><dt>ชื่อ-นามสกุล</dt><dd>{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</dd></div>
-                          <div class="info-row"><dt>อายุ</dt><dd>{{ p.age_display }}</dd></div>
+                          <div class="info-row">
+                            <dt>อายุ</dt>
+                            <dd>
+                              <strong>{{ p.age_display }}</strong>
+                              {% if p.birth_date %}
+                                <div class="birth-date-caption">วันเกิด {{ p.birth_date|date:"d/m/Y" }}</div>
+                              {% else %}
+                                <div class="age-missing">ยังไม่มีข้อมูลวันเดือนปีเกิด</div>
+                                <form class="birth-date-form" method="post" action="{% url 'update_patient_birth_date' p.id %}">
+                                  {% csrf_token %}
+                                  <input type="date" name="birth_date" required aria-label="วันเดือนปีเกิดของผู้ป่วย">
+                                  <button type="submit">บันทึก</button>
+                                </form>
+                              {% endif %}
+                            </dd>
+                          </div>
                           <div class="info-row"><dt>เพศ</dt><dd>{{ p.get_gender_display|default:"-" }}</dd></div>
                           <div class="info-row"><dt>เบอร์โทร</dt><dd>{{ p.phone|default:"-" }}</dd></div>
                           <div class="info-row"><dt>HN</dt><dd>{{ p.hn|default:"-" }}</dd></div>

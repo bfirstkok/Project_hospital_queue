@@ -4,7 +4,9 @@ from datetime import date
 from unittest.mock import patch
 
 from django.core.cache import cache
+from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from queues.models import Queue, Visit, VitalSign
 from .models import Patient
@@ -21,6 +23,29 @@ class PatientAgeDisplayTests(TestCase):
     def test_age_display_falls_back_to_approximate_years(self):
         self.assertEqual(Patient(age=67).age_display, "67 ปี")
         self.assertEqual(Patient().age_display, "-")
+
+    @patch("patients.forms.timezone.localdate", return_value=date(2026, 8, 21))
+    @patch("patients.models.timezone.localdate", return_value=date(2026, 8, 21))
+    def test_staff_can_add_birth_date_without_creating_a_visit(self, _model_date, _form_date):
+        user = get_user_model().objects.create_user(username="nurse", password="test-only-password")
+        patient = Patient.objects.create(
+            first_name="ทดสอบ",
+            last_name="วันเกิด",
+            national_id="1111111111119",
+            age=67,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("update_patient_birth_date", args=[patient.id]),
+            {"birth_date": "1959-05-09"},
+        )
+
+        self.assertRedirects(response, reverse("waiting_vitals"))
+        patient.refresh_from_db()
+        self.assertEqual(patient.birth_date, date(1959, 5, 9))
+        self.assertEqual(patient.age_display, "67 ปี 3 เดือน 12 วัน")
+        self.assertEqual(patient.visits.count(), 0)
 
 
 @override_settings(PATIENT_APP_ORIGINS={"https://bfirstkok.github.io"})

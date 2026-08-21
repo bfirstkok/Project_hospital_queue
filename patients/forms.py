@@ -1,6 +1,7 @@
 # patients/forms.py
 from django import forms
 from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 from .models import Patient
 
 
@@ -9,6 +10,8 @@ class BirthDateValidationMixin:
         birth_date = self.cleaned_data.get("birth_date")
         if birth_date and birth_date > timezone.localdate():
             raise forms.ValidationError("วันเกิดต้องไม่เป็นวันที่ในอนาคต")
+        if birth_date and relativedelta(timezone.localdate(), birth_date).years > 130:
+            raise forms.ValidationError("กรุณาตรวจสอบวันเกิด อายุไม่ควรเกิน 130 ปี")
         return birth_date
 
 
@@ -39,6 +42,13 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         if nid and (not nid.isdigit() or len(nid) != 13):
             raise forms.ValidationError("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
         return nid
+
+
+class PatientBirthDateForm(BirthDateValidationMixin, forms.ModelForm):
+    class Meta:
+        model = Patient
+        fields = ["birth_date"]
+        widgets = {"birth_date": forms.DateInput(attrs={"type": "date"})}
 
 
 class PublicPatientRegistrationForm(BirthDateValidationMixin, forms.ModelForm):
