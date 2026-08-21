@@ -230,6 +230,10 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "จุดตัดสินใจสำหรับการคัดกรอง 5 ระดับ")
         self.assertContains(response, "คาดว่าจะใช้ทรัพยากรทางการแพทย์กี่รายการ")
         self.assertContains(response, "ประเมินและส่งไปรอยืนยัน")
+        self.assertContains(response, "ไม่พบเกณฑ์เตือนอัตโนมัติจากค่านี้")
+        self.assertContains(response, "วิกฤต: SpO₂ < 90%", html=False)
+        self.assertContains(response, "เฝ้าระวัง: RR 21–30 ครั้ง/นาที")
+        self.assertContains(response, "ยังไม่ได้วัด — ระบบจะไม่ใช้ค่านี้ในการประเมิน")
         self.assertNotContains(response, "AI Suggested Severity")
         self.assertNotContains(response, "Rule Guardrail Status")
 

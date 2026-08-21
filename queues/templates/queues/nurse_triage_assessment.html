@@ -38,9 +38,18 @@
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.08); font-weight: 700; margin: 0 6px 6px 0; }
     .muted { color: rgba(255,255,255,.55); }
-    .error, .warn { color: #fecaca; font-size: 12px; margin-top: 5px; }
-    .field.abnormal .control { border-color: rgba(248,113,113,.85); box-shadow: 0 0 0 3px rgba(248,113,113,.12); }
-    .field.borderline .control { border-color: rgba(251,191,36,.85); box-shadow: 0 0 0 3px rgba(251,191,36,.12); }
+    .error { color: #b42318; font-size: 12px; margin-top: 5px; }
+    .warn { display: none; margin-top: 9px; padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .field.has-value .warn { display: block; }
+    .field.normal .control { border-color: #9fd5bd; box-shadow: 0 0 0 3px rgba(22,163,74,.08); }
+    .field.normal .warn { color: #18794e; background: #eaf8f0; }
+    .field.watch .control { border-color: #e4c460; box-shadow: 0 0 0 3px rgba(217,154,0,.10); }
+    .field.watch .warn { color: #8a5a00; background: #fff7df; }
+    .field.emergency .control { border-color: #e59ab9; box-shadow: 0 0 0 3px rgba(232,93,158,.10); }
+    .field.emergency .warn { color: #9f2458; background: #fff0f6; }
+    .field.critical .control { border-color: #ef9a9a; box-shadow: 0 0 0 3px rgba(220,38,38,.10); }
+    .field.critical .warn { color: #b42318; background: #fff0f0; }
+    .field.unmeasured-state .warn { display: block; color: #607783; background: #edf3f4; }
     .result-red { border-color: rgba(248,113,113,.55); }
     .result-pink { border-color: rgba(232,93,158,.55); }
     .result-yellow { border-color: rgba(251,191,36,.55); }
@@ -157,7 +166,7 @@
       <section class="form-section">
         <div class="step-heading">
           <span class="step-number">1</span>
-          <div><h2>สัญญาณชีพ</h2><p>กรอกค่าที่วัดได้ หากยังไม่ได้วัดให้เลือก “ยังไม่ได้วัด” ที่ช่องนั้น</p></div>
+          <div><h2>สัญญาณชีพ</h2><p>กรอกค่าแล้วระบบจะแสดงว่าเข้าเกณฑ์เตือนระดับใด หากยังไม่ได้วัดให้เลือก “ยังไม่ได้วัด”</p></div>
         </div>
         <div class="grid">
           <div class="field" data-name="rr">
@@ -329,21 +338,40 @@
   </div>
 
   <script>
-    const thresholds = {
-      rr: [
-        { test: v => v > 30, cls: "abnormal", msg: "RR สูงกว่า 30 ครั้ง/นาที" },
-        { test: v => v >= 21, cls: "borderline", msg: "RR อยู่ในช่วงเฝ้าระวัง 21-30 ครั้ง/นาที" }
-      ],
-      pr: [{ test: v => v >= 120, cls: "borderline", msg: "PR / BPM ตั้งแต่ 120 ครั้ง/นาที" }],
-      sys_bp: [{ test: v => v < 90, cls: "abnormal", msg: "BP ตัวบนต่ำกว่า 90 mmHg" }],
-      bt: [
-        { test: v => v >= 39, cls: "abnormal", msg: "BT ตั้งแต่ 39°C" },
-        { test: v => v >= 38, cls: "borderline", msg: "BT อยู่ในช่วงไข้ 38-38.9°C" }
-      ],
-      o2sat: [
-        { test: v => v < 95, cls: "abnormal", msg: "O₂ Sat ต่ำกว่า 95%" },
-        { test: v => v <= 96, cls: "borderline", msg: "O₂ Sat อยู่ในช่วงเฝ้าระวัง 95-96%" }
-      ]
+    const noAutomaticWarning = {
+      cls: "normal",
+      msg: "ไม่พบเกณฑ์เตือนอัตโนมัติจากค่านี้"
+    };
+    const vitalClassifiers = {
+      rr: value => {
+        if (value <= 6 || value >= 35) return { cls: "critical", msg: "วิกฤต: RR ≤ 6 หรือ ≥ 35 ครั้ง/นาที" };
+        if (value > 30) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: RR 31–34 ครั้ง/นาที" };
+        if (value >= 21) return { cls: "watch", msg: "เฝ้าระวัง: RR 21–30 ครั้ง/นาที" };
+        return noAutomaticWarning;
+      },
+      pr: value => value >= 120
+        ? { cls: "watch", msg: "เฝ้าระวัง: PR ≥ 120 ครั้ง/นาที" }
+        : noAutomaticWarning,
+      sys_bp: value => {
+        if (value < 80) return { cls: "critical", msg: "วิกฤต: ความดันตัวบน < 80 mmHg" };
+        if (value < 90) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: ความดันตัวบน 80–89 mmHg" };
+        if (value >= 180) return { cls: "watch", msg: "เฝ้าระวัง: ความดันตัวบน ≥ 180 mmHg" };
+        return noAutomaticWarning;
+      },
+      dia_bp: value => value >= 120
+        ? { cls: "watch", msg: "เฝ้าระวัง: ความดันตัวล่าง ≥ 120 mmHg" }
+        : noAutomaticWarning,
+      bt: value => {
+        if (value >= 39) return { cls: "watch", msg: "เฝ้าระวัง: อุณหภูมิ ≥ 39°C" };
+        if (value >= 38) return { cls: "watch", msg: "เฝ้าระวัง: อุณหภูมิ 38–38.9°C" };
+        return noAutomaticWarning;
+      },
+      o2sat: value => {
+        if (value < 90) return { cls: "critical", msg: "วิกฤต: SpO₂ < 90%" };
+        if (value < 95) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: SpO₂ 90–94%" };
+        if (value <= 96) return { cls: "watch", msg: "เฝ้าระวัง: SpO₂ 95–96%" };
+        return noAutomaticWarning;
+      }
     };
 
     function updateVitalState(name) {
@@ -352,12 +380,14 @@
       const input = field.querySelector("input[type='number'], input[type='text']");
       const checkbox = field.querySelector(".unmeasured input");
       const warn = field.querySelector(".warn");
-      field.classList.remove("abnormal", "borderline");
+      field.classList.remove("has-value", "normal", "watch", "emergency", "critical", "unmeasured-state");
       warn.textContent = "";
 
       if (checkbox && checkbox.checked) {
         input.value = "";
         input.disabled = true;
+        field.classList.add("unmeasured-state");
+        warn.textContent = "ยังไม่ได้วัด — ระบบจะไม่ใช้ค่านี้ในการประเมิน";
         return;
       }
       input.disabled = false;
@@ -365,14 +395,14 @@
       const value = Number(input.value);
       if (input.value === "" || Number.isNaN(value)) return;
 
-      const rule = (thresholds[name] || []).find(item => item.test(value));
-      if (rule) {
-        field.classList.add(rule.cls);
-        warn.textContent = rule.msg;
-      }
+      const classifier = vitalClassifiers[name];
+      if (!classifier) return;
+      const result = classifier(value);
+      field.classList.add("has-value", result.cls);
+      warn.textContent = result.msg;
     }
 
-    Object.keys(thresholds).concat(["dia_bp"]).forEach(name => {
+    Object.keys(vitalClassifiers).forEach(name => {
       const field = document.querySelector(`.field[data-name="${name}"]`);
       if (!field) return;
       field.querySelectorAll("input").forEach(input => {
