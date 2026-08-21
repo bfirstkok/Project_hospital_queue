@@ -39,17 +39,17 @@
     .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.08); font-weight: 700; margin: 0 6px 6px 0; }
     .muted { color: rgba(255,255,255,.55); }
     .error { color: #b42318; font-size: 12px; margin-top: 5px; }
-    .warn { display: none; margin-top: 9px; padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .warn { display: none; margin-top: 10px; padding: 10px 12px; border: 1px solid; border-left-width: 6px; border-radius: 9px; font-size: 13px; font-weight: 800; line-height: 1.45; }
     .field.has-value .warn { display: block; }
-    .field.normal .control { border-color: #9fd5bd; box-shadow: 0 0 0 3px rgba(22,163,74,.08); }
-    .field.normal .warn { color: #18794e; background: #eaf8f0; }
-    .field.watch .control { border-color: #e4c460; box-shadow: 0 0 0 3px rgba(217,154,0,.10); }
-    .field.watch .warn { color: #8a5a00; background: #fff7df; }
-    .field.emergency .control { border-color: #e59ab9; box-shadow: 0 0 0 3px rgba(232,93,158,.10); }
-    .field.emergency .warn { color: #9f2458; background: #fff0f6; }
-    .field.critical .control { border-color: #ef9a9a; box-shadow: 0 0 0 3px rgba(220,38,38,.10); }
-    .field.critical .warn { color: #b42318; background: #fff0f0; }
-    .field.unmeasured-state .warn { display: block; color: #607783; background: #edf3f4; }
+    .field.normal .control { border: 2px solid #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
+    .field.normal .warn { color: #14532d; border-color: #16a34a; background: #dcfce7; }
+    .field.watch .control { border: 2px solid #d99a00; box-shadow: 0 0 0 3px rgba(217,154,0,.14); }
+    .field.watch .warn { color: #713f12; border-color: #d99a00; background: #fef3c7; }
+    .field.emergency .control { border: 2px solid #db2777; box-shadow: 0 0 0 3px rgba(219,39,119,.13); }
+    .field.emergency .warn { color: #831843; border-color: #db2777; background: #fce7f3; }
+    .field.critical .control { border: 2px solid #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.13); }
+    .field.critical .warn { color: #991b1b; border-color: #dc2626; background: #fee2e2; }
+    .field.unmeasured-state .warn { display: block; color: #405d6b; border-color: #94a3b8; background: #edf3f4; }
     .result-red { border-color: rgba(248,113,113,.55); }
     .result-pink { border-color: rgba(232,93,158,.55); }
     .result-yellow { border-color: rgba(251,191,36,.55); }
@@ -340,36 +340,36 @@
   <script>
     const noAutomaticWarning = {
       cls: "normal",
-      msg: "ไม่พบเกณฑ์เตือนอัตโนมัติจากค่านี้"
+      msg: "สีเขียว · ไม่พบเกณฑ์เตือนอัตโนมัติจากค่านี้ — ยังต้องประเมินอาการและปัจจัยเสี่ยงร่วม"
     };
     const vitalClassifiers = {
       rr: value => {
-        if (value <= 6 || value >= 35) return { cls: "critical", msg: "วิกฤต: RR ≤ 6 หรือ ≥ 35 ครั้ง/นาที" };
-        if (value > 30) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: RR 31–34 ครั้ง/นาที" };
-        if (value >= 21) return { cls: "watch", msg: "เฝ้าระวัง: RR 21–30 ครั้ง/นาที" };
+        if (value <= 6 || value >= 35) return { cls: "critical", msg: "สีแดง · วิกฤต: RR ≤ 6 หรือ ≥ 35 ครั้ง/นาที" };
+        if (value > 30) return { cls: "emergency", msg: "สีชมพู · ควรประเมินฉุกเฉิน: RR 31–34 ครั้ง/นาที" };
+        if (value >= 21) return { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: RR 21–30 ครั้ง/นาที" };
         return noAutomaticWarning;
       },
       pr: value => value >= 120
-        ? { cls: "watch", msg: "เฝ้าระวัง: PR ≥ 120 ครั้ง/นาที" }
+        ? { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: PR ≥ 120 ครั้ง/นาที" }
         : noAutomaticWarning,
       sys_bp: value => {
-        if (value < 80) return { cls: "critical", msg: "วิกฤต: ความดันตัวบน < 80 mmHg" };
-        if (value < 90) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: ความดันตัวบน 80–89 mmHg" };
-        if (value >= 180) return { cls: "watch", msg: "เฝ้าระวัง: ความดันตัวบน ≥ 180 mmHg" };
+        if (value < 80) return { cls: "critical", msg: "สีแดง · วิกฤต: ความดันตัวบน < 80 mmHg" };
+        if (value < 90) return { cls: "emergency", msg: "สีชมพู · ควรประเมินฉุกเฉิน: ความดันตัวบน 80–89 mmHg" };
+        if (value >= 180) return { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: ความดันตัวบน ≥ 180 mmHg" };
         return noAutomaticWarning;
       },
       dia_bp: value => value >= 120
-        ? { cls: "watch", msg: "เฝ้าระวัง: ความดันตัวล่าง ≥ 120 mmHg" }
+        ? { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: ความดันตัวล่าง ≥ 120 mmHg" }
         : noAutomaticWarning,
       bt: value => {
-        if (value >= 39) return { cls: "watch", msg: "เฝ้าระวัง: อุณหภูมิ ≥ 39°C" };
-        if (value >= 38) return { cls: "watch", msg: "เฝ้าระวัง: อุณหภูมิ 38–38.9°C" };
+        if (value >= 39) return { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: อุณหภูมิ ≥ 39°C" };
+        if (value >= 38) return { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: อุณหภูมิ 38–38.9°C" };
         return noAutomaticWarning;
       },
       o2sat: value => {
-        if (value < 90) return { cls: "critical", msg: "วิกฤต: SpO₂ < 90%" };
-        if (value < 95) return { cls: "emergency", msg: "ควรประเมินฉุกเฉิน: SpO₂ 90–94%" };
-        if (value <= 96) return { cls: "watch", msg: "เฝ้าระวัง: SpO₂ 95–96%" };
+        if (value < 90) return { cls: "critical", msg: "สีแดง · วิกฤต: SpO₂ < 90%" };
+        if (value < 95) return { cls: "emergency", msg: "สีชมพู · ควรประเมินฉุกเฉิน: SpO₂ 90–94%" };
+        if (value <= 96) return { cls: "watch", msg: "สีเหลือง · เฝ้าระวัง: SpO₂ 95–96%" };
         return noAutomaticWarning;
       }
     };
