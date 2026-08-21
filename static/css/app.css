@@ -1042,7 +1042,7 @@ pre {
 
 #cards { box-shadow: none !important; }
 
-.btn:not(.primary):not(.red):not(.yellow):not(.green):not(.danger):not(.warn):not(.ai-confirm),
+.btn:not(.primary):not(.red):not(.pink):not(.yellow):not(.green):not(.white):not(.danger):not(.warn):not(.ai-confirm),
 .room-link,
 .room-btn,
 .btn-link,
@@ -1055,7 +1055,7 @@ pre {
   box-shadow: none !important;
 }
 
-.btn:not(.primary):not(.red):not(.yellow):not(.green):not(.danger):not(.warn):not(.ai-confirm):hover,
+.btn:not(.primary):not(.red):not(.pink):not(.yellow):not(.green):not(.white):not(.danger):not(.warn):not(.ai-confirm):hover,
 .room-link:hover,
 .room-btn:hover,
 .btn-link:hover,

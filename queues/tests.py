@@ -279,6 +279,7 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(confirmation_page, "background: #db2777 !important")
         self.assertContains(confirmation_page, "background: #facc15 !important")
         self.assertContains(confirmation_page, "background: #16a34a !important")
+        self.assertContains(confirmation_page, "confirmation-solid-20260821")
         self.assertNotContains(confirmation_page, "AI DECISION SUPPORT")
         self.assertNotContains(confirmation_page, "FINAL DECISION")
 
