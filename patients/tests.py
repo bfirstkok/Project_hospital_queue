@@ -1,11 +1,26 @@
 import json
 import uuid
+from datetime import date
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from queues.models import Queue, Visit, VitalSign
 from .models import Patient
+
+
+class PatientAgeDisplayTests(TestCase):
+    @patch("patients.models.timezone.localdate", return_value=date(2026, 8, 21))
+    def test_age_display_uses_years_months_and_days_from_birth_date(self, _localdate):
+        patient = Patient(birth_date=date(1959, 5, 9), age=66)
+
+        self.assertEqual(patient.age_breakdown, (67, 3, 12))
+        self.assertEqual(patient.age_display, "67 ปี 3 เดือน 12 วัน")
+
+    def test_age_display_falls_back_to_approximate_years(self):
+        self.assertEqual(Patient(age=67).age_display, "67 ปี")
+        self.assertEqual(Patient().age_display, "-")
 
 
 @override_settings(PATIENT_APP_ORIGINS={"https://bfirstkok.github.io"})
@@ -115,6 +130,25 @@ class PublicPatientApiTests(TestCase):
         self.assertEqual(me_response.json()["profile"]["hn"], Patient.objects.get().hn)
         self.assertEqual(me_response.json()["profile"]["national_id"], "1-xxxx-xxxxx-xx-3")
         self.assertEqual(queue_response.json()["status"], Queue.Status.WAITING_VITALS)
+
+    def test_registration_accepts_birth_date_and_profile_returns_full_age(self):
+        self.payload["birth_date"] = "1959-05-09"
+        registration = self.post_registration()
+        token = registration.json()["access_token"]
+
+        response = self.client.get(
+            "/api/patient/me/",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+            HTTP_ORIGIN="https://bfirstkok.github.io",
+        )
+
+        self.assertEqual(registration.status_code, 201)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["profile"]["birth_date"], "1959-05-09")
+        self.assertRegex(
+            response.json()["profile"]["age_display"],
+            r"^\d+ ปี \d+ เดือน \d+ วัน$",
+        )
 
     def test_protected_endpoints_reject_missing_or_tampered_token(self):
         self.post_registration()

@@ -55,7 +55,7 @@
               <td>{{ patient.first_name }} {{ patient.last_name }}</td>
               <td>{{ patient.national_id }}</td>
               <td>{{ patient.phone|default:"-" }}</td>
-              <td>{{ patient.age|default:"-" }}</td>
+              <td>{{ patient.age_display }}</td>
               <td><a class="btn" href="{% url 'patient_history' patient.id %}">ประวัติ</a></td>
             </tr>
           {% empty %}

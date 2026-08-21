@@ -231,6 +231,8 @@ def public_register(request):
         if not created:
             for field, value in form.cleaned_data.items():
                 if field != "consent":
+                    if field == "birth_date" and "birth_date" not in payload:
+                        continue
                     setattr(patient, field, value)
             patient.save()
 
@@ -379,7 +381,9 @@ def patient_me(request):
             "last_name": patient.last_name,
             "national_id": _masked_national_id(patient.national_id),
             "gender": patient.get_gender_display(),
-            "age": patient.age,
+            "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
+            "age": patient.age_years,
+            "age_display": patient.age_display,
             "phone": patient.phone,
             "blood_type": patient.get_blood_type_display(),
             "height_cm": patient.height_cm,

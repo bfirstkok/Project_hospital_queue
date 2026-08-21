@@ -97,7 +97,7 @@
                         <h3>ข้อมูลผู้ป่วย</h3>
                         <dl class="info-list">
                           <div class="info-row"><dt>ชื่อ-นามสกุล</dt><dd>{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</dd></div>
-                          <div class="info-row"><dt>อายุ</dt><dd>{{ p.age|default:"-" }}</dd></div>
+                          <div class="info-row"><dt>อายุ</dt><dd>{{ p.age_display }}</dd></div>
                           <div class="info-row"><dt>เพศ</dt><dd>{{ p.get_gender_display|default:"-" }}</dd></div>
                           <div class="info-row"><dt>เบอร์โทร</dt><dd>{{ p.phone|default:"-" }}</dd></div>
                           <div class="info-row"><dt>HN</dt><dd>{{ p.hn|default:"-" }}</dd></div>

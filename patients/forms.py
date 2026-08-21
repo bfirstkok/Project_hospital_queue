@@ -1,13 +1,23 @@
 # patients/forms.py
 from django import forms
+from django.utils import timezone
 from .models import Patient
 
-class PatientForm(forms.ModelForm):
+
+class BirthDateValidationMixin:
+    def clean_birth_date(self):
+        birth_date = self.cleaned_data.get("birth_date")
+        if birth_date and birth_date > timezone.localdate():
+            raise forms.ValidationError("วันเกิดต้องไม่เป็นวันที่ในอนาคต")
+        return birth_date
+
+
+class PatientForm(BirthDateValidationMixin, forms.ModelForm):
     class Meta:
         model = Patient
         fields = [
             "first_name", "last_name", "national_id",
-            "gender", "age", "phone",
+            "gender", "birth_date", "age", "phone",
             "blood_type",
             "height_cm", "weight_kg", "bp_sys", "bp_dia",
             "province","district","subdistrict","postal_code",
@@ -16,6 +26,7 @@ class PatientForm(forms.ModelForm):
             "note",
         ]
         widgets = {
+            "birth_date": forms.DateInput(attrs={"type": "date"}),
             "address": forms.Textarea(attrs={"rows": 3}),
             "chronic_diseases": forms.Textarea(attrs={"rows": 2}),
             "allergies": forms.Textarea(attrs={"rows": 2}),
@@ -30,20 +41,23 @@ class PatientForm(forms.ModelForm):
         return nid
 
 
-class PublicPatientRegistrationForm(forms.ModelForm):
+class PublicPatientRegistrationForm(BirthDateValidationMixin, forms.ModelForm):
     consent = forms.BooleanField(required=True)
 
     class Meta:
         model = Patient
         fields = [
             "first_name", "last_name", "national_id",
-            "gender", "age", "phone", "blood_type",
+            "gender", "birth_date", "age", "phone", "blood_type",
             "height_cm", "weight_kg",
             "province", "district", "subdistrict", "postal_code",
             "chronic_diseases", "allergies", "medications",
             "emergency_name", "emergency_relationship", "emergency_phone",
             "note",
         ]
+        widgets = {
+            "birth_date": forms.DateInput(attrs={"type": "date"}),
+        }
 
     def clean_national_id(self):
         nid = (self.cleaned_data.get("national_id") or "").strip()

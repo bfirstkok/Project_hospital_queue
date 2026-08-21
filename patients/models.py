@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 import random
 
 
@@ -93,7 +95,36 @@ class Patient(models.Model):
 
     note = models.TextField(blank=True, default="")
 
+    @property
+    def age_breakdown(self):
+        """Return the current age as years, months and days when DOB is known."""
+        if not self.birth_date:
+            return None
+        today = timezone.localdate()
+        if self.birth_date > today:
+            return None
+        difference = relativedelta(today, self.birth_date)
+        return difference.years, difference.months, difference.days
+
+    @property
+    def age_display(self):
+        breakdown = self.age_breakdown
+        if breakdown:
+            years, months, days = breakdown
+            return f"{years} ปี {months} เดือน {days} วัน"
+        if self.age is not None:
+            return f"{self.age} ปี"
+        return "-"
+
+    @property
+    def age_years(self):
+        breakdown = self.age_breakdown
+        return breakdown[0] if breakdown else self.age
+
     def save(self, *args, **kwargs):
+        breakdown = self.age_breakdown
+        if breakdown:
+            self.age = breakdown[0]
         # ถ้ายังไม่มี HN → สุ่ม 6 หลักให้เอง และกันซ้ำ
         if not self.hn:
             for _ in range(50):

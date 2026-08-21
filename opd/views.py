@@ -60,12 +60,13 @@ def _assessment_initial_from_triage(visit):
     vitals = _get_related(visit, "vitals")
     patient = visit.patient
     risk_flags = set(vitals.risk_flags or []) if vitals else set()
+    current_age = patient.age_years
 
     initial = {
         "chief_complaint": visit.note or "",
-        "age": patient.age,
+        "age": current_age,
         "known_copd_asthma": "copd_asthma" in risk_flags,
-        "child_under_5": "child_under_5" in risk_flags or (patient.age is not None and patient.age < 5),
+        "child_under_5": "child_under_5" in risk_flags or (current_age is not None and current_age < 5),
         "pregnant": "pregnant" in risk_flags,
         "low_immunity": "immunocompromised" in risk_flags,
     }

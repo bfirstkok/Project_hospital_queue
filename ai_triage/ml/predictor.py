@@ -31,7 +31,7 @@ def dt_predict(v, visit=None):
                 "bt": float(v.bt) if v.bt is not None else None,
                 "o2sat": v.o2sat,
                 "group": getattr(v, "group", None),
-                "age": getattr(patient, "age", None),
+                "age": getattr(patient, "age_years", None),
                 "nrs_pain": getattr(v, "pain_score", None),
                 "sex": getattr(v, "sex", None),
                 "arrival_mode": getattr(v, "arrival_mode", None),

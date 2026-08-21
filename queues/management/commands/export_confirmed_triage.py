@@ -68,7 +68,7 @@ class Command(BaseCommand):
                     "UNRESPONSIVE": 4,
                 }
                 writer.writerow({
-                    "age": visit.patient.age,
+                    "age": visit.patient.age_years,
                     "nrs_pain": vitals.pain_score,
                     "rr": vitals.rr,
                     "pr": vitals.pr,

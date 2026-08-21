@@ -49,7 +49,7 @@
       <aside class="panel">
         <h2>ข้อมูลผู้ป่วย</h2>
         <div class="row"><span class="muted">เลขบัตรประชาชน</span><strong>{{ patient.national_id|default:"-" }}</strong></div>
-        <div class="row"><span class="muted">อายุ</span><strong>{{ patient.age|default:"-" }}</strong></div>
+        <div class="row"><span class="muted">อายุ</span><strong>{{ patient.age_display }}</strong></div>
         <div class="row"><span class="muted">เพศ</span><strong>{{ patient.gender }}</strong></div>
         <div class="row"><span class="muted">โรคประจำตัว</span><strong>{{ patient.chronic_diseases|default:"-" }}</strong></div>
         <div class="row"><span class="muted">แพ้ยา</span><strong>{{ patient.allergies|default:"-" }}</strong></div>

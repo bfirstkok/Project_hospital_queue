@@ -76,10 +76,20 @@
             </div>
 
             <div class="field">
-              <label>อายุ</label>
+              <label>วันเดือนปีเกิด</label>
+              <input name="birth_date" type="date"
+                     class="{% if form.birth_date.errors %}has-error{% endif %}"
+                     value="{{ form.birth_date.value|default:'' }}">
+              <div class="hint">ใช้คำนวณอายุเป็นปี เดือน และวัน</div>
+              {% if form.birth_date.errors %}<div class="field-error">{{ form.birth_date.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label>อายุโดยประมาณ</label>
               <input name="age" type="number" min="0" placeholder="ปี"
                      class="{% if form.age.errors %}has-error{% endif %}"
                      value="{{ form.age.value|default:'' }}">
+              <div class="hint">กรอกเมื่อไม่ทราบวันเดือนปีเกิด</div>
               {% if form.age.errors %}<div class="field-error">{{ form.age.errors.0 }}</div>{% endif %}
             </div>
 

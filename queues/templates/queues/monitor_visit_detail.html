@@ -435,7 +435,7 @@
           <div class="mini"><div class="mini-label">นามสกุล</div><div class="mini-value">{{ visit.patient.last_name|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">HN</div><div class="mini-value mono">{{ visit.patient.hn|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">เพศ</div><div class="mini-value">{{ visit.patient.get_gender_display|default:"-" }}</div></div>
-          <div class="mini"><div class="mini-label">อายุ</div><div class="mini-value">{{ visit.patient.age|default:"-" }} ปี</div></div>
+          <div class="mini"><div class="mini-label">อายุ</div><div class="mini-value">{{ visit.patient.age_display }}</div></div>
           <div class="mini"><div class="mini-label">เลขบัตรประชาชน</div><div class="mini-value mono">{{ visit.patient.national_id|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">เบอร์โทร</div><div class="mini-value mono">{{ visit.patient.phone|default:"-" }}</div></div>
           <div class="mini"><div class="mini-label">ส่วนสูง</div><div class="mini-value">{{ visit.patient.height_cm|default:"-" }} cm</div></div>
