@@ -93,8 +93,13 @@ class NurseTriageAssessmentForm(forms.Form):
         widget=forms.RadioSelect,
     )
     expected_resources = forms.ChoiceField(
-        label="คาดว่าจะใช้ทรัพยากรทางการแพทย์กี่รายการ",
-        choices=[("", "ยังไม่ระบุ"), *TriageResult.ExpectedResources.choices],
+        label="คาดว่าจะต้องตรวจหรือรักษาเพิ่มเติมกี่ประเภท",
+        choices=[
+            ("", "ยังประเมินไม่ได้"),
+            (TriageResult.ExpectedResources.NONE, "0 ประเภท — ตรวจทั่วไปหรือรับยากินกลับบ้าน"),
+            (TriageResult.ExpectedResources.ONE, "1 ประเภท — เช่น ตรวจเลือดอย่างเดียว"),
+            (TriageResult.ExpectedResources.MANY, "2 ประเภทขึ้นไป — เช่น ตรวจเลือด + X-ray"),
+        ],
         required=False,
         widget=forms.RadioSelect,
     )

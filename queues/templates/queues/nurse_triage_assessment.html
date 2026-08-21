@@ -105,6 +105,16 @@
     .radio-cards label:has(input:checked) { border-color: #087f75; background: #e6f5f2; color: #075f58; font-weight: 750; }
     .resource-card { grid-column: 1 / -1; border-color: #b8d9d5; background: #f1faf8; }
     .resource-help { margin-top: 10px !important; padding: 9px 11px; border-radius: 8px; background: #e3f3f0; }
+    .resource-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 11px 0; }
+    .resource-level { padding: 9px 10px; border: 1px solid; border-radius: 9px; text-align: center; font-size: 12px; font-weight: 800; }
+    .resource-level.white { color: #405d6b; border-color: #94a3b8; background: #fff; }
+    .resource-level.green { color: #166534; border-color: #86c99f; background: #dcfce7; }
+    .resource-level.yellow { color: #713f12; border-color: #e4bd45; background: #fef3c7; }
+    .resource-guide { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .resource-guide > div { padding: 10px 12px; border-radius: 9px; font-size: 12px; line-height: 1.55; }
+    .resource-counted { color: #245d55; background: #e3f3f0; }
+    .resource-not-counted { color: #52636d; background: #edf3f4; }
+    .resource-guide strong { display: block; margin-bottom: 3px; color: #274755; }
     .assessment-page .control { background: #fff !important; }
     .assessment-page .unmeasured { margin: 9px 0 0; padding: 0; color: #58707c !important; font-weight: 500 !important; }
     .choice-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -126,7 +136,7 @@
     .previous-result .result-link { white-space: nowrap; }
     @media (max-width: 760px) { .summary-grid, .confirm-panel { grid-template-columns: 1fr; } .result-head { align-items: flex-start; flex-direction: column; } }
     @media (max-width: 760px) {
-      .grid, .choice-columns, .decision-grid, .step-list, .previous-result .result-body { grid-template-columns: 1fr; }
+      .grid, .choice-columns, .decision-grid, .step-list, .previous-result .result-body, .resource-map, .resource-guide { grid-template-columns: 1fr; }
       .resource-card { grid-column: auto; }
       .wrap { padding: 16px; }
       .form-section { padding: 20px 16px; }
@@ -274,9 +284,18 @@
           </div>
           <div class="decision-card resource-card">
             <h3>{{ form.expected_resources.label }}</h3>
-            <p>ใช้เมื่อคำตอบด้านฉุกเฉินข้างต้นเป็น “ไม่ใช่” เพื่อช่วยแยกระดับเหลือง เขียว และขาว</p>
+            <p>ตอบส่วนนี้เมื่อผู้ป่วยไม่เข้าข่ายช่วยชีวิตทันทีหรือฉุกเฉิน ระบบจะนำจำนวนประเภทไปพิจารณาร่วมกับอาการและสัญญาณชีพ</p>
             <div class="radio-cards">{{ form.expected_resources }}</div>
-            <p class="resource-help">ตัวอย่างทรัพยากร: ตรวจเลือด, X-ray/CT/Ultrasound, ให้ยาหรือสารน้ำทางหลอดเลือด, ทำหัตถการ หรือปรึกษาแพทย์เฉพาะทาง — การซักประวัติและตรวจร่างกายทั่วไปไม่นับเป็นทรัพยากร</p>
+            <div class="resource-map" aria-label="ความสัมพันธ์ระหว่างจำนวนประเภทกับระดับคัดกรองโดยทั่วไป">
+              <div class="resource-level white">0 ประเภท → สีขาว</div>
+              <div class="resource-level green">1 ประเภท → สีเขียว</div>
+              <div class="resource-level yellow">2 ประเภทขึ้นไป → สีเหลือง</div>
+            </div>
+            <div class="resource-guide">
+              <div class="resource-counted"><strong>นับเป็นการตรวจหรือรักษาเพิ่มเติม</strong>ตรวจเลือด/ปัสสาวะ, ECG หรือภาพถ่ายทางการแพทย์, สารน้ำหรือยาทางหลอดเลือด/ฉีด/พ่น, หัตถการ และปรึกษาแพทย์เฉพาะทาง</div>
+              <div class="resource-not-counted"><strong>ไม่นับ</strong>ซักประวัติและตรวจร่างกายทั่วไป, ยากินกลับบ้าน, ฉีดบาดทะยัก, ทำแผลทั่วไป หรือโทรปรึกษาแพทย์ประจำตัว</div>
+            </div>
+            <p class="resource-help">ให้นับเป็น “ประเภท” ไม่ใช่จำนวนครั้ง เช่น ตรวจเลือดหลายรายการยังนับเป็น 1 ประเภท และเมื่อนับได้ 2 ประเภทแล้วไม่ต้องนับต่อ</p>
             {% for error in form.expected_resources.errors %}<div class="error">{{ error }}</div>{% endfor %}
           </div>
         </div>
