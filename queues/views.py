@@ -169,6 +169,18 @@ def queue_list(request):
     })
 
 
+@require_GET
+def queue_display(request):
+    """Privacy-safe waiting-room display; exposes queue numbers, never patient data."""
+    q_items = (
+        Queue.objects
+        .select_related("visit")
+        .filter(status__in=QUEUE_READY_STATUSES)
+        .order_by("priority", "visit__confirmed_at", "created_at")
+    )
+    return render(request, "queues/queue_display.html", {"q_items": q_items})
+
+
 def _vitals_payload(vitals):
     if not vitals:
         return {"hr": None, "o2sat": None, "bt": None, "rr": None, "sys_bp": None, "dia_bp": None}

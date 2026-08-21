@@ -7,6 +7,7 @@ from opd import views as opd_views
 
 urlpatterns = [
     path("", views.queue_list, name="queue_list"),
+    path("display/", views.queue_display, name="queue_display"),
     path("waiting-vitals/", views.waiting_vitals, name="waiting_vitals"),
     path("waiting-confirmation/", views.waiting_confirmation, name="waiting_confirmation"),
     path("emergency-transfers/", views.emergency_transfers, name="emergency_transfers"),

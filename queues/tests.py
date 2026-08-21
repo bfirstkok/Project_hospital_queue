@@ -313,6 +313,18 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "js-wait-time")
         self.assertContains(response, "สีเหลือง · เร่งด่วน")
         self.assertContains(response, "เปลี่ยนระดับ…")
+        self.assertContains(response, "เปิดจอแสดงคิวผู้ป่วย")
+        self.assertContains(response, reverse("queue_display"))
+
+        # The waiting-room screen is public but must never expose patient data.
+        self.client.logout()
+        display = self.client.get(reverse("queue_display"))
+        self.assertEqual(display.status_code, 200)
+        self.assertContains(display, visit.queue.display_number)
+        self.assertContains(display, "ข้อมูลรีเฟรชอัตโนมัติทุก 30 วินาที")
+        self.assertContains(display, "เร่งด่วน")
+        self.assertNotContains(display, "Demo Queue")
+        self.assertNotContains(display, visit.patient.national_id)
 
     def test_waiting_confirmation_can_return_to_waiting_vitals(self):
         self.register_patient()

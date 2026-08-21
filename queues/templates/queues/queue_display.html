@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="30">
+  <title>จอแสดงคิวรอตรวจ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: #101827; background: #e9eef7; font-family: "Sarabun", sans-serif; }
+    .screen { width: min(1500px, calc(100% - 36px)); margin: 0 auto; padding: 18px 0 24px; }
+    .screen-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 24px; color: #fff; background: #251070; border-radius: 14px 14px 0 0; }
+    .screen-title { margin: 0; font-size: clamp(31px, 3.2vw, 52px); line-height: 1.1; }
+    .screen-subtitle { margin-top: 6px; color: rgba(255,255,255,.78); font-size: clamp(16px, 1.5vw, 23px); }
+    .clock { min-width: 145px; font-size: clamp(27px, 3vw, 47px); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .table-wrap { overflow: hidden; border: 4px solid #efb6f0; border-top: 0; background: #fff; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { padding: 13px 10px; color: #fff; background: #321596; border-right: 4px solid #efb6f0; font-size: clamp(20px, 2vw, 31px); text-align: center; }
+    th:last-child, td:last-child { border-right: 0; }
+    td { height: 76px; padding: 8px 10px; border-right: 4px solid #efb6f0; border-bottom: 4px solid #efb6f0; background: #fff; font-size: clamp(22px, 2.3vw, 36px); font-weight: 700; text-align: center; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .queue-number { color: #211071; font-size: clamp(28px, 3vw, 45px); }
+    .wait-time { font-variant-numeric: tabular-nums; }
+    .severity { display: inline-flex; min-width: 180px; align-items: center; justify-content: center; padding: 7px 13px; border-radius: 9px; }
+    .red { color: #bd1f26; background: #ffe7e8; }
+    .pink { color: #bc1d64; background: #ffe4f1; }
+    .yellow { color: #8a6400; background: #fff2b8; }
+    .green { color: #13843e; background: #def6e7; }
+    .white { color: #506777; background: #eaf0f3; }
+    .called td { background: #dff8f1; }
+    .status-called { display: inline-flex; padding: 7px 16px; border-radius: 999px; color: #fff; background: #078674; animation: pulse 1.4s infinite; }
+    .status-waiting { color: #526b79; }
+    .empty { height: 280px; color: #657a86; font-size: clamp(25px, 3vw, 43px); }
+    .screen-footer { display: flex; justify-content: space-between; gap: 16px; padding: 13px 6px 0; color: #5d7280; font-size: 17px; }
+    @keyframes pulse { 50% { opacity: .65; } }
+    @media (max-width: 760px) { .screen { width: calc(100% - 16px); } .screen-head { align-items: flex-start; flex-direction: column; } .clock { text-align: left; } table { min-width: 720px; } .table-wrap { overflow-x: auto; } .screen-footer { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="screen">
+    <header class="screen-head">
+      <div>
+        <h1 class="screen-title">คิวรอตรวจ OPD</h1>
+        <div class="screen-subtitle">กรุณารอเรียกตามหมายเลขคิว</div>
+      </div>
+      <div class="clock" id="clock" aria-label="เวลาปัจจุบัน">--:--:--</div>
+    </header>
+    <div class="table-wrap">
+      <table>
+        <colgroup><col style="width:12%"><col style="width:22%"><col style="width:20%"><col style="width:25%"><col style="width:21%"></colgroup>
+        <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>เร่งด่วน</th><th>สถานะ</th></tr></thead>
+        <tbody>
+          {% for q in q_items %}
+            {% with v=q.visit %}
+            <tr{% if q.status == "CALLED" %} class="called"{% endif %}>
+              <td>{{ forloop.counter }}</td>
+              <td class="queue-number">{{ q.display_number }}</td>
+              <td><span class="wait-time js-wait-time" data-start="{{ v.registered_at|date:'c' }}">--:--</span></td>
+              <td>
+                {% if v.final_severity == "RED" %}<span class="severity red">วิกฤต</span>
+                {% elif v.final_severity == "PINK" %}<span class="severity pink">ฉุกเฉิน</span>
+                {% elif v.final_severity == "YELLOW" %}<span class="severity yellow">เร่งด่วน</span>
+                {% elif v.final_severity == "GREEN" %}<span class="severity green">ไม่เร่งด่วน</span>
+                {% else %}<span class="severity white">ทั่วไป</span>{% endif %}
+              </td>
+              <td>{% if q.status == "CALLED" %}<span class="status-called">กำลังเรียก</span>{% else %}<span class="status-waiting">รอเรียก</span>{% endif %}</td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td class="empty" colspan="5">ขณะนี้ยังไม่มีคิวรอตรวจ</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <footer class="screen-footer"><span>จอนี้แสดงเฉพาะหมายเลขคิว ไม่แสดงข้อมูลส่วนบุคคล</span><span>ข้อมูลรีเฟรชอัตโนมัติทุก 30 วินาที</span></footer>
+  </main>
+  <script>
+    function updateScreen() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH', { hour12: false });
+      const nowMs = Date.now();
+      document.querySelectorAll('.js-wait-time').forEach((element) => {
+        const start = Date.parse(element.dataset.start);
+        if (Number.isNaN(start)) { element.textContent = '--:--'; return; }
+        const minutes = Math.max(0, Math.floor((nowMs - start) / 60000));
+        element.textContent = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+      });
+    }
+    updateScreen();
+    window.setInterval(updateScreen, 1000);
+  </script>
+</body>
+</html>
