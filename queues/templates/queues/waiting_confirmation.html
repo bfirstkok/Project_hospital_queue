@@ -7,7 +7,33 @@
   <title>พยาบาลยืนยันผลคัดกรอง</title>
   <style>
     body { margin: 0; font-family: "Sarabun", Arial, sans-serif; }
-    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .page-shell { box-sizing: border-box; display: grid; grid-template-columns: 260px minmax(0, 1240px); gap: 18px; align-items: start; width: min(1600px, 100%); margin: 0 auto; padding: 24px; }
+    .wrap { min-width: 0; margin: 0; padding: 0; }
+    .criteria-sidebar { position: sticky; top: 18px; padding: 15px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
+    .criteria-sidebar h2 { margin: 0; color: #173242; font-size: 18px; }
+    .criteria-intro { margin: 4px 0 12px; color: #607783; font-size: 11px; line-height: 1.45; }
+    .criteria-list { display: grid; gap: 8px; }
+    .criteria-item { overflow: hidden; border: 1px solid #dbe7ea; border-radius: 9px; background: #fbfdfd; }
+    .criteria-head { display: flex; align-items: center; gap: 7px; padding: 8px 9px 6px; font-size: 12px; font-weight: 900; }
+    .criteria-level { display: inline-grid; place-items: center; width: 23px; height: 23px; flex: 0 0 23px; border-radius: 50%; color: #fff; font-size: 11px; }
+    .criteria-copy { margin: 0; padding: 0 9px 9px 39px; color: #526b77; font-size: 10.5px; line-height: 1.42; }
+    .criteria-route { display: block; margin-top: 3px; font-weight: 800; }
+    .criteria-item.red { border-color: #efbcbc; background: #fff5f5; }
+    .criteria-item.red .criteria-head, .criteria-item.red .criteria-route { color: #b42323; }
+    .criteria-item.red .criteria-level { background: #dc2626; }
+    .criteria-item.pink { border-color: #efb7cf; background: #fff4f8; }
+    .criteria-item.pink .criteria-head, .criteria-item.pink .criteria-route { color: #a81f5d; }
+    .criteria-item.pink .criteria-level { background: #db2777; }
+    .criteria-item.yellow { border-color: #ead493; background: #fffaf0; }
+    .criteria-item.yellow .criteria-head, .criteria-item.yellow .criteria-route { color: #875700; }
+    .criteria-item.yellow .criteria-level { color: #422006; background: #facc15; }
+    .criteria-item.green { border-color: #b9dfc9; background: #f1fbf5; }
+    .criteria-item.green .criteria-head, .criteria-item.green .criteria-route { color: #18794e; }
+    .criteria-item.green .criteria-level { background: #16a34a; }
+    .criteria-item.white { border-color: #cfdadd; background: #fff; }
+    .criteria-item.white .criteria-head, .criteria-item.white .criteria-route { color: #405866; }
+    .criteria-item.white .criteria-level { color: #334f5d; border: 1px solid #8da1aa; background: #fff; }
+    .criteria-note { margin: 11px 0 0; padding: 9px; border-radius: 8px; background: #eaf6f5; color: #405d6b; font-size: 10px; line-height: 1.45; }
     .hero-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; margin-bottom: 16px; padding: 18px 20px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; }
     .title-row { display: flex; align-items: center; gap: 12px; }
     .title-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 12px; background: #e4f4f2; color: #087f75; font-weight: 900; }
@@ -98,8 +124,16 @@
       .risk-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .alternative-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    @media (max-width: 1180px) {
+      .page-shell { grid-template-columns: 1fr; }
+      .criteria-sidebar { position: static; }
+      .criteria-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .criteria-copy { padding-left: 9px; }
+    }
     @media (max-width: 620px) {
-      .wrap { padding: 14px; }
+      .page-shell { padding: 14px; }
+      .criteria-list { grid-template-columns: 1fr; }
+      .criteria-copy { padding-left: 39px; }
       .patient-head { align-items: flex-start; flex-direction: column; }
       .detail-open { width: 100%; }
       .risk-checks, .detail-grid { grid-template-columns: 1fr; }
@@ -110,7 +144,36 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=confirmation-solid-20260821">
 </head>
 <body class="waiting-confirmation-page">
-  <main class="wrap">
+  <div class="page-shell">
+    <aside class="criteria-sidebar" aria-labelledby="criteria-title">
+      <h2 id="criteria-title">เกณฑ์ระดับคัดกรอง</h2>
+      <p class="criteria-intro">สรุปเพื่อช่วยเทียบระดับก่อนยืนยันผลขั้นสุดท้าย</p>
+      <div class="criteria-list">
+        <section class="criteria-item red">
+          <div class="criteria-head"><span class="criteria-level">1</span><span>สีแดง · ช่วยชีวิตทันที</span></div>
+          <p class="criteria-copy">ภาวะคุกคามชีวิต หายใจล้มเหลว ช็อก ไม่ตอบสนอง ชักต่อเนื่อง หรือเลือดออกรุนแรง<span class="criteria-route">ส่งต่อฉุกเฉินทันที · ไม่รอคิว/นาฬิกา</span></p>
+        </section>
+        <section class="criteria-item pink">
+          <div class="criteria-head"><span class="criteria-level">2</span><span>สีชมพู · ฉุกเฉิน</span></div>
+          <p class="criteria-copy">ภาวะเสี่ยงสูง สัญญาณชีพอันตราย ซึม สับสน หรือทุกข์ทรมานรุนแรง<span class="criteria-route">ประเมินฉุกเฉินโดยเร็ว · ไม่รอ OPD ปกติ</span></p>
+        </section>
+        <section class="criteria-item yellow">
+          <div class="criteria-head"><span class="criteria-level">3</span><span>สีเหลือง · เฝ้าระวัง</span></div>
+          <p class="criteria-copy">มีความผิดปกติที่ต้องติดตาม ปวดรุนแรงแต่ยังไม่มีภาวะคุกคามชีวิต หรือมีกลุ่มเสี่ยง<span class="criteria-route">คิวเร่งด่วน/เฝ้าระวัง · ผูกนาฬิกาได้</span></p>
+        </section>
+        <section class="criteria-item green">
+          <div class="criteria-head"><span class="criteria-level">4</span><span>สีเขียว · ไม่เร่งด่วน</span></div>
+          <p class="criteria-copy">อาการและสัญญาณชีพคงที่ ไม่พบสัญญาณอันตราย แต่ยังควรรับบริการ OPD<span class="criteria-route">เข้าคิว OPD · ไม่ต้องผูกนาฬิกา</span></p>
+        </section>
+        <section class="criteria-item white">
+          <div class="criteria-head"><span class="criteria-level">5</span><span>สีขาว · ผู้ป่วยทั่วไป</span></div>
+          <p class="criteria-copy">อาการทั่วไป ไม่เร่งด่วน สัญญาณชีพคงที่ และคาดว่าไม่ต้องใช้ทรัพยากรเพิ่มเติม<span class="criteria-route">เข้าคิวผู้ป่วยทั่วไป</span></p>
+        </section>
+      </div>
+      <p class="criteria-note"><strong>ข้อควรจำ:</strong> ไม่ตัดสินจากค่าเดียว ต้องพิจารณาอาการ สัญญาณชีพ อายุ โรคร่วม และบริบททางคลินิก โดยพยาบาลเป็นผู้ยืนยันเสมอ</p>
+    </aside>
+
+    <main class="wrap">
     {% if messages %}
       <div class="page-messages" role="alert">
         {% for message in messages %}<div class="page-message">{{ message }}</div>{% endfor %}
@@ -281,7 +344,8 @@
         <div class="empty">ไม่มีผู้ป่วยรอพยาบาลยืนยันผลคัดกรอง</div>
       {% endfor %}
     </div>
-  </main>
+    </main>
+  </div>
   <script>
     document.querySelectorAll(".js-open-modal").forEach((button) => {
       button.addEventListener("click", () => {

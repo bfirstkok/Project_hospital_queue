@@ -442,6 +442,13 @@ class ConfirmedTriageFlowTests(TestCase):
         self.assertContains(page, "กรุณาระบุเหตุผลเพิ่มเติมเมื่อยืนยันระดับต่างจากคำแนะนำของ AI")
         self.assertContains(page, "data-ai-severity=\"YELLOW\"")
         self.assertContains(page, "การเปลี่ยนจาก${severityLabels[aiSeverity]}เป็น${severityLabels[selectedSeverity]}")
+        self.assertContains(page, 'class="criteria-sidebar"')
+        self.assertContains(page, "เกณฑ์ระดับคัดกรอง")
+        self.assertContains(page, "สีแดง · ช่วยชีวิตทันที")
+        self.assertContains(page, "สีชมพู · ฉุกเฉิน")
+        self.assertContains(page, "สีเหลือง · เฝ้าระวัง")
+        self.assertContains(page, "สีเขียว · ไม่เร่งด่วน")
+        self.assertContains(page, "สีขาว · ผู้ป่วยทั่วไป")
 
     def test_nurse_can_override_red_to_yellow_with_reason(self):
         visit = self.make_visit()
