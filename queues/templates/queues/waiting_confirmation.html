@@ -58,13 +58,15 @@
     .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 50px; padding: 8px 10px; resize: vertical; }
     .primary-confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 38px; border: 0; border-radius: 7px; background: #087f75; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
     .alternative-label { grid-column: 1 / -1; margin: -1px 0 0; color: #738791; font-size: 10px; text-align: center; }
-    .alternative-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+    .alternative-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 9px; border: 1px solid #cddce1; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; text-decoration: none; font-weight: 700; cursor: pointer; }
-    .btn.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
-    .btn.pink { color: #a92d63; border-color: #efb7cf; background: #fff0f6; }
-    .btn.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
-    .btn.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
-    .btn.white { color: #52636d; border-color: #cfdadd; background: #f7fafb; }
+    .waiting-confirmation-page .alternative-actions .btn { min-height: 40px; border-width: 2px !important; font-size: 13px; font-weight: 800; box-shadow: 0 4px 10px rgba(38,75,89,.12) !important; }
+    .waiting-confirmation-page .alternative-actions .btn.red { color: #fff !important; border-color: #b91c1c !important; background: #dc2626 !important; }
+    .waiting-confirmation-page .alternative-actions .btn.pink { color: #fff !important; border-color: #be185d !important; background: #db2777 !important; }
+    .waiting-confirmation-page .alternative-actions .btn.yellow { color: #422006 !important; border-color: #d99a00 !important; background: #facc15 !important; }
+    .waiting-confirmation-page .alternative-actions .btn.green { color: #fff !important; border-color: #15803d !important; background: #16a34a !important; }
+    .waiting-confirmation-page .alternative-actions .btn.white { color: #243b49 !important; border-color: #64748b !important; background: #fff !important; }
+    .waiting-confirmation-page .alternative-actions .btn:hover { filter: brightness(.92); box-shadow: 0 7px 16px rgba(38,75,89,.18) !important; }
     .return-form { margin-top: 6px; }
     .return-form .btn { width: 100%; }
     .empty { padding: 48px 18px; border: 1px dashed #cddfe3; border-radius: 14px; background: #fff; color: #607783; text-align: center; }
