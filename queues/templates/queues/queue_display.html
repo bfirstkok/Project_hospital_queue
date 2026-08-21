@@ -56,7 +56,7 @@
             <tr{% if q.status == "CALLED" %} class="called"{% endif %}>
               <td>{{ forloop.counter }}</td>
               <td class="queue-number">{{ q.display_number }}</td>
-              <td><span class="wait-time js-wait-time" data-start="{{ v.registered_at|date:'c' }}">--:--</span></td>
+              <td><span class="wait-time js-wait-time" data-start="{% if v.confirmed_at %}{{ v.confirmed_at|date:'c' }}{% else %}{{ v.registered_at|date:'c' }}{% endif %}" data-end="{% if v.called_at %}{{ v.called_at|date:'c' }}{% endif %}">--:--</span></td>
               <td>
                 {% if v.final_severity == "RED" %}<span class="severity red">วิกฤต</span>
                 {% elif v.final_severity == "PINK" %}<span class="severity pink">ฉุกเฉิน</span>
@@ -76,6 +76,14 @@
     <footer class="screen-footer"><span>จอนี้แสดงเฉพาะหมายเลขคิว ไม่แสดงข้อมูลส่วนบุคคล</span><span>ข้อมูลรีเฟรชอัตโนมัติทุก 30 วินาที</span></footer>
   </main>
   <script>
+    function formatWaitDuration(totalMinutes) {
+      const days = Math.floor(totalMinutes / 1440);
+      const remainingMinutes = totalMinutes % 1440;
+      const hours = Math.floor(remainingMinutes / 60);
+      const minutes = remainingMinutes % 60;
+      const clockPart = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      return days > 0 ? `${days} วัน ${clockPart}` : clockPart;
+    }
     function updateScreen() {
       const now = new Date();
       document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH', { hour12: false });
@@ -83,8 +91,9 @@
       document.querySelectorAll('.js-wait-time').forEach((element) => {
         const start = Date.parse(element.dataset.start);
         if (Number.isNaN(start)) { element.textContent = '--:--'; return; }
-        const minutes = Math.max(0, Math.floor((nowMs - start) / 60000));
-        element.textContent = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+        const end = element.dataset.end ? Date.parse(element.dataset.end) : nowMs;
+        const minutes = Math.max(0, Math.floor(((Number.isNaN(end) ? nowMs : end) - start) / 60000));
+        element.textContent = formatWaitDuration(minutes);
       });
     }
     updateScreen();

@@ -100,7 +100,7 @@
               <tr>
                 <td><span class="order-number">{{ forloop.counter }}</span></td>
                 <td><span class="queue-number">{{ q.display_number }}</span><span class="patient-secondary">{{ v.patient.first_name }} {{ v.patient.last_name }}</span></td>
-                <td><span class="wait-time js-wait-time" data-start="{{ v.registered_at|date:'c' }}">--:--</span></td>
+                <td><span class="wait-time js-wait-time" data-start="{% if v.confirmed_at %}{{ v.confirmed_at|date:'c' }}{% else %}{{ v.registered_at|date:'c' }}{% endif %}" data-end="{% if v.called_at %}{{ v.called_at|date:'c' }}{% endif %}">--:--</span></td>
                 <td>
                   {% if v.final_severity == "RED" %}<span class="severity red">สีแดง · วิกฤต</span>
                   {% elif v.final_severity == "PINK" %}<span class="severity pink">สีชมพู · ฉุกเฉิน</span>
@@ -139,13 +139,22 @@
       const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
       return match ? decodeURIComponent(match[1]) : '';
     }
+    function formatWaitDuration(totalMinutes) {
+      const days = Math.floor(totalMinutes / 1440);
+      const remainingMinutes = totalMinutes % 1440;
+      const hours = Math.floor(remainingMinutes / 60);
+      const minutes = remainingMinutes % 60;
+      const clockPart = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      return days > 0 ? `${days} วัน ${clockPart}` : clockPart;
+    }
     function updateWaitTimes() {
       const now = Date.now();
       document.querySelectorAll('.js-wait-time').forEach((element) => {
         const startedAt = Date.parse(element.dataset.start);
         if (Number.isNaN(startedAt)) { element.textContent = '--:--'; return; }
-        const totalMinutes = Math.max(0, Math.floor((now - startedAt) / 60000));
-        element.textContent = `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+        const endedAt = element.dataset.end ? Date.parse(element.dataset.end) : now;
+        const totalMinutes = Math.max(0, Math.floor(((Number.isNaN(endedAt) ? now : endedAt) - startedAt) / 60000));
+        element.textContent = formatWaitDuration(totalMinutes);
       });
     }
     async function setSeverity(visitId, severity) {
