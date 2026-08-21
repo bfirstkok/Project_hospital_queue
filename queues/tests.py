@@ -270,6 +270,7 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(confirmation_page, "คำแนะนำจากระบบ")
         self.assertContains(confirmation_page, "พยาบาลตรวจและยืนยัน")
         self.assertContains(confirmation_page, "ยืนยันตามคำแนะนำ · สีเขียว")
+        self.assertContains(confirmation_page, "กลับไปประเมินข้อมูลสุขภาพใหม่")
         self.assertNotContains(confirmation_page, "AI DECISION SUPPORT")
         self.assertNotContains(confirmation_page, "FINAL DECISION")
 

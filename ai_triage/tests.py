@@ -50,8 +50,9 @@ class AiTriageGuardrailTests(TestCase):
         localized = localize_ai_reason(reason)
 
         self.assertIn("ไม่พบค่าสัญญาณชีพที่เข้าเกณฑ์วิกฤต", localized)
-        self.assertIn("โมเดลแนะนำ YELLOW", localized)
-        self.assertIn("ผลจากกฎความปลอดภัย RED", localized)
+        self.assertIn("ระบบตรวจพบเงื่อนไขความปลอดภัย", localized)
+        self.assertIn("ปรับคำแนะนำจากสีเหลืองเป็นสีแดง", localized)
+        self.assertNotIn("โมเดลแนะนำ", localized)
 
     @patch("ai_triage.services.dt_predict", return_value=("GREEN", 0.9, "model"))
     def test_low_o2_below_95_is_pink(self, _mock_dt):

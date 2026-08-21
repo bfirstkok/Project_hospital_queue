@@ -1,4 +1,6 @@
 ﻿from django.utils import timezone
+import re
+
 from ai_triage.rules import infer_urgent_symptoms, rule_based_triage
 from ai_triage.ml.predictor import dt_predict
 from queues.models import TriageResult
@@ -46,6 +48,29 @@ def localize_ai_reason(reason):
     localized = str(reason)
     for source, target in replacements:
         localized = localized.replace(source, target)
+
+    severity_labels = {
+        "RED": "สีแดง",
+        "PINK": "สีชมพู",
+        "YELLOW": "สีเหลือง",
+        "GREEN": "สีเขียว",
+        "WHITE": "สีขาว",
+    }
+
+    def replace_guardrail(match):
+        model_level = severity_labels.get(match.group(1), match.group(1))
+        safe_level = severity_labels.get(match.group(2), match.group(2))
+        return (
+            "ระบบตรวจพบเงื่อนไขความปลอดภัย "
+            f"จึงปรับคำแนะนำจาก{model_level}เป็น{safe_level}"
+        )
+
+    localized = re.sub(
+        r"ระบบกฎความปลอดภัยปรับระดับคำแนะนำ "
+        r"\(โมเดลแนะนำ ([A-Z]+), ผลจากกฎความปลอดภัย ([A-Z]+)\)",
+        replace_guardrail,
+        localized,
+    )
     return localized
 
 
