@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>ลงทะเบียนผู้ป่วย</title>
+  <title>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วย{% endif %}</title>
   <link rel="stylesheet" href="{% static 'css/register_dark.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
@@ -26,6 +26,11 @@
   <div class="content">
     <div class="content-wrapper">
       <div class="card">
+
+        {% if is_edit %}
+          <h2>แก้ไขข้อมูลผู้ป่วย</h2>
+          <div class="hint">แก้ไขเฉพาะข้อมูลของผู้ป่วยรายนี้ โดยระบบจะไม่สร้าง Visit หรือคิวใหม่</div>
+        {% endif %}
 
         {% if form.errors %}
           <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก (ดูข้อความสีแดงใต้แต่ละช่อง)</div>
@@ -241,8 +246,8 @@
 
           <!-- ================= FOOTER ================= -->
           <div class="footer">
-            <button id="submitPatientBtn" class="btn primary" type="submit">✅ บันทึกผู้ป่วย</button>
-            <a class="btn ghost" href="{% url 'queue_list' %}">ยกเลิก</a>
+            <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}✅ บันทึกการแก้ไข{% else %}✅ บันทึกผู้ป่วย{% endif %}</button>
+            <a class="btn ghost" href="{% if is_edit %}{% url 'waiting_vitals' %}{% else %}{% url 'queue_list' %}{% endif %}">ยกเลิก</a>
           </div>
 
         </form>

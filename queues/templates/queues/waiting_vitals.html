@@ -25,7 +25,9 @@
     .table td:nth-child(2) { font-size: 20px; font-weight: 600; }
     .patient-name { font-weight: 900; color: #f8fbff; font-size: 20px; }
     .detail-box { margin-top: 8px; }
+    .patient-actions { display: flex; flex-wrap: wrap; gap: 7px; }
     .detail-open { min-height: 30px; color: #dbeafe; background: rgba(56,189,248,.11); border-color: rgba(56,189,248,.28); }
+    .patient-edit { min-height: 30px; color: #fef3c7; background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.32); }
     .patient-modal { width: min(820px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 48px)); padding: 0; color: #edf4ff; background: #0b1628; border: 1px solid rgba(174,194,220,.22); border-radius: 12px; box-shadow: 0 24px 90px rgba(0,0,0,.52); overflow: hidden; }
     .patient-modal::backdrop { background: rgba(2,8,20,.72); backdrop-filter: blur(3px); }
     .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid rgba(174,194,220,.12); background: rgba(255,255,255,.04); }
@@ -93,7 +95,10 @@
             <td>
               <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
               <div class="detail-box">
-                <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย</button>
+                <div class="patient-actions">
+                  <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย</button>
+                  <a class="btn patient-edit" href="{% url 'edit_patient' p.id %}">แก้ไขข้อมูลผู้ป่วย</a>
+                </div>
                 <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
                   <div class="modal-head">
                     <div>

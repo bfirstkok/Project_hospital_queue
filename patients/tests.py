@@ -47,6 +47,45 @@ class PatientAgeDisplayTests(TestCase):
         self.assertEqual(patient.age_display, "67 ปี 3 เดือน 12 วัน")
         self.assertEqual(patient.visits.count(), 0)
 
+    def test_staff_can_edit_patient_without_creating_a_visit_or_queue(self):
+        user = get_user_model().objects.create_user(username="editor", password="test-only-password")
+        patient = Patient.objects.create(
+            first_name="ชื่อเดิม",
+            last_name="นามสกุลเดิม",
+            national_id="1111111111119",
+            age=45,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("edit_patient", args=[patient.id]))
+        self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")
+        self.assertContains(response, "ชื่อเดิม")
+
+        response = self.client.post(
+            reverse("edit_patient", args=[patient.id]),
+            {
+                "first_name": "ชื่อใหม่",
+                "last_name": patient.last_name,
+                "national_id": patient.national_id,
+                "gender": patient.gender,
+                "age": 46,
+                "phone": "0800000000",
+                "blood_type": patient.blood_type,
+                "province": "",
+                "district": "",
+                "subdistrict": "",
+                "postal_code": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("waiting_vitals"))
+        patient.refresh_from_db()
+        self.assertEqual(patient.first_name, "ชื่อใหม่")
+        self.assertEqual(patient.age, 46)
+        self.assertEqual(patient.phone, "0800000000")
+        self.assertEqual(patient.visits.count(), 0)
+        self.assertEqual(Queue.objects.count(), 0)
+
 
 @override_settings(PATIENT_APP_ORIGINS={"https://bfirstkok.github.io"})
 class PublicPatientApiTests(TestCase):

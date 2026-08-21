@@ -476,6 +476,25 @@ def register_patient(request):
 
 
 @login_required
+def edit_patient(request, patient_id):
+    patient = get_object_or_404(Patient, pk=patient_id)
+    if request.method == "POST":
+        form = PatientForm(request.POST, instance=patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "แก้ไขข้อมูลผู้ป่วยเรียบร้อยแล้ว")
+            return redirect("waiting_vitals")
+    else:
+        form = PatientForm(instance=patient)
+
+    return render(
+        request,
+        "patients/register.html",
+        {"form": form, "is_edit": True, "patient": patient},
+    )
+
+
+@login_required
 @require_POST
 def update_patient_birth_date(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id)
