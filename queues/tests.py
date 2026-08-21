@@ -430,12 +430,35 @@ class ConfirmedTriageFlowTests(TestCase):
             {"severity": Visit.Severity.RED, "nurse_note": ""},
         )
 
-        self.assertRedirects(response, reverse("waiting_confirmation"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("waiting_confirmation"))
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
         self.assertIsNone(visit.final_severity)
         self.assertEqual(visit.queue.status, Queue.Status.WAITING_CONFIRMATION)
         self.assertIsNone(visit.triage_result.nurse_severity)
+
+        page = self.client.get(reverse("waiting_confirmation"))
+        self.assertContains(page, "กรุณาระบุเหตุผลเพิ่มเติมเมื่อยืนยันระดับต่างจากคำแนะนำของ AI")
+        self.assertContains(page, "data-ai-severity=\"YELLOW\"")
+        self.assertContains(page, "การเปลี่ยนจาก${severityLabels[aiSeverity]}เป็น${severityLabels[selectedSeverity]}")
+
+    def test_nurse_can_override_red_to_yellow_with_reason(self):
+        visit = self.make_visit()
+        visit.triage_result.ai_severity = Visit.Severity.RED
+        visit.triage_result.save(update_fields=["ai_severity"])
+
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            {"severity": Visit.Severity.YELLOW, "nurse_note": "ประเมินซ้ำแล้วรู้สึกตัวดีและสัญญาณชีพคงที่"},
+        )
+
+        self.assertRedirects(response, reverse("queue_list"))
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
+        self.assertEqual(visit.triage_result.nurse_severity, Visit.Severity.YELLOW)
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
 
     def test_nurse_confirmation_updates_special_groups(self):
         visit = self.make_visit()

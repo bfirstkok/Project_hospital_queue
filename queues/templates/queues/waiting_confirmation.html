@@ -19,6 +19,8 @@
     .summary-label { color: #607783; font-size: 12px; font-weight: 700; }
     .summary-note { display: flex; align-items: center; gap: 11px; color: #405d6b; }
     .summary-note-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: #e8f7f5; color: #087f75; font-weight: 900; }
+    .page-messages { display: grid; gap: 8px; margin-bottom: 14px; }
+    .page-message { padding: 11px 13px; border: 1px solid #efb7b7; border-left: 5px solid #dc2626; border-radius: 9px; color: #991b1b; background: #fee2e2; font-weight: 750; }
     .confirmation-list { display: grid; gap: 12px; }
     .confirmation-card { overflow: hidden; border: 1px solid #cddfe3; border-radius: 12px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
     .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
@@ -56,6 +58,8 @@
     .risk-checks label:has(input:checked) { border-color: #55aaa2; background: #e9f7f5; }
     .waiting-confirmation-page .risk-checks input[type="checkbox"] { width: 17px !important; height: 17px !important; min-height: 17px !important; flex: 0 0 17px; margin: 0; padding: 0 !important; box-shadow: none !important; }
     .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 50px; padding: 8px 10px; resize: vertical; }
+    .waiting-confirmation-page textarea.input-error { border: 2px solid #dc2626 !important; background: #fff5f5 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important; }
+    .override-error { margin-top: 5px; padding: 7px 9px; border-radius: 7px; color: #991b1b; background: #fee2e2; font-size: 11px; font-weight: 750; }
     .primary-confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 38px; border: 0; border-radius: 7px; background: #087f75; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
     .alternative-label { grid-column: 1 / -1; margin: -1px 0 0; color: #738791; font-size: 10px; text-align: center; }
     .alternative-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
@@ -107,6 +111,11 @@
 </head>
 <body class="waiting-confirmation-page">
   <main class="wrap">
+    {% if messages %}
+      <div class="page-messages" role="alert">
+        {% for message in messages %}<div class="page-message">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
     <div class="hero-card">
       <div class="title-row">
         <div class="title-icon">✓</div>
@@ -170,7 +179,7 @@
               <h2 class="decision-title">ผลคัดกรองขั้นสุดท้าย</h2>
               <p class="decision-help">ตรวจกลุ่มพิเศษและเพิ่มเหตุผลหากเลือกต่างจากคำแนะนำของระบบ</p>
 
-              <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-form">
+              <form method="post" action="{% url 'triage_visit' v.id %}" class="confirm-form" data-ai-severity="{{ tr.ai_severity|default:'' }}">
                 {% csrf_token %}
                 <div class="field-group">
                   <strong>กลุ่มพิเศษ</strong>
@@ -189,6 +198,7 @@
                 <div class="field-group">
                   <label for="nurse-note-{{ v.id }}">เหตุผลเพิ่มเติม</label>
                   <textarea id="nurse-note-{{ v.id }}" name="nurse_note" placeholder="จำเป็นเมื่อเลือกระดับต่างจากคำแนะนำของระบบ">{{ tr.nurse_note }}</textarea>
+                  <div class="override-error" role="alert" hidden></div>
                 </div>
 
                 {% if tr.ai_severity %}
@@ -282,6 +292,39 @@
     document.querySelectorAll(".patient-modal").forEach((modal) => {
       modal.addEventListener("click", (event) => {
         if (event.target === modal) modal.close();
+      });
+    });
+
+    const severityLabels = {
+      RED: "สีแดง",
+      PINK: "สีชมพู",
+      YELLOW: "สีเหลือง",
+      GREEN: "สีเขียว",
+      WHITE: "สีขาว"
+    };
+    document.querySelectorAll(".confirm-form").forEach((form) => {
+      const aiSeverity = form.dataset.aiSeverity;
+      const note = form.querySelector("textarea[name='nurse_note']");
+      const error = form.querySelector(".override-error");
+
+      form.addEventListener("submit", (event) => {
+        const selectedSeverity = event.submitter && event.submitter.value;
+        if (!aiSeverity || !selectedSeverity || selectedSeverity === aiSeverity || note.value.trim()) return;
+
+        event.preventDefault();
+        note.classList.add("input-error");
+        note.setAttribute("aria-invalid", "true");
+        error.textContent = `การเปลี่ยนจาก${severityLabels[aiSeverity]}เป็น${severityLabels[selectedSeverity]} ต้องระบุเหตุผลเพิ่มเติมก่อนยืนยัน`;
+        error.hidden = false;
+        note.focus();
+        note.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+
+      note.addEventListener("input", () => {
+        if (!note.value.trim()) return;
+        note.classList.remove("input-error");
+        note.removeAttribute("aria-invalid");
+        error.hidden = true;
       });
     });
   </script>
