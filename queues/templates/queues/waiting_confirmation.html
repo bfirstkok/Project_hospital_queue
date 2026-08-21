@@ -7,33 +7,33 @@
   <title>พยาบาลยืนยันผลคัดกรอง</title>
   <style>
     body { margin: 0; font-family: "Sarabun", Arial, sans-serif; }
-    .page-shell { box-sizing: border-box; display: grid; grid-template-columns: 260px minmax(0, 1240px); gap: 18px; align-items: start; width: min(1600px, 100%); margin: 0 auto; padding: 24px; }
+    .page-shell { box-sizing: border-box; display: grid; grid-template-columns: 300px minmax(0, 1240px); gap: 22px; align-items: start; width: min(1640px, 100%); margin: 0 auto; padding: 24px; }
     .wrap { min-width: 0; margin: 0; padding: 0; }
-    .criteria-sidebar { position: sticky; top: 18px; padding: 15px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
-    .criteria-sidebar h2 { margin: 0; color: #173242; font-size: 18px; }
-    .criteria-intro { margin: 4px 0 12px; color: #607783; font-size: 11px; line-height: 1.45; }
-    .criteria-list { display: grid; gap: 8px; }
-    .criteria-item { overflow: hidden; border: 1px solid #dbe7ea; border-radius: 9px; background: #fbfdfd; }
-    .criteria-head { display: flex; align-items: center; gap: 7px; padding: 8px 9px 6px; font-size: 12px; font-weight: 900; }
-    .criteria-level { display: inline-grid; place-items: center; width: 23px; height: 23px; flex: 0 0 23px; border-radius: 50%; color: #fff; font-size: 11px; }
-    .criteria-copy { margin: 0; padding: 0 9px 9px 39px; color: #526b77; font-size: 10.5px; line-height: 1.42; }
-    .criteria-route { display: block; margin-top: 3px; font-weight: 800; }
-    .criteria-item.red { border-color: #efbcbc; background: #fff5f5; }
+    .criteria-sidebar { position: sticky; top: 18px; padding: 18px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
+    .criteria-sidebar h2 { margin: 0; color: #173242; font-size: 21px; }
+    .criteria-intro { margin: 5px 0 14px; color: #607783; font-size: 13px; line-height: 1.45; }
+    .criteria-list { display: grid; gap: 7px; }
+    .criteria-item { overflow: hidden; padding: 10px 11px; border: 1px solid #dbe7ea; border-left-width: 5px; border-radius: 9px; background: #fff; }
+    .criteria-head { display: flex; align-items: center; gap: 8px; padding: 0; font-size: 14px; font-weight: 900; }
+    .criteria-level { display: inline-grid; place-items: center; width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%; color: #fff; font-size: 13px; }
+    .criteria-copy { margin: 6px 0 0 34px; padding: 0; color: #526b77; font-size: 13px; line-height: 1.48; }
+    .criteria-route { display: block; margin-top: 4px; font-weight: 800; }
+    .criteria-item.red { border-color: #dc2626; }
     .criteria-item.red .criteria-head, .criteria-item.red .criteria-route { color: #b42323; }
     .criteria-item.red .criteria-level { background: #dc2626; }
-    .criteria-item.pink { border-color: #efb7cf; background: #fff4f8; }
+    .criteria-item.pink { border-color: #db2777; }
     .criteria-item.pink .criteria-head, .criteria-item.pink .criteria-route { color: #a81f5d; }
     .criteria-item.pink .criteria-level { background: #db2777; }
-    .criteria-item.yellow { border-color: #ead493; background: #fffaf0; }
+    .criteria-item.yellow { border-color: #e0a500; }
     .criteria-item.yellow .criteria-head, .criteria-item.yellow .criteria-route { color: #875700; }
     .criteria-item.yellow .criteria-level { color: #422006; background: #facc15; }
-    .criteria-item.green { border-color: #b9dfc9; background: #f1fbf5; }
+    .criteria-item.green { border-color: #16a34a; }
     .criteria-item.green .criteria-head, .criteria-item.green .criteria-route { color: #18794e; }
     .criteria-item.green .criteria-level { background: #16a34a; }
-    .criteria-item.white { border-color: #cfdadd; background: #fff; }
+    .criteria-item.white { border-color: #64748b; }
     .criteria-item.white .criteria-head, .criteria-item.white .criteria-route { color: #405866; }
     .criteria-item.white .criteria-level { color: #334f5d; border: 1px solid #8da1aa; background: #fff; }
-    .criteria-note { margin: 11px 0 0; padding: 9px; border-radius: 8px; background: #eaf6f5; color: #405d6b; font-size: 10px; line-height: 1.45; }
+    .criteria-note { margin: 12px 0 0; padding: 10px 11px; border-radius: 8px; background: #eaf6f5; color: #405d6b; font-size: 12px; line-height: 1.5; }
     .hero-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; margin-bottom: 16px; padding: 18px 20px; border: 1px solid #d7e8e7; border-radius: 14px; background: #fff; }
     .title-row { display: flex; align-items: center; gap: 12px; }
     .title-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 12px; background: #e4f4f2; color: #087f75; font-weight: 900; }
@@ -42,8 +42,8 @@
     .flow-summary { display: grid; grid-template-columns: 180px 1fr; gap: 12px; margin-bottom: 18px; }
     .summary-count, .summary-note { padding: 15px 18px; border: 1px solid #d7e8e7; border-radius: 13px; background: #fff; }
     .summary-count strong { display: block; margin-top: 2px; color: #173242; font-size: 25px; }
-    .summary-label { color: #607783; font-size: 12px; font-weight: 700; }
-    .summary-note { display: flex; align-items: center; gap: 11px; color: #405d6b; }
+    .summary-label { color: #607783; font-size: 13px; font-weight: 700; }
+    .summary-note { display: flex; align-items: center; gap: 11px; color: #405d6b; font-size: 15px; }
     .summary-note-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: #e8f7f5; color: #087f75; font-weight: 900; }
     .page-messages { display: grid; gap: 8px; margin-bottom: 14px; }
     .page-message { padding: 11px 13px; border: 1px solid #efb7b7; border-left: 5px solid #dc2626; border-radius: 9px; color: #991b1b; background: #fee2e2; font-weight: 750; }
@@ -52,15 +52,15 @@
     .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
     .patient-identity { display: flex; align-items: center; gap: 9px; min-width: 0; }
     .queue-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 9px; border: 1px solid #b9dce5; border-radius: 999px; background: #eaf6fa; color: #116887; font-weight: 900; white-space: nowrap; }
-    .patient-name { color: #173242; font-size: 18px; font-weight: 800; }
-    .visit-meta { margin-top: 2px; color: #738791; font-size: 12px; }
+    .patient-name { color: #173242; font-size: 20px; font-weight: 800; }
+    .visit-meta { margin-top: 2px; color: #738791; font-size: 14px; }
     .detail-open { white-space: nowrap; }
     .confirmation-body { display: block; }
     .ai-column, .decision-column { min-width: 0; padding: 12px 14px; }
     .ai-column { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr); gap: 8px 12px; align-items: stretch; }
     .ai-column .section-kicker { grid-column: 1 / -1; }
     .decision-column { border-top: 1px solid #e1ebed; background: #fbfdfd; }
-    .section-kicker { margin-bottom: 6px; color: #607783; font-size: 11px; font-weight: 800; letter-spacing: .25px; }
+    .section-kicker { margin-bottom: 7px; color: #607783; font-size: 13px; font-weight: 800; letter-spacing: .25px; }
     .ai-recommendation { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid #dbe7ea; border-radius: 9px; background: #f7fafb; }
     .severity-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 70px; min-height: 32px; padding: 0 9px; border: 1px solid; border-radius: 8px; font-weight: 900; }
     .severity-badge.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
@@ -68,29 +68,29 @@
     .severity-badge.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
     .severity-badge.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
     .severity-badge.white { color: #52636d; border-color: #cfdadd; background: #f7fafb; }
-    .severity-copy strong { display: block; color: #173242; font-size: 15px; }
-    .severity-copy span { color: #607783; font-size: 11px; }
+    .severity-copy strong { display: block; color: #173242; font-size: 17px; }
+    .severity-copy span { color: #607783; font-size: 13px; }
     .reason-box { margin-top: 0; padding: 9px 10px; border-left: 3px solid #8eb9c2; border-radius: 7px; background: #f4f8f9; }
-    .reason-box strong { display: block; margin-bottom: 3px; color: #334f5d; font-size: 12px; }
-    .reason { margin: 0; color: #405d6b; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-    .warning-red { grid-column: 1 / -1; margin-top: 0; padding: 7px 9px; border: 1px solid #efc0c0; border-radius: 7px; color: #a62929; background: #fff2f2; font-size: 12px; font-weight: 700; }
-    .decision-title { margin: 0 0 2px; color: #173242; font-size: 17px; }
-    .decision-help { margin: 0 0 8px; color: #607783; font-size: 11px; }
+    .reason-box strong { display: block; margin-bottom: 3px; color: #334f5d; font-size: 14px; }
+    .reason { margin: 0; color: #405d6b; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+    .warning-red { grid-column: 1 / -1; margin-top: 0; padding: 8px 10px; border: 1px solid #efc0c0; border-radius: 7px; color: #a62929; background: #fff2f2; font-size: 14px; font-weight: 700; }
+    .decision-title { margin: 0 0 2px; color: #173242; font-size: 20px; }
+    .decision-help { margin: 0 0 9px; color: #607783; font-size: 13px; }
     .confirm-form { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 8px 12px; align-items: start; }
-    .field-group > strong, .field-group > label { display: block; margin-bottom: 4px; color: #334f5d; font-size: 12px; font-weight: 700; }
-    .field-help { margin: -1px 0 5px; color: #738791; font-size: 10px; }
+    .field-group > strong, .field-group > label { display: block; margin-bottom: 4px; color: #334f5d; font-size: 14px; font-weight: 700; }
+    .field-help { margin: -1px 0 6px; color: #738791; font-size: 12px; }
     .risk-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-    .risk-checks label { display: flex; align-items: center; gap: 6px; min-height: 31px; padding: 4px 7px; border: 1px solid #dbe7ea; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; cursor: pointer; }
+    .risk-checks label { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 5px 8px; border: 1px solid #dbe7ea; border-radius: 7px; background: #fff; color: #405d6b; font-size: 14px; cursor: pointer; }
     .risk-checks label:has(input:checked) { border-color: #55aaa2; background: #e9f7f5; }
     .waiting-confirmation-page .risk-checks input[type="checkbox"] { width: 17px !important; height: 17px !important; min-height: 17px !important; flex: 0 0 17px; margin: 0; padding: 0 !important; box-shadow: none !important; }
-    .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 50px; padding: 8px 10px; resize: vertical; }
+    .waiting-confirmation-page textarea { box-sizing: border-box; width: 100%; min-height: 58px; padding: 9px 11px; font-size: 14px; resize: vertical; }
     .waiting-confirmation-page textarea.input-error { border: 2px solid #dc2626 !important; background: #fff5f5 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important; }
     .override-error { margin-top: 5px; padding: 7px 9px; border-radius: 7px; color: #991b1b; background: #fee2e2; font-size: 11px; font-weight: 750; }
-    .primary-confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 38px; border: 0; border-radius: 7px; background: #087f75; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
-    .alternative-label { grid-column: 1 / -1; margin: -1px 0 0; color: #738791; font-size: 10px; text-align: center; }
+    .primary-confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; border: 0; border-radius: 7px; background: #087f75; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+    .alternative-label { grid-column: 1 / -1; margin: -1px 0 0; color: #738791; font-size: 12px; text-align: center; }
     .alternative-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 9px; border: 1px solid #cddce1; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; text-decoration: none; font-weight: 700; cursor: pointer; }
-    .waiting-confirmation-page .alternative-actions .btn { min-height: 40px; border-width: 2px !important; font-size: 13px; font-weight: 800; box-shadow: 0 4px 10px rgba(38,75,89,.12) !important; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 10px; border: 1px solid #cddce1; border-radius: 7px; background: #fff; color: #405d6b; font-size: 14px; text-decoration: none; font-weight: 700; cursor: pointer; }
+    .waiting-confirmation-page .alternative-actions .btn { min-height: 44px; border-width: 2px !important; font-size: 15px; font-weight: 800; box-shadow: 0 4px 10px rgba(38,75,89,.12) !important; }
     .waiting-confirmation-page .alternative-actions .btn.red { color: #fff !important; border-color: #b91c1c !important; background: #dc2626 !important; }
     .waiting-confirmation-page .alternative-actions .btn.pink { color: #fff !important; border-color: #be185d !important; background: #db2777 !important; }
     .waiting-confirmation-page .alternative-actions .btn.yellow { color: #422006 !important; border-color: #d99a00 !important; background: #facc15 !important; }
@@ -151,26 +151,26 @@
       <div class="criteria-list">
         <section class="criteria-item red">
           <div class="criteria-head"><span class="criteria-level">1</span><span>สีแดง · ช่วยชีวิตทันที</span></div>
-          <p class="criteria-copy">ภาวะคุกคามชีวิต หายใจล้มเหลว ช็อก ไม่ตอบสนอง ชักต่อเนื่อง หรือเลือดออกรุนแรง<span class="criteria-route">ส่งต่อฉุกเฉินทันที · ไม่รอคิว/นาฬิกา</span></p>
+          <p class="criteria-copy">คุกคามชีวิตหรือต้องช่วยชีวิต<span class="criteria-route">ส่งฉุกเฉินทันที</span></p>
         </section>
         <section class="criteria-item pink">
           <div class="criteria-head"><span class="criteria-level">2</span><span>สีชมพู · ฉุกเฉิน</span></div>
-          <p class="criteria-copy">ภาวะเสี่ยงสูง สัญญาณชีพอันตราย ซึม สับสน หรือทุกข์ทรมานรุนแรง<span class="criteria-route">ประเมินฉุกเฉินโดยเร็ว · ไม่รอ OPD ปกติ</span></p>
+          <p class="criteria-copy">เสี่ยงสูง สัญญาณชีพอันตราย หรือซึม<span class="criteria-route">ประเมินฉุกเฉินโดยเร็ว</span></p>
         </section>
         <section class="criteria-item yellow">
           <div class="criteria-head"><span class="criteria-level">3</span><span>สีเหลือง · เฝ้าระวัง</span></div>
-          <p class="criteria-copy">มีความผิดปกติที่ต้องติดตาม ปวดรุนแรงแต่ยังไม่มีภาวะคุกคามชีวิต หรือมีกลุ่มเสี่ยง<span class="criteria-route">คิวเร่งด่วน/เฝ้าระวัง · ผูกนาฬิกาได้</span></p>
+          <p class="criteria-copy">ผิดปกติแต่ยังไม่คุกคามชีวิต<span class="criteria-route">เฝ้าระวัง · ผูกนาฬิกาได้</span></p>
         </section>
         <section class="criteria-item green">
           <div class="criteria-head"><span class="criteria-level">4</span><span>สีเขียว · ไม่เร่งด่วน</span></div>
-          <p class="criteria-copy">อาการและสัญญาณชีพคงที่ ไม่พบสัญญาณอันตราย แต่ยังควรรับบริการ OPD<span class="criteria-route">เข้าคิว OPD · ไม่ต้องผูกนาฬิกา</span></p>
+          <p class="criteria-copy">อาการคงที่ ไม่พบสัญญาณอันตราย<span class="criteria-route">เข้าคิว OPD</span></p>
         </section>
         <section class="criteria-item white">
           <div class="criteria-head"><span class="criteria-level">5</span><span>สีขาว · ผู้ป่วยทั่วไป</span></div>
-          <p class="criteria-copy">อาการทั่วไป ไม่เร่งด่วน สัญญาณชีพคงที่ และคาดว่าไม่ต้องใช้ทรัพยากรเพิ่มเติม<span class="criteria-route">เข้าคิวผู้ป่วยทั่วไป</span></p>
+          <p class="criteria-copy">อาการทั่วไปและไม่เร่งด่วน<span class="criteria-route">คิวผู้ป่วยทั่วไป</span></p>
         </section>
       </div>
-      <p class="criteria-note"><strong>ข้อควรจำ:</strong> ไม่ตัดสินจากค่าเดียว ต้องพิจารณาอาการ สัญญาณชีพ อายุ โรคร่วม และบริบททางคลินิก โดยพยาบาลเป็นผู้ยืนยันเสมอ</p>
+      <p class="criteria-note"><strong>พยาบาลเป็นผู้ยืนยัน:</strong> ประเมินอาการ สัญญาณชีพ และปัจจัยเสี่ยงร่วมกัน</p>
     </aside>
 
     <main class="wrap">
