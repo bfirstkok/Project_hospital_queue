@@ -309,6 +309,10 @@ class QueueWorkflowTests(TestCase):
         response = self.client.get(reverse("queue_list"))
         self.assertContains(response, "Demo Queue")
         self.assertContains(response, "YELLOW")
+        self.assertContains(response, "เวลารอ")
+        self.assertContains(response, "js-wait-time")
+        self.assertContains(response, "สีเหลือง · เร่งด่วน")
+        self.assertContains(response, "เปลี่ยนระดับ…")
 
     def test_waiting_confirmation_can_return_to_waiting_vitals(self):
         self.register_patient()

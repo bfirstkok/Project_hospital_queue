@@ -5,801 +5,163 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>คิวรอ - OPD Queue</title>
+  <title>คิวรอตรวจ OPD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ===== RESET ===== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* ===== BODY & SHELL ===== */
-    body {
-      font-family: 'Sarabun', sans-serif;
-      background: #0a0e1a;
-      color: #e8eaf0;
-      min-height: 100vh;
-    }
-
-    .shell {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
-      background: #0a0e1a;
-      padding: 0;
-    }
-
-    /* ===== TOPBAR ===== */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-
-    .logo-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 17px;
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: -0.3px;
-    }
-
-    .logo-sub {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 0px;
-    }
-
-    .nav-pills {
-      display: flex;
-      gap: 3px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      padding: 3px;
-    }
-
-    .nav-pill {
-      padding: 5px 13px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.45);
-      transition: all 0.2s;
-      border: none;
-      background: transparent;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .nav-pill.active {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .nav-pill:hover:not(.active) {
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .add-btn {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 6px 14px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-      cursor: pointer;
-      border: none;
-      font-family: 'Sarabun', sans-serif;
-      transition: opacity 0.2s;
-      text-decoration: none;
-    }
-
-    .add-btn:hover {
-      opacity: 0.85;
-    }
-
-    /* ===== LAYOUT ===== */
-    .content {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 0;
-      height: 100%;
-    }
-
-    .sidebar {
-      padding: 12px 16px;
-      border-right: 1px solid rgba(255, 255, 255, 0.07);
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      overflow-y: auto;
-    }
-
-    .main {
-      padding: 10px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      overflow-y: auto;
-    }
-
-    /* ===== STAT CARDS ===== */
-    .stat-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-    }
-
-    .stat-card.teal::before {
-      background: linear-gradient(90deg, #00d4aa, transparent);
-    }
-
-    .stat-card.red::before {
-      background: linear-gradient(90deg, #ff5f72, transparent);
-    }
-
-    .stat-card.amber::before {
-      background: linear-gradient(90deg, #ffb830, transparent);
-    }
-
-    .stat-card.green::before {
-      background: linear-gradient(90deg, #00d4aa, transparent);
-    }
-
-    .stat-label {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
-      margin-bottom: 8px;
-    }
-
-    .stat-number {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 37px;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1;
-    }
-
-    .stat-sub {
-      font-size: 15px;
-      color: rgba(255, 255, 255, 0.4);
-      margin-top: 6px;
-    }
-
-    .live-dot {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 14px;
-      color: #00d4aa;
-      margin-top: 8px;
-    }
-
-    .live-dot::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background: #00d4aa;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.5;
-        transform: scale(1.3);
-      }
-    }
-
-    /* ===== TRIAGE LEGEND ===== */
-    .triage-legend {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 16px;
-    }
-
-    .triage-legend h4 {
-      font-size: 14px;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
-      margin-bottom: 12px;
-      font-weight: 600;
-    }
-
-    .triage-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .triage-row:last-child {
-      border-bottom: none;
-    }
-
-    .triage-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .triage-info {
-      flex: 1;
-    }
-
-    .triage-name {
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .triage-desc {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    .triage-count {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    /* ===== QUEUE SECTION ===== */
-    .queue-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .queue-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 19px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .queue-meta {
-      font-size: 15px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 2px;
-    }
-
-    .filter-bar {
-      display: flex;
-      gap: 8px;
-    }
-
-    .filter-chip {
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: transparent;
-      color: rgba(255, 255, 255, 0.45);
-      transition: all 0.2s;
-      font-family: 'Sarabun', sans-serif;
-    }
-
-    .filter-chip.active {
-      background: rgba(0, 212, 170, 0.12);
-      border-color: rgba(0, 212, 170, 0.4);
-      color: #00d4aa;
-    }
-
-    /* ===== TABLE ===== */
-    .queue-table-wrap {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 14px;
-      overflow: hidden;
-      flex: 1;
-    }
-
-    .queue-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .queue-table th {
-      padding: 14px 16px;
-      font-size: 14px;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.3);
-      font-weight: 600;
-      text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .queue-table td {
-      padding: 13px 16px;
-      font-size: 16.5px;
-      color: rgba(255, 255, 255, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      vertical-align: middle;
-    }
-
-    .queue-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .queue-table tr:hover td {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    /* ===== TABLE CONTENT ===== */
-    .visit-badge {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-      background: rgba(0, 150, 255, 0.15);
-      color: #5ac8ff;
-      padding: 3px 8px;
-      border-radius: 5px;
-    }
-
-    .patient-name {
-      font-weight: 500;
-      color: #fff;
-      font-size: 25px;
-    }
-
-    .patient-age {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    .triage-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-
-    .triage-badge.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .triage-badge.pink { background: rgba(232, 93, 158, 0.15); color: #e85d9e; }
-
-    .triage-badge.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-    }
-
-    .triage-badge.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .triage-badge.white { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
-
-    .triage-badge .dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    .ai-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      background: rgba(138, 99, 255, 0.15);
-      color: #a78fff;
-      border: 1px solid rgba(138, 99, 255, 0.2);
-    }
-
-    .time-text {
-      font-size: 18px;
-      color: rgba(255, 255, 255, 0.4);
-    }
-
-    /* ===== ACTIONS ===== */
-    .action-group {
-      display: flex;
-      gap: 6px;
-    }
-
-    .action-btn {
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      font-family: 'Sarabun', sans-serif;
-      transition: all 0.2s;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 28px;
-    }
-
-    .action-btn.call {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-      border: 1px solid rgba(0, 212, 170, 0.2);
-    }
-
-    .action-btn.call:hover {
-      background: rgba(0, 212, 170, 0.25);
-    }
-
-    .action-btn.triage {
-      padding: 3px 8px;
-      font-size: 13px;
-      background: rgba(255, 255, 255, 0.06);
-      color: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .action-btn.triage:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .action-btn.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-      border: 1px solid rgba(255, 95, 114, 0.2);
-      padding: 5px 10px;
-      font-size: 14px;
-    }
-
-    .action-btn.red:hover {
-      background: rgba(255, 95, 114, 0.25);
-    }
-
-    .action-btn.pink { background: rgba(232, 93, 158, 0.15); color: #e85d9e; border: 1px solid rgba(232, 93, 158, 0.25); padding: 5px 10px; font-size: 14px; }
-    .action-btn.pink:hover { background: rgba(232, 93, 158, 0.25); }
-
-    .action-btn.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-      border: 1px solid rgba(255, 184, 48, 0.2);
-      padding: 5px 10px;
-      font-size: 14px;
-    }
-
-    .action-btn.yellow:hover {
-      background: rgba(255, 184, 48, 0.25);
-    }
-
-    .action-btn.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-      border: 1px solid rgba(0, 212, 170, 0.2);
-      padding: 5px 10px;
-      font-size: 14px;
-    }
-
-    .action-btn.green:hover {
-      background: rgba(0, 212, 170, 0.25);
-    }
-
-    .action-btn.white { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); padding: 5px 10px; font-size: 14px; }
-    .action-btn.white:hover { background: rgba(148, 163, 184, 0.25); }
-
-    .delete-queue-form {
-      display: inline-flex;
-      margin: 0;
-    }
-
-    .action-btn.delete {
-      background: rgba(255, 95, 114, 0.12);
-      color: #ff8a98;
-      border: 1px solid rgba(255, 95, 114, 0.3);
-      padding: 5px 10px;
-      font-size: 14px;
-    }
-
-    .action-btn.delete:hover {
-      background: rgba(255, 95, 114, 0.25);
-      color: #ffd6dc;
-    }
-
-    /* ===== EMPTY STATE ===== */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    .empty-icon {
-      font-size: 37px;
-      margin-bottom: 12px;
-      opacity: 0.4;
-    }
-
-    .empty-text {
-      font-size: 17px;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: #183042; background: #eef5f6; font-family: "Sarabun", sans-serif; }
+    button, select { font: inherit; }
+    .page-shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 26px 0 40px; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .page-title { margin: 0; font-size: clamp(30px, 3vw, 46px); line-height: 1.1; font-weight: 700; }
+    .page-subtitle { margin: 7px 0 0; color: #647c88; font-size: 18px; }
+    .live-status { display: inline-flex; align-items: center; gap: 8px; color: #087f75; font-size: 17px; font-weight: 700; }
+    .live-status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #0eaa91; box-shadow: 0 0 0 6px rgba(14,170,145,.12); }
+    .summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .summary-item { min-height: 76px; padding: 12px 14px; border: 1px solid #d4e2e6; border-radius: 12px; background: #fff; }
+    .summary-label { color: #657d88; font-size: 14px; font-weight: 700; }
+    .summary-value { margin-top: 3px; color: #183042; font-size: 28px; font-weight: 700; line-height: 1; }
+    .summary-item.red { border-top: 4px solid #df2b2f; }
+    .summary-item.pink { border-top: 4px solid #d92378; }
+    .summary-item.yellow { border-top: 4px solid #f2b900; }
+    .summary-item.green { border-top: 4px solid #19a94f; }
+    .summary-item.white { border-top: 4px solid #8798aa; }
+    .board { overflow: hidden; border: 1px solid #cbdde2; border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgba(43,80,92,.08); }
+    .board-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; color: #fff; background: #183b77; }
+    .board-title strong { font-size: 24px; }
+    .board-title span { color: rgba(255,255,255,.8); font-size: 15px; }
+    .table-scroll { overflow-x: auto; }
+    .queue-table { width: 100%; min-width: 1080px; border-collapse: collapse; table-layout: fixed; }
+    .queue-table th { padding: 13px 12px; color: #fff; background: #244d92; border-right: 2px solid rgba(255,255,255,.22); font-size: 18px; font-weight: 700; text-align: center; }
+    .queue-table th:last-child, .queue-table td:last-child { border-right: 0; }
+    .queue-table td { padding: 14px 12px; border-right: 1px solid #dce8eb; border-bottom: 1px solid #dce8eb; background: #fff; font-size: 18px; text-align: center; vertical-align: middle; }
+    .queue-table tbody tr:last-child td { border-bottom: 0; }
+    .queue-table tbody tr:hover td { background: #f5fbfb; }
+    .order-number { font-size: 25px; font-weight: 700; }
+    .queue-number { display: block; color: #183b77; font-size: 29px; font-weight: 700; line-height: 1.05; }
+    .patient-secondary { display: block; margin-top: 5px; color: #627a86; font-size: 15px; }
+    .wait-time { color: #172d3e; font-size: 25px; font-variant-numeric: tabular-nums; font-weight: 700; }
+    .severity { display: inline-flex; min-width: 145px; min-height: 42px; align-items: center; justify-content: center; padding: 7px 13px; border: 2px solid currentColor; border-radius: 9px; font-size: 18px; font-weight: 700; }
+    .severity.red { color: #c92127; background: #fff0f0; }
+    .severity.pink { color: #c91e69; background: #fff0f7; }
+    .severity.yellow { color: #9a7000; background: #fff8d7; }
+    .severity.green { color: #11863d; background: #eaf9ef; }
+    .severity.white { color: #52697a; background: #f1f5f7; }
+    .status-text { color: #526d79; font-size: 17px; font-weight: 700; }
+    .status-text.called { color: #087f75; }
+    .actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .action-link, .delete-btn { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #cadbe0; border-radius: 7px; color: #34505d; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .action-link.call { color: #fff; border-color: #087f75; background: #087f75; }
+    .action-link:hover, .delete-btn:hover { filter: brightness(.96); }
+    .severity-select { min-height: 36px; max-width: 138px; padding: 0 7px; border: 1px solid #cadbe0; border-radius: 7px; color: #34505d; background: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .delete-form { display: inline-flex; margin: 0; }
+    .delete-btn { color: #b4232a; border-color: #efc7ca; background: #fff6f6; }
+    .empty { padding: 64px 20px !important; color: #6b818b; font-size: 20px !important; text-align: center; }
+    @media (max-width: 980px) { .summary { grid-template-columns: repeat(3, 1fr); } .page-head { align-items: flex-start; flex-direction: column; } }
+    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } }
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260821">
 </head>
-
 <body>
-<div class="shell">
-  <div class="topbar">
-    <div class="logo-area">
-      <div class="logo-icon">🏥</div>
+  <main class="page-shell">
+    <header class="page-head">
       <div>
-        <div class="logo-text">คิวรอ · OPD Queue</div>
-        <div class="logo-sub">จัดการคิว · คัดกรอง · เรียกคิว</div>
+        <h1 class="page-title">คิวรอตรวจ OPD</h1>
+        <p class="page-subtitle">เรียงตามระดับความเร่งด่วนและเวลาที่ยืนยันผลคัดกรอง</p>
       </div>
-    </div>
-    {% include "includes/main_nav.html" %}
-  </div>
+      {% include "includes/main_nav.html" %}
+      <div class="live-status">อัปเดตเวลารออัตโนมัติ</div>
+    </header>
 
-  <div class="content">
-    <div class="sidebar">
-      <div class="stat-card teal">
-        <div class="stat-label">รอทั้งหมด</div>
-        <div class="stat-number">{{ q_items|length }}</div>
-        <div class="live-dot">Live</div>
-      </div>
+    <section class="summary" aria-label="สรุปจำนวนคิว">
+      <div class="summary-item"><div class="summary-label">คิวทั้งหมด</div><div class="summary-value">{{ q_items|length }}</div></div>
+      <div class="summary-item red"><div class="summary-label">สีแดง</div><div class="summary-value">{{ red_count }}</div></div>
+      <div class="summary-item pink"><div class="summary-label">สีชมพู</div><div class="summary-value">{{ pink_count }}</div></div>
+      <div class="summary-item yellow"><div class="summary-label">สีเหลือง</div><div class="summary-value">{{ yellow_count }}</div></div>
+      <div class="summary-item green"><div class="summary-label">สีเขียว</div><div class="summary-value">{{ green_count }}</div></div>
+      <div class="summary-item white"><div class="summary-label">สีขาว</div><div class="summary-value">{{ white_count }}</div></div>
+    </section>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="stat-card red">
-          <div class="stat-label">Red</div>
-          <div class="stat-number" style="color:#ff5f72; font-size:22px;">{{ red_count }}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Pink</div>
-          <div class="stat-number" style="color:#e85d9e; font-size:22px;">{{ pink_count }}</div>
-        </div>
-        <div class="stat-card amber">
-          <div class="stat-label">Yellow</div>
-          <div class="stat-number" style="color:#ffb830; font-size:22px;">{{ yellow_count }}</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Green / White</div>
-          <div class="stat-number" style="color:#00d4aa; font-size:22px;">{{ green_count }} / {{ white_count }}</div>
-        </div>
-      </div>
-
-      <div class="triage-legend">
-        <h4>ระดับความเร่งด่วน</h4>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#e85d9e;"></div>
-          <div class="triage-info"><div class="triage-name" style="color:#e85d9e;">Pink</div><div class="triage-desc">ฉุกเฉิน</div></div>
-          <div class="triage-count" style="color:#e85d9e;">{{ pink_count }}</div>
-        </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#ff5f72;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#ff5f72;">Red</div>
-            <div class="triage-desc">ฉุกเฉินวิกฤต</div>
-          </div>
-          <div class="triage-count" style="color:#ff5f72;">{{ red_count }}</div>
-        </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#ffb830;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#ffb830;">Yellow</div>
-            <div class="triage-desc">เร่งด่วน</div>
-          </div>
-          <div class="triage-count" style="color:#ffb830;">{{ yellow_count }}</div>
-        </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#00d4aa;"></div>
-          <div class="triage-info">
-            <div class="triage-name" style="color:#00d4aa;">Green</div>
-            <div class="triage-desc">ไม่เร่งด่วน</div>
-          </div>
-          <div class="triage-count" style="color:#00d4aa;">{{ green_count }}</div>
-        </div>
-        <div class="triage-row">
-          <div class="triage-dot" style="background:#94a3b8;"></div>
-          <div class="triage-info"><div class="triage-name" style="color:#94a3b8;">White</div><div class="triage-desc">ผู้ป่วยทั่วไป</div></div>
-          <div class="triage-count" style="color:#94a3b8;">{{ white_count }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="main">
-      <div class="queue-header">
-        <div>
-          <div class="queue-title">รายการคิวพร้อมตรวจ</div>
-          <div class="queue-meta">อัปเดตล่าสุด: เพิ่งตอนนี้</div>
-        </div>
-        <div class="filter-bar">
-          <button class="filter-chip active">ทั้งหมด</button>
-        </div>
-      </div>
-
-      <div class="queue-table-wrap">
+    <section class="board">
+      <div class="board-title"><strong>รายการคิวพร้อมตรวจ</strong><span>ผู้ป่วยเร่งด่วนจะแสดงอยู่ด้านบนตามลำดับที่ระบบจัดไว้</span></div>
+      <div class="table-scroll">
         <table class="queue-table">
-          <thead>
-            <tr>
-              <th>ลำดับ</th>
-              <th>ชื่อผู้ป่วย</th>
-              <th>ระดับที่ยืนยัน</th>
-              <th>AI แนะนำ</th>
-              <th>เวลาลงทะเบียน</th>
-              <th>คำสั่ง</th>
-            </tr>
-          </thead>
+          <colgroup><col style="width:8%"><col style="width:17%"><col style="width:13%"><col style="width:18%"><col style="width:12%"><col style="width:32%"></colgroup>
+          <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th>การดำเนินการ</th></tr></thead>
           <tbody>
-          {% for q in q_items %}
-            {% with v=q.visit %}
-            <tr>
-              <td><span class="visit-badge">#{{ forloop.counter }}</span></td>
-              <td>
-                <div class="patient-name">{{ v.patient.first_name }} {{ v.patient.last_name }}</div>
-                <div class="patient-age">เลขคิว: {{ q.display_number }} · {{ q.get_status_display }}</div>
-              </td>
-              <td>
-                {% if v.final_severity == "RED" %}
-                  <span class="triage-badge red"><span class="dot"></span>RED</span>
-                  <div class="patient-age" style="color:#ff9aa8; margin-top:6px; font-weight:700;">RED alert</div>
-                {% elif v.final_severity == "PINK" %}
-                  <span class="triage-badge pink"><span class="dot"></span>PINK</span>
-                {% elif v.final_severity == "YELLOW" %}
-                  <span class="triage-badge yellow"><span class="dot"></span>YELLOW</span>
-                {% elif v.final_severity == "GREEN" %}
-                  <span class="triage-badge green"><span class="dot"></span>GREEN</span>
-                {% elif v.final_severity == "WHITE" %}
-                  <span class="triage-badge white"><span class="dot"></span>WHITE</span>
-                {% else %}
-                  <span class="triage-badge"><span class="dot"></span>-</span>
-                {% endif %}
-              </td>
-              <td>
-                <span class="ai-badge">✦ {{ v.triage_result.ai_severity|default:"-" }}</span>
-              </td>
-              <td><span class="time-text">{{ v.registered_at|date:"H:i" }}</span></td>
-              <td>
-                <div class="action-group">
-                  <a class="action-btn call" href="{% url 'call_visit' v.id %}">เรียก</a>
-                  <a class="action-btn triage" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
-                  <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
-                  <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
-                  <button class="action-btn pink" onclick="setSeverity({{ v.id }}, 'PINK')">ชมพู</button>
-                  <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
-                  <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
-                  <button class="action-btn white" onclick="setSeverity({{ v.id }}, 'WHITE')">ขาว</button>
-                  <form class="delete-queue-form" method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการรอคิวใช่ไหม?');">
-                    {% csrf_token %}
-                    <button class="action-btn delete" type="submit">ลบคิว</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-            {% endwith %}
-          {% empty %}
-            <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">ยังไม่มีคิวรอ</div></div></td></tr>
-          {% endfor %}
+            {% for q in q_items %}
+              {% with v=q.visit %}
+              <tr>
+                <td><span class="order-number">{{ forloop.counter }}</span></td>
+                <td><span class="queue-number">{{ q.display_number }}</span><span class="patient-secondary">{{ v.patient.first_name }} {{ v.patient.last_name }}</span></td>
+                <td><span class="wait-time js-wait-time" data-start="{{ v.registered_at|date:'c' }}">--:--</span></td>
+                <td>
+                  {% if v.final_severity == "RED" %}<span class="severity red">สีแดง · วิกฤต</span>
+                  {% elif v.final_severity == "PINK" %}<span class="severity pink">สีชมพู · ฉุกเฉิน</span>
+                  {% elif v.final_severity == "YELLOW" %}<span class="severity yellow">สีเหลือง · เร่งด่วน</span>
+                  {% elif v.final_severity == "GREEN" %}<span class="severity green">สีเขียว · ไม่เร่งด่วน</span>
+                  {% elif v.final_severity == "WHITE" %}<span class="severity white">สีขาว · ทั่วไป</span>
+                  {% else %}<span class="severity white">ยังไม่ระบุ</span>{% endif %}
+                </td>
+                <td>{% if q.status == "CALLED" %}<span class="status-text called">เรียกแล้ว</span>{% else %}<span class="status-text">รอเรียก</span>{% endif %}</td>
+                <td>
+                  <div class="actions">
+                    <a class="action-link call" href="{% url 'call_visit' v.id %}">เรียกคิว</a>
+                    <a class="action-link" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
+                    <a class="action-link" href="{% url 'opd_visit_detail' v.id %}">ดูข้อมูล</a>
+                    <select class="severity-select" aria-label="เปลี่ยนระดับคิว {{ q.display_number }}" onchange="changeSeverity(this, {{ v.id }})">
+                      <option value="">เปลี่ยนระดับ…</option><option value="RED">สีแดง</option><option value="PINK">สีชมพู</option><option value="YELLOW">สีเหลือง</option><option value="GREEN">สีเขียว</option><option value="WHITE">สีขาว</option>
+                    </select>
+                    <form class="delete-form" method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการรอคิวใช่ไหม?');">{% csrf_token %}<button class="delete-btn" type="submit">ลบคิว</button></form>
+                  </div>
+                </td>
+              </tr>
+              {% endwith %}
+            {% empty %}
+              <tr><td class="empty" colspan="6">ยังไม่มีคิวรอตรวจ</td></tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
+  </main>
 
-<script>
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-    return "";
-  }
-
-  function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta?.content || getCookie('csrftoken');
-  }
-
-  async function readJsonResponse(res) {
-    const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return res.json();
+  <script>
+    function getCsrfToken() {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta?.content) return meta.content;
+      const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+      return match ? decodeURIComponent(match[1]) : '';
     }
-
-    const text = await res.text();
-    const isHtml = text.trim().startsWith('<!doctype') || text.trim().startsWith('<html');
-    const detail = isHtml ? `server returned HTML (${res.status})` : text.slice(0, 160);
-    throw new Error(detail);
-  }
-
-  // คำนวณสถิติ
-  document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('.queue-table tbody tr');
-    let red = 0, pink = 0, yellow = 0, green = 0, white = 0;
-    
-    rows.forEach(row => {
-      if (row.innerHTML.includes('RED')) red++;
-      else if (row.innerHTML.includes('PINK')) pink++;
-      else if (row.innerHTML.includes('YELLOW')) yellow++;
-      else if (row.innerHTML.includes('GREEN')) green++;
-      else if (row.innerHTML.includes('WHITE')) white++;
-    });
-  });
-
-  async function setSeverity(visitId, sev) {
-    try {
-      const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({ severity: sev })
+    function updateWaitTimes() {
+      const now = Date.now();
+      document.querySelectorAll('.js-wait-time').forEach((element) => {
+        const startedAt = Date.parse(element.dataset.start);
+        if (Number.isNaN(startedAt)) { element.textContent = '--:--'; return; }
+        const totalMinutes = Math.max(0, Math.floor((now - startedAt) / 60000));
+        element.textContent = `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
       });
-      const data = await readJsonResponse(res);
-      if (data.ok) {
-        location.reload();
-      } else {
-        alert('เกิดข้อผิดพลาด: ' + (data.error || 'unknown'));
-      }
-    } catch (err) {
-      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
-  }
-</script>
+    async function setSeverity(visitId, severity) {
+      const response = await fetch(`/queues/api/update-severity/${visitId}/`, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ severity })
+      });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      location.reload();
+    }
+    async function changeSeverity(select, visitId) {
+      if (!select.value) return;
+      select.disabled = true;
+      try { await setSeverity(visitId, select.value); }
+      catch (error) { alert(`เปลี่ยนระดับไม่สำเร็จ: ${error.message}`); select.disabled = false; select.value = ''; }
+    }
+    updateWaitTimes();
+    window.setInterval(updateWaitTimes, 30000);
+  </script>
 </body>
 </html>
