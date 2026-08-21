@@ -1,26 +1,63 @@
 Dataset: ai_triage/data/triage_dataset.csv
-Model name: RandomForestClassifier
+Model name: RandomForestClassifier_5Level_RuntimeFeatures_v3
 Label source: KTAS_expert
-Severity mapping: KTAS 1-2=RED, KTAS 3=YELLOW, KTAS 4-5=GREEN
+Severity mapping: KTAS 1=RED, 2=PINK, 3=YELLOW, 4=GREEN, 5=WHITE
 Data leakage columns excluded: KTAS_expert, KTAS_RN, Error_group, mistriage, Diagnosis in ED, Disposition, Length of stay_min, KTAS duration_min
-Rows after cleaning: 564
-Numeric features: group, age, patients_number_per_hour, nrs_pain, rr, pr, sys_bp, dia_bp, bt, o2sat
+Rows after cleaning: 1267
+Reference rows: 1267
+Local nurse-confirmed rows: 0
+Class counts: WHITE=75, GREEN=459, YELLOW=487, PINK=220, RED=26
+Data quality warning: sparse classes (<50 rows): RED=26
+Numeric features: age, nrs_pain, rr, pr, sys_bp, dia_bp, bt, o2sat, altered_mental_status, mental_status
 Text features: chief_complain
-Categorical features: sex, arrival_mode, injury, mental, pain
-Accuracy: 0.7256637168141593
+Categorical features: None
+Accuracy: 0.6141732283464567
 
-Confusion Matrix (labels = GREEN, YELLOW, RED):
-[[30  7  3]
- [ 8 29  6]
- [ 0  7 23]]
+Confusion Matrix (labels = WHITE, GREEN, YELLOW, PINK, RED):
+[[ 1  9  4  1  0]
+ [ 2 66 19  4  1]
+ [ 2 18 68 10  0]
+ [ 0  4 15 17  8]
+ [ 0  0  0  1  4]]
 
 Classification Report:
               precision    recall  f1-score   support
 
-       GREEN       0.79      0.75      0.77        40
-      YELLOW       0.67      0.67      0.67        43
-         RED       0.72      0.77      0.74        30
+       WHITE       0.20      0.07      0.10        15
+       GREEN       0.68      0.72      0.70        92
+      YELLOW       0.64      0.69      0.67        98
+        PINK       0.52      0.39      0.44        44
+         RED       0.31      0.80      0.44         5
 
-    accuracy                           0.73       113
-   macro avg       0.73      0.73      0.73       113
-weighted avg       0.73      0.73      0.73       113
+    accuracy                           0.61       254
+   macro avg       0.47      0.53      0.47       254
+weighted avg       0.60      0.61      0.60       254
+
+
+3-fold CV accuracy: 0.6621941594317285
+3-fold CV balanced accuracy: 0.5955728364632822
+3-fold CV macro F1: 0.5693449339765158
+
+3-fold CV route accuracy: 0.7221783741120757
+3-fold CV within-one-level accuracy: 0.9479084451460142
+Exact accuracy target >= 75% achieved: NO
+
+3-fold CV Confusion Matrix:
+[[ 17  36  19   3   0]
+ [ 16 328  98  15   2]
+ [  4  69 356  55   3]
+ [  2  16  64 118  20]
+ [  0   0   2   4  20]]
+
+3-fold CV Classification Report:
+              precision    recall  f1-score   support
+
+       WHITE       0.44      0.23      0.30        75
+       GREEN       0.73      0.71      0.72       459
+      YELLOW       0.66      0.73      0.69       487
+        PINK       0.61      0.54      0.57       220
+         RED       0.44      0.77      0.56        26
+
+    accuracy                           0.66      1267
+   macro avg       0.58      0.60      0.57      1267
+weighted avg       0.66      0.66      0.66      1267

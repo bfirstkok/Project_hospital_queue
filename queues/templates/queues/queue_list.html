@@ -418,6 +418,8 @@
       color: #ff5f72;
     }
 
+    .triage-badge.pink { background: rgba(232, 93, 158, 0.15); color: #e85d9e; }
+
     .triage-badge.yellow {
       background: rgba(255, 184, 48, 0.15);
       color: #ffb830;
@@ -427,6 +429,8 @@
       background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
     }
+
+    .triage-badge.white { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
 
     .triage-badge .dot {
       width: 5px;
@@ -509,6 +513,9 @@
       background: rgba(255, 95, 114, 0.25);
     }
 
+    .action-btn.pink { background: rgba(232, 93, 158, 0.15); color: #e85d9e; border: 1px solid rgba(232, 93, 158, 0.25); padding: 5px 10px; font-size: 14px; }
+    .action-btn.pink:hover { background: rgba(232, 93, 158, 0.25); }
+
     .action-btn.yellow {
       background: rgba(255, 184, 48, 0.15);
       color: #ffb830;
@@ -532,6 +539,9 @@
     .action-btn.green:hover {
       background: rgba(0, 212, 170, 0.25);
     }
+
+    .action-btn.white { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); padding: 5px 10px; font-size: 14px; }
+    .action-btn.white:hover { background: rgba(148, 163, 184, 0.25); }
 
     .delete-queue-form {
       display: inline-flex;
@@ -597,20 +607,27 @@
           <div class="stat-label">Red</div>
           <div class="stat-number" style="color:#ff5f72; font-size:22px;">{{ red_count }}</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">Pink</div>
+          <div class="stat-number" style="color:#e85d9e; font-size:22px;">{{ pink_count }}</div>
+        </div>
         <div class="stat-card amber">
           <div class="stat-label">Yellow</div>
           <div class="stat-number" style="color:#ffb830; font-size:22px;">{{ yellow_count }}</div>
         </div>
-      </div>
-
-      <div class="stat-card green">
-        <div class="stat-label">Green</div>
-        <div class="stat-number" style="color:#00d4aa; font-size:22px;">{{ green_count }}</div>
-        <div class="stat-sub">ความเสี่ยงต่ำ</div>
+        <div class="stat-card green">
+          <div class="stat-label">Green / White</div>
+          <div class="stat-number" style="color:#00d4aa; font-size:22px;">{{ green_count }} / {{ white_count }}</div>
+        </div>
       </div>
 
       <div class="triage-legend">
         <h4>ระดับความเร่งด่วน</h4>
+        <div class="triage-row">
+          <div class="triage-dot" style="background:#e85d9e;"></div>
+          <div class="triage-info"><div class="triage-name" style="color:#e85d9e;">Pink</div><div class="triage-desc">ฉุกเฉิน</div></div>
+          <div class="triage-count" style="color:#e85d9e;">{{ pink_count }}</div>
+        </div>
         <div class="triage-row">
           <div class="triage-dot" style="background:#ff5f72;"></div>
           <div class="triage-info">
@@ -634,6 +651,11 @@
             <div class="triage-desc">ไม่เร่งด่วน</div>
           </div>
           <div class="triage-count" style="color:#00d4aa;">{{ green_count }}</div>
+        </div>
+        <div class="triage-row">
+          <div class="triage-dot" style="background:#94a3b8;"></div>
+          <div class="triage-info"><div class="triage-name" style="color:#94a3b8;">White</div><div class="triage-desc">ผู้ป่วยทั่วไป</div></div>
+          <div class="triage-count" style="color:#94a3b8;">{{ white_count }}</div>
         </div>
       </div>
     </div>
@@ -674,10 +696,14 @@
                 {% if v.final_severity == "RED" %}
                   <span class="triage-badge red"><span class="dot"></span>RED</span>
                   <div class="patient-age" style="color:#ff9aa8; margin-top:6px; font-weight:700;">RED alert</div>
+                {% elif v.final_severity == "PINK" %}
+                  <span class="triage-badge pink"><span class="dot"></span>PINK</span>
                 {% elif v.final_severity == "YELLOW" %}
                   <span class="triage-badge yellow"><span class="dot"></span>YELLOW</span>
                 {% elif v.final_severity == "GREEN" %}
                   <span class="triage-badge green"><span class="dot"></span>GREEN</span>
+                {% elif v.final_severity == "WHITE" %}
+                  <span class="triage-badge white"><span class="dot"></span>WHITE</span>
                 {% else %}
                   <span class="triage-badge"><span class="dot"></span>-</span>
                 {% endif %}
@@ -692,8 +718,10 @@
                   <a class="action-btn triage" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
                   <a class="action-btn triage" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
                   <button class="action-btn red" onclick="setSeverity({{ v.id }}, 'RED')">แดง</button>
+                  <button class="action-btn pink" onclick="setSeverity({{ v.id }}, 'PINK')">ชมพู</button>
                   <button class="action-btn yellow" onclick="setSeverity({{ v.id }}, 'YELLOW')">เหลือง</button>
                   <button class="action-btn green" onclick="setSeverity({{ v.id }}, 'GREEN')">เขียว</button>
+                  <button class="action-btn white" onclick="setSeverity({{ v.id }}, 'WHITE')">ขาว</button>
                   <form class="delete-queue-form" method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการรอคิวใช่ไหม?');">
                     {% csrf_token %}
                     <button class="action-btn delete" type="submit">ลบคิว</button>
@@ -740,12 +768,14 @@
   // คำนวณสถิติ
   document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('.queue-table tbody tr');
-    let red = 0, yellow = 0, green = 0;
+    let red = 0, pink = 0, yellow = 0, green = 0, white = 0;
     
     rows.forEach(row => {
       if (row.innerHTML.includes('RED')) red++;
+      else if (row.innerHTML.includes('PINK')) pink++;
       else if (row.innerHTML.includes('YELLOW')) yellow++;
       else if (row.innerHTML.includes('GREEN')) green++;
+      else if (row.innerHTML.includes('WHITE')) white++;
     });
   });
 

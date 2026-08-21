@@ -1,4 +1,6 @@
-,pred_GREEN,pred_YELLOW,pred_RED
-true_GREEN,30,7,3
-true_YELLOW,8,29,6
-true_RED,0,7,23
+,pred_WHITE,pred_GREEN,pred_YELLOW,pred_PINK,pred_RED
+true_WHITE,1,9,4,1,0
+true_GREEN,2,66,19,4,1
+true_YELLOW,2,18,68,10,0
+true_PINK,0,4,15,17,8
+true_RED,0,0,0,1,4

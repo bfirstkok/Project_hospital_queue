@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
 from queues.models import DeviceAssignment, Queue, Visit, TelemetryLog, VitalSign
+from queues.triage import SEVERITY_LEVELS
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
 
@@ -96,11 +97,11 @@ def _opd_queue_queryset(selected_room):
 
 def _opd_queue_payload(q_items):
     rows = []
-    counts = {"RED": 0, "YELLOW": 0, "GREEN": 0}
+    counts = {severity: 0 for severity in SEVERITY_LEVELS}
 
     for index, q in enumerate(q_items, start=1):
         v = q.visit
-        severity = v.final_severity or "GREEN"
+        severity = v.final_severity or "WHITE"
         if severity in counts:
             counts[severity] += 1
 
@@ -144,15 +145,19 @@ def opd_list(request):
     q_items = _opd_queue_queryset(selected_room)
     
     # Count by severity
-    red_count = sum(1 for q in q_items if q.visit.final_severity == "RED")
-    yellow_count = sum(1 for q in q_items if q.visit.final_severity == "YELLOW")
-    green_count = sum(1 for q in q_items if q.visit.final_severity == "GREEN")
+    severity_counts = {
+        severity: sum(1 for q in q_items if q.visit.final_severity == severity)
+        for severity in SEVERITY_LEVELS
+    }
     
     return render(request, "opd_list.html", {
         "q_items": q_items,
-        "red_count": red_count,
-        "yellow_count": yellow_count,
-        "green_count": green_count,
+        "severity_counts": severity_counts,
+        "red_count": severity_counts["RED"],
+        "pink_count": severity_counts["PINK"],
+        "yellow_count": severity_counts["YELLOW"],
+        "green_count": severity_counts["GREEN"],
+        "white_count": severity_counts["WHITE"],
         "selected_room": selected_room,
         "rooms": EXAM_ROOMS,
     })

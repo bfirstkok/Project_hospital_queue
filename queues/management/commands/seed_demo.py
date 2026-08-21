@@ -47,6 +47,30 @@ SEED_PATIENTS = [
         "vitals": {"rr": 18, "pr": 82, "sys_bp": 122, "dia_bp": 78, "bt": 36.8, "o2sat": 98},
     },
     {
+        "name": ("Demo Pink", "Emergency"),
+        "national_id": "9000000000006",
+        "ai_severity": "PINK",
+        "nurse_severity": "PINK",
+        "confidence": 0.89,
+        "note": "Chest pain with possible acute coronary syndrome",
+        "ai_reason": "High-risk symptom requiring rapid emergency assessment",
+        "nurse_note": "Confirmed PINK for rapid emergency assessment.",
+        "queue_status": Queue.Status.EMERGENCY_TRANSFER,
+        "vitals": {"rr": 22, "pr": 108, "sys_bp": 118, "dia_bp": 76, "bt": 36.8, "o2sat": 97},
+    },
+    {
+        "name": ("Demo White", "Routine"),
+        "national_id": "9000000000007",
+        "ai_severity": "WHITE",
+        "nurse_severity": "WHITE",
+        "confidence": 0.84,
+        "note": "Routine non-urgent complaint with stable vital signs",
+        "ai_reason": "No warning feature detected; model suggested level 5",
+        "nurse_note": "Confirmed WHITE after assessment.",
+        "queue_status": Queue.Status.WAITING_QUEUE,
+        "vitals": {"rr": 16, "pr": 76, "sys_bp": 120, "dia_bp": 78, "bt": 36.6, "o2sat": 99},
+    },
+    {
         "name": ("Demo Pending", "Confirmation"),
         "national_id": "9000000000004",
         "ai_severity": "RED",
@@ -143,7 +167,7 @@ class Command(BaseCommand):
                 visit=visit,
                 defaults={
                     "status": demo["queue_status"],
-                    "priority": {"RED": 1, "YELLOW": 2, "GREEN": 3}.get(final_severity or demo["ai_severity"], 3),
+                    "priority": {"RED": 1, "PINK": 2, "YELLOW": 3, "GREEN": 4, "WHITE": 5}.get(final_severity or demo["ai_severity"], 5),
                 },
             )
 
@@ -156,20 +180,21 @@ class Command(BaseCommand):
                 is_active=False,
                 unpaired_at=now,
             )
-            DeviceAssignment.objects.create(device=device, visit=visit)
-            for n in range(8):
-                drift = random.randint(-3, 3)
-                TelemetryLog.objects.create(
-                    visit=visit,
-                    device=device,
-                    ts=now - timedelta(minutes=7 - n),
-                    bpm=max(40, vitals["pr"] + drift),
-                    o2sat=max(80, min(100, vitals["o2sat"] + random.randint(-1, 1))),
-                    bt=round(float(vitals["bt"]) + random.uniform(-0.2, 0.2), 1),
-                    rr=max(8, vitals["rr"] + random.randint(-1, 1)),
-                    sys_bp=max(60, vitals["sys_bp"] + random.randint(-5, 5)),
-                    dia_bp=max(35, vitals["dia_bp"] + random.randint(-3, 3)),
-                )
+            if final_severity == Visit.Severity.YELLOW:
+                DeviceAssignment.objects.create(device=device, visit=visit)
+                for n in range(8):
+                    drift = random.randint(-3, 3)
+                    TelemetryLog.objects.create(
+                        visit=visit,
+                        device=device,
+                        ts=now - timedelta(minutes=7 - n),
+                        bpm=max(40, vitals["pr"] + drift),
+                        o2sat=max(80, min(100, vitals["o2sat"] + random.randint(-1, 1))),
+                        bt=round(float(vitals["bt"]) + random.uniform(-0.2, 0.2), 1),
+                        rr=max(8, vitals["rr"] + random.randint(-1, 1)),
+                        sys_bp=max(60, vitals["sys_bp"] + random.randint(-5, 5)),
+                        dia_bp=max(35, vitals["dia_bp"] + random.randint(-3, 3)),
+                    )
 
             self.stdout.write(
                 f"Seeded visit #{visit.id} queue #{queue.id} "

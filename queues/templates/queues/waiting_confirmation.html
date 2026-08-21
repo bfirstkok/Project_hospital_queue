@@ -34,8 +34,10 @@
     .ai-recommendation { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid #dbe7ea; border-radius: 9px; background: #f7fafb; }
     .severity-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 70px; min-height: 32px; padding: 0 9px; border: 1px solid; border-radius: 8px; font-weight: 900; }
     .severity-badge.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
+    .severity-badge.pink { color: #a92d63; border-color: #efb7cf; background: #fff0f6; }
     .severity-badge.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
     .severity-badge.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
+    .severity-badge.white { color: #52636d; border-color: #cfdadd; background: #f7fafb; }
     .severity-copy strong { display: block; color: #173242; font-size: 15px; }
     .severity-copy span { color: #607783; font-size: 11px; }
     .reason-box { margin-top: 8px; padding: 9px 10px; border-left: 3px solid #8eb9c2; border-radius: 7px; background: #f4f8f9; }
@@ -57,8 +59,10 @@
     .alternative-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 9px; border: 1px solid #cddce1; border-radius: 7px; background: #fff; color: #405d6b; font-size: 12px; text-decoration: none; font-weight: 700; cursor: pointer; }
     .btn.red { color: #bd2f2f; border-color: #efbcbc; background: #fff0f0; }
+    .btn.pink { color: #a92d63; border-color: #efb7cf; background: #fff0f6; }
     .btn.yellow { color: #946000; border-color: #ead493; background: #fff7df; }
     .btn.green { color: #18794e; border-color: #b9dfc9; background: #eaf8f0; }
+    .btn.white { color: #52636d; border-color: #cfdadd; background: #f7fafb; }
     .return-form { margin-top: 6px; }
     .return-form .btn { width: 100%; }
     .empty { padding: 48px 18px; border: 1px dashed #cddfe3; border-radius: 14px; background: #fff; color: #607783; text-align: center; }
@@ -139,11 +143,11 @@
             <section class="ai-column">
               <div class="section-kicker">1 · คำแนะนำจากระบบ</div>
               <div class="ai-recommendation">
-                <span class="severity-badge {% if tr.ai_severity == 'RED' %}red{% elif tr.ai_severity == 'YELLOW' %}yellow{% else %}green{% endif %}">
-                  {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% elif tr.ai_severity == 'GREEN' %}สีเขียว{% else %}-{% endif %}
+                <span class="severity-badge {{ tr.ai_severity|lower }}">
+                  {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'PINK' %}สีชมพู{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% elif tr.ai_severity == 'GREEN' %}สีเขียว{% elif tr.ai_severity == 'WHITE' %}สีขาว{% else %}-{% endif %}
                 </span>
                 <div class="severity-copy">
-                  <strong>{% if tr.ai_severity == 'RED' %}ส่งต่อฉุกเฉิน{% elif tr.ai_severity == 'YELLOW' %}กลุ่มเฝ้าระวัง{% elif tr.ai_severity == 'GREEN' %}คิวปกติ{% else %}ยังไม่มีคำแนะนำ{% endif %}</strong>
+                  <strong>{% if tr.ai_severity == 'RED' %}ช่วยชีวิตทันที{% elif tr.ai_severity == 'PINK' %}ประเมินฉุกเฉินโดยเร็ว{% elif tr.ai_severity == 'YELLOW' %}กลุ่มเฝ้าระวัง{% elif tr.ai_severity == 'GREEN' %}คิวไม่เร่งด่วน{% elif tr.ai_severity == 'WHITE' %}ผู้ป่วยทั่วไป{% else %}ยังไม่มีคำแนะนำ{% endif %}</strong>
                   <span>พยาบาลต้องตรวจสอบก่อนยืนยัน</span>
                 </div>
               </div>
@@ -151,8 +155,8 @@
                 <strong>เหตุผลประกอบคำแนะนำ</strong>
                 <p class="reason">{{ q.ai_reason_display|default:"ไม่พบเหตุผลประกอบ" }}</p>
               </div>
-              {% if tr.ai_severity == "RED" %}
-                <div class="warning-red">ระดับสีแดงต้องได้รับการประเมินเร่งด่วน หากยืนยันแล้วระบบจะส่งไปหน้าส่งต่อฉุกเฉิน</div>
+              {% if tr.ai_severity == "RED" or tr.ai_severity == "PINK" %}
+                <div class="warning-red">{% if tr.ai_severity == "RED" %}สีแดงต้องช่วยเหลือทันที{% else %}สีชมพูต้องได้รับการประเมินฉุกเฉินโดยเร็ว{% endif %} หากยืนยันแล้วระบบจะส่งไปหน้าส่งต่อฉุกเฉิน</div>
               {% endif %}
             </section>
 
@@ -184,14 +188,16 @@
 
                 {% if tr.ai_severity %}
                   <button class="primary-confirm" type="submit" name="severity" value="{{ tr.ai_severity }}">
-                    ยืนยันตามคำแนะนำ · {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% else %}สีเขียว{% endif %}
+                    ยืนยันตามคำแนะนำ · {% if tr.ai_severity == 'RED' %}สีแดง{% elif tr.ai_severity == 'PINK' %}สีชมพู{% elif tr.ai_severity == 'YELLOW' %}สีเหลือง{% elif tr.ai_severity == 'GREEN' %}สีเขียว{% else %}สีขาว{% endif %}
                   </button>
                 {% endif %}
                 <div class="alternative-label">หรือเลือกผลอื่น</div>
                 <div class="alternative-actions">
                   {% if tr.ai_severity != 'RED' %}<button class="btn red" type="submit" name="severity" value="RED">สีแดง · ฉุกเฉิน</button>{% endif %}
+                  {% if tr.ai_severity != 'PINK' %}<button class="btn pink" type="submit" name="severity" value="PINK">สีชมพู · ฉุกเฉิน</button>{% endif %}
                   {% if tr.ai_severity != 'YELLOW' %}<button class="btn yellow" type="submit" name="severity" value="YELLOW">สีเหลือง · เฝ้าระวัง</button>{% endif %}
                   {% if tr.ai_severity != 'GREEN' %}<button class="btn green" type="submit" name="severity" value="GREEN">สีเขียว · คิวปกติ</button>{% endif %}
+                  {% if tr.ai_severity != 'WHITE' %}<button class="btn white" type="submit" name="severity" value="WHITE">สีขาว · ผู้ป่วยทั่วไป</button>{% endif %}
                 </div>
               </form>
 

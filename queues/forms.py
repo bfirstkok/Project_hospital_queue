@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Device, Queue, Visit
+from .models import Device, Queue, TriageResult, Visit
 
 
 PAIRABLE_QUEUE_STATUSES = [
@@ -9,15 +9,23 @@ PAIRABLE_QUEUE_STATUSES = [
 
 
 class NurseTriageAssessmentForm(forms.Form):
+    YES_NO_CHOICES = [
+        ("", "ยังไม่ระบุ"),
+        ("yes", "ใช่"),
+        ("no", "ไม่ใช่"),
+    ]
     URGENT_SYMPTOM_CHOICES = [
         ("chest_pain", "เจ็บหน้าอก"),
         ("dyspnea", "หายใจลำบาก / หอบเหนื่อย"),
-        ("altered_consciousness", "ซึมลง / หมดสติ"),
+        ("altered_consciousness", "ซึมลง / สับสน"),
+        ("unresponsive", "ไม่รู้สึกตัว / เรียกไม่ตื่น"),
         ("seizure", "ชัก"),
+        ("active_seizure", "กำลังชัก"),
         ("major_bleeding", "เลือดออกมาก"),
         ("severe_pain", "ปวดรุนแรง"),
         ("high_fever", "ไข้สูง"),
         ("severe_accident", "อุบัติเหตุรุนแรง"),
+        ("stroke_signs", "หน้าเบี้ยว แขนขาอ่อนแรง หรือพูดไม่ชัดเฉียบพลัน"),
     ]
     RISK_FLAG_CHOICES = [
         ("copd_asthma", "COPD / Asthma"),
@@ -60,6 +68,36 @@ class NurseTriageAssessmentForm(forms.Form):
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
+    lifesaving_intervention = forms.ChoiceField(
+        label="ต้องช่วยชีวิตทันทีหรือไม่",
+        choices=YES_NO_CHOICES,
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    high_risk_condition = forms.ChoiceField(
+        label="เป็นภาวะเสี่ยงสูงที่ไม่ควรรอหรือไม่",
+        choices=YES_NO_CHOICES,
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    mental_status = forms.ChoiceField(
+        label="ระดับการตอบสนองของผู้ป่วย",
+        choices=[("", "ยังไม่ระบุ"), *TriageResult.MentalStatus.choices],
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    severe_distress = forms.ChoiceField(
+        label="มีความทุกข์ทรมานหรืออาการรุนแรงที่ต้องประเมินฉุกเฉินหรือไม่",
+        choices=YES_NO_CHOICES,
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    expected_resources = forms.ChoiceField(
+        label="คาดว่าจะใช้ทรัพยากรทางการแพทย์กี่รายการ",
+        choices=[("", "ยังไม่ระบุ"), *TriageResult.ExpectedResources.choices],
+        required=False,
+        widget=forms.RadioSelect,
+    )
     symptoms = forms.CharField(
         label="เหตุผล/รายละเอียดเพิ่มเติม",
         required=False,
@@ -78,6 +116,32 @@ class NurseTriageAssessmentForm(forms.Form):
         for field in self.VITAL_FIELDS:
             if cleaned.get(field) is None and not cleaned.get(f"{field}_unmeasured"):
                 self.add_error(field, "กรุณากรอกค่า หรือเลือก 'ยังไม่ได้วัด'")
+
+        decision_fields = [
+            "lifesaving_intervention",
+            "high_risk_condition",
+            "severe_distress",
+        ]
+        for field in decision_fields:
+            if not cleaned.get(field):
+                self.add_error(field, "กรุณาเลือก ใช่ หรือ ไม่ใช่")
+
+        if not cleaned.get("mental_status"):
+            self.add_error("mental_status", "กรุณาประเมินระดับการตอบสนองของผู้ป่วย")
+
+        has_emergency_decision = (
+            any(cleaned.get(field) == "yes" for field in decision_fields)
+            or cleaned.get("mental_status") in {
+                TriageResult.MentalStatus.VERBAL,
+                TriageResult.MentalStatus.PAIN,
+                TriageResult.MentalStatus.UNRESPONSIVE,
+            }
+        )
+        if not has_emergency_decision and not cleaned.get("expected_resources"):
+            self.add_error(
+                "expected_resources",
+                "กรุณาประเมินจำนวนทรัพยากรสำหรับแยกระดับเหลือง เขียว และขาว",
+            )
 
         return cleaned
 

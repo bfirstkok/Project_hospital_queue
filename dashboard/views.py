@@ -6,19 +6,28 @@ from django.utils import timezone
 import csv
 from pathlib import Path
 from queues.models import CriticalAlert, Queue, TriageResult, Visit
+from queues.triage import SEVERITY_LEVELS
 
 @login_required
 def dashboard_view(request):
     waiting = Queue.objects.filter(status="WAITING_QUEUE")
     called = Queue.objects.filter(status="CALLED")
+    active = Queue.objects.exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"])
     alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
+    severity_totals = {
+        severity: active.filter(visit__final_severity=severity).count()
+        for severity in SEVERITY_LEVELS
+    }
 
     context = {
         "waiting_total": waiting.count(),
         "called_total": called.count(),
-        "red_total": waiting.filter(priority=1).count(),
-        "yellow_total": waiting.filter(priority=2).count(),
-        "green_total": waiting.filter(priority=3).count(),
+        "severity_totals": severity_totals,
+        "red_total": severity_totals["RED"],
+        "pink_total": severity_totals["PINK"],
+        "yellow_total": severity_totals["YELLOW"],
+        "green_total": severity_totals["GREEN"],
+        "white_total": severity_totals["WHITE"],
         "new_alert_total": alerts.count(),
         "latest_alerts": alerts.select_related("visit", "visit__patient")[:8],
         "now": timezone.now(),
@@ -102,7 +111,7 @@ def waiting_time_report(request):
     called_minutes = []
     confirmation_minutes = []
     opd_minutes = []
-    severity_counts = {"RED": 0, "YELLOW": 0, "GREEN": 0}
+    severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
     daily = {}
     monthly = {}
     bottleneck_totals = {
@@ -293,7 +302,7 @@ def _simple_pdf(lines):
 def waiting_time_report_pdf(request):
     visits = Visit.objects.select_related("patient", "queue").order_by("-registered_at")[:40]
     lines = ["Hospital Queue Executive Report", f"Generated: {timezone.now():%Y-%m-%d %H:%M}"]
-    severity_counts = {"RED": 0, "YELLOW": 0, "GREEN": 0}
+    severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
     waits = []
     for visit in visits:
         if visit.final_severity:
@@ -305,7 +314,8 @@ def waiting_time_report_pdf(request):
     lines.extend([
         f"Total rows: {visits.count()}",
         f"Average registered-to-called: {avg_wait} minutes",
-        f"Severity RED/YELLOW/GREEN: {severity_counts['RED']}/{severity_counts['YELLOW']}/{severity_counts['GREEN']}",
+        "Severity RED/PINK/YELLOW/GREEN/WHITE: "
+        + "/".join(str(severity_counts[level]) for level in SEVERITY_LEVELS),
         "",
         "Recent visits:",
     ])
@@ -336,9 +346,10 @@ def live_summary_api(request):
         "waiting_total": waiting.count(),
         "called_total": called.count(),
         "severity": {
-            "RED": waiting.filter(priority=1).count(),
-            "YELLOW": waiting.filter(priority=2).count(),
-            "GREEN": waiting.filter(priority=3).count(),
+            severity: Queue.objects.filter(
+                visit__final_severity=severity,
+            ).exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"]).count()
+            for severity in SEVERITY_LEVELS
         },
         "new_alert_total": CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW).count(),
         "alerts": [

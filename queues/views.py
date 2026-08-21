@@ -22,8 +22,8 @@ from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
 from .models import CriticalAlert, IoTVital, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
+from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
-SEVERITY_PRIORITY = {"RED": 1, "YELLOW": 2, "GREEN": 3}
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
 REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
 
@@ -54,7 +54,7 @@ def route_after_nurse_confirmation(visit, severity):
     has_active_wearable = DeviceAssignment.objects.filter(visit=visit, is_active=True).exists()
 
     q.priority = SEVERITY_PRIORITY[severity]
-    if severity == Visit.Severity.RED:
+    if severity in EMERGENCY_SEVERITIES:
         unpair_active_wearable(visit)
         q.status = Queue.Status.EMERGENCY_TRANSFER
     elif severity == Visit.Severity.YELLOW:
@@ -119,7 +119,7 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
         created.append(CriticalAlert.objects.create(
             visit=visit,
             alert_type=alert_type,
-            severity=Visit.Severity.RED,
+            severity=Visit.Severity.PINK,
             message=message,
             value=value,
             threshold=threshold,
@@ -153,15 +153,19 @@ def queue_list(request):
     )
     
     # Count by severity
-    red_count = sum(1 for q in q_items if q.visit.final_severity == "RED")
-    yellow_count = sum(1 for q in q_items if q.visit.final_severity == "YELLOW")
-    green_count = sum(1 for q in q_items if q.visit.final_severity == "GREEN")
+    severity_counts = {
+        severity: sum(1 for q in q_items if q.visit.final_severity == severity)
+        for severity in SEVERITY_LEVELS
+    }
     
     return render(request, "queues/queue_list.html", {
         "q_items": q_items,
-        "red_count": red_count,
-        "yellow_count": yellow_count,
-        "green_count": green_count,
+        "severity_counts": severity_counts,
+        "red_count": severity_counts["RED"],
+        "pink_count": severity_counts["PINK"],
+        "yellow_count": severity_counts["YELLOW"],
+        "green_count": severity_counts["GREEN"],
+        "white_count": severity_counts["WHITE"],
     })
 
 
@@ -275,6 +279,7 @@ def call_visit(request, visit_id: int):
 def nurse_triage_assessment(request, visit_id: int):
     visit = get_object_or_404(Visit.objects.select_related("patient"), id=visit_id)
     q = getattr(visit, "queue", None)
+    triage_result = getattr(visit, "triage_result", None)
 
     initial = {}
     vitals = getattr(visit, "vitals", None)
@@ -296,8 +301,19 @@ def nurse_triage_assessment(request, visit_id: int):
     if visit.note:
         initial["symptoms"] = visit.note
 
+    if triage_result:
+        for field in [
+            "lifesaving_intervention",
+            "high_risk_condition",
+            "severe_distress",
+        ]:
+            value = getattr(triage_result, field)
+            if value is not None:
+                initial[field] = "yes" if value else "no"
+        initial["mental_status"] = triage_result.mental_status or ""
+        initial["expected_resources"] = triage_result.expected_resources or ""
+
     ai_result = None
-    triage_result = getattr(visit, "triage_result", None)
 
     if request.method == "POST":
         action = request.POST.get("action", "evaluate")
@@ -319,6 +335,30 @@ def nurse_triage_assessment(request, visit_id: int):
 
             visit.note = form.cleaned_data.get("symptoms", "")
             visit.save(update_fields=["note"])
+
+            triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
+            for field in [
+                "lifesaving_intervention",
+                "high_risk_condition",
+                "severe_distress",
+            ]:
+                answer = form.cleaned_data.get(field)
+                setattr(triage_result, field, None if not answer else answer == "yes")
+            triage_result.mental_status = form.cleaned_data.get("mental_status") or None
+            triage_result.altered_mental_status = (
+                None
+                if not triage_result.mental_status
+                else triage_result.mental_status != TriageResult.MentalStatus.ALERT
+            )
+            triage_result.expected_resources = form.cleaned_data.get("expected_resources") or None
+            triage_result.save(update_fields=[
+                "lifesaving_intervention",
+                "high_risk_condition",
+                "altered_mental_status",
+                "mental_status",
+                "severe_distress",
+                "expected_resources",
+            ])
 
             if not is_draft:
                 ai_result = apply_ai_triage(visit)
@@ -379,12 +419,15 @@ def triage_visit(request, visit_id: int):
     triage_result.save(update_fields=["nurse_severity", "nurse_note"])
 
     if new_sev == Visit.Severity.RED:
-        messages.error(request, "RED: ส่งต่อฉุกเฉินทันที ไม่เข้าคิว OPD และไม่รอสวมนาฬิกา")
+        messages.error(request, "RED: ช่วยเหลือทันที ส่งต่อฉุกเฉิน ไม่เข้าคิว OPD และไม่รอสวมนาฬิกา")
+        return redirect("emergency_transfers")
+    if new_sev == Visit.Severity.PINK:
+        messages.error(request, "PINK: ส่งประเมินฉุกเฉินอย่างรวดเร็ว ไม่เข้าคิว OPD ปกติ")
         return redirect("emergency_transfers")
     if new_sev == Visit.Severity.YELLOW:
         messages.warning(request, "YELLOW: เข้ากลุ่มเฝ้าระวัง สามารถจับคู่นาฬิกาได้")
     else:
-        messages.success(request, "GREEN: เข้าคิวปกติ ไม่ต้องสวมนาฬิกา")
+        messages.success(request, f"{new_sev}: เข้าคิว OPD ตามลำดับ ไม่ต้องสวมนาฬิกา")
     return redirect("queue_list")
 
 
@@ -434,7 +477,7 @@ def update_severity_api(request, visit_id: int):
     """
     API สำหรับ Dashboard เปลี่ยนสี severity
     POST /queues/api/update-severity/<visit_id>/
-    Body: {"severity": "RED"|"YELLOW"|"GREEN"}
+    Body: {"severity": "RED"|"PINK"|"YELLOW"|"GREEN"|"WHITE"}
     """
     visit = get_object_or_404(Visit, id=visit_id)
 
@@ -442,7 +485,7 @@ def update_severity_api(request, visit_id: int):
         data = json.loads(request.body.decode("utf-8"))
         new_sev = data.get("severity")
 
-        if new_sev not in ["RED", "YELLOW", "GREEN"]:
+        if new_sev not in SEVERITY_LEVELS:
             return JsonResponse({"ok": False, "error": "Invalid severity"}, status=400)
 
         visit.final_severity = new_sev
@@ -1171,16 +1214,16 @@ def demo_create_visit_queue(request):
     # 2) สร้าง Visit
     visit = Visit.objects.create(
         patient=patient,
-        final_severity=random.choice(["GREEN", "YELLOW", "RED"]),
+        final_severity=random.choice(list(SEVERITY_LEVELS)),
         confirmed_at=timezone.now(),
     )
 
     # 3) สร้าง Queue
-    priority_map = {"RED": 1, "YELLOW": 2, "GREEN": 3}
+    priority_map = SEVERITY_PRIORITY
     Queue.objects.create(
         visit=visit,
         status=Queue.Status.WAITING_QUEUE,
-        priority=priority_map.get(visit.final_severity, 3),
+        priority=priority_map.get(visit.final_severity, 5),
     )
 
     return JsonResponse({"ok": True, "visit_id": visit.id})
@@ -1215,8 +1258,8 @@ def dashboard_demo_create(request):
     )
 
     # --- 3) สร้าง Visit ---
-    sev_choices = ["RED", "YELLOW", "GREEN"]
-    sev = random.choices(sev_choices, weights=[1, 3, 6], k=1)[0]  # GREEN เจอบ่อยกว่า
+    sev_choices = list(SEVERITY_LEVELS)
+    sev = random.choices(sev_choices, weights=[1, 2, 3, 5, 5], k=1)[0]
 
     visit = Visit.objects.create(
         patient=patient,
@@ -1226,11 +1269,11 @@ def dashboard_demo_create(request):
     )
 
     # --- 4) สร้าง Queue (WAITING) ---
-    priority_map = {"RED": 1, "YELLOW": 2, "GREEN": 3}
+    priority_map = SEVERITY_PRIORITY
     q = Queue.objects.create(
         visit=visit,
         status=Queue.Status.WAITING_QUEUE,
-        priority=priority_map.get(sev, 3),
+        priority=priority_map.get(sev, 5),
     )
 
     return JsonResponse({

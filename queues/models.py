@@ -6,9 +6,11 @@ from django.utils import timezone
 
 class Visit(models.Model):
     class Severity(models.TextChoices):
-        RED = "RED", "แดง"
-        YELLOW = "YELLOW", "เหลือง"
-        GREEN = "GREEN", "เขียว"
+        RED = "RED", "แดง - วิกฤต"
+        PINK = "PINK", "ชมพู - ฉุกเฉิน"
+        YELLOW = "YELLOW", "เหลือง - เร่งด่วน"
+        GREEN = "GREEN", "เขียว - ไม่เร่งด่วน"
+        WHITE = "WHITE", "ขาว - ผู้ป่วยทั่วไป"
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="visits")
     tracking_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
@@ -64,7 +66,7 @@ class Queue(models.Model):
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.WAITING_VITALS)
 
-    priority = models.IntegerField(default=3)
+    priority = models.IntegerField(default=5)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -86,6 +88,17 @@ class Queue(models.Model):
 
 
 class TriageResult(models.Model):
+    class MentalStatus(models.TextChoices):
+        ALERT = "ALERT", "รู้สึกตัวดี"
+        VERBAL = "VERBAL", "ตอบสนองต่อเสียงเรียก"
+        PAIN = "PAIN", "ตอบสนองเมื่อกระตุ้นด้วยความเจ็บปวด"
+        UNRESPONSIVE = "UNRESPONSIVE", "ไม่ตอบสนอง"
+
+    class ExpectedResources(models.TextChoices):
+        NONE = "0", "ไม่ใช้ทรัพยากรเพิ่มเติม"
+        ONE = "1", "ใช้ 1 รายการ"
+        MANY = "2_PLUS", "ใช้มากกว่า 1 รายการ"
+
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="triage_result")
 
     ai_severity = models.CharField(max_length=10, choices=Visit.Severity.choices, blank=True, null=True)
@@ -95,6 +108,26 @@ class TriageResult(models.Model):
     confidence = models.FloatField(blank=True, null=True)
     ai_reason = models.TextField(blank=True, default="")
     nurse_note = models.TextField(blank=True, default="")
+
+    # Structured five-level triage decision points recorded by the nurse.
+    # Null means the question has not been assessed yet; False is a deliberate
+    # "no" answer and must remain distinguishable for model training.
+    lifesaving_intervention = models.BooleanField(blank=True, null=True)
+    high_risk_condition = models.BooleanField(blank=True, null=True)
+    altered_mental_status = models.BooleanField(blank=True, null=True)
+    mental_status = models.CharField(
+        max_length=20,
+        choices=MentalStatus.choices,
+        blank=True,
+        null=True,
+    )
+    severe_distress = models.BooleanField(blank=True, null=True)
+    expected_resources = models.CharField(
+        max_length=10,
+        choices=ExpectedResources.choices,
+        blank=True,
+        null=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 

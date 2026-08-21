@@ -11,7 +11,7 @@ from queues.models import Queue
 queues = Queue.objects.all()
 for q in queues:
     q.status = 'WAITING'
-    q.priority = {'RED': 1, 'YELLOW': 2, 'GREEN': 3}.get(q.visit.final_severity, 3)
+    q.priority = {'RED': 1, 'PINK': 2, 'YELLOW': 3, 'GREEN': 4, 'WHITE': 5}.get(q.visit.final_severity, 5)
     q.save()
 
 print(f"✅ อัปเดต {queues.count()} Queue ไปเป็น WAITING")

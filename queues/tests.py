@@ -1,6 +1,10 @@
+import csv
 import json
+import tempfile
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -223,6 +227,8 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "ประเมินสุขภาพผู้ป่วย")
         self.assertContains(response, "กรอกข้อมูลตามลำดับ")
         self.assertContains(response, "อาการและปัจจัยเสี่ยง")
+        self.assertContains(response, "จุดตัดสินใจสำหรับการคัดกรอง 5 ระดับ")
+        self.assertContains(response, "คาดว่าจะใช้ทรัพยากรทางการแพทย์กี่รายการ")
         self.assertContains(response, "ประเมินและส่งไปรอยืนยัน")
         self.assertNotContains(response, "AI Suggested Severity")
         self.assertNotContains(response, "Rule Guardrail Status")
@@ -241,6 +247,11 @@ class QueueWorkflowTests(TestCase):
             "o2sat": "98",
             "pain_score": "2",
             "symptoms": "เวียนหัวเล็กน้อย",
+            "lifesaving_intervention": "no",
+            "high_risk_condition": "no",
+            "mental_status": "ALERT",
+            "severe_distress": "no",
+            "expected_resources": "1",
         })
         self.assertRedirects(response, reverse("waiting_confirmation"))
 
@@ -250,6 +261,8 @@ class QueueWorkflowTests(TestCase):
         self.assertIsNone(visit.final_severity)
         self.assertEqual(visit.triage_result.ai_severity, "GREEN")
         self.assertIsNone(visit.triage_result.nurse_severity)
+        self.assertFalse(visit.triage_result.lifesaving_intervention)
+        self.assertEqual(visit.triage_result.expected_resources, "1")
 
         confirmation_page = self.client.get(reverse("waiting_confirmation"))
         self.assertEqual(confirmation_page.status_code, 200)
@@ -273,7 +286,7 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(visit.final_severity, "YELLOW")
         self.assertIsNotNone(visit.confirmed_at)
         self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
-        self.assertEqual(visit.queue.priority, 2)
+        self.assertEqual(visit.queue.priority, 3)
 
         response = self.client.get(reverse("queue_list"))
         self.assertContains(response, "Demo Queue")
@@ -293,6 +306,11 @@ class QueueWorkflowTests(TestCase):
             "o2sat": "98",
             "pain_score": "2",
             "symptoms": "เวียนหัวเล็กน้อย",
+            "lifesaving_intervention": "no",
+            "high_risk_condition": "no",
+            "mental_status": "ALERT",
+            "severe_distress": "no",
+            "expected_resources": "1",
         })
         self.assertRedirects(response, reverse("waiting_confirmation"))
 
@@ -343,7 +361,7 @@ class ConfirmedTriageFlowTests(TestCase):
 
         page = self.client.get(reverse("emergency_transfers"))
         self.assertContains(page, 'class="topbar"')
-        self.assertContains(page, "ผู้ป่วย RED ที่ต้องส่งต่อให้บุคลากรทันที")
+        self.assertContains(page, "ผู้ป่วยระดับ 1–2 ที่ต้องรับช่วงในระบบฉุกเฉิน")
         self.assertContains(page, "backdrop-filter: none")
 
     def test_yellow_enters_observation_queue_and_can_pair_wearable(self):
@@ -362,6 +380,24 @@ class ConfirmedTriageFlowTests(TestCase):
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
         self.assertTrue(DeviceAssignment.objects.filter(visit=visit, device=self.device, is_active=True).exists())
+
+    def test_pink_bypasses_opd_queue(self):
+        visit = self.make_visit()
+
+        response = self.confirm(visit, Visit.Severity.PINK)
+
+        self.assertRedirects(response, reverse("emergency_transfers"))
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.EMERGENCY_TRANSFER)
+        self.assertEqual(visit.queue.priority, 2)
+
+    def test_white_enters_normal_queue_and_cannot_pair_wearable(self):
+        visit = self.make_visit()
+        self.confirm(visit, Visit.Severity.WHITE)
+        visit.queue.refresh_from_db()
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+        self.assertEqual(visit.queue.priority, 5)
+        self.assertNotIn(visit, DevicePairingForm().fields["visit"].queryset)
 
     def test_green_enters_normal_queue_and_cannot_pair_wearable(self):
         visit = self.make_visit()
@@ -442,4 +478,48 @@ class ConfirmedTriageFlowTests(TestCase):
 
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+
+
+class ConfirmedTriageExportTests(TestCase):
+    def test_export_contains_complete_deidentified_training_row(self):
+        patient = Patient.objects.create(
+            first_name="Private",
+            last_name="Patient",
+            national_id="9876543210123",
+            age=45,
+        )
+        visit = Visit.objects.create(patient=patient, note="เวียนหัว")
+        VitalSign.objects.create(
+            visit=visit,
+            rr=18,
+            pr=82,
+            sys_bp=120,
+            dia_bp=80,
+            bt=36.8,
+            o2sat=98,
+            pain_score=2,
+        )
+        TriageResult.objects.create(
+            visit=visit,
+            nurse_severity=Visit.Severity.GREEN,
+            lifesaving_intervention=False,
+            high_risk_condition=False,
+            altered_mental_status=False,
+            mental_status="ALERT",
+            severe_distress=False,
+            expected_resources="1",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "confirmed.csv"
+            call_command("export_confirmed_triage", output=str(output), verbosity=0)
+            with output.open(encoding="utf-8-sig", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["label"], "GREEN")
+        self.assertEqual(rows[0]["expected_resources"], "1")
+        self.assertNotIn("national_id", rows[0])
+        self.assertNotIn("first_name", rows[0])
+        self.assertNotIn("phone", rows[0])
 

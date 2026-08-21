@@ -355,7 +355,7 @@
         <span class="pill"><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b></span>
         <span class="pill"><span class="mono">รายการตรวจ {{ visit.id }}</span></span>
         {% with sev=visit.final_severity|upper %}
-          <span class="severity {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
+          <span class="severity {{ sev|lower }}">
             {{ visit.final_severity }}
           </span>
         {% endwith %}
@@ -373,7 +373,7 @@
         <div class="pill-row">
           <span class="pill">{{ visit.patient.first_name }} {{ visit.patient.last_name }}</span>
           {% with sev=visit.final_severity|upper %}
-            <span class="severity {% if sev == 'RED' %}red{% elif sev == 'YELLOW' %}yellow{% else %}green{% endif %}">
+            <span class="severity {{ sev|lower }}">
               Severity: {{ visit.final_severity }}
             </span>
           {% endwith %}

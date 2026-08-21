@@ -11,9 +11,11 @@ This project is a Django-based hospital queue and patient monitoring system for 
 The AI triage component predicts a suggested severity level:
 
 ```text
-RED     Emergency / highest priority
-YELLOW  Urgent / medium priority
-GREEN   Non-urgent / lower priority
+RED     Level 1 / resuscitation / immediate life-saving intervention
+PINK    Level 2 / emergency / rapid assessment
+YELLOW  Level 3 / urgent observation
+GREEN   Level 4 / less urgent OPD
+WHITE   Level 5 / non-urgent OPD
 ```
 
 The AI result is decision support only. The final triage decision still requires nurse confirmation.
@@ -27,7 +29,7 @@ The project connects two parts of the patient journey. **Online** covers the web
 | Patient registers in advance and receives a queue number. | Walk-in patients register with staff, while online patients verify their queue number. |
 | The system stores patient, visit, symptom, and queue information. | Staff measure HR, SpO2, blood pressure, temperature, respiratory rate, and other clinical information. |
 | AI analyzes the available symptoms and vital signs and produces a preliminary severity recommendation. | A nurse reviews the real patient condition together with the AI recommendation and confirms or overrides the result. |
-| The dashboard shows queue order, latest vital signs, device status, and alerts. | YELLOW patients may wear a monitoring device while waiting. RED patients must not wait for device assignment. |
+| The dashboard shows queue order, latest vital signs, device status, and alerts. | YELLOW patients may wear a monitoring device while waiting. RED/PINK patients do not wait for device assignment. |
 | The system receives wearable telemetry and raises an alert when abnormal data or a fall event is detected. | A nurse reassesses the patient after an alert. The alert is not an automatic clinical diagnosis. |
 | Patients can check their current queue status through the patient portal. | A doctor calls the patient, records the examination, and completes the visit. |
 
@@ -45,26 +47,31 @@ Target severity flow:
 
 ```text
 RED     -> Immediate emergency escalation; no normal queue and no wearable wait
+PINK    -> Rapid emergency assessment; no normal OPD queue or wearable wait
 YELLOW  -> Urgent/observation queue; wearable monitoring may be assigned
-GREEN   -> Normal queue and routine call for examination
+GREEN   -> Less urgent OPD queue
+WHITE   -> Non-urgent OPD queue
 ```
 
-AI and wearable alerts are decision-support tools only. A nurse remains responsible for the final triage decision. The three-level RED/YELLOW/GREEN model is an educational prototype that groups levels from five-level triage guidance for the scope of this project.
+AI and wearable alerts are decision-support tools only. A nurse remains responsible for the final triage decision. This educational prototype implements five levels adapted from five-level emergency triage guidance; thresholds are warning features used with symptoms, age, clinical context, and nurse judgment, not universal diagnoses from one value.
+
+Reference used for the five-level workflow: [MOPH ED Triage, Department of Medical Services](https://www.dms.go.th/backend/Content/Content_File/Population_Health/Attach/25621021104459AM_44.pdf?contentId=18326). The project is an educational implementation and is not a substitute for a hospital's approved clinical protocol.
 
 ## Core Workflow
 
 1. Staff registers a patient.
 2. The visit starts in `WAITING_VITALS`.
 3. Nurse opens OPD Triage Assessment and enters symptoms plus vital signs.
-4. AI suggests RED, YELLOW, or GREEN severity after required vital signs are complete.
+4. AI suggests RED, PINK, YELLOW, GREEN, or WHITE severity after required vital signs are complete.
 5. The visit moves to `WAITING_CONFIRMATION` so the nurse can confirm or override the AI result.
 6. The nurse-confirmed severity controls the next route:
-   - RED moves to `EMERGENCY_TRANSFER` immediately, bypasses the normal OPD queue, and cannot receive a wearable.
+   - RED moves to `EMERGENCY_TRANSFER` for immediate life-saving response.
+   - PINK moves to `EMERGENCY_TRANSFER` for rapid emergency assessment.
    - YELLOW moves to the urgent/observation queue and is the only group eligible for wearable pairing.
-   - GREEN moves to the normal `WAITING_QUEUE` and does not receive a wearable.
+   - GREEN and WHITE move to the normal `WAITING_QUEUE` and do not receive a wearable.
 7. Pairing a wearable to a YELLOW visit moves it to `OBSERVATION_MONITORING`; the existing `MONITORING` state remains reserved for post-OPD monitoring.
 8. Abnormal wearable data creates an alert and moves the visit to `REASSESSMENT_REQUIRED`; it does not automatically diagnose or change the nurse-confirmed severity.
-9. A nurse reassesses the patient and confirms RED, YELLOW, or GREEN again.
+9. A nurse reassesses the patient and confirms one of the five levels again.
 10. Staff calls eligible waiting patients and selects OPD exam room 1, 2, or 3.
 11. OPD staff complete the room assessment, including OPD urgency and follow-up information.
 12. Dashboard provides monitoring, alerts, AI evaluation, and waiting-time reports.
@@ -77,17 +84,17 @@ For presentation, show the clinical workflow in this order:
 Patient registration -> Nurse vital signs -> AI suggestion -> Rule guardrail -> Nurse confirmation -> Queue
 ```
 
-The demo data includes RED, YELLOW, and GREEN cases, plus a nurse override example where the AI suggestion differs from the final nurse-confirmed triage level.
+The demo data includes five-level triage cases plus a nurse override example where the AI suggestion differs from the final nurse-confirmed triage level.
 
 ## Queue States
 
 ```text
 WAITING_VITALS          Patient registered, waiting for vital signs
 WAITING_CONFIRMATION    AI triage completed, waiting for nurse confirmation
-WAITING_QUEUE           Nurse-confirmed YELLOW/GREEN visit ready for the next service step
+WAITING_QUEUE           Nurse-confirmed YELLOW/GREEN/WHITE visit ready for the next service step
 OBSERVATION_MONITORING  YELLOW observation visit with an active wearable
 REASSESSMENT_REQUIRED   Wearable alert detected; nurse must reassess
-EMERGENCY_TRANSFER      RED visit sent for immediate emergency care; not in the OPD queue
+EMERGENCY_TRANSFER      RED/PINK visit sent to emergency care; not in the OPD queue
 CALLED                  Sent to an OPD exam room
 MONITORING              Active post-OPD monitoring case
 OPD_DONE              OPD visit completed
@@ -102,8 +109,10 @@ Queue priority:
 
 ```text
 RED    -> priority 1
-YELLOW -> priority 2
-GREEN  -> priority 3
+PINK   -> priority 2
+YELLOW -> priority 3
+GREEN  -> priority 4
+WHITE  -> priority 5
 ```
 
 The queue is ordered by:
@@ -114,9 +123,11 @@ priority, created_at
 
 Prototype warning features used by the rule-based fallback (not universal single-value clinical decisions):
 
-- RED: `O2Sat < 95`, `RR > 30`, `BP ตัวบน < 90`, `BT >= 39`
-- YELLOW: `O2Sat 95-96`, `RR 21-30`, `PR/BPM >= 120`, `BT 38-38.9`
-- GREEN: no RED/YELLOW trigger
+- RED: immediate life threat such as `O2Sat < 90`, extreme RR, profound hypotension, unresponsiveness, active seizure, or major bleeding.
+- PINK: high-risk symptoms or dangerous vital signs requiring rapid emergency assessment.
+- YELLOW: urgent/observation warning features such as moderate vital-sign abnormality, severe pain without emergency evidence, or verified special-risk groups.
+- GREEN: less urgent presentation without a warning trigger.
+- WHITE: non-urgent presentation distinguished by the five-class model when rule guardrails find no warning trigger.
 
 The Random Forest model is attempted during AI triage, but the final AI recommendation is guarded by rule-based clinical logic in `services.py`. If the model cannot be loaded, the system falls back to the rule-based triage logic. These values are combined with symptoms, risk factors, age, medical context, and nurse judgment; the nurse must always confirm the final route.
 
@@ -428,7 +439,7 @@ Windows PowerShell:
 
 This creates:
 
-- RED/YELLOW/GREEN demo patients
+- RED/PINK/YELLOW/GREEN/WHITE demo patients
 - waiting queues
 - a monitoring case
 - demo IoT devices
@@ -442,12 +453,14 @@ The AI triage model is stored at:
 ai_triage/models/triage_dt_v1.pkl
 ```
 
-The model predicts `RED`, `YELLOW`, or `GREEN` severity. The target label is `KTAS_expert` from the training dataset, mapped into the system severity labels:
+The model predicts five severity labels. The target label is `KTAS_expert` from the training dataset, mapped one-to-one into the system labels:
 
 ```text
-KTAS 1-2 -> RED
-KTAS 3   -> YELLOW
-KTAS 4-5 -> GREEN
+KTAS 1 -> RED
+KTAS 2 -> PINK
+KTAS 3 -> YELLOW
+KTAS 4 -> GREEN
+KTAS 5 -> WHITE
 ```
 
 The model was changed from a Decision Tree to a stronger but still understandable `RandomForestClassifier`. It is trained inside a scikit-learn `Pipeline` with a `ColumnTransformer` for numeric, categorical, and text preprocessing.
@@ -472,13 +485,10 @@ Disposition, Length of stay_min, KTAS duration_min
 Numeric features:
 
 ```text
-group, age, patients_number_per_hour, nrs_pain, rr, pr, sys_bp, dia_bp, bt, o2sat
-```
-
-Categorical features:
-
-```text
-sex, arrival_mode, injury, mental, pain
+age, nrs_pain, rr, pr, sys_bp, dia_bp, bt, o2sat,
+lifesaving_intervention, high_risk_condition,
+altered_mental_status, severe_distress,
+mental_status (AVPU: alert, verbal, pain, unresponsive)
 ```
 
 Text feature:
@@ -487,17 +497,33 @@ Text feature:
 chief_complain
 ```
 
+Structured categorical feature (available as nurse-confirmed local cases are collected):
+
+```text
+expected_resources: 0, 1, 2_PLUS
+```
+
 Preprocessing:
 
 - Numeric: `SimpleImputer(strategy="median")`
-- Categorical: `SimpleImputer(strategy="most_frequent")` + `OneHotEncoder(handle_unknown="ignore")`
 - Text: `TfidfVectorizer(ngram_range=(1,2), min_df=2, max_features=1000)`
+
+Only features available during production scoring are trained. Age, pain score, and chief complaint are passed from the related patient/visit instead of being silently scored as missing. Rows with a valid expert label are retained when at least one runtime numeric value or chief complaint exists; missing numeric values are imputed by the pipeline.
 
 ## Model Performance
 
-The current Random Forest model accuracy is about `72.6%` on the held-out test split.
+The primary evaluation is stratified 3-fold cross-validation because RED remains a small class. Current results are approximately:
 
-Previous model accuracy was about `58.4%`, so the Random Forest version improved accuracy by about `14.2 percentage points` while still avoiding data leakage columns.
+- Accuracy: `66.2%`
+- Balanced accuracy: `59.6%`
+- Macro F1: `56.9%`
+- Route accuracy (ER / observation / OPD): `72.2%`
+- Within-one-level accuracy: `94.8%`
+- Recall: RED `76.9%`, PINK `53.6%`, YELLOW `73.1%`, GREEN `71.5%`, WHITE `22.7%`
+
+Compared with the first five-level training run, balanced accuracy increased from about `44.5%` to `59.6%` and RED recall from `0%` to `76.9%`. This came from retaining valid partially measured encounters, matching training features to production inputs, and recording mental response consistently with the source dataset. The model is still not clinically validated; RED has only 26 labeled rows and WHITE has 75, so nurse confirmation and rule guardrails remain mandatory.
+
+The next acceptance target is exact five-level accuracy `>= 75%` on unseen data. This target is not treated as achieved until a frozen test set reaches it. Accuracy is reported together with per-class recall and the confusion matrix so a majority-class score cannot hide urgent under-triage.
 
 Model reports are generated at:
 
@@ -518,6 +544,14 @@ ai_triage/reports/cleaned_dataset.csv
 - If the model is unavailable, the system falls back to rule-based triage logic.
 
 ## How to Train the Model
+
+After nurses have confirmed cases that contain all structured decision points, export the local examples. The default output is ignored by Git because it contains health information:
+
+```bash
+python manage.py export_confirmed_triage
+```
+
+The export contains no name, national ID, phone number, address, device key, or API key. Keep the file local and do not share or commit it. The training script combines it with the reference dataset automatically.
 
 Train or regenerate the model:
 

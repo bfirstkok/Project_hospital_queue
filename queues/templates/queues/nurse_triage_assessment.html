@@ -42,16 +42,20 @@
     .field.abnormal .control { border-color: rgba(248,113,113,.85); box-shadow: 0 0 0 3px rgba(248,113,113,.12); }
     .field.borderline .control { border-color: rgba(251,191,36,.85); box-shadow: 0 0 0 3px rgba(251,191,36,.12); }
     .result-red { border-color: rgba(248,113,113,.55); }
+    .result-pink { border-color: rgba(232,93,158,.55); }
     .result-yellow { border-color: rgba(251,191,36,.55); }
     .result-green { border-color: rgba(16,185,129,.55); }
+    .result-white { border-color: rgba(148,163,184,.55); }
     .result-card { padding: 0; overflow: hidden; border-color: rgba(255,255,255,.12); }
     .result-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,.08); background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.025)); }
     .result-title { margin: 0; font-size: 20px; }
     .result-subtitle { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.55); }
     .severity-chip { min-width: 116px; padding: 10px 14px; border-radius: 12px; text-align: center; font-weight: 900; letter-spacing: .5px; border: 1px solid rgba(255,255,255,.14); }
     .severity-chip.red { background: rgba(248,113,113,.18); color: #fecaca; }
+    .severity-chip.pink { background: rgba(232,93,158,.18); color: #fbcfe8; }
     .severity-chip.yellow { background: rgba(251,191,36,.18); color: #fde68a; }
     .severity-chip.green { background: rgba(16,185,129,.18); color: #86efac; }
+    .severity-chip.white { background: rgba(148,163,184,.18); color: #e2e8f0; }
     .result-body { padding: 18px 20px 20px; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
     .summary-item { border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(255,255,255,.035); padding: 12px; }
@@ -72,7 +76,7 @@
     .assessment-form { padding: 0 !important; overflow: hidden; }
     .assessment-intro { padding: 20px 22px; background: #eff8f7; border-bottom: 1px solid #d7e8e7; }
     .assessment-intro h2 { margin: 0 0 4px; font-size: 21px; }
-    .step-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    .step-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
     .step-item { display: flex; align-items: center; gap: 9px; color: #405d6b; font-weight: 650; }
     .step-number { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: #087f75; color: #fff; font-weight: 800; }
     .form-section { margin: 0; padding: 24px 22px; border-bottom: 1px solid #e2ecee; }
@@ -82,6 +86,16 @@
     .step-heading p { margin: 3px 0 0; color: #607783; font-size: 13px; }
     .assessment-page .field { padding: 14px; border: 1px solid #dbe7ea; border-radius: 12px; background: #f8fbfb; }
     .assessment-page .field > label:first-child { font-size: 14px; color: #274755 !important; }
+    .decision-grid { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; }
+    .decision-card { border: 1px solid #dbe7ea; border-radius: 12px; background: #f8fbfb; padding: 14px; }
+    .decision-card h3 { margin: 0 0 5px; color: #274755; font-size: 15px; }
+    .decision-card p { margin: 0 0 10px; color: #607783; font-size: 12px; line-height: 1.5; }
+    .radio-cards > div, .radio-cards ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 7px; padding: 0; margin: 0; list-style: none; }
+    .radio-cards label { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 38px; padding: 5px; border: 1px solid #ccdcdf; border-radius: 8px; background: #fff; color: #274755; font-size: 12px; cursor: pointer; }
+    .radio-cards input { width: auto; }
+    .radio-cards label:has(input:checked) { border-color: #087f75; background: #e6f5f2; color: #075f58; font-weight: 750; }
+    .resource-card { grid-column: 1 / -1; border-color: #b8d9d5; background: #f1faf8; }
+    .resource-help { margin-top: 10px !important; padding: 9px 11px; border-radius: 8px; background: #e3f3f0; }
     .assessment-page .control { background: #fff !important; }
     .assessment-page .unmeasured { margin: 9px 0 0; padding: 0; color: #58707c !important; font-weight: 500 !important; }
     .choice-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -103,7 +117,8 @@
     .previous-result .result-link { white-space: nowrap; }
     @media (max-width: 760px) { .summary-grid, .confirm-panel { grid-template-columns: 1fr; } .result-head { align-items: flex-start; flex-direction: column; } }
     @media (max-width: 760px) {
-      .grid, .choice-columns, .step-list, .previous-result .result-body { grid-template-columns: 1fr; }
+      .grid, .choice-columns, .decision-grid, .step-list, .previous-result .result-body { grid-template-columns: 1fr; }
+      .resource-card { grid-column: auto; }
       .wrap { padding: 16px; }
       .form-section { padding: 20px 16px; }
       .assessment-intro { padding: 18px 16px; }
@@ -131,7 +146,8 @@
         <div class="step-list" aria-label="ขั้นตอนการประเมิน">
           <div class="step-item"><span class="step-number">1</span> สัญญาณชีพ</div>
           <div class="step-item"><span class="step-number">2</span> อาการและปัจจัยเสี่ยง</div>
-          <div class="step-item"><span class="step-number">3</span> รายละเอียดเพิ่มเติม</div>
+          <div class="step-item"><span class="step-number">3</span> จุดตัดสินใจ 5 ระดับ</div>
+          <div class="step-item"><span class="step-number">4</span> รายละเอียดเพิ่มเติม</div>
         </div>
       </div>
       {% if ai_result.draft %}
@@ -220,6 +236,46 @@
       <section class="form-section">
         <div class="step-heading">
           <span class="step-number">3</span>
+          <div><h2>จุดตัดสินใจสำหรับการคัดกรอง 5 ระดับ</h2><p>พยาบาลประเมินจากอาการและบริบททางคลินิก ไม่ตัดสินจากค่าสัญญาณชีพเพียงค่าเดียว</p></div>
+        </div>
+        <div class="decision-grid">
+          <div class="decision-card">
+            <h3>{{ form.lifesaving_intervention.label }}</h3>
+            <p>เช่น ต้องเปิดทางเดินหายใจ ช่วยหายใจ กู้ชีพ หรือควบคุมเลือดออกรุนแรงทันที</p>
+            <div class="radio-cards">{{ form.lifesaving_intervention }}</div>
+            {% for error in form.lifesaving_intervention.errors %}<div class="error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="decision-card">
+            <h3>{{ form.high_risk_condition.label }}</h3>
+            <p>อาการอาจทรุดเร็วหรือเกิดอันตรายหากรอ โดยพยาบาลเป็นผู้ยืนยันจากภาพรวม</p>
+            <div class="radio-cards">{{ form.high_risk_condition }}</div>
+            {% for error in form.high_risk_condition.errors %}<div class="error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="decision-card">
+            <h3>{{ form.mental_status.label }}</h3>
+            <p>ใช้ระดับการตอบสนองแบบ AVPU เพื่อเก็บข้อมูลได้สม่ำเสมอกว่าคำตอบใช่/ไม่ใช่</p>
+            <div class="radio-cards">{{ form.mental_status }}</div>
+            {% for error in form.mental_status.errors %}<div class="error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="decision-card">
+            <h3>{{ form.severe_distress.label }}</h3>
+            <p>ให้เลือก “ใช่” เมื่อการประเมินทางคลินิกบ่งชี้ความรุนแรง ไม่ใช่เพราะ Pain score ค่าเดียว</p>
+            <div class="radio-cards">{{ form.severe_distress }}</div>
+            {% for error in form.severe_distress.errors %}<div class="error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="decision-card resource-card">
+            <h3>{{ form.expected_resources.label }}</h3>
+            <p>ใช้เมื่อคำตอบด้านฉุกเฉินข้างต้นเป็น “ไม่ใช่” เพื่อช่วยแยกระดับเหลือง เขียว และขาว</p>
+            <div class="radio-cards">{{ form.expected_resources }}</div>
+            <p class="resource-help">ตัวอย่างทรัพยากร: ตรวจเลือด, X-ray/CT/Ultrasound, ให้ยาหรือสารน้ำทางหลอดเลือด, ทำหัตถการ หรือปรึกษาแพทย์เฉพาะทาง — การซักประวัติและตรวจร่างกายทั่วไปไม่นับเป็นทรัพยากร</p>
+            {% for error in form.expected_resources.errors %}<div class="error">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="step-heading">
+          <span class="step-number">4</span>
           <div><h2>รายละเอียดเพิ่มเติม</h2><p>บันทึกอาการสำคัญ ระยะเวลาที่เป็น หรือข้อมูลที่ควรให้ผู้ประเมินทราบ</p></div>
         </div>
         <label class="details-label" for="{{ form.symptoms.id_for_label }}">อาการหรือข้อมูลเพิ่มเติม</label>
@@ -234,14 +290,14 @@
     </form>
 
     {% if triage_result %}
-    <div class="card result-card previous-result {% if triage_result.ai_severity == 'RED' %}result-red{% elif triage_result.ai_severity == 'YELLOW' %}result-yellow{% elif triage_result.ai_severity == 'GREEN' %}result-green{% endif %}">
+    <div class="card result-card previous-result result-{{ triage_result.ai_severity|lower }}">
       <div class="result-head">
         <div>
           <h2 class="result-title">ผลประเมินล่าสุด</h2>
           <div class="result-subtitle">ผลนี้เป็นคำแนะนำเบื้องต้น พยาบาลต้องยืนยันที่หน้า “รอยืนยัน”</div>
         </div>
-        <div class="severity-chip {% if triage_result.ai_severity == 'RED' %}red{% elif triage_result.ai_severity == 'YELLOW' %}yellow{% else %}green{% endif %}">
-          {% if triage_result.ai_severity == 'RED' %}แดง · ส่งต่อฉุกเฉิน{% elif triage_result.ai_severity == 'YELLOW' %}เหลือง · เฝ้าระวัง{% elif triage_result.ai_severity == 'GREEN' %}เขียว · คิวปกติ{% else %}-{% endif %}
+        <div class="severity-chip {{ triage_result.ai_severity|lower }}">
+          {% if triage_result.ai_severity == 'RED' %}แดง · ช่วยชีวิตทันที{% elif triage_result.ai_severity == 'PINK' %}ชมพู · ฉุกเฉิน{% elif triage_result.ai_severity == 'YELLOW' %}เหลือง · เฝ้าระวัง{% elif triage_result.ai_severity == 'GREEN' %}เขียว · ไม่เร่งด่วน{% elif triage_result.ai_severity == 'WHITE' %}ขาว · ผู้ป่วยทั่วไป{% else %}-{% endif %}
         </div>
       </div>
       <div class="result-body">
@@ -249,7 +305,7 @@
         <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(160px,1fr))">
           <div class="summary-item">
             <div class="summary-label">AI แนะนำ</div>
-            <div class="summary-value">{% if triage_result.ai_severity == 'RED' %}สีแดง{% elif triage_result.ai_severity == 'YELLOW' %}สีเหลือง{% elif triage_result.ai_severity == 'GREEN' %}สีเขียว{% else %}-{% endif %}</div>
+            <div class="summary-value">{% if triage_result.ai_severity == 'RED' %}สีแดง{% elif triage_result.ai_severity == 'PINK' %}สีชมพู{% elif triage_result.ai_severity == 'YELLOW' %}สีเหลือง{% elif triage_result.ai_severity == 'GREEN' %}สีเขียว{% elif triage_result.ai_severity == 'WHITE' %}สีขาว{% else %}-{% endif %}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">ความมั่นใจ</div>

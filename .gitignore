@@ -35,3 +35,4 @@ Thumbs.db
 
 # Jupyter / ML
 .ipynb_checkpoints/
+ai_triage/data/local_confirmed_triage.csv

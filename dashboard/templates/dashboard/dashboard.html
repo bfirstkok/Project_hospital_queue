@@ -316,6 +316,8 @@
       color: #ff5f72;
     }
 
+    .badge.pink { color: #e85d9e; background: rgba(232,93,158,.14); border-color: rgba(232,93,158,.25); }
+
     .badge.yellow {
       background: rgba(255, 184, 48, 0.15);
       color: #ffb830;
@@ -325,6 +327,8 @@
       background: rgba(0, 212, 170, 0.15);
       color: #00d4aa;
     }
+
+    .badge.white { color: #94a3b8; background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.25); }
 
     /* ===== ACTION BUTTONS ===== */
     .action-btn {
@@ -358,6 +362,9 @@
       background: rgba(255, 95, 114, 0.25);
     }
 
+    .action-btn-pink { color: #e85d9e; background: rgba(232,93,158,.14); border: 1px solid rgba(232,93,158,.25); }
+    .action-btn-pink:hover { background: rgba(232,93,158,.25); }
+
     .action-btn-yellow {
       background: rgba(255, 184, 48, 0.15);
       color: #ffb830;
@@ -375,6 +382,9 @@
     .action-btn-green:hover {
       background: rgba(0, 212, 170, 0.25);
     }
+
+    .action-btn-white { color: #94a3b8; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.25); }
+    .action-btn-white:hover { background: rgba(148,163,184,.25); }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
@@ -405,8 +415,10 @@
         </div>
         <div class="chips">
           <span class="chip"><span class="dot bad"></span>RED: {{ red_total }}</span>
+          <span class="chip">PINK: {{ pink_total }}</span>
           <span class="chip"><span class="dot warn"></span>YELLOW: {{ yellow_total }}</span>
           <span class="chip"><span class="dot good"></span>GREEN: {{ green_total }}</span>
+          <span class="chip">WHITE: {{ white_total }}</span>
         </div>
       </div>
 
@@ -569,8 +581,10 @@
         <td>
           <a class="action-btn action-btn-blue" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
           <button class="action-btn action-btn-red" onclick="setSeverity(${x.visit_id}, 'RED')">แดง</button>
+          <button class="action-btn action-btn-pink" onclick="setSeverity(${x.visit_id}, 'PINK')">ชมพู</button>
           <button class="action-btn action-btn-yellow" onclick="setSeverity(${x.visit_id}, 'YELLOW')">เหลือง</button>
           <button class="action-btn action-btn-green" onclick="setSeverity(${x.visit_id}, 'GREEN')">เขียว</button>
+          <button class="action-btn action-btn-white" onclick="setSeverity(${x.visit_id}, 'WHITE')">ขาว</button>
         </td>
       </tr>
     `).join("");

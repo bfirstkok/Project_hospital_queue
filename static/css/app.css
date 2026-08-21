@@ -16,8 +16,10 @@
   --teal: #20d6b5;
   --blue: #4aa3ff;
   --red: #ff5f72;
+  --pink: #e85d9e;
   --yellow: #ffc44d;
   --green: #22d3a6;
+  --white-level: #60717b;
   --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
   --radius: 10px;
 }
@@ -1106,6 +1108,14 @@ pre {
   border-color: #efc0c0 !important;
 }
 
+.severity.pink,
+.severity-chip.pink,
+.PINK {
+  background: #fff0f6 !important;
+  color: var(--pink) !important;
+  border-color: #efb7cf !important;
+}
+
 .severity.green,
 .severity-chip.green,
 .GREEN,
@@ -1384,4 +1394,12 @@ button.blue, .btn.blue, .action-btn.blue {
   background: #eaf4fb !important;
   border: 1px solid #b9d9ec !important;
   box-shadow: none !important;
+}
+
+.severity.white,
+.severity-chip.white,
+.WHITE {
+  background: #f7fafb !important;
+  color: var(--white-level) !important;
+  border-color: #cfdadd !important;
 }

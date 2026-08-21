@@ -214,8 +214,10 @@
       font-size: 12px;
     }
     .triage-badge.red { background: rgba(255,95,114,.14); color: #ff6b7d; }
+    .triage-badge.pink { background: rgba(232,93,158,.14); color: #e85d9e; }
     .triage-badge.yellow { background: rgba(255,184,48,.14); color: #ffbf42; }
     .triage-badge.green { background: rgba(0,212,170,.14); color: #23d8b5; }
+    .triage-badge.white { background: rgba(148,163,184,.14); color: #94a3b8; }
     .nurse-summary { display: grid; gap: 7px; min-width: 280px; }
     .nurse-line { display: flex; gap: 6px; flex-wrap: wrap; }
     .mini-chip {
@@ -256,8 +258,10 @@
     }
     .btn.primary { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.24); }
     .btn.red { color: #ff6b7d; background: rgba(255,95,114,.13); border-color: rgba(255,95,114,.22); }
+    .btn.pink { color: #e85d9e; background: rgba(232,93,158,.13); border-color: rgba(232,93,158,.22); }
     .btn.yellow { color: #ffbf42; background: rgba(255,184,48,.13); border-color: rgba(255,184,48,.22); }
     .btn.green { color: #20d7b2; background: rgba(0,212,170,.13); border-color: rgba(0,212,170,.22); }
+    .btn.white { color: #94a3b8; background: rgba(148,163,184,.13); border-color: rgba(148,163,184,.22); }
     .called-time { font-size: 18px; font-weight: 700; }
     .btn:hover { filter: brightness(1.14); }
     .empty-state {
@@ -305,14 +309,18 @@
           <div class="stat-number" id="redCount" style="color:#ff6b7d; font-size:24px;">{{ red_count }}</div>
         </section>
         <section class="stat-card">
+          <div class="stat-label">Pink</div>
+          <div class="stat-number" id="pinkCount" style="color:#e85d9e; font-size:24px;">{{ pink_count }}</div>
+        </section>
+        <section class="stat-card">
           <div class="stat-label">Yellow</div>
           <div class="stat-number" id="yellowCount" style="color:#ffbf42; font-size:24px;">{{ yellow_count }}</div>
         </section>
       </div>
 
       <section class="stat-card">
-        <div class="stat-label">Green</div>
-        <div class="stat-number" id="greenCount" style="color:#20d7b2; font-size:24px;">{{ green_count }}</div>
+        <div class="stat-label">Green / White</div>
+        <div class="stat-number" style="font-size:24px;"><span id="greenCount" style="color:#20d7b2;">{{ green_count }}</span> / <span id="whiteCount" style="color:#94a3b8;">{{ white_count }}</span></div>
       </section>
 
       <section class="legend">
@@ -323,6 +331,11 @@
           <div class="legend-count" id="legendRedCount">{{ red_count }}</div>
         </div>
         <div class="legend-row" style="color:#ffbf42;">
+          <span class="dot" style="color:#e85d9e;"></span>
+          <div><div class="legend-name" style="color:#e85d9e;">Pink</div><div class="legend-desc">ฉุกเฉิน</div></div>
+          <div class="legend-count" id="legendPinkCount">{{ pink_count }}</div>
+        </div>
+        <div class="legend-row" style="color:#ffbf42;">
           <span class="dot"></span>
           <div><div class="legend-name">Yellow</div><div class="legend-desc">เร่งด่วน</div></div>
           <div class="legend-count" id="legendYellowCount">{{ yellow_count }}</div>
@@ -331,6 +344,11 @@
           <span class="dot"></span>
           <div><div class="legend-name">Green</div><div class="legend-desc">ไม่เร่งด่วน</div></div>
           <div class="legend-count" id="legendGreenCount">{{ green_count }}</div>
+        </div>
+        <div class="legend-row" style="color:#94a3b8;">
+          <span class="dot"></span>
+          <div><div class="legend-name">White</div><div class="legend-desc">ผู้ป่วยทั่วไป</div></div>
+          <div class="legend-count" id="legendWhiteCount">{{ white_count }}</div>
         </div>
       </section>
     </aside>
@@ -372,10 +390,14 @@
               <td>
                 {% if v.final_severity == "RED" %}
                   <span class="triage-badge red"><span class="dot"></span>RED</span>
+                {% elif v.final_severity == "PINK" %}
+                  <span class="triage-badge pink"><span class="dot"></span>PINK</span>
                 {% elif v.final_severity == "YELLOW" %}
                   <span class="triage-badge yellow"><span class="dot"></span>YELLOW</span>
-                {% else %}
+                {% elif v.final_severity == "GREEN" %}
                   <span class="triage-badge green"><span class="dot"></span>GREEN</span>
+                {% else %}
+                  <span class="triage-badge white"><span class="dot"></span>WHITE</span>
                 {% endif %}
               </td>
               <td>
@@ -402,8 +424,10 @@
                   <a class="btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
                   <a class="btn" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
                   <button class="btn red" onclick="setSeverity('{{ v.id }}', 'RED')">แดง</button>
+                  <button class="btn pink" onclick="setSeverity('{{ v.id }}', 'PINK')">ชมพู</button>
                   <button class="btn yellow" onclick="setSeverity('{{ v.id }}', 'YELLOW')">เหลือง</button>
                   <button class="btn green" onclick="setSeverity('{{ v.id }}', 'GREEN')">เขียว</button>
+                  <button class="btn white" onclick="setSeverity('{{ v.id }}', 'WHITE')">ขาว</button>
                 </div>
               </td>
             </tr>
@@ -459,7 +483,8 @@
   }
 
   function severityBadge(severity) {
-    const sev = severity === "RED" || severity === "YELLOW" ? severity : "GREEN";
+    const allowed = ["RED", "PINK", "YELLOW", "GREEN", "WHITE"];
+    const sev = allowed.includes(severity) ? severity : "WHITE";
     const cls = sev.toLowerCase();
     return `<span class="triage-badge ${cls}"><span class="dot"></span>${sev}</span>`;
   }
@@ -515,8 +540,10 @@
               <a class="btn primary" href="/opd/visit/${visitId}/assessment/">ประเมิน</a>
               <a class="btn" href="/opd/visit/${visitId}/detail/">ดู</a>
               <button class="btn red" onclick="setSeverity('${visitId}', 'RED')">แดง</button>
+              <button class="btn pink" onclick="setSeverity('${visitId}', 'PINK')">ชมพู</button>
               <button class="btn yellow" onclick="setSeverity('${visitId}', 'YELLOW')">เหลือง</button>
               <button class="btn green" onclick="setSeverity('${visitId}', 'GREEN')">เขียว</button>
+              <button class="btn white" onclick="setSeverity('${visitId}', 'WHITE')">ขาว</button>
             </div>
           </td>
         </tr>
@@ -532,11 +559,15 @@
   function updateCounts(data) {
     setCount("totalCount", data.total);
     setCount("redCount", data.counts.RED);
+    setCount("pinkCount", data.counts.PINK);
     setCount("yellowCount", data.counts.YELLOW);
     setCount("greenCount", data.counts.GREEN);
+    setCount("whiteCount", data.counts.WHITE);
     setCount("legendRedCount", data.counts.RED);
+    setCount("legendPinkCount", data.counts.PINK);
     setCount("legendYellowCount", data.counts.YELLOW);
     setCount("legendGreenCount", data.counts.GREEN);
+    setCount("legendWhiteCount", data.counts.WHITE);
   }
 
   function setSyncStatus(text, state = "ok") {

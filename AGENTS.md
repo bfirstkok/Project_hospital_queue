@@ -16,7 +16,7 @@ The system flow is:
 
 2\. Nurse records vital signs.
 
-3\. AI predicts triage severity: RED, YELLOW, GREEN.
+3\. AI predicts five-level triage severity: RED, PINK, YELLOW, GREEN, WHITE.
 
 4\. Rule-based guardrail checks dangerous cases.
 
@@ -52,7 +52,7 @@ The training script should:
 
 2\. Clean and normalize column names.
 
-3\. Map triage acuity labels to RED, YELLOW, GREEN.
+3\. Map triage acuity labels one-to-one to RED, PINK, YELLOW, GREEN, WHITE.
 
 4\. Train a DecisionTreeClassifier.
 
@@ -138,15 +138,19 @@ Map original triage levels into system labels:
 
 
 
-\- acuity 1 or 2 -> RED
+\- acuity 1 -> RED
+
+\- acuity 2 -> PINK
 
 \- acuity 3 -> YELLOW
 
-\- acuity 4 or 5 -> GREEN
+\- acuity 4 -> GREEN
+
+\- acuity 5 -> WHITE
 
 
 
-If the dataset already has labels RED, YELLOW, GREEN, use them directly.
+If the dataset already has five-level labels, use them directly.
 
 
 

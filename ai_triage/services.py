@@ -2,17 +2,21 @@
 from ai_triage.rules import infer_urgent_symptoms, rule_based_triage
 from ai_triage.ml.predictor import dt_predict
 from queues.models import TriageResult
+from queues.triage import SEVERITY_PRIORITY
 
-SEV_TO_PRIORITY = {"RED": 1, "YELLOW": 2, "GREEN": 3}
+SEV_TO_PRIORITY = SEVERITY_PRIORITY
 URGENT_SYMPTOM_LABELS = {
     "chest_pain": "เจ็บหน้าอก",
     "dyspnea": "หายใจลำบาก / หอบเหนื่อย",
-    "altered_consciousness": "ซึมลง / หมดสติ",
+    "altered_consciousness": "ซึมลง / สับสน",
+    "unresponsive": "ไม่รู้สึกตัว / เรียกไม่ตื่น",
     "seizure": "ชัก",
+    "active_seizure": "กำลังชัก",
     "major_bleeding": "เลือดออกมาก",
     "severe_pain": "ปวดรุนแรง",
     "high_fever": "ไข้สูง",
     "severe_accident": "อุบัติเหตุรุนแรง",
+    "stroke_signs": "อาการสงสัยโรคหลอดเลือดสมอง",
 }
 RISK_FLAG_LABELS = {
     "copd_asthma": "COPD / Asthma",
@@ -96,6 +100,36 @@ def explain_symptoms(symptoms_text):
     labels = [URGENT_SYMPTOM_LABELS.get(x, x) for x in sorted(inferred)]
     return "พบคำสำคัญจากอาการผู้ป่วย: " + ", ".join(labels)
 
+
+def explain_structured_assessment(assessment):
+    if not assessment:
+        return ""
+
+    reasons = []
+    if assessment.lifesaving_intervention is True:
+        reasons.append("พยาบาลระบุว่าต้องช่วยชีวิตทันที")
+    if assessment.high_risk_condition is True:
+        reasons.append("พยาบาลระบุภาวะเสี่ยงสูง")
+    mental_labels = {
+        "ALERT": "รู้สึกตัวดี",
+        "VERBAL": "ตอบสนองต่อเสียงเรียก",
+        "PAIN": "ตอบสนองเมื่อกระตุ้นด้วยความเจ็บปวด",
+        "UNRESPONSIVE": "ไม่ตอบสนอง",
+    }
+    if assessment.mental_status in mental_labels:
+        reasons.append(f"ระดับการตอบสนอง: {mental_labels[assessment.mental_status]}")
+    if assessment.severe_distress is True:
+        reasons.append("พยาบาลประเมินว่ามีอาการรุนแรงหรือทุกข์ทรมานมาก")
+
+    resource_labels = {
+        "0": "คาดว่าไม่ใช้ทรัพยากรเพิ่มเติม",
+        "1": "คาดว่าใช้ทรัพยากร 1 รายการ",
+        "2_PLUS": "คาดว่าใช้ทรัพยากรมากกว่า 1 รายการ",
+    }
+    if assessment.expected_resources in resource_labels:
+        reasons.append(resource_labels[assessment.expected_resources])
+    return "; ".join(reasons)
+
 def apply_ai_triage(visit):
     """
     - อ่าน vital sign
@@ -107,23 +141,39 @@ def apply_ai_triage(visit):
         return None  # ไม่มี vitals
 
     symptoms_text = getattr(visit, "note", "") or ""
-    rule_sev, rule_conf, rule_reason = rule_based_triage(visit.vitals, symptoms_text=symptoms_text)
+    assessment = getattr(visit, "triage_result", None)
+    rule_sev, rule_conf, rule_reason = rule_based_triage(
+        visit.vitals,
+        symptoms_text=symptoms_text,
+        assessment=assessment,
+    )
     clinical_reason = explain_vitals(visit.vitals)
     symptom_reason = explain_symptoms(symptoms_text)
     if symptom_reason:
         clinical_reason = f"{clinical_reason}; {symptom_reason}"
+    assessment_reason = explain_structured_assessment(assessment)
+    if assessment_reason:
+        clinical_reason = f"{clinical_reason}; {assessment_reason}"
 
     try:
-        model_sev, model_conf, model_reason = dt_predict(visit.vitals)
+        model_sev, model_conf, model_reason = dt_predict(visit.vitals, visit=visit)
         model_name = f"{model_reason}_guarded_by_rules"
     except Exception:
         model_sev, model_conf, model_reason = rule_sev, rule_conf, rule_reason
         model_name = "rule_based_fallback"
 
-    sev = rule_sev
-    conf = rule_conf
-    reason = rule_reason
-    if model_sev != rule_sev:
+    # Rules are the safety floor for RED/PINK/YELLOW. When no warning rule
+    # fires, the five-level model may distinguish GREEN from WHITE. A model
+    # alone cannot escalate a clinically normal case into the emergency lane.
+    if rule_sev == "GREEN" and model_sev in {"GREEN", "WHITE"}:
+        sev = model_sev
+        conf = model_conf
+        reason = model_reason
+    else:
+        sev = rule_sev
+        conf = rule_conf
+        reason = rule_reason
+    if model_sev != rule_sev and sev == rule_sev:
         clinical_reason = (
             f"{clinical_reason}; ระบบกฎความปลอดภัยปรับระดับคำแนะนำ "
             f"(โมเดลแนะนำ {model_sev}, ผลจากกฎความปลอดภัย {rule_sev})"

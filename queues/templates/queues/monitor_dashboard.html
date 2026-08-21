@@ -371,8 +371,10 @@
     if(!s) return "";
     const x = String(s).toUpperCase();
     if(x.includes("RED")) return "red";
+    if(x.includes("PINK")) return "pink";
     if(x.includes("YELLOW")) return "yellow";
-    return "green";
+    if(x.includes("GREEN")) return "green";
+    return "white";
   }
 
   function renderCards(items){
@@ -380,16 +382,20 @@
     const online = items.filter(x => x.online).length;
     const offline = all - online;
     const red = items.filter(x => (x.severity||"").toUpperCase()==="RED").length;
+    const pink = items.filter(x => (x.severity||"").toUpperCase()==="PINK").length;
     const yellow = items.filter(x => (x.severity||"").toUpperCase()==="YELLOW").length;
     const green = items.filter(x => (x.severity||"").toUpperCase()==="GREEN").length;
+    const white = items.filter(x => (x.severity||"").toUpperCase()==="WHITE").length;
 
     return `
       ${card("ทั้งหมด", all)}
       ${card("ออนไลน์", online)}
       ${card("ออฟไลน์", offline)}
       ${card("RED", red)}
+      ${card("PINK", pink)}
       ${card("YELLOW", yellow)}
       ${card("GREEN", green)}
+      ${card("WHITE", white)}
     `;
 
     function card(label, value){
@@ -469,8 +475,10 @@
     if(!s) return "";
     const x = String(s).toUpperCase();
     if(x.includes("RED")) return "red";
+    if(x.includes("PINK")) return "pink";
     if(x.includes("YELLOW")) return "yellow";
-    return "green";
+    if(x.includes("GREEN")) return "green";
+    return "white";
   }
 
   async function copyText(text){
@@ -488,22 +496,26 @@
     const offline = all - online;
 
     const red = items.filter(x => (x.severity||"").toUpperCase()==="RED").length;
+    const pink = items.filter(x => (x.severity||"").toUpperCase()==="PINK").length;
     const yellow = items.filter(x => (x.severity||"").toUpperCase()==="YELLOW").length;
     const green = items.filter(x => (x.severity||"").toUpperCase()==="GREEN").length;
+    const white = items.filter(x => (x.severity||"").toUpperCase()==="WHITE").length;
 
     // ใช้กล่องสไตล์เดียวกับ statusbar
     return `
       <div style="
         margin:0 0 14px;
         display:grid; gap:10px;
-        grid-template-columns: repeat(6, minmax(140px, 1fr));
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
       ">
         ${card("ทั้งหมด", all)}
         ${card("ออนไลน์", online, "color:#18794e")}
         ${card("ออฟไลน์", offline, "color:#607784")}
         ${card("RED", red, "color:#c83737")}
+        ${card("PINK", pink, "color:#a92d63")}
         ${card("YELLOW", yellow, "color:#9a6500")}
         ${card("GREEN", green, "color:#18794e")}
+        ${card("WHITE", white, "color:#60717b")}
       </div>
     `;
 
