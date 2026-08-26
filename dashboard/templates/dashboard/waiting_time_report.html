@@ -1,119 +1,170 @@
 <!doctype html>
 <html lang="th">
 <head>
-  
   {% load static %}
-<meta charset="utf-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>รายงานเวลารอ</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 84px 24px 24px !important; }
-    a { color: #00d4aa; text-decoration: none; }
-    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
-    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; }
-    .label { color: rgba(255,255,255,.55); font-size: 12px; }
-    .num { font-size: 28px; font-weight: 800; margin-top: 6px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
-    th { color: rgba(255,255,255,.55); font-size: 12px; }
-    .muted { color: rgba(255,255,255,.55); }
-  </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <style>
+    .wait-report { width: min(1440px, calc(100vw - 40px)); margin: 0 auto; padding: 34px 0 54px; color: #183044; }
+    .report-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+    .report-eyebrow { margin: 0 0 4px; color: #087f75; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+    .report-hero h1 { margin: 0; font-size: clamp(28px, 3vw, 38px); line-height: 1.2; }
+    .report-description { max-width: 720px; margin: 7px 0 0; color: #607783; font-size: 16px; }
+    .export-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .export-btn { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 1px solid #c5d8dd; border-radius: 10px; background: #fff; color: #274653 !important; font-size: 14px; font-weight: 700; box-shadow: 0 3px 10px rgba(35, 73, 88, .05); }
+    .export-btn:hover { border-color: #087f75; color: #087f75 !important; transform: translateY(-1px); }
+    .summary-grid { display: grid; grid-template-columns: .75fr repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+    .metric-card, .report-panel, .severity-panel { background: #fff; border: 1px solid #d3e1e5; border-radius: 14px; box-shadow: 0 5px 20px rgba(38, 75, 89, .055); }
+    .metric-card { position: relative; min-height: 126px; padding: 19px 20px; overflow: hidden; }
+    .metric-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: #8bbec1; }
+    .metric-card.primary::before { background: #087f75; }
+    .metric-card.warning::before { background: #d18a13; }
+    .metric-label { color: #5c737e; font-size: 13px; font-weight: 700; }
+    .metric-value { margin-top: 7px; color: #183044; font-size: clamp(25px, 2.5vw, 34px); font-weight: 800; line-height: 1.1; }
+    .metric-help { margin-top: 8px; color: #78909a; font-size: 12px; }
+    .severity-panel { display: grid; grid-template-columns: 1.15fr repeat(5, 1fr); align-items: stretch; margin-bottom: 18px; overflow: hidden; }
+    .severity-heading, .severity-item { padding: 15px 18px; }
+    .severity-heading { display: flex; flex-direction: column; justify-content: center; background: #f4f8f9; }
+    .severity-heading strong { font-size: 15px; }
+    .severity-heading span { color: #6d838d; font-size: 12px; }
+    .severity-item { display: flex; align-items: center; justify-content: center; gap: 10px; border-left: 1px solid #e3ecef; }
+    .severity-dot { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; }
+    .severity-name { color: #5e747e; font-size: 12px; font-weight: 700; }
+    .severity-count { color: #183044; font-size: 22px; font-weight: 800; }
+    .sev-red .severity-dot { background: #dc2626; }
+    .sev-pink .severity-dot { background: #db2777; }
+    .sev-yellow .severity-dot { background: #eab308; }
+    .sev-green .severity-dot { background: #16a34a; }
+    .sev-white .severity-dot { background: #94a3b8; border: 1px solid #64748b; }
+    .quality-alert { display: flex; align-items: flex-start; gap: 11px; margin: 0 0 18px; padding: 13px 16px; border: 1px solid #f0d39c; border-radius: 11px; background: #fff9eb; color: #795318; font-size: 13px; }
+    .quality-alert strong { color: #68440d; }
+    .analytics-grid { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .report-panel { padding: 20px; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .panel-head h2 { margin: 0; font-size: 19px; }
+    .panel-head p { margin: 3px 0 0; color: #718690; font-size: 12px; }
+    .panel-tag { padding: 4px 9px; border-radius: 999px; background: #e8f4f2; color: #087f75; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .compact-table, .detail-table { width: 100%; margin: 0; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+    .compact-table th, .compact-table td { padding: 10px 8px !important; font-size: 13px !important; }
+    .compact-table th { white-space: nowrap; }
+    .compact-table td:last-child, .compact-table th:last-child { text-align: right; }
+    .compact-table .value-strong { color: #183044; font-weight: 800; }
+    .detail-panel { padding: 0; overflow: hidden; }
+    .detail-panel .panel-head { margin: 0; padding: 20px 22px; border-bottom: 1px solid #dce7ea; }
+    .table-scroll { width: 100%; overflow-x: auto; scrollbar-color: #a8bec6 transparent; }
+    .detail-table { min-width: 1120px; }
+    .detail-table th, .detail-table td { padding: 13px 12px !important; vertical-align: middle; font-size: 13px; }
+    .detail-table th { position: sticky; top: 0; z-index: 1; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+    .visit-id { color: #176b9c; font-weight: 800; white-space: nowrap; }
+    .patient-cell strong { display: block; color: #183044; font-size: 14px; }
+    .patient-cell small { color: #748993; }
+    .level-badge, .status-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .level-red { background: #fee2e2; color: #b91c1c; }
+    .level-pink { background: #fce7f3; color: #be185d; }
+    .level-yellow { background: #fef3c7; color: #9a6500; }
+    .level-green { background: #dcfce7; color: #18794e; }
+    .level-white { background: #edf2f4; color: #536b77; }
+    .level-none { background: #f1f5f6; color: #718690; }
+    .status-badge { background: #eaf3f5; color: #365967; }
+    .time-stack { line-height: 1.25; white-space: nowrap; }
+    .time-stack span { display: block; color: #1f3c49; }
+    .time-stack small { color: #7b9099; }
+    .wait-value { color: #274653; font-weight: 700; white-space: nowrap; }
+    .empty-row { padding: 32px !important; color: #718690; text-align: center !important; }
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .analytics-grid { grid-template-columns: 1fr 1fr; }
+      .analytics-grid .bottleneck-panel { grid-column: 1 / -1; }
+      .severity-panel { grid-template-columns: repeat(5, 1fr); }
+      .severity-heading { grid-column: 1 / -1; border-bottom: 1px solid #e3ecef; }
+      .severity-item:first-of-type { border-left: 0; }
+    }
+    @media (max-width: 720px) {
+      .wait-report { width: min(100% - 24px, 1440px); padding-top: 18px; }
+      .report-hero { align-items: stretch; flex-direction: column; }
+      .export-actions { justify-content: flex-start; }
+      .export-btn { flex: 1 1 30%; }
+      .summary-grid, .analytics-grid { grid-template-columns: 1fr; }
+      .analytics-grid .bottleneck-panel { grid-column: auto; }
+      .metric-card { min-height: 108px; }
+      .severity-panel { grid-template-columns: repeat(2, 1fr); }
+      .severity-heading { grid-column: 1 / -1; }
+      .severity-item { justify-content: flex-start; border-top: 1px solid #e3ecef; }
+      .severity-item:nth-child(even) { border-left: 0; }
+      .severity-item:last-child { grid-column: 1 / -1; }
+      .report-panel { padding: 16px; }
+      .detail-panel { padding: 0; }
+    }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
+  {% include "includes/main_nav.html" %}
+  <main class="wait-report">
+    <header class="report-hero">
       <div>
-        <h1>รายงานเวลารอ ก่อน-หลัง</h1>
-        <div class="muted">สรุปเวลาจากลงทะเบียน คัดกรอง และเรียกคิว</div>
+        <p class="report-eyebrow">รายงานประสิทธิภาพการให้บริการ</p>
+        <h1>เวลารอของผู้ป่วย</h1>
+        <p class="report-description">ดูภาพรวมเวลาตั้งแต่ลงทะเบียน คัดกรอง ยืนยันผล จนถึงเรียกคิว พร้อมค้นหาช่วงงานที่ใช้เวลานาน</p>
       </div>
-      {% include "includes/main_nav.html" %}
-    </div>
-    <div style="margin-top:12px">
-      <a href="{% url 'dashboard:waiting_time_report_csv' %}">ส่งออก CSV</a>
-      · <a href="{% url 'dashboard:waiting_time_report_xls' %}">ส่งออก Excel</a>
-      · <a href="{% url 'dashboard:waiting_time_report_pdf' %}">ส่งออก PDF</a>
-    </div>
-
-    <div class="cards">
-      <div class="card"><div class="label">รายการทั้งหมด</div><div class="num">{{ total }}</div></div>
-      <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงคัดกรอง</div><div class="num">{{ avg_triage|default:"-" }} นาที</div></div>
-      <div class="card"><div class="label">เฉลี่ยคัดกรองถึงยืนยัน</div><div class="num">{{ avg_confirmation|default:"-" }} นาที</div></div>
-      <div class="card"><div class="label">เฉลี่ยลงทะเบียนถึงเรียกคิว</div><div class="num">{{ avg_called|default:"-" }} นาที</div></div>
-      <div class="card"><div class="label">RED / PINK / YELLOW / GREEN / WHITE</div><div class="num">{{ severity_counts.RED }} / {{ severity_counts.PINK }} / {{ severity_counts.YELLOW }} / {{ severity_counts.GREEN }} / {{ severity_counts.WHITE }}</div></div>
-    </div>
-
-    <div class="cards">
-      <div class="card">
-        <h2>Bottleneck</h2>
-        <table>
-          <thead><tr><th>ช่วงงาน</th><th>เฉลี่ย (นาที)</th><th>จำนวน</th></tr></thead>
+      <div class="export-actions" aria-label="ส่งออกรายงาน">
+        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_csv' %}"><span aria-hidden="true">↓</span> CSV</a>
+        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_xls' %}"><span aria-hidden="true">↓</span> Excel</a>
+        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_pdf' %}"><span aria-hidden="true">↓</span> PDF</a>
+      </div>
+    </header>
+    <section class="summary-grid" aria-label="สรุปเวลารอ">
+      <article class="metric-card primary"><div class="metric-label">รายการทั้งหมด</div><div class="metric-value">{{ total }}</div><div class="metric-help">Visit ล่าสุดที่นำมาคำนวณ</div></article>
+      <article class="metric-card"><div class="metric-label">ลงทะเบียน → คัดกรอง</div><div class="metric-value">{{ avg_triage_display }}</div><div class="metric-help">เวลาเฉลี่ยก่อนเริ่มประเมินสุขภาพ</div></article>
+      <article class="metric-card"><div class="metric-label">คัดกรอง → พยาบาลยืนยัน</div><div class="metric-value">{{ avg_confirmation_display }}</div><div class="metric-help">เวลาเฉลี่ยสำหรับตรวจสอบผลคัดกรอง</div></article>
+      <article class="metric-card warning"><div class="metric-label">ลงทะเบียน → เรียกคิว</div><div class="metric-value">{{ avg_called_display }}</div><div class="metric-help">เวลารอรวมเฉลี่ยก่อนเรียกเข้ารับบริการ</div></article>
+    </section>
+    <section class="severity-panel" aria-label="จำนวนผู้ป่วยตามระดับคัดกรอง">
+      <div class="severity-heading"><strong>ระดับคัดกรอง</strong><span>จำนวนจากรายการในรายงานนี้</span></div>
+      <div class="severity-item sev-red"><span class="severity-dot"></span><div><div class="severity-name">สีแดง</div><div class="severity-count">{{ severity_counts.RED }}</div></div></div>
+      <div class="severity-item sev-pink"><span class="severity-dot"></span><div><div class="severity-name">สีชมพู</div><div class="severity-count">{{ severity_counts.PINK }}</div></div></div>
+      <div class="severity-item sev-yellow"><span class="severity-dot"></span><div><div class="severity-name">สีเหลือง</div><div class="severity-count">{{ severity_counts.YELLOW }}</div></div></div>
+      <div class="severity-item sev-green"><span class="severity-dot"></span><div><div class="severity-name">สีเขียว</div><div class="severity-count">{{ severity_counts.GREEN }}</div></div></div>
+      <div class="severity-item sev-white"><span class="severity-dot"></span><div><div class="severity-name">สีขาว</div><div class="severity-count">{{ severity_counts.WHITE }}</div></div></div>
+    </section>
+    {% if invalid_intervals %}<div class="quality-alert" role="status"><span aria-hidden="true">⚠</span><div><strong>พบเวลาที่บันทึกผิดลำดับ {{ invalid_intervals }} จุด</strong><br>ระบบไม่นำช่วงเวลาติดลบเหล่านี้มาคำนวณค่าเฉลี่ย กรุณาตรวจสอบข้อมูลต้นทางในตารางรายละเอียด</div></div>{% endif %}
+    <section class="analytics-grid" aria-label="วิเคราะห์เวลารอ">
+      <article class="report-panel bottleneck-panel">
+        <div class="panel-head"><div><h2>ช่วงงานที่ใช้เวลานาน</h2><p>เรียงจากเวลาเฉลี่ยมากไปน้อย</p></div><span class="panel-tag">Bottleneck</span></div>
+        <table class="compact-table"><thead><tr><th>ช่วงการให้บริการ</th><th>เวลาเฉลี่ย</th><th>ข้อมูล</th></tr></thead><tbody>{% for row in bottlenecks %}<tr><td>{{ row.label }}</td><td class="value-strong">{{ row.avg_display }}</td><td>{{ row.count }} รายการ</td></tr>{% endfor %}</tbody></table>
+      </article>
+      <article class="report-panel">
+        <div class="panel-head"><div><h2>แนวโน้มรายวัน</h2><p>เวลาจากลงทะเบียนถึงเรียกคิว</p></div></div>
+        <table class="compact-table"><thead><tr><th>วันที่</th><th>เวลาเฉลี่ย</th><th>จำนวน</th></tr></thead><tbody>{% for row in daily_rows|slice:":7" %}<tr><td>{{ row.period }}</td><td class="value-strong">{{ row.avg_called_display }}</td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty-row">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table>
+      </article>
+      <article class="report-panel">
+        <div class="panel-head"><div><h2>แนวโน้มรายเดือน</h2><p>สรุปเพื่อเปรียบเทียบระยะยาว</p></div></div>
+        <table class="compact-table"><thead><tr><th>เดือน</th><th>เวลาเฉลี่ย</th><th>จำนวน</th></tr></thead><tbody>{% for row in monthly_rows|slice:":6" %}<tr><td>{{ row.period }}</td><td class="value-strong">{{ row.avg_called_display }}</td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty-row">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table>
+      </article>
+    </section>
+    <section class="report-panel detail-panel">
+      <div class="panel-head"><div><h2>รายละเอียดแต่ละ Visit</h2><p>เลื่อนตารางในแนวนอนเพื่อดูช่วงเวลาทั้งหมด</p></div><span class="panel-tag">{{ total }} รายการ</span></div>
+      <div class="table-scroll" tabindex="0" aria-label="ตารางรายละเอียดเวลารอ">
+        <table class="detail-table">
+          <thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th><th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th><th>รอคัดกรอง</th><th>รอยืนยัน</th><th>รอเรียกคิวรวม</th></tr></thead>
           <tbody>
-            {% for row in bottlenecks %}
-              <tr><td>{{ row.name }}</td><td>{{ row.avg|default:"-" }}</td><td>{{ row.count }}</td></tr>
-            {% endfor %}
+            {% for row in rows %}
+              <tr>
+                <td><span class="visit-id">#{{ row.visit.id }}</span></td>
+                <td class="patient-cell"><strong>{{ row.patient.first_name }} {{ row.patient.last_name }}</strong><small>ผู้ป่วยใน Visit นี้</small></td>
+                <td>{% if row.visit.final_severity %}<span class="level-badge level-{{ row.visit.final_severity|lower }}">{{ row.visit.final_severity }}</span>{% else %}<span class="level-badge level-none">ยังไม่ระบุ</span>{% endif %}</td>
+                <td><span class="status-badge">{{ row.status_label }}</span></td>
+                <td><div class="time-stack"><span>{{ row.visit.registered_at|date:"d/m/Y" }}</span><small>{{ row.visit.registered_at|date:"H:i" }} น.</small></div></td>
+                <td>{% if row.visit.triaged_at %}<div class="time-stack"><span>{{ row.visit.triaged_at|date:"d/m/Y" }}</span><small>{{ row.visit.triaged_at|date:"H:i" }} น.</small></div>{% else %}-{% endif %}</td>
+                <td>{% if row.visit.called_at %}<div class="time-stack"><span>{{ row.visit.called_at|date:"d/m/Y" }}</span><small>{{ row.visit.called_at|date:"H:i" }} น.</small></div>{% else %}-{% endif %}</td>
+                <td class="wait-value">{{ row.triage_wait_display }}</td><td class="wait-value">{{ row.confirmation_wait_display }}</td><td class="wait-value">{{ row.called_wait_display }}</td>
+              </tr>
+            {% empty %}<tr><td colspan="10" class="empty-row">ยังไม่มีรายการสำหรับสร้างรายงาน</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>
-      <div class="card">
-        <h2>รายวัน</h2>
-        <table>
-          <thead><tr><th>วัน</th><th>เฉลี่ยรอถึงเรียกคิว</th><th>จำนวน</th></tr></thead>
-          <tbody>
-            {% for row in daily_rows %}
-              <tr><td>{{ row.period }}</td><td>{{ row.avg_called }}</td><td>{{ row.count }}</td></tr>
-            {% empty %}
-              <tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="card">
-        <h2>รายเดือน</h2>
-        <table>
-          <thead><tr><th>เดือน</th><th>เฉลี่ยรอถึงเรียกคิว</th><th>จำนวน</th></tr></thead>
-          <tbody>
-            {% for row in monthly_rows %}
-              <tr><td>{{ row.period }}</td><td>{{ row.avg_called }}</td><td>{{ row.count }}</td></tr>
-            {% empty %}
-              <tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>รหัส Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th>
-            <th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th>
-            <th>ลงทะเบียน -> คัดกรอง</th><th>คัดกรอง -> ยืนยัน</th><th>ลงทะเบียน -> เรียกคิว</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-            <tr>
-              <td>#{{ row.visit.id }}</td>
-              <td>{{ row.patient.first_name }} {{ row.patient.last_name }}</td>
-              <td>{{ row.visit.final_severity }}</td>
-              <td>{{ row.status }}</td>
-              <td>{{ row.visit.registered_at|date:"Y-m-d H:i" }}</td>
-              <td>{{ row.visit.triaged_at|date:"Y-m-d H:i"|default:"-" }}</td>
-              <td>{{ row.visit.called_at|date:"Y-m-d H:i"|default:"-" }}</td>
-              <td>{{ row.triage_wait|default:"-" }}</td>
-              <td>{{ row.confirmation_wait|default:"-" }}</td>
-              <td>{{ row.called_wait|default:"-" }}</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="10" class="muted">ยังไม่มีรายการ</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+    </section>
+  </main>
 </body>
 </html>

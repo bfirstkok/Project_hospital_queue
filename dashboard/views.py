@@ -95,7 +95,26 @@ def ai_evaluation_view(request):
 def _minutes_between(start, end):
     if not start or not end:
         return None
-    return round((end - start).total_seconds() / 60, 2)
+    minutes = (end - start).total_seconds() / 60
+    # Timestamps imported from old/demo data can be out of order.  A negative
+    # duration is a data-quality issue, not a waiting time, so keep it out of
+    # report averages and exported data.
+    if minutes < 0:
+        return None
+    return round(minutes, 2)
+
+
+def _format_wait_minutes(minutes):
+    if minutes is None:
+        return "-"
+    total_minutes = max(0, int(round(minutes)))
+    days, remainder = divmod(total_minutes, 1440)
+    hours, mins = divmod(remainder, 60)
+    if days:
+        return f"{days} วัน {hours} ชม."
+    if hours:
+        return f"{hours} ชม. {mins} นาที"
+    return f"{mins} นาที"
 
 
 @login_required
@@ -120,13 +139,35 @@ def waiting_time_report(request):
         "confirmation_to_call": [],
         "call_to_now_or_done": [],
     }
+    invalid_intervals = 0
+
+    status_labels = {
+        "WAITING_VITALS": "รอวัดสัญญาณชีพ",
+        "WAITING_CONFIRMATION": "รอพยาบาลยืนยัน",
+        "WAITING_QUEUE": "รอเรียกคิว",
+        "CALLED": "เรียกแล้ว",
+        "MONITORING": "กำลังเฝ้าระวัง",
+        "IN_ROOM": "อยู่ในห้องตรวจ",
+        "OPD_DONE": "ตรวจเสร็จ",
+        "DISCHARGED": "เสร็จสิ้น",
+        "CANCELLED": "ยกเลิก",
+    }
 
     for visit in visits:
+        for start, end in (
+            (visit.registered_at, visit.triaged_at),
+            (visit.triaged_at, visit.confirmed_at),
+            (visit.confirmed_at, visit.called_at),
+            (visit.registered_at, visit.called_at),
+        ):
+            if start and end and end < start:
+                invalid_intervals += 1
+
         triage_wait = _minutes_between(visit.registered_at, visit.triaged_at)
         called_wait = _minutes_between(visit.registered_at, visit.called_at)
         confirmation_wait = _minutes_between(visit.triaged_at, visit.confirmed_at)
         call_wait = _minutes_between(visit.confirmed_at, visit.called_at)
-        status = getattr(getattr(visit, "queue", None), "status", "-")
+        status = getattr(getattr(visit, "queue", None), "status", "-") or "-"
         if visit.final_severity:
             severity_counts[visit.final_severity] = severity_counts.get(visit.final_severity, 0) + 1
 
@@ -157,29 +198,51 @@ def waiting_time_report(request):
             "visit": visit,
             "patient": visit.patient,
             "status": status,
+            "status_label": status_labels.get(status, status.replace("_", " ").title()),
             "triage_wait": triage_wait,
+            "triage_wait_display": _format_wait_minutes(triage_wait),
             "called_wait": called_wait,
+            "called_wait_display": _format_wait_minutes(called_wait),
             "confirmation_wait": confirmation_wait,
+            "confirmation_wait_display": _format_wait_minutes(confirmation_wait),
         })
 
     avg_triage = round(sum(triage_minutes) / len(triage_minutes), 2) if triage_minutes else None
     avg_called = round(sum(called_minutes) / len(called_minutes), 2) if called_minutes else None
     avg_confirmation = round(sum(confirmation_minutes) / len(confirmation_minutes), 2) if confirmation_minutes else None
     bottlenecks = []
+    bottleneck_labels = {
+        "registration_to_triage": "ลงทะเบียน → คัดกรอง",
+        "triage_to_confirmation": "คัดกรอง → พยาบาลยืนยัน",
+        "confirmation_to_call": "ยืนยัน → เรียกคิว",
+        "call_to_now_or_done": "เรียกคิว → ขั้นตอนปัจจุบัน",
+    }
     for key, values in bottleneck_totals.items():
         bottlenecks.append({
             "name": key,
+            "label": bottleneck_labels[key],
             "avg": round(sum(values) / len(values), 2) if values else None,
+            "avg_display": _format_wait_minutes(round(sum(values) / len(values), 2)) if values else "-",
             "count": len(values),
         })
     bottlenecks.sort(key=lambda row: row["avg"] or 0, reverse=True)
     daily_rows = [
-        {"period": key, "avg_called": round(sum(values) / len(values), 2), "count": len(values)}
+        {
+            "period": key,
+            "avg_called": round(sum(values) / len(values), 2),
+            "avg_called_display": _format_wait_minutes(round(sum(values) / len(values), 2)),
+            "count": len(values),
+        }
         for key, values in sorted(daily.items(), reverse=True)
         if values
     ][:31]
     monthly_rows = [
-        {"period": key, "avg_called": round(sum(values) / len(values), 2), "count": len(values)}
+        {
+            "period": key,
+            "avg_called": round(sum(values) / len(values), 2),
+            "avg_called_display": _format_wait_minutes(round(sum(values) / len(values), 2)),
+            "count": len(values),
+        }
         for key, values in sorted(monthly.items(), reverse=True)
         if values
     ][:12]
@@ -187,13 +250,17 @@ def waiting_time_report(request):
     return render(request, "dashboard/waiting_time_report.html", {
         "rows": rows,
         "avg_triage": avg_triage,
+        "avg_triage_display": _format_wait_minutes(avg_triage),
         "avg_called": avg_called,
+        "avg_called_display": _format_wait_minutes(avg_called),
         "avg_confirmation": avg_confirmation,
+        "avg_confirmation_display": _format_wait_minutes(avg_confirmation),
         "severity_counts": severity_counts,
         "bottlenecks": bottlenecks,
         "daily_rows": daily_rows,
         "monthly_rows": monthly_rows,
         "total": len(rows),
+        "invalid_intervals": invalid_intervals,
     })
 
 
