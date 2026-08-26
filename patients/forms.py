@@ -16,6 +16,10 @@ class BirthDateValidationMixin:
 
 
 class PatientForm(BirthDateValidationMixin, forms.ModelForm):
+    def __init__(self, *args, allow_existing=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.allow_existing = allow_existing
+
     class Meta:
         model = Patient
         fields = [
@@ -42,6 +46,13 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         if nid and (not nid.isdigit() or len(nid) != 13):
             raise forms.ValidationError("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
         return nid
+
+    def validate_unique(self):
+        # หน้าลงทะเบียนรับบริการต้องค้นหาผู้ป่วยเดิมด้วยเลขบัตรก่อน
+        # ส่วนหน้าแก้ไขข้อมูลยังคงตรวจ unique ตามปกติ
+        if self.allow_existing:
+            return
+        super().validate_unique()
 
 
 class PatientBirthDateForm(BirthDateValidationMixin, forms.ModelForm):

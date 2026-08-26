@@ -485,7 +485,7 @@ def patient_cancel_queue(request):
 @login_required
 def register_patient(request):
     if request.method == "POST":
-        form = PatientForm(request.POST)
+        form = PatientForm(request.POST, allow_existing=True)
 
         if not form.is_valid():
             return render(request, "patients/register.html", {"form": form})
