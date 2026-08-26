@@ -35,6 +35,14 @@ ACTIVE_QUEUE_STATUSES = {
     Queue.Status.FOLLOWUP,
 }
 
+PATIENT_CANCELLABLE_QUEUE_STATUSES = {
+    Queue.Status.WAITING_VITALS,
+    Queue.Status.WAITING_CONFIRMATION,
+    Queue.Status.WAITING_QUEUE,
+    Queue.Status.WAITING,
+    Queue.Status.CALLED,
+}
+
 PUBLIC_STATUS = {
     Queue.Status.WAITING_VITALS: ("รอตรวจวัดสัญญาณชีพ", "กรุณาไปยังจุดวัดสัญญาณชีพ"),
     Queue.Status.WAITING_CONFIRMATION: ("รอพยาบาลยืนยันผลคัดกรอง", "กรุณารอบริเวณจุดคัดกรอง"),
@@ -418,13 +426,52 @@ def patient_queue(request):
         )
     queue = (
         Queue.objects.select_related("visit")
-        .filter(visit__patient=patient)
+        .filter(visit__patient=patient, status__in=ACTIVE_QUEUE_STATUSES)
         .order_by("-created_at")
         .first()
     )
     if not queue:
         return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
     return _cors_json(request, {"ok": True, **_serialize_queue(queue)})
+
+
+@csrf_exempt
+def patient_cancel_queue(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    patient = _authenticated_patient(request)
+    if not patient:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่"},
+            status=401,
+        )
+
+    with transaction.atomic():
+        queue = (
+            Queue.objects.select_for_update()
+            .filter(visit__patient=patient)
+            .order_by("-created_at")
+            .first()
+        )
+        if not queue:
+            return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
+        if queue.status == Queue.Status.CANCELLED:
+            return _cors_json(request, {"ok": True, "message": "คิวนี้ถูกยกเลิกแล้ว"})
+        if queue.status not in PATIENT_CANCELLABLE_QUEUE_STATUSES:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "สถานะคิวปัจจุบันไม่สามารถยกเลิกด้วยตนเองได้ กรุณาติดต่อเจ้าหน้าที่"},
+                status=409,
+            )
+
+        queue.status = Queue.Status.CANCELLED
+        queue.save(update_fields=["status"])
+
+    return _cors_json(request, {"ok": True, "message": "ยกเลิกคิวเรียบร้อยแล้ว"})
 
 
 @login_required

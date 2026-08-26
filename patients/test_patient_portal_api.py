@@ -128,6 +128,51 @@ class PatientPortalApiTests(TestCase):
         self.assertIn("people_ahead", payload)
         self.assertIn("updated_at", payload)
 
+    def test_patient_can_cancel_own_waiting_or_called_queue(self):
+        other_patient = Patient.objects.create(
+            first_name="ผู้ป่วยอื่น",
+            last_name="ทดสอบ",
+            national_id="5555555555555",
+        )
+        other_visit = Visit.objects.create(patient=other_patient)
+        other_queue = Queue.objects.create(visit=other_visit, status=Queue.Status.CALLED)
+        self.queue.status = Queue.Status.CALLED
+        self.queue.save(update_fields=["status"])
+        token = self.login().json()["access_token"]
+
+        response = self.client.post(
+            reverse("public_patient_cancel_queue"),
+            **self.bearer(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.queue.refresh_from_db()
+        other_queue.refresh_from_db()
+        self.assertEqual(self.queue.status, Queue.Status.CANCELLED)
+        self.assertEqual(other_queue.status, Queue.Status.CALLED)
+        current_queue = self.client.get(
+            reverse("public_authenticated_patient_queue"),
+            **self.bearer(token),
+        )
+        self.assertEqual(current_queue.status_code, 404)
+
+    def test_patient_cancel_requires_token_and_rejects_non_cancellable_status(self):
+        missing_token = self.client.post(reverse("public_patient_cancel_queue"))
+        self.assertEqual(missing_token.status_code, 401)
+
+        self.queue.status = Queue.Status.EMERGENCY_TRANSFER
+        self.queue.save(update_fields=["status"])
+        token = self.login().json()["access_token"]
+        response = self.client.post(
+            reverse("public_patient_cancel_queue"),
+            **self.bearer(token),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.queue.refresh_from_db()
+        self.assertEqual(self.queue.status, Queue.Status.EMERGENCY_TRANSFER)
+
     def test_patient_without_queue_returns_404(self):
         patient = Patient.objects.create(
             first_name="ไม่มี",

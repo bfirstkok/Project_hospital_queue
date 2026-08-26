@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/patient/login/", patient_views.patient_login, name="public_patient_login"),
     path("api/patient/me/", patient_views.patient_me, name="public_patient_me"),
     path("api/patient/queue/", patient_views.patient_queue, name="public_authenticated_patient_queue"),
+    path("api/patient/queue/cancel/", patient_views.patient_cancel_queue, name="public_patient_cancel_queue"),
     path("api/patient/queue/<uuid:tracking_token>/", patient_views.public_queue_status, name="public_patient_queue_status"),
 
 ]
