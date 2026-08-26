@@ -3,7 +3,8 @@ hospital.bfirstkok.me {
 	redir /patient /patient/ permanent
 
 	header /patient/* {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# Next.js static exports include inline bootstrap scripts required for hydration.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Referrer-Policy "no-referrer"
 		X-Content-Type-Options "nosniff"
