@@ -237,6 +237,23 @@ def public_register(request):
             national_id=form.cleaned_data["national_id"],
             defaults={key: value for key, value in form.cleaned_data.items() if key != "consent"},
         )
+        active_visit = (
+            Visit.objects.select_related("queue")
+            .filter(patient=patient, queue__status__in=ACTIVE_QUEUE_STATUSES)
+            .order_by("-registered_at")
+            .first()
+        )
+        if active_visit:
+            return _cors_json(
+                request,
+                {
+                    "ok": False,
+                    "error": "คุณมีคิวที่กำลังรับบริการอยู่แล้ว กรุณาตรวจสอบคิวเดิมก่อนจองใหม่",
+                    "active_queue": _serialize_queue(active_visit.queue),
+                },
+                status=409,
+            )
+
         if not created:
             for field, value in form.cleaned_data.items():
                 if field != "consent":
@@ -245,18 +262,9 @@ def public_register(request):
                     setattr(patient, field, value)
             patient.save()
 
-        active_visit = (
-            Visit.objects.select_related("queue")
-            .filter(patient=patient, queue__status__in=ACTIVE_QUEUE_STATUSES)
-            .order_by("-registered_at")
-            .first()
-        )
-        if active_visit:
-            visit = active_visit
-        else:
-            visit = Visit.objects.create(patient=patient, note=patient.note)
-            VitalSign.objects.create(visit=visit)
-            Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
+        visit = Visit.objects.create(patient=patient, note=patient.note)
+        VitalSign.objects.create(visit=visit)
+        Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
 
     access_token, expires_at = _issue_patient_token(patient)
     return _cors_json(request, {
@@ -268,7 +276,7 @@ def public_register(request):
         "expires_at": expires_at.isoformat(),
         "status_url": f"/api/patient/queue/{visit.tracking_token}/",
         **_serialize_queue(visit.queue),
-    }, status=201 if not active_visit else 200)
+    }, status=201)
 
 
 @csrf_exempt
@@ -485,16 +493,29 @@ def register_patient(request):
         national_id = form.cleaned_data["national_id"]
 
         with transaction.atomic():
-            patient, created = Patient.objects.get_or_create(
-                national_id=national_id,
-                defaults=form.cleaned_data,  # ตอนสร้างใหม่ ใส่ทุก field ได้เลย
-            )
+            patient = Patient.objects.select_for_update().filter(national_id=national_id).first()
 
-            # ถ้ามีอยู่แล้ว → อัปเดตข้อมูลจากฟอร์ม (ให้หน้า register ใช้แก้ข้อมูลคนเดิมได้)
-            if not created:
+            if patient:
+                active_queue = (
+                    Queue.objects.filter(
+                        visit__patient=patient,
+                        status__in=ACTIVE_QUEUE_STATUSES,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+                if active_queue:
+                    form.add_error(
+                        None,
+                        f"ผู้ป่วยมีคิว {active_queue.display_number} ที่กำลังรับบริการอยู่แล้ว กรุณาตรวจสอบคิวเดิม",
+                    )
+                    return render(request, "patients/register.html", {"form": form})
+
                 for field, value in form.cleaned_data.items():
                     setattr(patient, field, value)
                 patient.save()
+            else:
+                patient = Patient.objects.create(**form.cleaned_data)
 
             # สร้าง Visit ใหม่ทุกครั้ง
             visit = Visit.objects.create(

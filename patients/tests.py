@@ -133,14 +133,64 @@ class PublicPatientApiTests(TestCase):
         self.assertEqual(response.json()["tracking_token"], str(visit.tracking_token))
         self.assertTrue(response.json()["access_token"])
 
-    def test_duplicate_submit_reuses_active_visit(self):
+    def test_duplicate_submit_rejects_active_visit(self):
         first = self.post_registration()
         second = self.post_registration()
 
         self.assertEqual(first.status_code, 201)
-        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.status_code, 409)
+        self.assertFalse(second.json()["ok"])
+        self.assertIn("มีคิวที่กำลังรับบริการอยู่แล้ว", second.json()["error"])
+        self.assertEqual(second.json()["active_queue"]["queue_number"], first.json()["queue_number"])
         self.assertEqual(Visit.objects.count(), 1)
-        self.assertEqual(first.json()["tracking_token"], second.json()["tracking_token"])
+
+    def test_patient_can_book_again_after_previous_queue_is_cancelled(self):
+        first = self.post_registration()
+        queue = Queue.objects.get()
+        queue.status = Queue.Status.CANCELLED
+        queue.save(update_fields=["status"])
+
+        second = self.post_registration()
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(Visit.objects.count(), 2)
+        self.assertNotEqual(first.json()["tracking_token"], second.json()["tracking_token"])
+
+    def test_staff_registration_rejects_duplicate_active_queue(self):
+        user = get_user_model().objects.create_user(username="duplicate-guard", password="test-only-password")
+        self.client.force_login(user)
+        staff_payload = {
+            "first_name": self.payload["first_name"],
+            "last_name": self.payload["last_name"],
+            "national_id": self.payload["national_id"],
+            "gender": self.payload["gender"],
+            "age": self.payload["age"],
+            "phone": self.payload["phone"],
+            "blood_type": self.payload["blood_type"],
+            "note": self.payload["note"],
+        }
+
+        first = self.client.post(reverse("register_patient"), staff_payload)
+        second = self.client.post(reverse("register_patient"), staff_payload)
+
+        self.assertRedirects(first, reverse("waiting_vitals"))
+        self.assertEqual(second.status_code, 200)
+        self.assertContains(second, "ที่กำลังรับบริการอยู่แล้ว")
+        self.assertEqual(Visit.objects.count(), 1)
+        self.assertEqual(Queue.objects.count(), 1)
+
+    def test_staff_registration_page_matches_patient_registration_flow(self):
+        user = get_user_model().objects.create_user(username="registration-ui", password="test-only-password")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("register_patient"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ลงทะเบียนผู้ป่วยใหม่")
+        self.assertContains(response, "service-steps")
+        self.assertContains(response, "วัดสัญญาณชีพ")
+        self.assertContains(response, "รอเรียกคิว")
 
     def test_invalid_registration_returns_field_errors(self):
         self.payload["national_id"] = "123"

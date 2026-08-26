@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วย{% endif %}</title>
-  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=patient-style-20260826">
 </head>
 
 <body>
@@ -25,6 +25,18 @@
 
   <div class="content">
     <div class="content-wrapper">
+      <header class="register-intro">
+        <span class="eyebrow">ระบบบริการผู้ป่วยนอก (OPD)</span>
+        <h1>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วยใหม่{% endif %}</h1>
+        <p>{% if is_edit %}ปรับปรุงข้อมูลประจำตัวและข้อมูลสุขภาพ โดยไม่สร้างคิวใหม่{% else %}กรอกข้อมูลตามลำดับเดียวกับหน้าลงทะเบียนของผู้ป่วย เพื่อส่งต่อไปยังจุดวัดสัญญาณชีพ{% endif %}</p>
+      </header>
+
+      <ol class="service-steps" aria-label="ขั้นตอนรับบริการ">
+        <li class="active"><span>1</span>{% if is_edit %}แก้ไขข้อมูล{% else %}ลงทะเบียน{% endif %}</li>
+        <li><span>2</span>วัดสัญญาณชีพ</li>
+        <li><span>3</span>รอเรียกคิว</li>
+      </ol>
+
       <div class="card">
 
         {% if is_edit %}
@@ -35,6 +47,9 @@
         {% if form.errors %}
           <div class="alert">❌ กรุณาตรวจสอบข้อมูลที่กรอก (ดูข้อความสีแดงใต้แต่ละช่อง)</div>
         {% endif %}
+        {% for error in form.non_field_errors %}
+          <div class="alert" role="alert">{{ error }}</div>
+        {% endfor %}
 
         <form id="patientRegisterForm" method="post" autocomplete="off">
           {% csrf_token %}
@@ -181,21 +196,21 @@
           <div class="grid">
             <div class="field">
               <label>จังหวัด</label>
-              <select id="province" name="province_code" required>
+              <select id="province" name="province_code">
                 <option value="">-- เลือกจังหวัด --</option>
               </select>
             </div>
 
             <div class="field">
               <label>อำเภอ</label>
-              <select id="district" name="district_code" required disabled>
+              <select id="district" name="district_code" disabled>
                 <option value="">-- เลือกอำเภอ --</option>
               </select>
             </div>
 
             <div class="field">
               <label>ตำบล</label>
-              <select id="subdistrict" name="subdistrict_code" required disabled>
+              <select id="subdistrict" name="subdistrict_code" disabled>
                 <option value="">-- เลือกตำบล --</option>
               </select>
             </div>
