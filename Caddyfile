@@ -10,6 +10,8 @@ hospital.bfirstkok.me {
 		X-Content-Type-Options "nosniff"
 	}
 	header /patient/runtime-config.js Cache-Control "no-store"
+	@patient_html path /patient/ /patient/index.html
+	header @patient_html Cache-Control "no-cache, must-revalidate"
 
 	handle_path /patient/* {
 		root * /srv/patient
