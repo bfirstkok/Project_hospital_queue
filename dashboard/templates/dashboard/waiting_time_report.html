@@ -17,13 +17,25 @@
     .export-btn:hover { border-color: #087f75; color: #087f75 !important; transform: translateY(-1px); }
     .summary-grid { display: grid; grid-template-columns: .75fr repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
     .metric-card, .report-panel, .severity-panel { background: #fff; border: 1px solid #d3e1e5; border-radius: 14px; box-shadow: 0 5px 20px rgba(38, 75, 89, .055); }
-    .metric-card { position: relative; min-height: 126px; padding: 19px 20px; overflow: hidden; }
-    .metric-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: #8bbec1; }
-    .metric-card.primary::before { background: #087f75; }
-    .metric-card.warning::before { background: #d18a13; }
-    .metric-label { color: #5c737e; font-size: 13px; font-weight: 700; }
-    .metric-value { margin-top: 7px; color: #183044; font-size: clamp(25px, 2.5vw, 34px); font-weight: 800; line-height: 1.1; }
-    .metric-help { margin-top: 8px; color: #78909a; font-size: 12px; }
+    .metric-card {
+      position: relative;
+      min-height: 134px;
+      padding: 20px 21px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #ffffff 58%, #f4f9fa 100%) !important;
+      border: 1px solid #d3e1e5 !important;
+      box-shadow: 0 6px 20px rgba(38, 75, 89, .07) !important;
+    }
+    .metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: #8bbec1; }
+    .metric-card.metric-total { background: linear-gradient(145deg, #ffffff 48%, #eaf7f5 100%) !important; }
+    .metric-card.metric-total::before { background: #087f75; }
+    .metric-card.metric-focus::before { background: #d18a13; }
+    .metric-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .metric-icon { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 9px; background: #e8f4f2; color: #087f75; font-size: 16px; font-weight: 800; }
+    .metric-focus .metric-icon { background: #fff3d8; color: #9a6500; }
+    .metric-label { color: #536b77 !important; font-size: 13px; font-weight: 700; }
+    .metric-value { margin-top: 10px; color: #183044 !important; font-size: clamp(27px, 2.5vw, 35px); font-weight: 800; line-height: 1.05; }
+    .metric-help { margin-top: 8px; color: #718690 !important; font-size: 12px; }
     .severity-panel { display: grid; grid-template-columns: 1.15fr repeat(5, 1fr); align-items: stretch; margin-bottom: 18px; overflow: hidden; }
     .severity-heading, .severity-item { padding: 15px 18px; }
     .severity-heading { display: flex; flex-direction: column; justify-content: center; background: #f4f8f9; }
@@ -115,10 +127,10 @@
       </div>
     </header>
     <section class="summary-grid" aria-label="สรุปเวลารอ">
-      <article class="metric-card primary"><div class="metric-label">รายการทั้งหมด</div><div class="metric-value">{{ total }}</div><div class="metric-help">Visit ล่าสุดที่นำมาคำนวณ</div></article>
-      <article class="metric-card"><div class="metric-label">ลงทะเบียน → คัดกรอง</div><div class="metric-value">{{ avg_triage_display }}</div><div class="metric-help">เวลาเฉลี่ยก่อนเริ่มประเมินสุขภาพ</div></article>
-      <article class="metric-card"><div class="metric-label">คัดกรอง → พยาบาลยืนยัน</div><div class="metric-value">{{ avg_confirmation_display }}</div><div class="metric-help">เวลาเฉลี่ยสำหรับตรวจสอบผลคัดกรอง</div></article>
-      <article class="metric-card warning"><div class="metric-label">ลงทะเบียน → เรียกคิว</div><div class="metric-value">{{ avg_called_display }}</div><div class="metric-help">เวลารอรวมเฉลี่ยก่อนเรียกเข้ารับบริการ</div></article>
+      <article class="metric-card metric-total"><div class="metric-topline"><div class="metric-label">รายการทั้งหมด</div><span class="metric-icon" aria-hidden="true">≡</span></div><div class="metric-value">{{ total }}</div><div class="metric-help">Visit ล่าสุดที่นำมาคำนวณ</div></article>
+      <article class="metric-card"><div class="metric-topline"><div class="metric-label">ลงทะเบียน → คัดกรอง</div><span class="metric-icon" aria-hidden="true">1</span></div><div class="metric-value">{{ avg_triage_display }}</div><div class="metric-help">เวลาเฉลี่ยก่อนเริ่มประเมินสุขภาพ</div></article>
+      <article class="metric-card"><div class="metric-topline"><div class="metric-label">คัดกรอง → พยาบาลยืนยัน</div><span class="metric-icon" aria-hidden="true">✓</span></div><div class="metric-value">{{ avg_confirmation_display }}</div><div class="metric-help">เวลาเฉลี่ยสำหรับตรวจสอบผลคัดกรอง</div></article>
+      <article class="metric-card metric-focus"><div class="metric-topline"><div class="metric-label">ลงทะเบียน → เรียกคิว</div><span class="metric-icon" aria-hidden="true">↗</span></div><div class="metric-value">{{ avg_called_display }}</div><div class="metric-help">เวลารอรวมเฉลี่ยก่อนเรียกเข้ารับบริการ</div></article>
     </section>
     <section class="severity-panel" aria-label="จำนวนผู้ป่วยตามระดับคัดกรอง">
       <div class="severity-heading"><strong>ระดับคัดกรอง</strong><span>จำนวนจากรายการในรายงานนี้</span></div>
