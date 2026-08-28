@@ -204,7 +204,19 @@ class ObservationMonitoringVisibilityTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         visit_ids = [item["visit_id"] for item in response.json()["items"]]
-        self.assertIn(self.visit.id, visit_ids)
+        self.assertIn(str(self.visit.id), visit_ids)
+
+    def test_monitor_visit_id_is_serialized_without_javascript_rounding(self):
+        response = self.client.get(reverse("monitor_summary_api"))
+
+        visit_id = response.json()["items"][0]["visit_id"]
+        self.assertIsInstance(visit_id, str)
+        self.assertEqual(visit_id, str(self.visit.id))
+
+        latest_response = self.client.get(reverse("monitor_latest_api"))
+        latest_visit_id = latest_response.json()["rows"][0]["visit_id"]
+        self.assertIsInstance(latest_visit_id, str)
+        self.assertEqual(latest_visit_id, str(self.visit.id))
 
 
 class QueueWorkflowTests(TestCase):

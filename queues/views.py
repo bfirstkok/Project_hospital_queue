@@ -512,7 +512,9 @@ def update_severity_api(request, visit_id: int):
 
         return JsonResponse({
             "ok": True,
-            "visit_id": visit.id,
+            # Visit IDs are 64-bit values and exceed JavaScript's safe integer
+            # range. Send them as strings so browser links are never rounded.
+            "visit_id": str(visit.id),
             "severity": new_sev,
             "queue_status": q.status,
             "wearable_eligible": new_sev == Visit.Severity.YELLOW,
@@ -1051,7 +1053,8 @@ def monitor_latest_api(request):
         online = bool(q.last_log_ts and q.last_log_ts >= offline_after)
 
         rows.append({
-            "visit_id": visit.id,
+            # Keep the exact 64-bit identifier in JavaScript clients.
+            "visit_id": str(visit.id),
             "name": f"{visit.patient.first_name} {visit.patient.last_name}",
             "severity": visit.final_severity,
             "queue_status": q.status,
@@ -1123,7 +1126,8 @@ def monitor_summary_api(request):
             online = (now - v.last_log_ts).total_seconds() <= 60
 
         items.append({
-            "visit_id": v.id,
+            # Keep the exact 64-bit identifier in JavaScript clients.
+            "visit_id": str(v.id),
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "queue_status": q.status,

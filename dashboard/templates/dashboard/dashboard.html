@@ -580,11 +580,11 @@
         <td class="muted">${vitalsText(x.vitals)}</td>
         <td>
           <a class="action-btn action-btn-blue" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
-          <button class="action-btn action-btn-red" onclick="setSeverity(${x.visit_id}, 'RED')">แดง</button>
-          <button class="action-btn action-btn-pink" onclick="setSeverity(${x.visit_id}, 'PINK')">ชมพู</button>
-          <button class="action-btn action-btn-yellow" onclick="setSeverity(${x.visit_id}, 'YELLOW')">เหลือง</button>
-          <button class="action-btn action-btn-green" onclick="setSeverity(${x.visit_id}, 'GREEN')">เขียว</button>
-          <button class="action-btn action-btn-white" onclick="setSeverity(${x.visit_id}, 'WHITE')">ขาว</button>
+          <button class="action-btn action-btn-red" onclick="setSeverity('${x.visit_id}', 'RED')">แดง</button>
+          <button class="action-btn action-btn-pink" onclick="setSeverity('${x.visit_id}', 'PINK')">ชมพู</button>
+          <button class="action-btn action-btn-yellow" onclick="setSeverity('${x.visit_id}', 'YELLOW')">เหลือง</button>
+          <button class="action-btn action-btn-green" onclick="setSeverity('${x.visit_id}', 'GREEN')">เขียว</button>
+          <button class="action-btn action-btn-white" onclick="setSeverity('${x.visit_id}', 'WHITE')">ขาว</button>
         </td>
       </tr>
     `).join("");
