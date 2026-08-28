@@ -23,11 +23,12 @@ urlpatterns = [
     path("api/update-severity/<int:visit_id>/", views.update_severity_api, name="update_severity_api"),
     path("api/alerts/<int:alert_id>/ack/", views.acknowledge_alert, name="acknowledge_alert"),
 
-    # ✅ /queues/monitor/ = FOLLOWUP monitor (หลัง OPD)
-    path("monitor/", opd_views.post_opd_monitor, name="monitor_dashboard"),
-    path("monitor/api/latest/", opd_views.post_opd_monitor_api, name="monitor_latest_api"),
+    # /queues/monitor/ is the waiting-area wearable monitor. Post-OPD
+    # monitoring remains available under /opd/monitor/.
+    path("monitor/", views.monitor_dashboard, name="monitor_dashboard"),
+    path("monitor/api/latest/", views.monitor_latest_api, name="monitor_latest_api"),
     path("monitor/api/summary/", views.monitor_summary_api, name="monitor_summary_api"),
-    path("monitor/visit/<int:visit_id>/", opd_views.post_opd_visit_detail, name="followup_visit_detail"),
+    path("monitor/visit/<int:visit_id>/", views.monitor_visit_detail, name="followup_visit_detail"),
     path("monitor/demo/push/<int:visit_id>/", opd_views.post_opd_demo_push_telemetry, name="followup_demo_push"),
 
     # ✅ monitor เดิม (WAITING) ย้ายไป /queues/monitor/waiting/

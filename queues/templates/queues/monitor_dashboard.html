@@ -452,7 +452,7 @@
             <td>${r.device_id ?? "-"}</td>
             <td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td>
             <td>${vitalsHtml}</td>
-            <td>${r.requires_reassessment ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/assessment/' + r.visit_id + '/">ประเมินซ้ำทันที</a>' : '<a class="rightLink" href="/queues/monitor/waiting/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}</td>
+            <td>${r.requires_reassessment ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/assessment/' + r.visit_id + '/">ประเมินซ้ำทันที</a>' : '<a class="rightLink" href="/queues/monitor/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}</td>
           </tr>
         `;
       }).join("");
@@ -613,7 +613,7 @@
             </td>
 
             <td data-label="คำสั่ง">
-              ${r.requires_reassessment ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/assessment/' + r.visit_id + '/">ประเมินซ้ำทันที</a>' : '<a class="rightLink" href="/queues/monitor/waiting/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}
+              ${r.requires_reassessment ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/assessment/' + r.visit_id + '/">ประเมินซ้ำทันที</a>' : '<a class="rightLink" href="/queues/monitor/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}
             </td>
           </tr>
         `;

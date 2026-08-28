@@ -591,9 +591,12 @@
   }
 
   async function loadSummary(){
-    const res = await fetch("/queues/monitor/api/latest/");
+    const res = await fetch("/queues/monitor/api/summary/");
     const data = await res.json();
-    cachedItems = data.rows || [];
+    cachedItems = (data.items || []).map(item => ({
+      ...item,
+      name: item.patient_name,
+    }));
     cachedItems.forEach(item => {
       if (pendingSeverity.has(item.visit_id)) {
         item.severity = pendingSeverity.get(item.visit_id);

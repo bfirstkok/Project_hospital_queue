@@ -454,7 +454,7 @@ def send_to_monitoring(request, visit_id: int):
         q.save(update_fields=["status"])
     else:
         messages.error(request, "เฉพาะผู้ป่วย YELLOW ที่จับคู่นาฬิกาแล้วเท่านั้นที่เริ่มติดตามได้")
-    return redirect("waiting_monitor_dashboard")
+    return redirect("monitor_dashboard")
 
 
 @login_required

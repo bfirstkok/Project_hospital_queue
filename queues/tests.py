@@ -6,9 +6,10 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import Client, TestCase
-from django.urls import reverse
+from django.urls import resolve, reverse
 
 from patients.models import Patient
+from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
 from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, TriageResult, Visit, VitalSign
 
@@ -163,6 +164,47 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(IoTVital.objects.count(), 0)
         self.assertEqual(TelemetryLog.objects.count(), 0)
+
+
+class ObservationMonitoringVisibilityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="monitor-nurse",
+            password="secret",
+        )
+        self.client.force_login(self.user)
+        patient = Patient.objects.create(
+            first_name="Observation",
+            last_name="Patient",
+            national_id="1234500000001",
+        )
+        self.visit = Visit.objects.create(
+            patient=patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=2,
+        )
+        device = Device.objects.create(
+            device_id="OBS-001",
+            api_key="secret",
+            is_active=True,
+        )
+        DeviceAssignment.objects.create(device=device, visit=self.visit)
+
+    def test_main_monitor_route_uses_waiting_area_monitor(self):
+        match = resolve(reverse("monitor_dashboard"))
+
+        self.assertIs(match.func, queue_views.monitor_dashboard)
+
+    def test_monitor_summary_includes_paired_observation_visit(self):
+        response = self.client.get(reverse("monitor_summary_api"))
+
+        self.assertEqual(response.status_code, 200)
+        visit_ids = [item["visit_id"] for item in response.json()["items"]]
+        self.assertIn(self.visit.id, visit_ids)
 
 
 class QueueWorkflowTests(TestCase):
