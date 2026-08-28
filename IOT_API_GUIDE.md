@@ -63,9 +63,7 @@ Body ตัวอย่าง:
   "heart_rate": 118,
   "spo2": 94,
   "temperature": 38.9,
-  "respiratory_rate": 31,
-  "blood_pressure_sys": 90,
-  "blood_pressure_dia": 60
+  "respiratory_rate": 31
 }
 ```
 
@@ -135,7 +133,7 @@ Device ไม่ active `403`:
 curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <API_KEY_OF_WT001>" \
-  -d "{\"device_id\":\"WT001\",\"heart_rate\":118,\"spo2\":94,\"temperature\":38.9,\"respiratory_rate\":31,\"blood_pressure_sys\":90,\"blood_pressure_dia\":60}"
+  -d "{\"device_id\":\"WT001\",\"heart_rate\":118,\"spo2\":94,\"temperature\":38.9,\"respiratory_rate\":31}"
 ```
 
 ในหน้า Device Management สามารถกดปุ่ม `copy API key` เพื่อคัดลอก API key ของแต่ละ device ได้
@@ -155,3 +153,5 @@ curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
 - ถ้า device ยังไม่ได้ผูกกับ Visit ระบบตอบ `409 Device is not paired to an active visit` และไม่บันทึกข้อมูล
 - ถ้า device ผูกอยู่ ระบบบันทึก `IoTVital`, `TelemetryLog` และ sync เข้า `VitalSign` ของ Visit ที่ผูกกับ device นั้น
 - ถ้ายังส่ง `patient_id` มาด้วย ระบบจะใช้เป็นตัวตรวจซ้ำ ถ้าไม่ตรงกับ pairing จะตอบ `409 Posted patient_id does not match active device assignment`
+
+ระบบรับค่าจากอุปกรณ์เฉพาะชีพจร, SpO2, อุณหภูมิ และอัตราการหายใจ ไม่รับค่าความดันโลหิตจาก IoT; ค่าความดันให้พยาบาลวัดและบันทึกในหน้าประเมินสุขภาพ

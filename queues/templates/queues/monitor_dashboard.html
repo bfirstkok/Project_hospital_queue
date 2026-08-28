@@ -432,14 +432,12 @@
         const sev = r.severity ?? "-";
         const sevCss = sevClass(sev);
         const v = r.vitals || {};
-        const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
         const vitalsHtml = `
           <div class="vitals">
             <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
             <span class="kv"><span class="muted">O2</span> <b>${v.o2sat ?? "-"}</b></span>
             <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
             <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
-            <span class="kv"><span class="muted">BP</span> <b>${bp}</b></span>
           </div>
         `;
 
@@ -569,15 +567,12 @@
         const sevCss = sevClass(sev);
 
         const v = r.vitals || {};
-        const bp = (v.sys_bp ?? "-") + "/" + (v.dia_bp ?? "-");
-
         const vitalsHtml = `
           <div class="vitals">
             <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
             <span class="kv"><span class="muted">O2</span> <b>${v.o2sat ?? "-"}</b></span>
             <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
             <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
-            <span class="kv"><span class="muted">BP</span> <b>${bp}</b></span>
           </div>
         `;
 

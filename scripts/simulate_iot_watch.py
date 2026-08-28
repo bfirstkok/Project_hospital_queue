@@ -10,24 +10,18 @@ SCENARIOS = {
         "o2sat": (89, 94),
         "bt": (37.6, 39.3),
         "rr": (31, 36),
-        "sys_bp": (82, 95),
-        "dia_bp": (55, 65),
     },
     "yellow": {
         "bpm": (100, 122),
         "o2sat": (95, 96),
         "bt": (38.0, 38.8),
         "rr": (21, 30),
-        "sys_bp": (96, 135),
-        "dia_bp": (65, 88),
     },
     "green": {
         "bpm": (75, 95),
         "o2sat": (97, 99),
         "bt": (36.5, 37.8),
         "rr": (16, 20),
-        "sys_bp": (110, 125),
-        "dia_bp": (70, 82),
     },
 }
 
@@ -39,8 +33,6 @@ def random_vitals(scenario):
         "o2sat": random.randint(*ranges["o2sat"]),
         "bt": round(random.uniform(*ranges["bt"]), 1),
         "rr": random.randint(*ranges["rr"]),
-        "sys_bp": random.randint(*ranges["sys_bp"]),
-        "dia_bp": random.randint(*ranges["dia_bp"]),
     }
 
 

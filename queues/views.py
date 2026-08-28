@@ -539,7 +539,7 @@ def iot_telemetry(request):
       {
         "visit_id": 1,
         "ts": "2025-12-17T08:30:00Z",
-        "vitals": {"bpm": 90, "o2sat": 97, "bt": 37.1, "rr": 18, "sys_bp": 120, "dia_bp": 80}
+        "vitals": {"bpm": 90, "o2sat": 97, "bt": 37.1, "rr": 18}
       }
     """
     device_id = request.headers.get("X-DEVICE-ID")
@@ -612,8 +612,6 @@ def iot_telemetry(request):
         o2sat=vitals.get("o2sat"),
         bt=vitals.get("bt"),
         rr=vitals.get("rr"),
-        sys_bp=vitals.get("sys_bp"),
-        dia_bp=vitals.get("dia_bp"),
     )
 
     # 2) update device last_seen
@@ -626,10 +624,6 @@ def iot_telemetry(request):
         vs.rr = vitals.get("rr")
     if vitals.get("bpm") is not None:
         vs.pr = vitals.get("bpm")  # pr = bpm
-    if vitals.get("sys_bp") is not None:
-        vs.sys_bp = vitals.get("sys_bp")
-    if vitals.get("dia_bp") is not None:
-        vs.dia_bp = vitals.get("dia_bp")
     if vitals.get("bt") is not None:
         vs.bt = vitals.get("bt")
     if vitals.get("o2sat") is not None:
@@ -686,9 +680,7 @@ def iot_vitals(request):
         "heart_rate": 118,
         "spo2": 94,
         "temperature": 38.9,
-        "respiratory_rate": 31,
-        "blood_pressure_sys": 90,
-        "blood_pressure_dia": 60
+        "respiratory_rate": 31
       }
     """
     try:
@@ -712,8 +704,6 @@ def iot_vitals(request):
         spo2 = int(data["spo2"])
         temperature = float(data["temperature"])
         respiratory_rate = _parse_optional_int(data.get("respiratory_rate"))
-        blood_pressure_sys = _parse_optional_int(data.get("blood_pressure_sys"))
-        blood_pressure_dia = _parse_optional_int(data.get("blood_pressure_dia"))
     except (TypeError, ValueError):
         return JsonResponse({"success": False, "message": "Invalid vital sign value"}, status=400)
 
@@ -782,8 +772,6 @@ def iot_vitals(request):
         spo2=spo2,
         temperature=temperature,
         respiratory_rate=respiratory_rate,
-        blood_pressure_sys=blood_pressure_sys,
-        blood_pressure_dia=blood_pressure_dia,
     )
 
     telemetry_log = TelemetryLog.objects.create(
@@ -793,8 +781,6 @@ def iot_vitals(request):
         o2sat=spo2,
         bt=temperature,
         rr=respiratory_rate,
-        sys_bp=blood_pressure_sys,
-        dia_bp=blood_pressure_dia,
     )
 
     vs, _ = VitalSign.objects.get_or_create(visit=visit)
@@ -803,10 +789,6 @@ def iot_vitals(request):
     vs.bt = temperature
     if respiratory_rate is not None:
         vs.rr = respiratory_rate
-    if blood_pressure_sys is not None:
-        vs.sys_bp = blood_pressure_sys
-    if blood_pressure_dia is not None:
-        vs.dia_bp = blood_pressure_dia
     vs.save()
     create_critical_alerts_for_visit(visit, vs, source="iot_vitals")
     evaluate_visit_if_vitals_complete(visit)
@@ -838,8 +820,6 @@ def _visit_queryset_with_latest_vitals():
             last_o2=Subquery(latest_vs.values("o2sat")[:1]),
             last_bt=Subquery(latest_vs.values("bt")[:1]),
             last_rr=Subquery(latest_vs.values("rr")[:1]),
-            last_sys=Subquery(latest_vs.values("sys_bp")[:1]),
-            last_dia=Subquery(latest_vs.values("dia_bp")[:1]),
 
             last_log_ts=Subquery(latest_any_log.values("ts")[:1]),
             last_device_id=Subquery(latest_any_log.values("device__device_id")[:1]),
@@ -1040,8 +1020,6 @@ def monitor_latest_api(request):
             last_o2sat=Subquery(latest_log.values("o2sat")[:1]),
             last_bt=Subquery(latest_log.values("bt")[:1]),
             last_rr=Subquery(latest_log.values("rr")[:1]),
-            last_sys_bp=Subquery(latest_log.values("sys_bp")[:1]),
-            last_dia_bp=Subquery(latest_log.values("dia_bp")[:1]),
         )
         .order_by("priority", "created_at")[:200]
     )
@@ -1067,8 +1045,6 @@ def monitor_latest_api(request):
             "o2sat": q.last_o2sat,
             "bt": q.last_bt,
             "rr": q.last_rr,
-            "sys_bp": q.last_sys_bp,
-            "dia_bp": q.last_dia_bp,
             "critical_alerts": list(
                 CriticalAlert.objects
                 .filter(visit=visit, status=CriticalAlert.Status.NEW)
@@ -1140,8 +1116,6 @@ def monitor_summary_api(request):
                 "o2sat": v.last_o2,
                 "bt": v.last_bt,
                 "rr": v.last_rr,
-                "sys_bp": v.last_sys,
-                "dia_bp": v.last_dia,
             }
         })
 

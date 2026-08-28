@@ -91,10 +91,14 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(log.visit, self.visit)
         self.assertEqual(log.device, self.device)
         self.assertEqual(log.bpm, 92)
+        self.assertIsNone(log.sys_bp)
+        self.assertIsNone(log.dia_bp)
 
         vitals = VitalSign.objects.get(visit=self.visit)
         self.assertEqual(vitals.pr, 92)
         self.assertEqual(vitals.o2sat, 98)
+        self.assertIsNone(vitals.sys_bp)
+        self.assertIsNone(vitals.dia_bp)
 
     def test_mismatched_visit_id_is_rejected(self):
         DeviceAssignment.objects.create(device=self.device, visit=self.visit)
@@ -148,10 +152,18 @@ class IotTelemetryAssignmentTests(TestCase):
         vital = IoTVital.objects.get()
         self.assertEqual(vital.patient_db_id, self.patient.id)
         self.assertEqual(vital.patient_identifier, self.patient.hn)
+        self.assertIsNone(vital.blood_pressure_sys)
+        self.assertIsNone(vital.blood_pressure_dia)
 
         log = TelemetryLog.objects.get()
         self.assertEqual(log.visit, self.visit)
         self.assertEqual(log.device, self.device)
+        self.assertIsNone(log.sys_bp)
+        self.assertIsNone(log.dia_bp)
+
+        vitals = VitalSign.objects.get(visit=self.visit)
+        self.assertIsNone(vitals.sys_bp)
+        self.assertIsNone(vitals.dia_bp)
 
     def test_iot_vitals_rejects_unpaired_device_without_patient_id(self):
         response = self.post_vitals({
@@ -209,14 +221,20 @@ class ObservationMonitoringVisibilityTests(TestCase):
     def test_monitor_visit_id_is_serialized_without_javascript_rounding(self):
         response = self.client.get(reverse("monitor_summary_api"))
 
-        visit_id = response.json()["items"][0]["visit_id"]
+        summary_item = response.json()["items"][0]
+        visit_id = summary_item["visit_id"]
         self.assertIsInstance(visit_id, str)
         self.assertEqual(visit_id, str(self.visit.id))
+        self.assertNotIn("sys_bp", summary_item["vitals"])
+        self.assertNotIn("dia_bp", summary_item["vitals"])
 
         latest_response = self.client.get(reverse("monitor_latest_api"))
-        latest_visit_id = latest_response.json()["rows"][0]["visit_id"]
+        latest_row = latest_response.json()["rows"][0]
+        latest_visit_id = latest_row["visit_id"]
         self.assertIsInstance(latest_visit_id, str)
         self.assertEqual(latest_visit_id, str(self.visit.id))
+        self.assertNotIn("sys_bp", latest_row)
+        self.assertNotIn("dia_bp", latest_row)
 
 
 class QueueWorkflowTests(TestCase):

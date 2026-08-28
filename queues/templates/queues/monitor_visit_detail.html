@@ -413,7 +413,6 @@
               <div class="vital"><div class="vital-label">O2Sat</div><div class="vital-value">{{ x.o2sat|default:"-" }} <small>%</small></div></div>
               <div class="vital"><div class="vital-label">BT</div><div class="vital-value">{{ x.bt|default:"-" }} <small>°C</small></div></div>
               <div class="vital"><div class="vital-label">RR</div><div class="vital-value">{{ x.rr|default:"-" }}</div></div>
-              <div class="vital"><div class="vital-label">BP</div><div class="vital-value">{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</div></div>
               <div class="vital"><div class="vital-label">Device</div><div class="vital-value" style="font-size:15px">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</div></div>
             </div>
           {% endwith %}
@@ -520,7 +519,6 @@
             <col style="width:92px">
             <col style="width:92px">
             <col style="width:92px">
-            <col style="width:110px">
             <col style="width:230px">
           </colgroup>
           <thead>
@@ -530,7 +528,6 @@
               <th>O2Sat</th>
               <th>BT</th>
               <th>RR</th>
-              <th>BP</th>
               <th class="device-col">อุปกรณ์</th>
             </tr>
           </thead>
@@ -542,11 +539,10 @@
                 <td>{{ x.o2sat|default:"-" }}</td>
                 <td>{{ x.bt|default:"-" }}</td>
                 <td>{{ x.rr|default:"-" }}</td>
-                <td>{% if x.sys_bp %}{{ x.sys_bp }}{% else %}-{% endif %}/{% if x.dia_bp %}{{ x.dia_bp }}{% else %}-{% endif %}</td>
                 <td class="device-col">{% if x.device %}<span class="mono">{{ x.device.device_id }}</span>{% else %}-{% endif %}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="7" class="empty">ยังไม่มีข้อมูลจาก IoT</td></tr>
+              <tr><td colspan="6" class="empty">ยังไม่มีข้อมูลจาก IoT</td></tr>
             {% endfor %}
           </tbody>
         </table>

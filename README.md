@@ -160,7 +160,7 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 - OPD assessment and visit detail pages
 - Post-OPD Monitoring Zone for active monitoring cases
 - Separate waiting-monitor endpoints for pre-OPD monitoring
-- IoT telemetry for BPM, SpO2, temperature, RR, and BP
+- IoT telemetry for BPM, SpO2, temperature, and RR
 - Device Pairing page
 - Before-After Waiting Time Report
 - CSV export

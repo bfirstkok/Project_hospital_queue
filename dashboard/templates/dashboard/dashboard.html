@@ -520,8 +520,7 @@
 
   function vitalsText(v){
     if(!v) return "-";
-    const bp = (v.sys_bp != null ? v.sys_bp : "-") + "/" + (v.dia_bp != null ? v.dia_bp : "-");
-    return `BPM ${v.bpm != null ? v.bpm : "-"} | O2 ${v.o2sat != null ? v.o2sat : "-"} | BP ${bp}`;
+    return `BPM ${v.bpm != null ? v.bpm : "-"} | O2 ${v.o2sat != null ? v.o2sat : "-"} | BT ${v.bt != null ? v.bt : "-"} | RR ${v.rr != null ? v.rr : "-"}`;
   }
 
   async function setSeverity(visitId, sev){
