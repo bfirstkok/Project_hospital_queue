@@ -14,6 +14,7 @@ urlpatterns = [
     path("emergency-transfers/", views.emergency_transfers, name="emergency_transfers"),
     path("personnel/", personnel_views.personnel_dashboard, name="personnel_dashboard"),
     path("personnel/heartbeat/", personnel_views.staff_heartbeat, name="staff_heartbeat"),
+    path("personnel/photo/<int:profile_id>/", personnel_views.staff_photo, name="staff_photo"),
 
     # queue actions
     path("assessment/<int:visit_id>/", views.nurse_triage_assessment, name="nurse_triage_assessment"),

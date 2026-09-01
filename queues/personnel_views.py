@@ -1,8 +1,11 @@
+import mimetypes
+from pathlib import Path
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
@@ -47,6 +50,19 @@ def _is_available_nurse(staff_user, duty):
 def staff_heartbeat(request):
     """Lightweight request used by open staff pages to keep online status fresh."""
     return JsonResponse({"online": True, "at": timezone.now().isoformat()})
+
+
+@login_required
+@require_GET
+def staff_photo(request, profile_id):
+    profile = get_object_or_404(StaffProfile, pk=profile_id)
+    if not profile.photo:
+        raise Http404("Staff photo not found")
+    content_type = mimetypes.guess_type(profile.photo.name)[0] or "application/octet-stream"
+    response = FileResponse(profile.photo.open("rb"), content_type=content_type)
+    response["Cache-Control"] = "private, max-age=3600"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @login_required
@@ -126,6 +142,43 @@ def personnel_dashboard(request):
                 request,
                 f"กำหนดประเภทของ {staff_user.get_full_name() or staff_user.username} แล้ว",
             )
+
+        elif action == "update_staff_identity":
+            staff_user = get_object_or_404(
+                get_user_model(),
+                pk=request.POST.get("user_id"),
+                is_active=True,
+            )
+            first_name = request.POST.get("first_name", "").strip()
+            last_name = request.POST.get("last_name", "").strip()
+            if not first_name or not last_name:
+                messages.error(request, "กรุณากรอกชื่อจริงและนามสกุลให้ครบ")
+                return redirect("personnel_dashboard")
+            if len(first_name) > 150 or len(last_name) > 150:
+                messages.error(request, "ชื่อและนามสกุลต้องยาวไม่เกิน 150 ตัวอักษร")
+                return redirect("personnel_dashboard")
+
+            profile, _ = StaffProfile.objects.get_or_create(user=staff_user)
+            photo = request.FILES.get("photo")
+            if photo:
+                allowed_types = {"image/jpeg", "image/png", "image/webp"}
+                allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+                if photo.content_type not in allowed_types or Path(photo.name).suffix.lower() not in allowed_extensions:
+                    messages.error(request, "รองรับรูป JPG, PNG หรือ WebP เท่านั้น")
+                    return redirect("personnel_dashboard")
+                if photo.size > 5 * 1024 * 1024:
+                    messages.error(request, "รูปต้องมีขนาดไม่เกิน 5 MB")
+                    return redirect("personnel_dashboard")
+                old_photo_name = profile.photo.name if profile.photo else ""
+                profile.photo = photo
+                profile.save(update_fields=["photo"])
+                if old_photo_name and old_photo_name != profile.photo.name:
+                    profile.photo.storage.delete(old_photo_name)
+
+            staff_user.first_name = first_name
+            staff_user.last_name = last_name
+            staff_user.save(update_fields=["first_name", "last_name"])
+            messages.success(request, f"บันทึกข้อมูล {staff_user.get_full_name()} แล้ว")
 
         elif action == "assign_patient":
             nurse = get_object_or_404(

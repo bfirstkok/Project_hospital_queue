@@ -192,7 +192,7 @@ create or modify patient records.
 /queues/call/<id>/        Select OPD Exam Room
 /queues/monitor/          Post-OPD Monitoring Zone
 /queues/monitor/waiting/  Waiting Queue Monitor
-/queues/personnel/        Staff roles, coordinator-managed duty/availability, and nurse-patient assignment
+/queues/personnel/        Staff roles, real names/photos, coordinator-managed duty/availability, and nurse-patient assignment
 /queues/devices/pairing/  Device Pairing
 /api/iot/telemetry/       IoT Telemetry API
 /queues/api/iot/telemetry/ IoT Telemetry API alias

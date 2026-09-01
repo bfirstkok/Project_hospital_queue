@@ -5,8 +5,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils import timezone
 
@@ -380,6 +381,35 @@ class PersonnelDashboardTests(TestCase):
         duty = StaffDuty.objects.get(user=other_nurse, duty_date=timezone.localdate())
         self.assertTrue(duty.is_present)
         self.assertTrue(duty.is_available)
+
+    def test_manager_can_set_real_name_and_private_staff_photo(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            photo = SimpleUploadedFile(
+                "nurse.png",
+                b"\x89PNG\r\n\x1a\nprofile-photo",
+                content_type="image/png",
+            )
+            response = self.client.post(reverse("personnel_dashboard"), {
+                "action": "update_staff_identity",
+                "user_id": self.nurse.id,
+                "first_name": "วิภา",
+                "last_name": "ใจดี",
+                "photo": photo,
+            })
+
+            self.assertRedirects(response, reverse("personnel_dashboard"))
+            self.nurse.refresh_from_db()
+            self.nurse.hospital_staff_profile.refresh_from_db()
+            self.assertEqual(self.nurse.get_full_name(), "วิภา ใจดี")
+            self.assertTrue(self.nurse.hospital_staff_profile.photo.name)
+
+            photo_response = self.client.get(reverse(
+                "staff_photo",
+                args=[self.nurse.hospital_staff_profile.id],
+            ))
+            self.assertEqual(photo_response.status_code, 200)
+            self.assertEqual(photo_response["Content-Type"], "image/png")
+            photo_response.close()
 
     def test_patient_without_monitoring_status_is_not_assignable(self):
         self.visit.queue.status = Queue.Status.WAITING_QUEUE

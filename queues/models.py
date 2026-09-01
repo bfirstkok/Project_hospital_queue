@@ -211,6 +211,7 @@ class StaffProfile(models.Model):
         related_name="hospital_staff_profile",
     )
     role = models.CharField(max_length=24, choices=Role.choices, default=Role.STAFF)
+    photo = models.FileField(upload_to="staff_photos/%Y/%m/", blank=True)
 
     class Meta:
         ordering = ["role", "user__first_name", "user__username"]
