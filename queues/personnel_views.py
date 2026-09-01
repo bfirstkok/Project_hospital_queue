@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -9,10 +7,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import DeviceAssignment, NurseCareAssignment, Queue, StaffDuty, Visit
+from .models import DeviceAssignment, NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit
 
 
-ONLINE_WINDOW = timedelta(minutes=5)
 CARE_QUEUE_STATUSES = {
     Queue.Status.OBSERVATION_MONITORING,
     Queue.Status.REASSESSMENT_REQUIRED,
@@ -34,12 +31,14 @@ def _eligible_device_assignments():
     )
 
 
-def _is_online(duty, now):
+def _is_available_nurse(staff_user, duty):
+    profile = getattr(staff_user, "hospital_staff_profile", None)
     return bool(
-        duty
+        profile
+        and profile.role == StaffProfile.Role.NURSE
+        and duty
         and duty.is_present
-        and duty.last_seen_at
-        and duty.last_seen_at >= now - ONLINE_WINDOW
+        and duty.is_available
     )
 
 
@@ -77,21 +76,67 @@ def personnel_dashboard(request):
                 duty.checked_out_at = None
             else:
                 duty.checked_out_at = now
-            duty.save(update_fields=["is_present", "checked_in_at", "checked_out_at"])
+                duty.is_available = False
+            duty.save(update_fields=["is_present", "is_available", "checked_in_at", "checked_out_at"])
             messages.success(
                 request,
                 f"อัปเดตสถานะ {staff_user.get_full_name() or staff_user.username} แล้ว",
             )
 
-        elif action == "assign_patient":
-            nurse = get_object_or_404(
+        elif action == "set_availability":
+            staff_user = get_object_or_404(
+                get_user_model().objects.select_related("hospital_staff_profile"),
+                pk=request.POST.get("user_id"),
+                is_active=True,
+                hospital_staff_profile__role=StaffProfile.Role.NURSE,
+            )
+            duty = get_object_or_404(
+                StaffDuty,
+                user=staff_user,
+                duty_date=today,
+                is_present=True,
+            )
+            duty.is_available = request.POST.get("is_available") == "1"
+            duty.save(update_fields=["is_available"])
+            messages.success(
+                request,
+                f"อัปเดตความพร้อมของ {staff_user.get_full_name() or staff_user.username} แล้ว",
+            )
+
+        elif action == "set_staff_role":
+            staff_user = get_object_or_404(
                 get_user_model(),
-                pk=request.POST.get("nurse_id"),
+                pk=request.POST.get("user_id"),
                 is_active=True,
             )
+            role = request.POST.get("role", "")
+            valid_roles = {value for value, _label in StaffProfile.Role.choices}
+            if role not in valid_roles:
+                messages.error(request, "ประเภทบุคลากรไม่ถูกต้อง")
+                return redirect("personnel_dashboard")
+            profile, _ = StaffProfile.objects.get_or_create(user=staff_user)
+            profile.role = role
+            profile.save(update_fields=["role"])
+            if role != StaffProfile.Role.NURSE:
+                StaffDuty.objects.filter(
+                    user=staff_user,
+                    duty_date=today,
+                ).update(is_available=False)
+            messages.success(
+                request,
+                f"กำหนดประเภทของ {staff_user.get_full_name() or staff_user.username} แล้ว",
+            )
+
+        elif action == "assign_patient":
+            nurse = get_object_or_404(
+                get_user_model().objects.select_related("hospital_staff_profile"),
+                pk=request.POST.get("nurse_id"),
+                is_active=True,
+                hospital_staff_profile__role=StaffProfile.Role.NURSE,
+            )
             duty = StaffDuty.objects.filter(user=nurse, duty_date=today).first()
-            if not _is_online(duty, now):
-                messages.error(request, "เลือกมอบหมายได้เฉพาะพยาบาลที่กำลังออนไลน์และขึ้นเวรวันนี้")
+            if not _is_available_nurse(nurse, duty):
+                messages.error(request, "เลือกมอบหมายได้เฉพาะพยาบาลที่ขึ้นเวรและพร้อมรับผู้ป่วย")
                 return redirect("personnel_dashboard")
 
             visit_id = request.POST.get("visit_id")
@@ -131,26 +176,47 @@ def personnel_dashboard(request):
 
         return redirect("personnel_dashboard")
 
-    users = list(get_user_model().objects.filter(is_active=True).order_by("first_name", "username"))
+    users = list(
+        get_user_model().objects
+        .filter(is_active=True)
+        .select_related("hospital_staff_profile")
+        .order_by("first_name", "username")
+    )
+    existing_profile_ids = {
+        user.id for user in users if hasattr(user, "hospital_staff_profile")
+    }
+    StaffProfile.objects.bulk_create(
+        [StaffProfile(user=user) for user in users if user.id not in existing_profile_ids],
+        ignore_conflicts=True,
+    )
+    if len(existing_profile_ids) != len(users):
+        users = list(
+            get_user_model().objects
+            .filter(is_active=True)
+            .select_related("hospital_staff_profile")
+            .order_by("first_name", "username")
+        )
     duties = {
         duty.user_id: duty
         for duty in StaffDuty.objects.filter(duty_date=today, user__in=users)
     }
     staff_rows = []
-    online_nurses = []
+    available_nurses = []
     for staff_user in users:
         duty = duties.get(staff_user.id)
-        online = _is_online(duty, now)
+        profile = staff_user.hospital_staff_profile
+        available = _is_available_nurse(staff_user, duty)
         row = {
             "user": staff_user,
             "name": staff_user.get_full_name() or staff_user.username,
             "duty": duty,
+            "profile": profile,
             "is_present": bool(duty and duty.is_present),
-            "is_online": online,
+            "is_available": available,
         }
         staff_rows.append(row)
-        if online:
-            online_nurses.append(row)
+        if available:
+            available_nurses.append(row)
 
     active_care = {
         item.visit_id: item
@@ -177,15 +243,16 @@ def personnel_dashboard(request):
                 else "ผู้ป่วยกลุ่มเฝ้าระวัง"
             ),
             "care_assignment": care_assignment,
-            "assigned_nurse_online": _is_online(assigned_duty, now),
+            "assigned_nurse_available": _is_available_nurse(care_assignment.nurse, assigned_duty) if care_assignment else False,
         })
 
     return render(request, "queues/personnel_dashboard.html", {
         "today": today,
         "staff_rows": staff_rows,
-        "online_nurses": online_nurses,
+        "available_nurses": available_nurses,
+        "staff_role_choices": StaffProfile.Role.choices,
         "patient_rows": patient_rows,
         "present_count": sum(row["is_present"] for row in staff_rows),
-        "online_count": len(online_nurses),
+        "available_count": len(available_nurses),
         "assigned_count": sum(bool(row["care_assignment"]) for row in patient_rows),
     })

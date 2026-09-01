@@ -13,7 +13,7 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, StaffDuty, TelemetryLog, TriageResult, Visit, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -267,6 +267,8 @@ class PersonnelDashboardTests(TestCase):
             first_name="พยาบาล",
             last_name="เอ",
         )
+        StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.NURSE)
+        StaffProfile.objects.create(user=self.nurse, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.manager)
         self.patient = Patient.objects.create(
             first_name="Wearable",
@@ -292,6 +294,7 @@ class PersonnelDashboardTests(TestCase):
             user=self.nurse,
             duty_date=timezone.localdate(),
             is_present=True,
+            is_available=True,
             last_seen_at=timezone.now(),
         )
 
@@ -303,10 +306,9 @@ class PersonnelDashboardTests(TestCase):
         self.assertContains(response, "พยาบาล เอ")
         self.assertContains(response, "Wearable Patient")
         self.assertContains(response, self.device.device_id)
-        self.assertTrue(StaffDuty.objects.filter(
+        self.assertFalse(StaffDuty.objects.filter(
             user=self.manager,
             duty_date=timezone.localdate(),
-            is_present=True,
         ).exists())
 
     def test_online_nurse_can_be_assigned_to_eligible_patient(self):
@@ -322,10 +324,13 @@ class PersonnelDashboardTests(TestCase):
         self.assertEqual(assignment.assigned_by, self.manager)
 
     def test_heartbeat_refreshes_signed_in_staff_activity(self):
-        self.client.get(reverse("personnel_dashboard"))
-        manager_duty = StaffDuty.objects.get(user=self.manager, duty_date=timezone.localdate())
-        manager_duty.last_seen_at = timezone.now() - timedelta(minutes=10)
-        manager_duty.save(update_fields=["last_seen_at"])
+        manager_duty = StaffDuty.objects.create(
+            user=self.manager,
+            duty_date=timezone.localdate(),
+            is_present=True,
+            is_available=True,
+            last_seen_at=timezone.now() - timedelta(minutes=10),
+        )
 
         response = self.client.get(reverse("staff_heartbeat"))
 
@@ -333,9 +338,9 @@ class PersonnelDashboardTests(TestCase):
         manager_duty.refresh_from_db()
         self.assertGreater(manager_duty.last_seen_at, timezone.now() - timedelta(minutes=1))
 
-    def test_offline_nurse_cannot_receive_new_assignment(self):
-        self.duty.last_seen_at = timezone.now() - timedelta(minutes=10)
-        self.duty.save(update_fields=["last_seen_at"])
+    def test_unavailable_nurse_cannot_receive_new_assignment(self):
+        self.duty.is_available = False
+        self.duty.save(update_fields=["is_available"])
 
         self.client.post(reverse("personnel_dashboard"), {
             "action": "assign_patient",
@@ -344,6 +349,37 @@ class PersonnelDashboardTests(TestCase):
         })
 
         self.assertFalse(NurseCareAssignment.objects.filter(visit=self.visit, is_active=True).exists())
+
+    def test_non_nurse_cannot_receive_new_assignment(self):
+        self.nurse.hospital_staff_profile.role = StaffProfile.Role.DOCTOR
+        self.nurse.hospital_staff_profile.save(update_fields=["role"])
+
+        self.client.post(reverse("personnel_dashboard"), {
+            "action": "assign_patient",
+            "nurse_id": self.nurse.id,
+            "visit_id": self.visit.id,
+        })
+
+        self.assertFalse(NurseCareAssignment.objects.filter(visit=self.visit, is_active=True).exists())
+
+    def test_manager_can_check_in_and_make_nurse_available_without_nurse_login(self):
+        other_nurse = get_user_model().objects.create_user(username="nurse-b", password="secret")
+        StaffProfile.objects.create(user=other_nurse, role=StaffProfile.Role.NURSE)
+
+        self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_attendance",
+            "user_id": other_nurse.id,
+            "is_present": "1",
+        })
+        self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_availability",
+            "user_id": other_nurse.id,
+            "is_available": "1",
+        })
+
+        duty = StaffDuty.objects.get(user=other_nurse, duty_date=timezone.localdate())
+        self.assertTrue(duty.is_present)
+        self.assertTrue(duty.is_available)
 
     def test_patient_without_monitoring_status_is_not_assignable(self):
         self.visit.queue.status = Queue.Status.WAITING_QUEUE

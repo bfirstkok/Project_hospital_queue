@@ -6,6 +6,7 @@ from .models import (
     NurseCareAssignment,
     Queue,
     StaffDuty,
+    StaffProfile,
     TelemetryLog,
     TriageResult,
     Visit,
@@ -21,4 +22,5 @@ admin.site.register(DeviceAssignment)
 admin.site.register(TelemetryLog)
 admin.site.register(CriticalAlert)
 admin.site.register(StaffDuty)
+admin.site.register(StaffProfile)
 admin.site.register(NurseCareAssignment)

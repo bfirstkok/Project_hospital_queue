@@ -195,8 +195,32 @@ class DeviceAssignment(models.Model):
         return f"{self.device.device_id} -> Visit#{self.visit_id} ({state})"
 
 
+class StaffProfile(models.Model):
+    """Persistent hospital role for a staff account."""
+
+    class Role(models.TextChoices):
+        DOCTOR = "DOCTOR", "แพทย์"
+        NURSE = "NURSE", "พยาบาล"
+        NURSE_ASSISTANT = "NURSE_ASSISTANT", "ผู้ช่วยพยาบาล"
+        EMERGENCY = "EMERGENCY", "เจ้าหน้าที่ฉุกเฉิน"
+        STAFF = "STAFF", "เจ้าหน้าที่"
+
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="hospital_staff_profile",
+    )
+    role = models.CharField(max_length=24, choices=Role.choices, default=Role.STAFF)
+
+    class Meta:
+        ordering = ["role", "user__first_name", "user__username"]
+
+    def __str__(self):
+        return f"{self.user} ({self.get_role_display()})"
+
+
 class StaffDuty(models.Model):
-    """Daily attendance and last activity for an authenticated staff account."""
+    """Daily attendance and availability managed by the ward coordinator."""
 
     user = models.ForeignKey(
         "auth.User",
@@ -205,6 +229,7 @@ class StaffDuty(models.Model):
     )
     duty_date = models.DateField(default=timezone.localdate)
     is_present = models.BooleanField(default=True)
+    is_available = models.BooleanField(default=False)
     checked_in_at = models.DateTimeField(default=timezone.now)
     checked_out_at = models.DateTimeField(null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)

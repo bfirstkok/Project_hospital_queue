@@ -4,7 +4,7 @@ from .models import StaffDuty
 
 
 class StaffActivityMiddleware:
-    """Record today's attendance and recent activity for signed-in staff."""
+    """Refresh activity only; login is not treated as attendance."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -13,18 +13,12 @@ class StaffActivityMiddleware:
         user = getattr(request, "user", None)
         if user and user.is_authenticated and user.is_active:
             now = timezone.now()
-            duty, created = StaffDuty.objects.get_or_create(
+            duty = StaffDuty.objects.filter(
                 user=user,
                 duty_date=timezone.localdate(now),
-                defaults={
-                    "is_present": True,
-                    "checked_in_at": now,
-                    "last_seen_at": now,
-                },
-            )
-            # A manually checked-out member stays off duty until somebody
-            # checks them in again from the personnel page.
-            if not created and duty.is_present:
+                is_present=True,
+            ).first()
+            if duty:
                 StaffDuty.objects.filter(pk=duty.pk).update(last_seen_at=now)
 
         return self.get_response(request)
