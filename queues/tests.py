@@ -409,7 +409,11 @@ class PersonnelDashboardTests(TestCase):
             ))
             self.assertEqual(photo_response.status_code, 200)
             self.assertEqual(photo_response["Content-Type"], "image/png")
-            photo_response.close()
+            # Close only the streamed file. Calling response.close() also emits
+            # request_finished and closes PostgreSQL during this TestCase.
+            for closer in photo_response._resource_closers:
+                closer()
+            photo_response._resource_closers.clear()
 
     def test_patient_without_monitoring_status_is_not_assignable(self):
         self.visit.queue.status = Queue.Status.WAITING_QUEUE
