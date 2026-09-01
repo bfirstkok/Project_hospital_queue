@@ -845,6 +845,28 @@ def _get_ai_severity(visit):
     return getattr(obj, "ai_severity", None)
 
 
+def _active_nurse_details_by_visit(visit_ids):
+    """Return the active responsible nurse shown on monitoring surfaces."""
+    assignments = (
+        NurseCareAssignment.objects
+        .select_related("nurse", "nurse__hospital_staff_profile")
+        .filter(visit_id__in=visit_ids, is_active=True)
+    )
+    details = {}
+    for assignment in assignments:
+        nurse = assignment.nurse
+        profile = getattr(nurse, "hospital_staff_profile", None)
+        details[assignment.visit_id] = {
+            "name": nurse.get_full_name() or nurse.username,
+            "photo_url": (
+                f"/queues/personnel/photo/{profile.id}/"
+                if profile and profile.photo
+                else None
+            ),
+        }
+    return details
+
+
 # -----------------------------
 # MONITOR (หน้า + API)
 # -----------------------------
@@ -1036,6 +1058,8 @@ def monitor_latest_api(request):
         .order_by("priority", "created_at")[:200]
     )
 
+    q_items = list(q_items)
+    nurse_by_visit = _active_nurse_details_by_visit([q.visit_id for q in q_items])
     rows = []
     for q in q_items:
         visit = q.visit
@@ -1057,6 +1081,7 @@ def monitor_latest_api(request):
             "o2sat": q.last_o2sat,
             "bt": q.last_bt,
             "rr": q.last_rr,
+            "responsible_nurse": nurse_by_visit.get(visit.id),
             "critical_alerts": list(
                 CriticalAlert.objects
                 .filter(visit=visit, status=CriticalAlert.Status.NEW)
@@ -1095,7 +1120,9 @@ def monitor_summary_api(request):
         .order_by("priority", "visit__confirmed_at", "created_at")[:200]
     )
 
+    q_items = list(q_items)
     visit_ids = [q.visit_id for q in q_items]
+    nurse_by_visit = _active_nurse_details_by_visit(visit_ids)
 
     visits = {
         v.id: v
@@ -1123,6 +1150,7 @@ def monitor_summary_api(request):
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
             "online": online,
             "device_id": v.last_device_id,
+            "responsible_nurse": nurse_by_visit.get(v.id),
             "vitals": {
                 "bpm": v.last_bpm,
                 "o2sat": v.last_o2,

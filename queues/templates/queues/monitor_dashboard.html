@@ -301,6 +301,12 @@
       color: #ff5f72;
     }
 
+    .nurse-owner { display:flex; align-items:center; gap:9px; min-width:150px; }
+    .nurse-photo { width:36px; height:36px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 36px; }
+    .nurse-owner b { display:block; color:#fff; font-size:13px; }
+    .nurse-owner small { display:block; color:rgba(255,255,255,.38); margin-top:2px; }
+    .unassigned { color:#ffb830; font-size:12px; font-weight:600; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
       .statusbar {
@@ -351,6 +357,7 @@
         <tr>
           <th>ลำดับ</th>
           <th>ผู้ป่วย</th>
+          <th>พยาบาลผู้ดูแล</th>
           <th>ระดับ</th>
           <th>AI</th>
           <th>อุปกรณ์</th>
@@ -360,13 +367,17 @@
         </tr>
       </thead>
       <tbody id="rows">
-        <tr><td colspan="8" class="muted">กำลังโหลด...</td></tr>
+        <tr><td colspan="9" class="muted">กำลังโหลด...</td></tr>
       </tbody>
     </table>
   </div>
 </div>
 
 <script>
+  function escapeHtml(value){
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
+  }
+
   function sevClass(s){
     if(!s) return "";
     const x = String(s).toUpperCase();
@@ -421,7 +432,7 @@
       if(elCards) elCards.innerHTML = renderCards(items);
 
       if (items.length === 0) {
-        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีข้อมูล</td></tr>`;
+        elRows.innerHTML = `<tr><td colspan="9" class="muted">ยังไม่มีข้อมูล</td></tr>`;
         return;
       }
 
@@ -432,6 +443,12 @@
         const sev = r.severity ?? "-";
         const sevCss = sevClass(sev);
         const v = r.vitals || {};
+        const nurse = r.responsible_nurse;
+        const nurseHtml = nurse ? `
+          <div class="nurse-owner">
+            ${nurse.photo_url ? `<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">` : `<span class="nurse-photo">🧑‍⚕️</span>`}
+            <span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span>
+          </div>` : `<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
         const vitalsHtml = `
           <div class="vitals">
             <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
@@ -445,6 +462,7 @@
           <tr>
             <td><b>#${r.visit_id}</b></td>
             <td><div style="font-weight:800">${r.patient_name ?? "-"}</div></td>
+            <td>${nurseHtml}</td>
             <td><span class="sev ${sevCss}">${sev}</span></td>
             <td>-</td>
             <td>${r.device_id ?? "-"}</td>
@@ -457,7 +475,7 @@
 
     } catch (e) {
       elStatus.textContent = "โหลดไม่ได้: " + e.message;
-      elRows.innerHTML = `<tr><td colspan="8" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;
+      elRows.innerHTML = `<tr><td colspan="9" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;
     }
   }
 
@@ -468,6 +486,7 @@
 </body>
 </html>
 
+{% comment %}
 <script>
   function sevClass(s){
     if(!s) return "";
@@ -626,3 +645,4 @@
 
 </body>
 </html>
+{% endcomment %}

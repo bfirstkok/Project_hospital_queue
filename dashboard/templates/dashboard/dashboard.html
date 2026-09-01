@@ -302,6 +302,12 @@
       background: rgba(255, 255, 255, 0.03);
     }
 
+    .nurse-owner { display:flex; align-items:center; gap:9px; min-width:150px; }
+    .nurse-photo { width:38px; height:38px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 38px; }
+    .nurse-owner b { display:block; color:#fff; font-size:15px; }
+    .nurse-owner small { display:block; color:rgba(255,255,255,.38); font-size:12px; margin-top:2px; }
+    .unassigned { color:#ffb830; font-size:14px; font-weight:600; }
+
     /* ===== BADGES ===== */
     .badge {
       display: inline-block;
@@ -473,6 +479,7 @@
               <tr>
                 <th>ลำดับ</th>
                 <th>ผู้ป่วย</th>
+                <th>พยาบาลผู้ดูแล</th>
                 <th>ระดับ</th>
                 <th>ออนไลน์</th>
                 <th>สัญญาณชีพ</th>
@@ -480,7 +487,7 @@
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>
+              <tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>
             </tbody>
           </table>
         </div>
@@ -523,6 +530,10 @@
     return `BPM ${v.bpm != null ? v.bpm : "-"} | O2 ${v.o2sat != null ? v.o2sat : "-"} | BT ${v.bt != null ? v.bt : "-"} | RR ${v.rr != null ? v.rr : "-"}`;
   }
 
+  function escapeHtml(value){
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
+  }
+
   async function setSeverity(visitId, sev){
     const item = cachedItems.find(x=>x.visit_id===visitId);
     if(!item) return;
@@ -562,14 +573,22 @@
   function render(){
     const el = document.getElementById("rows");
     if(cachedItems.length===0){
-      el.innerHTML = `<tr><td colspan="6" class="muted">ไม่มีข้อมูล</td></tr>`;
+      el.innerHTML = `<tr><td colspan="7" class="muted">ไม่มีข้อมูล</td></tr>`;
       return;
     }
 
-    el.innerHTML = cachedItems.slice(0,12).map(x=>`
+    el.innerHTML = cachedItems.slice(0,12).map(x=>{
+      const nurse = x.responsible_nurse;
+      const nurseHtml = nurse ? `
+        <div class="nurse-owner">
+          ${nurse.photo_url ? `<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">` : `<span class="nurse-photo">🧑‍⚕️</span>`}
+          <span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span>
+        </div>` : `<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
+      return `
       <tr>
         <td><b>#${x.visit_id}</b></td>
         <td>${x.name != null ? x.name : "-"}</td>
+        <td>${nurseHtml}</td>
         <td><span class="badge ${x.severity ? x.severity.toLowerCase() : ""}">${x.severity || "-"}</span></td>
         <td>
           ${x.online
@@ -586,7 +605,7 @@
           <button class="action-btn action-btn-white" onclick="setSeverity('${x.visit_id}', 'WHITE')">ขาว</button>
         </td>
       </tr>
-    `).join("");
+    `}).join("");
   }
 
   async function loadSummary(){

@@ -222,6 +222,18 @@ class ObservationMonitoringVisibilityTests(TestCase):
             is_active=True,
         )
         DeviceAssignment.objects.create(device=device, visit=self.visit)
+        self.caregiver = get_user_model().objects.create_user(
+            username="caregiver-nurse",
+            password="secret",
+            first_name="วิภา",
+            last_name="ใจดี",
+        )
+        StaffProfile.objects.create(user=self.caregiver, role=StaffProfile.Role.NURSE)
+        NurseCareAssignment.objects.create(
+            nurse=self.caregiver,
+            visit=self.visit,
+            assigned_by=self.user,
+        )
 
     def test_main_monitor_route_uses_waiting_area_monitor(self):
         match = resolve(reverse("monitor_dashboard"))
@@ -232,8 +244,18 @@ class ObservationMonitoringVisibilityTests(TestCase):
         response = self.client.get(reverse("monitor_summary_api"))
 
         self.assertEqual(response.status_code, 200)
-        visit_ids = [item["visit_id"] for item in response.json()["items"]]
+        items = response.json()["items"]
+        visit_ids = [item["visit_id"] for item in items]
         self.assertIn(str(self.visit.id), visit_ids)
+        item = next(item for item in items if item["visit_id"] == str(self.visit.id))
+        self.assertEqual(item["responsible_nurse"]["name"], "วิภา ใจดี")
+
+    def test_monitor_and_dashboard_include_responsible_nurse_column(self):
+        monitor_response = self.client.get(reverse("monitor_dashboard"))
+        dashboard_response = self.client.get(reverse("dashboard:home"))
+
+        self.assertContains(monitor_response, "พยาบาลผู้ดูแล")
+        self.assertContains(dashboard_response, "พยาบาลผู้ดูแล")
 
     def test_monitor_visit_id_is_serialized_without_javascript_rounding(self):
         response = self.client.get(reverse("monitor_summary_api"))
@@ -252,6 +274,7 @@ class ObservationMonitoringVisibilityTests(TestCase):
         self.assertEqual(latest_visit_id, str(self.visit.id))
         self.assertNotIn("sys_bp", latest_row)
         self.assertNotIn("dia_bp", latest_row)
+        self.assertEqual(latest_row["responsible_nurse"]["name"], "วิภา ใจดี")
 
 
 class PersonnelDashboardTests(TestCase):
