@@ -301,9 +301,9 @@
       color: #ff5f72;
     }
 
-    .nurse-owner { display:flex; align-items:center; gap:9px; min-width:150px; }
+    .nurse-owner { display:flex; align-items:center; gap:10px; min-width:220px; }
     .nurse-photo { width:36px; height:36px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 36px; }
-    .nurse-owner b { display:block; color:#fff; font-size:13px; }
+    .nurse-owner b { display:block; color:#fff; font-size:13px; white-space:nowrap; }
     .nurse-owner small { display:block; color:rgba(255,255,255,.38); margin-top:2px; }
     .unassigned { color:#ffb830; font-size:12px; font-weight:600; }
 
@@ -357,7 +357,7 @@
         <tr>
           <th>ลำดับ</th>
           <th>ผู้ป่วย</th>
-          <th>พยาบาลผู้ดูแล</th>
+          <th style="min-width:220px">พยาบาลผู้ดูแล</th>
           <th>ระดับ</th>
           <th>AI</th>
           <th>อุปกรณ์</th>
