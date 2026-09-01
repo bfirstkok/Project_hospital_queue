@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 from . import views
+from . import personnel_views
 
 # ✅ FOLLOWUP monitor อยู่ที่ opd
 from opd import views as opd_views
@@ -11,6 +12,8 @@ urlpatterns = [
     path("waiting-vitals/", views.waiting_vitals, name="waiting_vitals"),
     path("waiting-confirmation/", views.waiting_confirmation, name="waiting_confirmation"),
     path("emergency-transfers/", views.emergency_transfers, name="emergency_transfers"),
+    path("personnel/", personnel_views.personnel_dashboard, name="personnel_dashboard"),
+    path("personnel/heartbeat/", personnel_views.staff_heartbeat, name="staff_heartbeat"),
 
     # queue actions
     path("assessment/<int:visit_id>/", views.nurse_triage_assessment, name="nurse_triage_assessment"),

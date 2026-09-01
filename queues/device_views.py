@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import DeviceCreateForm, DeviceManagementPairForm
-from .models import Device, DeviceAssignment, Queue
+from .models import Device, DeviceAssignment, NurseCareAssignment, Queue
 
 
 def mask_api_key(api_key):
@@ -49,6 +49,11 @@ def device_management(request):
                 now = timezone.now()
 
                 with transaction.atomic():
+                    previous_visit_ids = list(
+                        DeviceAssignment.objects.filter(device=device, is_active=True)
+                        .exclude(visit=visit)
+                        .values_list("visit_id", flat=True)
+                    )
                     DeviceAssignment.objects.filter(device=device, is_active=True).update(
                         is_active=False,
                         unpaired_at=now,
@@ -58,9 +63,13 @@ def device_management(request):
                         unpaired_at=now,
                     )
                     DeviceAssignment.objects.create(device=device, visit=visit, is_active=True)
+                    NurseCareAssignment.objects.filter(
+                        visit_id__in=previous_visit_ids,
+                        is_active=True,
+                    ).update(is_active=False, ended_at=now)
 
                     q = getattr(visit, "queue", None)
-                    if q:
+                    if q and q.status != Queue.Status.MONITORING:
                         q.status = Queue.Status.OBSERVATION_MONITORING
                         q.save(update_fields=["status"])
 
@@ -72,6 +81,12 @@ def device_management(request):
             device = get_object_or_404(Device, id=request.POST.get("device_id"))
             device.is_active = not device.is_active
             device.save(update_fields=["is_active"])
+            if not device.is_active:
+                visit_ids = DeviceAssignment.objects.filter(device=device, is_active=True).values_list("visit_id", flat=True)
+                NurseCareAssignment.objects.filter(visit_id__in=visit_ids, is_active=True).update(
+                    is_active=False,
+                    ended_at=timezone.now(),
+                )
             state = "เปิดใช้งาน" if device.is_active else "ปิดใช้งาน"
             messages.success(request, f"{state} {device.device_id} แล้ว")
             return redirect("device_management")
@@ -81,9 +96,16 @@ def device_management(request):
             device_code = device.device_id
             try:
                 with transaction.atomic():
+                    visit_ids = list(
+                        DeviceAssignment.objects.filter(device=device, is_active=True).values_list("visit_id", flat=True)
+                    )
                     DeviceAssignment.objects.filter(device=device, is_active=True).update(
                         is_active=False,
                         unpaired_at=timezone.now(),
+                    )
+                    NurseCareAssignment.objects.filter(visit_id__in=visit_ids, is_active=True).update(
+                        is_active=False,
+                        ended_at=timezone.now(),
                     )
                     device.delete()
                 messages.success(request, f"Deleted device {device_code}")
@@ -100,6 +122,10 @@ def device_management(request):
             assignment.is_active = False
             assignment.unpaired_at = timezone.now()
             assignment.save(update_fields=["is_active", "unpaired_at"])
+            NurseCareAssignment.objects.filter(visit=assignment.visit, is_active=True).update(
+                is_active=False,
+                ended_at=assignment.unpaired_at,
+            )
             q = getattr(assignment.visit, "queue", None)
             if q and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
                 q.status = Queue.Status.WAITING_QUEUE

@@ -195,6 +195,80 @@ class DeviceAssignment(models.Model):
         return f"{self.device.device_id} -> Visit#{self.visit_id} ({state})"
 
 
+class StaffDuty(models.Model):
+    """Daily attendance and last activity for an authenticated staff account."""
+
+    user = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="staff_duties",
+    )
+    duty_date = models.DateField(default=timezone.localdate)
+    is_present = models.BooleanField(default=True)
+    checked_in_at = models.DateTimeField(default=timezone.now)
+    checked_out_at = models.DateTimeField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "duty_date"],
+                name="unique_staff_duty_per_day",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["duty_date", "is_present"]),
+            models.Index(fields=["last_seen_at"]),
+        ]
+        ordering = ["user__first_name", "user__username"]
+
+    def __str__(self):
+        return f"{self.user} {self.duty_date}"
+
+
+class NurseCareAssignment(models.Model):
+    """Current nurse responsible for a wearable-monitored visit."""
+
+    nurse = models.ForeignKey(
+        "auth.User",
+        on_delete=models.PROTECT,
+        related_name="patient_care_assignments",
+    )
+    visit = models.ForeignKey(
+        Visit,
+        on_delete=models.CASCADE,
+        related_name="nurse_care_assignments",
+    )
+    assigned_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_patient_care_assignments",
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["visit"],
+                condition=Q(is_active=True),
+                name="unique_active_nurse_per_visit",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["nurse", "is_active"]),
+            models.Index(fields=["visit", "is_active"]),
+        ]
+        ordering = ["-assigned_at"]
+
+    def __str__(self):
+        state = "active" if self.is_active else "ended"
+        return f"{self.nurse} -> Visit#{self.visit_id} ({state})"
+
+
 class TelemetryLog(models.Model):
     # ไม่อ้าง "queues.Visit" เพื่อกัน resolve ไม่เจอ
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="telemetry_logs")

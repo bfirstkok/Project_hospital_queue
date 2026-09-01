@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>บุคลากรและผู้ป่วยที่รับผิดชอบ</title>
+  <style>
+    :root{--ink:#173047;--muted:#667b8c;--line:#d7e4e8;--teal:#078a7c;--teal-dark:#087467;--soft:#f3f8f9;--green:#16875e;--amber:#a56700;--red:#bd3434}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f2f7f8;color:var(--ink);font-family:"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;padding:94px 22px 48px}
+    .page{max-width:1500px;margin:auto}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:24px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px 28px;box-shadow:0 12px 30px rgba(29,70,84,.07)}
+    h1{font-size:30px;margin:0 0 4px}.sub{color:var(--muted)}
+    .date{font-weight:800;background:#e6f6f3;color:var(--teal-dark);padding:10px 16px;border-radius:999px;white-space:nowrap}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px}.stat b{font-size:30px;display:block}.stat span{color:var(--muted);font-weight:700}
+    .section{background:#fff;border:1px solid var(--line);border-radius:20px;margin-top:18px;overflow:hidden;box-shadow:0 10px 26px rgba(29,70,84,.05)}
+    .section-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.section-head h2{margin:0;font-size:22px}.hint{font-size:14px;color:var(--muted)}
+    .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:15px 18px;border-bottom:1px solid #e6eef0;vertical-align:middle}th{background:#eef6f7;color:#526b7b;font-size:13px;letter-spacing:.02em}tbody tr:last-child td{border-bottom:0}
+    .person{display:flex;align-items:center;gap:12px}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#dff4f0;color:var(--teal-dark);font-size:18px;font-weight:900}.name{font-weight:850}.username{font-size:13px;color:var(--muted)}
+    .status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-weight:800;font-size:13px;background:#fff}.dot{width:9px;height:9px;border-radius:50%;background:#98a8b2}.status.online{color:var(--green);border-color:#a8dfc6;background:#ecfaf3}.status.online .dot{background:#20a76d;box-shadow:0 0 0 4px #d9f4e7}.status.present{color:var(--teal-dark);background:#ecf8f6}.status.off{color:#7c8992;background:#f4f6f7}
+    button,select{font:inherit}.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:9px 13px;font-weight:800;cursor:pointer}.btn:hover{border-color:#86bcb5}.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}.btn.danger{border-color:#efb7b7;color:var(--red);background:#fff7f7}.inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .patient-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}.patient-card{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fbfdfd}.patient-top{display:flex;justify-content:space-between;gap:14px}.queue{font-weight:900;color:#209bd2}.patient-name{font-size:20px;font-weight:900;margin:3px 0}.meta{color:var(--muted);font-size:14px}.type{height:max-content;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:850;background:#fff3cf;color:var(--amber);border:1px solid #efd17b}.type.inpatient{background:#e9f0ff;color:#315ea7;border-color:#c5d5f4}
+    .device{display:flex;gap:10px;align-items:center;margin:14px 0;padding:11px 13px;border-radius:12px;background:#eef7f7}.device b{color:var(--teal-dark)}
+    .care{border-top:1px solid var(--line);padding-top:13px}.care-current{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.warn{font-size:13px;color:var(--red);font-weight:800}.assign-form{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:8px}.assign-form select{width:100%;border:1px solid #bfd2d8;border-radius:10px;padding:10px;background:#fff;color:var(--ink)}
+    .empty{padding:36px;text-align:center;color:var(--muted)}
+    .messages{margin:14px 0}.message{background:#ecfaf3;border:1px solid #a8dfc6;color:#176846;padding:12px 16px;border-radius:12px;margin-bottom:8px}.message.error{background:#fff0f0;border-color:#f1b4b4;color:#9c2e2e}
+    @media(max-width:900px){body{padding:86px 12px 30px}.hero{align-items:flex-start;flex-direction:column}.stats,.patient-grid{grid-template-columns:1fr}.section-head{align-items:flex-start;flex-direction:column}.assign-form{grid-template-columns:1fr}h1{font-size:25px}}
+  </style>
+</head>
+<body>
+  {% include "includes/main_nav.html" %}
+  <main class="page">
+    <header class="hero">
+      <div>
+        <h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1>
+        <div class="sub">ตรวจสอบผู้ขึ้นเวร สถานะออนไลน์ และมอบหมายผู้ป่วยที่สวมอุปกรณ์</div>
+      </div>
+      <div class="date">วันนี้ {{ today|date:"d/m/Y" }}</div>
+    </header>
+
+    {% if messages %}<div class="messages">{% for message in messages %}<div class="message {% if message.tags == 'error' %}error{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+    <section class="stats">
+      <div class="stat"><b>{{ present_count }}</b><span>มาปฏิบัติงานวันนี้</span></div>
+      <div class="stat"><b>{{ online_count }}</b><span>ออนไลน์ใน 5 นาทีล่าสุด</span></div>
+      <div class="stat"><b>{{ assigned_count }}/{{ patient_rows|length }}</b><span>ผู้ป่วยที่มอบหมายแล้ว</span></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>บุคลากรวันนี้</h2><div class="hint">ผู้ใช้ที่เข้าสู่ระบบวันนี้จะลงเวลาให้อัตโนมัติ ผู้ดูแลสามารถปรับสถานะขึ้นเวรได้</div></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>บุคลากร</th><th>การมาปฏิบัติงาน</th><th>สถานะระบบ</th><th>พบล่าสุด</th><th>คำสั่ง</th></tr></thead>
+          <tbody>
+          {% for row in staff_rows %}
+            <tr>
+              <td><div class="person"><div class="avatar">{{ row.name|slice:":1" }}</div><div><div class="name">{{ row.name }}</div><div class="username">{{ row.user.username }}</div></div></div></td>
+              <td>{% if row.is_present %}<span class="status present"><span class="dot"></span>ขึ้นเวรวันนี้</span>{% else %}<span class="status off"><span class="dot"></span>ยังไม่ขึ้นเวร</span>{% endif %}</td>
+              <td>{% if row.is_online %}<span class="status online"><span class="dot"></span>ออนไลน์</span>{% else %}<span class="status off"><span class="dot"></span>ออฟไลน์</span>{% endif %}</td>
+              <td>{% if row.duty %}{{ row.duty.last_seen_at|date:"H:i" }} น.{% else %}-{% endif %}</td>
+              <td>
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}">
+                  {% if row.is_present %}<input type="hidden" name="is_present" value="0"><button class="btn" type="submit">ลงเวร</button>{% else %}<input type="hidden" name="is_present" value="1"><button class="btn primary" type="submit">ขึ้นเวร</button>{% endif %}
+                </form>
+              </td>
+            </tr>
+          {% empty %}<tr><td colspan="5" class="empty">ยังไม่มีบัญชีบุคลากรที่เปิดใช้งาน</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>ผู้ป่วยที่สวมอุปกรณ์</h2><div class="hint">แสดงเฉพาะกลุ่มเฝ้าระวังและผู้ป่วยนอนรักษา/ติดตามหลังตรวจที่มีอุปกรณ์ active</div></div></div>
+      {% if patient_rows %}<div class="patient-grid">
+        {% for row in patient_rows %}
+          <article class="patient-card">
+            <div class="patient-top">
+              <div><div class="queue">{{ row.queue.display_number }}</div><div class="patient-name">{{ row.patient.first_name }} {{ row.patient.last_name }}</div><div class="meta">Visit #{{ row.visit.id }} · {{ row.queue.get_status_display }}</div></div>
+              <span class="type {% if row.queue.status == 'MONITORING' %}inpatient{% endif %}">{{ row.care_type }}</span>
+            </div>
+            <div class="device"><span>⌚</span><div><div class="meta">อุปกรณ์ที่สวม</div><b>{{ row.device.device_id }}</b></div></div>
+            <div class="care">
+              {% if row.care_assignment %}
+                <div class="care-current"><div><div class="meta">พยาบาลผู้รับผิดชอบ</div><div class="name">{{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</div>{% if not row.assigned_nurse_online %}<div class="warn">พยาบาลคนนี้ออฟไลน์ ควรพิจารณามอบหมายใหม่</div>{% endif %}</div>
+                  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="end_assignment"><input type="hidden" name="assignment_id" value="{{ row.care_assignment.id }}"><button class="btn danger" type="submit">ยุติการดูแล</button></form>
+                </div>
+              {% else %}<div class="hint" style="margin-bottom:10px">ยังไม่ได้มอบหมายพยาบาล</div>{% endif %}
+              <form class="assign-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}">
+                <select name="nurse_id" required><option value="">เลือกพยาบาลที่ออนไลน์...</option>{% for nurse_row in online_nurses %}<option value="{{ nurse_row.user.id }}">{{ nurse_row.name }}</option>{% endfor %}</select>
+                <button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนพยาบาล{% else %}มอบหมาย{% endif %}</button>
+              </form>
+              {% if not online_nurses %}<div class="warn" style="margin-top:8px">ยังไม่มีพยาบาลออนไลน์สำหรับรับมอบหมาย</div>{% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>{% else %}<div class="empty">ยังไม่มีผู้ป่วยที่สวมอุปกรณ์ในกลุ่มเฝ้าระวังหรือกลุ่มนอนรักษา</div>{% endif %}
+    </section>
+  </main>
+</body>
+</html>

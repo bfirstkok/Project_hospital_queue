@@ -1,11 +1,18 @@
 from django import forms
+from django.db.models import Q
 
 from .models import Device, Queue, TriageResult, Visit
 
 
-PAIRABLE_QUEUE_STATUSES = [
-    Queue.Status.WAITING_QUEUE,
-]
+def pairable_visit_query():
+    """YELLOW observation candidates or post-OPD/inpatient monitoring visits."""
+    return (
+        Q(
+            final_severity=Visit.Severity.YELLOW,
+            queue__status=Queue.Status.WAITING_QUEUE,
+        )
+        | Q(queue__status=Queue.Status.MONITORING)
+    )
 
 
 class NurseTriageAssessmentForm(forms.Form):
@@ -154,8 +161,7 @@ class NurseTriageAssessmentForm(forms.Form):
 class DevicePairingForm(forms.Form):
     visit = forms.ModelChoiceField(
         queryset=Visit.objects.select_related("patient", "queue").filter(
-            final_severity=Visit.Severity.YELLOW,
-            queue__status=Queue.Status.WAITING_QUEUE,
+            pairable_visit_query(),
         ).exclude(device_assignments__is_active=True).order_by("queue__priority", "registered_at"),
         label="Visit",
         required=True,
@@ -213,10 +219,7 @@ class DeviceManagementPairForm(forms.Form):
         self.fields["visit"].queryset = (
             Visit.objects
             .select_related("patient", "queue")
-            .filter(
-                final_severity=Visit.Severity.YELLOW,
-                queue__status__in=PAIRABLE_QUEUE_STATUSES,
-            )
+            .filter(pairable_visit_query())
             .exclude(device_assignments__is_active=True)
             .order_by("queue__priority", "-registered_at")
         )

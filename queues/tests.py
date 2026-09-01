@@ -1,17 +1,19 @@
 import csv
 import json
 import tempfile
+from datetime import timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import resolve, reverse
+from django.utils import timezone
 
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, Queue, TelemetryLog, TriageResult, Visit, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, StaffDuty, TelemetryLog, TriageResult, Visit, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -177,6 +179,20 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(IoTVital.objects.count(), 0)
         self.assertEqual(TelemetryLog.objects.count(), 0)
 
+    def test_post_opd_monitoring_patient_can_send_wearable_telemetry(self):
+        self.visit.final_severity = Visit.Severity.GREEN
+        self.visit.save(update_fields=["final_severity"])
+        self.visit.queue.status = Queue.Status.MONITORING
+        self.visit.queue.save(update_fields=["status"])
+        DeviceAssignment.objects.create(device=self.device, visit=self.visit)
+
+        response = self.post_telemetry({
+            "vitals": {"bpm": 84, "o2sat": 98, "bt": 36.8, "rr": 18},
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(TelemetryLog.objects.filter(visit=self.visit, device=self.device).exists())
+
 
 class ObservationMonitoringVisibilityTests(TestCase):
     def setUp(self):
@@ -235,6 +251,152 @@ class ObservationMonitoringVisibilityTests(TestCase):
         self.assertEqual(latest_visit_id, str(self.visit.id))
         self.assertNotIn("sys_bp", latest_row)
         self.assertNotIn("dia_bp", latest_row)
+
+
+class PersonnelDashboardTests(TestCase):
+    def setUp(self):
+        self.manager = get_user_model().objects.create_user(
+            username="head-nurse",
+            password="secret",
+            first_name="หัวหน้า",
+            last_name="พยาบาล",
+        )
+        self.nurse = get_user_model().objects.create_user(
+            username="nurse-a",
+            password="secret",
+            first_name="พยาบาล",
+            last_name="เอ",
+        )
+        self.client.force_login(self.manager)
+        self.patient = Patient.objects.create(
+            first_name="Wearable",
+            last_name="Patient",
+            national_id="1234500000099",
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+        self.device = Device.objects.create(
+            device_id="STAFF-WATCH-1",
+            api_key="secret",
+            is_active=True,
+        )
+        DeviceAssignment.objects.create(device=self.device, visit=self.visit)
+        self.duty = StaffDuty.objects.create(
+            user=self.nurse,
+            duty_date=timezone.localdate(),
+            is_present=True,
+            last_seen_at=timezone.now(),
+        )
+
+    def test_personnel_page_lists_online_staff_and_wearable_patient(self):
+        response = self.client.get(reverse("personnel_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "บุคลากรและผู้ป่วยที่รับผิดชอบ")
+        self.assertContains(response, "พยาบาล เอ")
+        self.assertContains(response, "Wearable Patient")
+        self.assertContains(response, self.device.device_id)
+        self.assertTrue(StaffDuty.objects.filter(
+            user=self.manager,
+            duty_date=timezone.localdate(),
+            is_present=True,
+        ).exists())
+
+    def test_online_nurse_can_be_assigned_to_eligible_patient(self):
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "assign_patient",
+            "nurse_id": self.nurse.id,
+            "visit_id": self.visit.id,
+        })
+
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        assignment = NurseCareAssignment.objects.get(visit=self.visit, is_active=True)
+        self.assertEqual(assignment.nurse, self.nurse)
+        self.assertEqual(assignment.assigned_by, self.manager)
+
+    def test_heartbeat_refreshes_signed_in_staff_activity(self):
+        self.client.get(reverse("personnel_dashboard"))
+        manager_duty = StaffDuty.objects.get(user=self.manager, duty_date=timezone.localdate())
+        manager_duty.last_seen_at = timezone.now() - timedelta(minutes=10)
+        manager_duty.save(update_fields=["last_seen_at"])
+
+        response = self.client.get(reverse("staff_heartbeat"))
+
+        self.assertEqual(response.status_code, 200)
+        manager_duty.refresh_from_db()
+        self.assertGreater(manager_duty.last_seen_at, timezone.now() - timedelta(minutes=1))
+
+    def test_offline_nurse_cannot_receive_new_assignment(self):
+        self.duty.last_seen_at = timezone.now() - timedelta(minutes=10)
+        self.duty.save(update_fields=["last_seen_at"])
+
+        self.client.post(reverse("personnel_dashboard"), {
+            "action": "assign_patient",
+            "nurse_id": self.nurse.id,
+            "visit_id": self.visit.id,
+        })
+
+        self.assertFalse(NurseCareAssignment.objects.filter(visit=self.visit, is_active=True).exists())
+
+    def test_patient_without_monitoring_status_is_not_assignable(self):
+        self.visit.queue.status = Queue.Status.WAITING_QUEUE
+        self.visit.queue.save(update_fields=["status"])
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "assign_patient",
+            "nurse_id": self.nurse.id,
+            "visit_id": self.visit.id,
+        })
+
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        self.assertFalse(NurseCareAssignment.objects.filter(visit=self.visit, is_active=True).exists())
+
+    def test_post_opd_monitoring_visit_can_pair_without_changing_status(self):
+        inpatient = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        Queue.objects.create(visit=inpatient, status=Queue.Status.MONITORING, priority=4)
+        inpatient_device = Device.objects.create(
+            device_id="STAFF-WATCH-2",
+            api_key="secret-2",
+            is_active=True,
+        )
+
+        response = self.client.post(reverse("device_management"), {
+            "action": "pair_device",
+            "device": inpatient_device.id,
+            "visit": inpatient.id,
+        })
+
+        self.assertRedirects(response, reverse("device_management"))
+        inpatient.queue.refresh_from_db()
+        self.assertEqual(inpatient.queue.status, Queue.Status.MONITORING)
+        self.assertTrue(DeviceAssignment.objects.filter(visit=inpatient, device=inpatient_device, is_active=True).exists())
+
+    def test_unpairing_wearable_ends_active_nurse_assignment(self):
+        care_assignment = NurseCareAssignment.objects.create(
+            nurse=self.nurse,
+            visit=self.visit,
+            assigned_by=self.manager,
+        )
+        device_assignment = DeviceAssignment.objects.get(visit=self.visit, is_active=True)
+
+        self.client.post(reverse("device_management"), {
+            "action": "unpair_device",
+            "assignment_id": device_assignment.id,
+        })
+
+        care_assignment.refresh_from_db()
+        self.assertFalse(care_assignment.is_active)
+        self.assertIsNotNone(care_assignment.ended_at)
 
 
 class QueueWorkflowTests(TestCase):

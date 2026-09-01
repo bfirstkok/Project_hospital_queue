@@ -21,7 +21,7 @@ from django.apps import apps
 from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
-from .models import CriticalAlert, IoTVital, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
+from .models import CriticalAlert, IoTVital, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
@@ -42,10 +42,16 @@ def has_required_vitals(vitals):
 
 def unpair_active_wearable(visit):
     """Close active wearable assignments and keep the unpair timestamp as an audit trail."""
-    return DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
+    now = timezone.now()
+    updated = DeviceAssignment.objects.filter(visit=visit, is_active=True).update(
         is_active=False,
-        unpaired_at=timezone.now(),
+        unpaired_at=now,
     )
+    NurseCareAssignment.objects.filter(visit=visit, is_active=True).update(
+        is_active=False,
+        ended_at=now,
+    )
+    return updated
 
 
 def route_after_nurse_confirmation(visit, severity):
@@ -461,6 +467,7 @@ def send_to_monitoring(request, visit_id: int):
 @require_POST
 def discharge_visit(request, visit_id: int):
     visit = get_object_or_404(Visit, id=visit_id)
+    unpair_active_wearable(visit)
     q = getattr(visit, "queue", None)
     if q:
         q.status = "DISCHARGED"
@@ -568,14 +575,16 @@ def iot_telemetry(request):
 
     visit = assignment.visit
     q = getattr(visit, "queue", None)
-    if (
-        visit.final_severity != Visit.Severity.YELLOW
-        or not q
-        or q.status not in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
-    ):
+    observation_allowed = bool(
+        q
+        and visit.final_severity == Visit.Severity.YELLOW
+        and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+    )
+    inpatient_allowed = bool(q and q.status == Queue.Status.MONITORING)
+    if not (observation_allowed or inpatient_allowed):
         return JsonResponse({
             "ok": False,
-            "error": "Wearable telemetry is allowed only for active YELLOW observation visits",
+            "error": "Wearable telemetry is allowed only for observation or inpatient monitoring visits",
         }, status=409)
 
     posted_visit_id = data.get("visit_id")
@@ -736,14 +745,16 @@ def iot_vitals(request):
 
     visit = assignment.visit
     q = getattr(visit, "queue", None)
-    if (
-        visit.final_severity != Visit.Severity.YELLOW
-        or not q
-        or q.status not in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
-    ):
+    observation_allowed = bool(
+        q
+        and visit.final_severity == Visit.Severity.YELLOW
+        and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+    )
+    inpatient_allowed = bool(q and q.status == Queue.Status.MONITORING)
+    if not (observation_allowed or inpatient_allowed):
         return JsonResponse({
             "success": False,
-            "message": "Wearable vitals are allowed only for active YELLOW observation visits",
+            "message": "Wearable vitals are allowed only for observation or inpatient monitoring visits",
         }, status=409)
 
     patient = visit.patient
@@ -884,7 +895,7 @@ def device_management(request):
                     DeviceAssignment.objects.create(device=device, visit=visit, is_active=True)
 
                     q = getattr(visit, "queue", None)
-                    if q:
+                    if q and q.status != Queue.Status.MONITORING:
                         q.status = Queue.Status.OBSERVATION_MONITORING
                         q.save(update_fields=["status"])
 
@@ -973,8 +984,9 @@ def device_pairing(request):
             )
             DeviceAssignment.objects.create(visit=visit, device=device)
             q = visit.queue
-            q.status = Queue.Status.OBSERVATION_MONITORING
-            q.save(update_fields=["status"])
+            if q.status != Queue.Status.MONITORING:
+                q.status = Queue.Status.OBSERVATION_MONITORING
+                q.save(update_fields=["status"])
             device.last_seen = timezone.now()
             device.save(update_fields=["last_seen"])
             return redirect("device_pairing")

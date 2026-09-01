@@ -162,6 +162,7 @@ If OPD urgency is RED or YELLOW, the visit severity can be upgraded during OPD a
 - Separate waiting-monitor endpoints for pre-OPD monitoring
 - IoT telemetry for BPM, SpO2, temperature, and RR
 - Device Pairing page
+- Personnel page for daily nurse attendance, online status, and wearable-patient responsibility assignment
 - Before-After Waiting Time Report
 - CSV export
 - AI Evaluation page with metrics and confusion matrix
@@ -191,6 +192,7 @@ create or modify patient records.
 /queues/call/<id>/        Select OPD Exam Room
 /queues/monitor/          Post-OPD Monitoring Zone
 /queues/monitor/waiting/  Waiting Queue Monitor
+/queues/personnel/        Staff Attendance and Nurse-Patient Assignment
 /queues/devices/pairing/  Device Pairing
 /api/iot/telemetry/       IoT Telemetry API
 /queues/api/iot/telemetry/ IoT Telemetry API alias
