@@ -34,7 +34,7 @@
     .board-title strong { font-size: 24px; }
     .board-title span { color: rgba(255,255,255,.8); font-size: 15px; }
     .table-scroll { overflow-x: auto; }
-    .queue-table { width: 100%; min-width: 1080px; border-collapse: collapse; table-layout: fixed; }
+    .queue-table { width: 100%; min-width: 1240px; border-collapse: collapse; table-layout: fixed; }
     .queue-table th { padding: 13px 12px; color: #fff; background: #244d92; border-right: 2px solid rgba(255,255,255,.22); font-size: 18px; font-weight: 700; text-align: center; }
     .queue-table th:last-child, .queue-table td:last-child { border-right: 0; }
     .queue-table td { padding: 14px 12px; border-right: 1px solid #dce8eb; border-bottom: 1px solid #dce8eb; background: #fff; font-size: 18px; text-align: center; vertical-align: middle; }
@@ -52,6 +52,12 @@
     .severity.white { color: #52697a; background: #f1f5f7; }
     .status-text { color: #526d79; font-size: 17px; font-weight: 700; }
     .status-text.called { color: #087f75; }
+    .nurse-assigned { display: inline-flex; align-items: center; justify-content: center; gap: 8px; max-width: 100%; padding: 7px 10px; border: 1px solid #b9ddd7; border-radius: 10px; background: #eef9f7; color: #176a62; text-align: left; }
+    .nurse-assigned strong { display: block; max-width: 150px; overflow: hidden; color: #174b47; font-size: 14px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+    .nurse-assigned small { display: block; margin-top: 2px; color: #6b818b; font-size: 11px; line-height: 1.1; }
+    .nurse-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: #0eaa91; box-shadow: 0 0 0 4px rgba(14,170,145,.12); }
+    .nurse-missing { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 9px; border: 1px solid #e7cf80; border-radius: 9px; background: #fff9df; color: #8a6500; font-size: 13px; font-weight: 700; }
+    .nurse-none { color: #9aabb3; font-size: 20px; }
     .actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
     .action-link, .delete-btn { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #cadbe0; border-radius: 7px; color: #34505d; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; }
     .action-link.call { color: #fff; border-color: #087f75; background: #087f75; }
@@ -63,7 +69,7 @@
     @media (max-width: 980px) { .summary { grid-template-columns: repeat(3, 1fr); } .page-head { align-items: flex-start; flex-direction: column; } }
     @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } }
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260821">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260903-nurse">
 </head>
 <body>
   <main class="page-shell">
@@ -92,8 +98,8 @@
       <div class="board-title"><strong>รายการคิวพร้อมตรวจ</strong><span>ผู้ป่วยเร่งด่วนจะแสดงอยู่ด้านบนตามลำดับที่ระบบจัดไว้</span></div>
       <div class="table-scroll">
         <table class="queue-table">
-          <colgroup><col style="width:8%"><col style="width:17%"><col style="width:13%"><col style="width:18%"><col style="width:12%"><col style="width:32%"></colgroup>
-          <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th>การดำเนินการ</th></tr></thead>
+          <colgroup><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:16%"><col style="width:26%"></colgroup>
+          <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th>พยาบาลผู้ดูแล</th><th>การดำเนินการ</th></tr></thead>
           <tbody>
             {% for q in q_items %}
               {% with v=q.visit %}
@@ -111,6 +117,17 @@
                 </td>
                 <td>{% if q.status == "CALLED" %}<span class="status-text called">เรียกแล้ว</span>{% else %}<span class="status-text">รอเรียก</span>{% endif %}</td>
                 <td>
+                  {% with care=v.nurse_care_assignments.all.0 %}
+                    {% if care and care.is_active %}
+                      <span class="nurse-assigned"><span class="nurse-dot"></span><span><strong>{{ care.nurse.get_full_name|default:care.nurse.username }}</strong><small>{{ care.nurse.username }}</small></span></span>
+                    {% elif v.final_severity == "YELLOW" %}
+                      <span class="nurse-missing">ยังไม่มอบหมาย</span>
+                    {% else %}
+                      <span class="nurse-none">—</span>
+                    {% endif %}
+                  {% endwith %}
+                </td>
+                <td>
                   <div class="actions">
                     <a class="action-link call" href="{% url 'call_visit' v.id %}">เรียกคิว</a>
                     <a class="action-link" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
@@ -124,7 +141,7 @@
               </tr>
               {% endwith %}
             {% empty %}
-              <tr><td class="empty" colspan="6">ยังไม่มีคิวรอตรวจ</td></tr>
+              <tr><td class="empty" colspan="7">ยังไม่มีคิวรอตรวจ</td></tr>
             {% endfor %}
           </tbody>
         </table>
