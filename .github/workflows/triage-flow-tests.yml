@@ -1,6 +1,17 @@
 name: Django triage flow tests
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "queues/**"
+      - "patients/**"
+      - "opd/**"
+      - "config/**"
+      - "requirements.txt"
+      - "scripts/deploy_production.sh"
+      - ".github/workflows/triage-flow-tests.yml"
   pull_request:
     paths:
       - "queues/**"
