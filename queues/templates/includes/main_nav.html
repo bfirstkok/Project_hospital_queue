@@ -7,9 +7,6 @@
     box-sizing: border-box;
   }
 
-  /* backdrop-filter creates a containing block for fixed descendants.
-     Disable it on shared headers so the tabs stay fixed to the viewport,
-     exactly like pages where the navigation sits directly in the page head. */
   .topbar:has(> .opd-main-tabs) {
     top: 62px !important;
     backdrop-filter: none !important;
@@ -88,7 +85,7 @@
     display: flex;
     align-items: center;
     gap: 9px;
-    max-width: min(360px, calc(100vw - 36px));
+    max-width: min(440px, calc(100vw - 36px));
     padding: 9px 12px;
     border: 1px solid #badfd8;
     border-radius: 10px;
@@ -129,6 +126,32 @@
     font-size: 11px;
   }
 
+  .nurse-change-link {
+    margin-left: auto;
+    padding: 5px 8px;
+    border: 1px solid #9dd2ca;
+    border-radius: 7px;
+    background: #edf9f6;
+    color: #087467 !important;
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none !important;
+    white-space: nowrap;
+  }
+
+  .monitor-owner-alert {
+    display: block;
+    margin-top: 5px;
+    padding: 5px 7px;
+    border: 1px solid rgba(255,95,114,.35);
+    border-radius: 7px;
+    background: rgba(255,95,114,.12);
+    color: #ff8b98;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
   @media (max-width: 760px) {
     body {
       padding-top: 58px !important;
@@ -158,11 +181,10 @@
       max-width: none;
       margin-top: 10px;
       box-sizing: border-box;
+      flex-wrap: wrap;
     }
   }
 
-  /* Keep the main workflow tabs in exactly the same viewport position on
-     every page, regardless of which page header includes this partial. */
   .opd-main-tabs {
     position: fixed !important;
     top: 14px !important;
@@ -202,18 +224,18 @@
     <div class="responsible-nurse-banner" aria-label="พยาบาลผู้ดูแล">
       <span class="nurse-dot"></span>
       <span>พยาบาลผู้ดูแล: <strong>{{ responsible_nurse.get_full_name|default:responsible_nurse.username }}</strong><span class="nurse-user">{{ responsible_nurse.username }}</span></span>
+      <a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">เปลี่ยนผู้ดูแล</a>
     </div>
   {% elif visit.final_severity == 'YELLOW' %}
     <div class="responsible-nurse-banner unassigned" aria-label="ยังไม่มอบหมายพยาบาล">
       <span class="nurse-dot"></span>
       <span><strong>ยังไม่มอบหมายพยาบาลผู้ดูแล</strong></span>
+      <a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">มอบหมายตอนนี้</a>
     </div>
   {% endif %}
 {% endif %}
 
 <script>
-  // Keep the personnel page's online indicator accurate while a staff member
-  // has any main workflow page open.
   (() => {
     const heartbeat = () => fetch("{% url 'staff_heartbeat' %}", {
       credentials: "same-origin",
@@ -222,5 +244,26 @@
     }).catch(() => {});
     heartbeat();
     window.setInterval(heartbeat, 60000);
+
+    // The monitor refreshes its table every five seconds. Attach the urgent
+    // reassessment message to the responsible nurse after each refresh so the
+    // alert says exactly who owns the case rather than showing a generic flag.
+    if (document.body.classList.contains("monitor-page")) {
+      const decorateOwnerAlerts = () => {
+        document.querySelectorAll("#rows tr").forEach((row) => {
+          const reassessLink = row.querySelector('a[href*="/queues/assessment/"]');
+          if (!reassessLink) return;
+          const nurseCell = row.children[2];
+          if (!nurseCell || nurseCell.querySelector(".monitor-owner-alert")) return;
+          const nurseName = nurseCell.querySelector(".nurse-owner b")?.textContent?.trim() || "พยาบาลผู้รับผิดชอบ";
+          const alert = document.createElement("span");
+          alert.className = "monitor-owner-alert";
+          alert.textContent = `⚠ แจ้ง ${nurseName}: ผู้ป่วยต้องประเมินซ้ำ`;
+          nurseCell.appendChild(alert);
+        });
+      };
+      decorateOwnerAlerts();
+      window.setInterval(decorateOwnerAlerts, 1000);
+    }
   })();
 </script>
