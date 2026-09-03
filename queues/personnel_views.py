@@ -271,6 +271,16 @@ def personnel_dashboard(request):
         if available:
             available_nurses.append(row)
 
+    # Show staff who are currently on duty first. Within each group, keep a
+    # predictable alphabetical order so the directory does not jump around.
+    staff_rows.sort(
+        key=lambda row: (
+            not row["is_present"],
+            row["name"].casefold(),
+            row["user"].username.casefold(),
+        )
+    )
+
     active_care = {
         item.visit_id: item
         for item in (
