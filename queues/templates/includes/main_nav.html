@@ -126,7 +126,8 @@
     font-size: 11px;
   }
 
-  .nurse-change-link {
+  .nurse-change-link,
+  .nurse-quick-change {
     margin-left: auto;
     padding: 5px 8px;
     border: 1px solid #9dd2ca;
@@ -137,6 +138,11 @@
     font-weight: 800;
     text-decoration: none !important;
     white-space: nowrap;
+  }
+
+  .nurse-quick-change {
+    display: inline-flex;
+    margin: 5px auto 0;
   }
 
   .monitor-owner-alert {
@@ -244,6 +250,26 @@
     }).catch(() => {});
     heartbeat();
     window.setInterval(heartbeat, 60000);
+
+    // Queue page: make the caregiver cell actionable without widening the
+    // already dense action column. The visit id is read from the existing
+    // detail link and points to the same workload-aware reassignment control.
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".queue-table tbody tr").forEach((row) => {
+        const detailLink = row.querySelector('a[href*="/opd/visit/"][href*="/detail/"]');
+        const nurseCell = row.children[5];
+        if (!detailLink || !nurseCell || nurseCell.querySelector(".nurse-quick-change")) return;
+        const match = detailLink.getAttribute("href")?.match(/\/opd\/visit\/(\d+)\/detail\//);
+        if (!match) return;
+        const visitId = match[1];
+        const link = document.createElement("a");
+        link.className = "nurse-quick-change";
+        link.href = `/queues/personnel/?visit=${visitId}#patient-${visitId}`;
+        link.textContent = nurseCell.querySelector(".nurse-missing") ? "มอบหมาย" : "เปลี่ยนผู้ดูแล";
+        nurseCell.appendChild(document.createElement("br"));
+        nurseCell.appendChild(link);
+      });
+    });
 
     // The monitor refreshes its table every five seconds. Attach the urgent
     // reassessment message to the responsible nurse after each refresh so the
