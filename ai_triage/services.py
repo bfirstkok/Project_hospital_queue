@@ -1,9 +1,9 @@
-﻿from django.utils import timezone
+from django.utils import timezone
 import re
 
 from ai_triage.rules import infer_urgent_symptoms, rule_based_triage
 from ai_triage.ml.predictor import dt_predict
-from queues.models import TriageResult
+from queues.models import TriageResult, Visit
 from queues.triage import SEVERITY_PRIORITY
 
 SEV_TO_PRIORITY = SEVERITY_PRIORITY
@@ -155,13 +155,26 @@ def explain_structured_assessment(assessment):
         reasons.append(resource_labels[assessment.expected_resources])
     return "; ".join(reasons)
 
+
 def apply_ai_triage(visit):
     """
-    - อ่าน vital sign
+    - อ่าน vital sign ล่าสุดจากฐานข้อมูล
     - คำนวณ AI severity recommendation
     - บันทึกลง TriageResult
     - ไม่อัปเดต final_severity อัตโนมัติ เพราะต้องให้พยาบาลยืนยัน
+
+    โหลด Visit ใหม่ทุกครั้งเพื่อหลีกเลี่ยง reverse OneToOne cache ที่ค้างจาก
+    ก่อนบันทึก vital signs/structured assessment ใน request เดียวกัน
     """
+    try:
+        visit = (
+            Visit.objects
+            .select_related("vitals", "triage_result")
+            .get(pk=visit.pk)
+        )
+    except Visit.DoesNotExist:
+        return None
+
     if not hasattr(visit, "vitals"):
         return None  # ไม่มี vitals
 
