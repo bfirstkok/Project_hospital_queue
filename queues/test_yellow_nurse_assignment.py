@@ -50,6 +50,14 @@ class YellowNurseAssignmentTests(TestCase):
         )
         return visit
 
+    def yellow_payload(self, **extra):
+        payload = {
+            "severity": Visit.Severity.YELLOW,
+            "yellow_assignment_required": "1",
+        }
+        payload.update(extra)
+        return payload
+
     def test_waiting_confirmation_shows_available_nurse_picker_data(self):
         self.make_waiting_visit()
 
@@ -63,9 +71,10 @@ class YellowNurseAssignmentTests(TestCase):
     def test_yellow_confirmation_requires_nurse(self):
         visit = self.make_waiting_visit()
 
-        response = self.client.post(reverse("triage_visit", args=[visit.id]), {
-            "severity": Visit.Severity.YELLOW,
-        })
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            self.yellow_payload(),
+        )
 
         self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
@@ -77,10 +86,10 @@ class YellowNurseAssignmentTests(TestCase):
     def test_yellow_confirmation_assigns_selected_available_nurse(self):
         visit = self.make_waiting_visit()
 
-        response = self.client.post(reverse("triage_visit", args=[visit.id]), {
-            "severity": Visit.Severity.YELLOW,
-            "nurse_id": str(self.nurse.id),
-        })
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            self.yellow_payload(nurse_id=str(self.nurse.id)),
+        )
 
         self.assertRedirects(response, reverse("queue_list"))
         visit.refresh_from_db()
@@ -96,10 +105,10 @@ class YellowNurseAssignmentTests(TestCase):
         visit = self.make_waiting_visit()
         StaffDuty.objects.filter(user=self.nurse).update(is_available=False)
 
-        response = self.client.post(reverse("triage_visit", args=[visit.id]), {
-            "severity": Visit.Severity.YELLOW,
-            "nurse_id": str(self.nurse.id),
-        })
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            self.yellow_payload(nurse_id=str(self.nurse.id)),
+        )
 
         self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
