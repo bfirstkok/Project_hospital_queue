@@ -29,7 +29,9 @@
     .section-head { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:22px 24px; border-bottom:1px solid #e4edef; }.section-head h2 { margin:0 0 3px; font-size:23px; }
     .hint,.meta { color:var(--muted); font-size:13px; }
     .toolbar { display:flex; align-items:center; gap:10px; padding:16px 24px; border-bottom:1px solid #edf2f3; background:#fbfdfd; }
-    .search { position:relative; flex:1; max-width:430px; }.search input { width:100%; height:43px; padding:0 14px 0 39px; border:1px solid #c9dcdf; border-radius:11px; background:#fff; color:var(--ink); outline:none; }.search input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(7,142,131,.1); }.search::before { content:"⌕"; position:absolute; left:14px; top:8px; color:#6f8796; font-size:20px; }
+    .search-wrap { display:flex; align-items:center; gap:8px; flex:1; max-width:540px; }
+    .search { position:relative; flex:1; min-width:0; }.search input { width:100%; height:43px; padding:0 14px 0 39px; border:1px solid #c9dcdf; border-radius:11px; background:#fff; color:var(--ink); outline:none; }.search input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(7,142,131,.1); }.search::before { content:"⌕"; position:absolute; left:14px; top:8px; color:#6f8796; font-size:20px; }
+    .search-btn { min-height:43px; padding:8px 18px; border-color:var(--teal); background:var(--teal); color:#fff; white-space:nowrap; }.search-btn:hover { border-color:var(--teal-dark); background:var(--teal-dark); }
     .filters { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }.filter { white-space:nowrap; padding:8px 11px; border:1px solid #d1e0e3; border-radius:999px; background:#fff; color:#526b7b; font-size:12px; font-weight:700; cursor:pointer; }.filter.active { border-color:var(--teal); background:#e6f7f4; color:var(--teal-dark); }
     .staff-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; padding:18px; background:#f8fbfb; }
     .staff-card { display:flex; flex-direction:column; min-width:0; padding:17px; border:1px solid #dbe8ea; border-radius:17px; background:#fff; transition:transform .15s,border-color .15s,box-shadow .15s; }.staff-card:hover { transform:translateY(-2px); border-color:#aed4d0; box-shadow:0 10px 22px rgba(29,70,84,.08); }
@@ -44,9 +46,9 @@
     .device { display:flex; align-items:center; gap:10px; margin:14px 0; padding:11px 13px; border-radius:12px; background:#eef7f7; }.device b { color:var(--teal-dark); }.care { padding-top:13px; border-top:1px solid var(--line); }.care-current { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }.person { display:flex; align-items:center; gap:10px; }.person .avatar { width:40px; height:40px; flex-basis:40px; border-radius:12px; font-size:14px; }.warn { color:var(--red); font-size:12px; font-weight:700; }
     .assign-form { display:grid; gap:8px; }.nurse-picker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }.nurse-choice { cursor:pointer; }.nurse-choice input { position:absolute; opacity:0; pointer-events:none; }.nurse-option { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid #bfd2d8; border-radius:11px; background:#fff; }.nurse-choice input:checked + .nurse-option { border-color:var(--teal); background:#e9f8f5; box-shadow:0 0 0 2px rgba(7,138,124,.13); }.nurse-option .avatar { width:36px; height:36px; flex-basis:36px; }
     @media(max-width:1150px) { .staff-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.stats { grid-template-columns:repeat(2,1fr); } }
-    @media(max-width:760px) { body { padding:82px 11px 30px; }.hero,.section-head,.toolbar { align-items:flex-start; flex-direction:column; }.hero { padding:24px 20px; }.date-card { min-width:0; }.staff-grid,.patient-grid,.stats { grid-template-columns:1fr; }.toolbar,.search { width:100%; max-width:none; }.staff-grid,.patient-grid { padding:11px; }.nurse-picker { grid-template-columns:1fr; }.care-current { align-items:flex-start; flex-direction:column; }.staff-top > .avatar { width:72px; height:72px; flex-basis:72px; border-radius:18px; font-size:23px; } }
+    @media(max-width:760px) { body { padding:82px 11px 30px; }.hero,.section-head,.toolbar { align-items:flex-start; flex-direction:column; }.hero { padding:24px 20px; }.date-card { min-width:0; }.staff-grid,.patient-grid,.stats { grid-template-columns:1fr; }.toolbar,.search-wrap,.search { width:100%; max-width:none; }.search-btn { min-width:96px; }.staff-grid,.patient-grid { padding:11px; }.nurse-picker { grid-template-columns:1fr; }.care-current { align-items:flex-start; flex-direction:column; }.staff-top > .avatar { width:72px; height:72px; flex-basis:72px; border-radius:18px; font-size:23px; } }
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=personnel-20260903b">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=personnel-20260903c">
 </head>
 <body>
   {% include "includes/main_nav.html" %}
@@ -68,7 +70,10 @@
     <section class="section">
       <div class="section-head"><div><h2>บุคลากรวันนี้</h2><div class="hint">ค้นหารายชื่อ กรองตามวิชาชีพ และจัดการสถานะได้จากการ์ดแต่ละคน</div></div></div>
       <div class="toolbar">
-        <label class="search"><input id="staff-search" type="search" placeholder="ค้นหาชื่อหรือชื่อผู้ใช้…" autocomplete="off"></label>
+        <div class="search-wrap" role="search">
+          <label class="search"><input id="staff-search" type="search" placeholder="ค้นหาชื่อหรือชื่อผู้ใช้…" autocomplete="off" aria-label="ค้นหารายชื่อบุคลากร"></label>
+          <button class="btn search-btn" id="staff-search-button" type="button">ค้นหา</button>
+        </div>
         <div class="filters" aria-label="กรองประเภทบุคลากร">
           <button class="filter active" type="button" data-role="ALL">ทั้งหมด {{ staff_rows|length }}</button>
           <button class="filter" type="button" data-role="DOCTOR">แพทย์ {{ role_counts.DOCTOR }}</button>
@@ -127,6 +132,7 @@
   </main>
   <script>
     const searchInput = document.getElementById("staff-search");
+    const searchButton = document.getElementById("staff-search-button");
     const cards = Array.from(document.querySelectorAll(".staff-card"));
     const filterButtons = Array.from(document.querySelectorAll(".filter"));
     const emptyState = document.getElementById("staff-empty");
@@ -138,6 +144,8 @@
       if (emptyState) emptyState.classList.toggle("hidden", visible !== 0);
     }
     searchInput?.addEventListener("input", filterStaff);
+    searchInput?.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); filterStaff(); } });
+    searchButton?.addEventListener("click", () => { filterStaff(); searchInput?.focus(); });
     filterButtons.forEach((button) => button.addEventListener("click", () => { activeRole = button.dataset.role; filterButtons.forEach((item) => item.classList.toggle("active", item === button)); filterStaff(); }));
   </script>
 </body>
