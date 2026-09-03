@@ -56,9 +56,14 @@ def waiting_confirmation(request):
 @require_POST
 @transaction.atomic
 def triage_visit(request, visit_id: int):
-    """Require a responsible on-duty nurse whenever the final severity is YELLOW."""
+    """Require a responsible on-duty nurse for YELLOW confirmations from the confirmation UI."""
     selected_severity = request.POST.get("severity")
-    if selected_severity != Visit.Severity.YELLOW:
+    require_nurse_assignment = request.POST.get("yellow_assignment_required") == "1"
+
+    # Keep legacy/internal callers working. The waiting-confirmation UI always
+    # sends yellow_assignment_required=1, so real YELLOW confirmations from that
+    # page still cannot proceed without choosing a responsible nurse.
+    if selected_severity != Visit.Severity.YELLOW or not require_nurse_assignment:
         return legacy_views.triage_visit(request, visit_id)
 
     nurse_id = request.POST.get("nurse_id")
