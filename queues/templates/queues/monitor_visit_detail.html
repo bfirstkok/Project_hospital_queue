@@ -473,6 +473,7 @@
     </section>
 
     {% if assessment %}
+      <div class="note" style="margin-bottom:12px"><b>แพทย์ผู้ตรวจ</b>{{ assessment.examiner.get_full_name|default:"ยังไม่ระบุ" }}</div>
       <section class="card">
         <div class="card-head">
           <h2 class="card-title">ผลประเมิน OPD</h2>

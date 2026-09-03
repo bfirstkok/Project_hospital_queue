@@ -421,7 +421,7 @@
               <td class="called-time">{{ v.called_at|date:"H:i"|default:"-" }}</td>
               <td>
                 <div class="actions">
-                  <a class="btn primary" href="{% url 'visit_assessment' v.id %}">ประเมิน</a>
+                  <a class="btn primary" href="{% url 'select_examiner' v.id %}">ประเมิน</a>
                   <a class="btn" href="{% url 'opd_visit_detail' v.id %}">ดู</a>
                   <button class="btn red" onclick="setSeverity('{{ v.id }}', 'RED')">แดง</button>
                   <button class="btn pink" onclick="setSeverity('{{ v.id }}', 'PINK')">ชมพู</button>
@@ -537,7 +537,7 @@
           <td>${escapeHtml(row.called_at || "-")}</td>
           <td>
             <div class="actions">
-              <a class="btn primary" href="/opd/visit/${visitId}/assessment/">ประเมิน</a>
+              <a class="btn primary" href="/opd/visit/${visitId}/select-doctor/">ประเมิน</a>
               <a class="btn" href="/opd/visit/${visitId}/detail/">ดู</a>
               <button class="btn red" onclick="setSeverity('${visitId}', 'RED')">แดง</button>
               <button class="btn pink" onclick="setSeverity('${visitId}', 'PINK')">ชมพู</button>

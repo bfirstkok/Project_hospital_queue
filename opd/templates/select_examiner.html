@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เลือกแพทย์ผู้ตรวจ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: "Sarabun", sans-serif; color: #17324d; background: #f1f7f8; }
+    .page { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 56px; }
+    .back { display: inline-block; margin-bottom: 18px; color: #087f75; text-decoration: none; font-weight: 600; }
+    .head { margin-bottom: 22px; }
+    .eyebrow { color: #087f75; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    h1 { margin: 5px 0 6px; font-size: clamp(28px, 4vw, 40px); }
+    .hint { margin: 0; color: #526b7f; }
+    .patient { margin-top: 15px; padding: 13px 16px; border: 1px solid #cfe1e4; border-radius: 12px; background: #fff; }
+    .patient b { color: #0b5f59; }
+    .error { margin: 0 0 15px; padding: 12px 14px; border: 1px solid #f2b8b8; border-radius: 10px; background: #fff1f1; color: #a61b1b; font-weight: 600; }
+    .doctor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .doctor-choice { display: block; cursor: pointer; }
+    .doctor-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .doctor-card { min-height: 100px; display: flex; align-items: center; gap: 14px; padding: 16px; border: 2px solid transparent; border-radius: 15px; background: #fff; box-shadow: 0 8px 24px rgba(23,50,77,.07); transition: .15s ease; }
+    .doctor-choice:hover .doctor-card { transform: translateY(-2px); border-color: #9ddbd5; }
+    .doctor-choice input:checked + .doctor-card { border-color: #079488; background: #edfbf9; box-shadow: 0 0 0 3px rgba(7,148,136,.12); }
+    .avatar { width: 62px; height: 62px; flex: 0 0 62px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: #dff5f2; color: #087f75; font-size: 24px; font-weight: 700; }
+    .doctor-name { display: block; font-size: 18px; font-weight: 700; color: #17324d; }
+    .doctor-meta { display: block; margin-top: 4px; color: #607789; font-size: 13px; }
+    .duty { display: inline-block; margin-top: 7px; padding: 3px 8px; border-radius: 999px; background: #eef3f5; color: #607789; font-size: 12px; }
+    .duty.present { background: #e1f7ee; color: #087a58; }
+    .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+    .btn { min-height: 44px; padding: 10px 18px; border: 1px solid #c7dadd; border-radius: 10px; background: #fff; color: #17324d; font: 600 15px "Sarabun", sans-serif; text-decoration: none; cursor: pointer; }
+    .btn.primary { border-color: #078e83; background: #078e83; color: #fff; }
+    .empty { padding: 28px; border: 1px dashed #a9c6ca; border-radius: 14px; background: #fff; text-align: center; color: #526b7f; }
+    @media (max-width: 700px) { .doctor-grid { grid-template-columns: 1fr; } .actions { flex-direction: column-reverse; } .btn { width: 100%; text-align: center; } }
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=doctor-picker-20260903">
+</head>
+<body>
+  <main class="page">
+    <a class="back" href="{% url 'opd_list' %}">← กลับหน้าห้องตรวจ</a>
+    <header class="head">
+      <div class="eyebrow">Doctor identification</div>
+      <h1>เลือกชื่อแพทย์ผู้ตรวจ</h1>
+      <p class="hint">กรุณาเลือกชื่อตัวเองก่อนเข้าสู่แบบประเมิน ระบบจะบันทึกชื่อนี้กำกับผลตรวจ</p>
+      <div class="patient"><b>ผู้ป่วย:</b> {{ visit.patient.first_name }} {{ visit.patient.last_name }} · Visit #{{ visit.id }}</div>
+    </header>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    {% if doctor_rows %}
+      <form method="post">
+        {% csrf_token %}
+        <div class="doctor-grid">
+          {% for row in doctor_rows %}
+            <label class="doctor-choice">
+              <input type="radio" name="doctor_id" value="{{ row.user.id }}" required>
+              <span class="doctor-card">
+                {% if row.profile.photo %}
+                  <img class="avatar" src="{% url 'staff_photo' row.profile.id %}" alt="รูป {{ row.name }}">
+                {% else %}
+                  <span class="avatar">{{ row.name|slice:":1" }}</span>
+                {% endif %}
+                <span>
+                  <span class="doctor-name">{{ row.name }}</span>
+                  <span class="doctor-meta">แพทย์</span>
+                  {% if row.duty and row.duty.is_present %}
+                    <span class="duty present">ขึ้นเวรวันนี้</span>
+                  {% else %}
+                    <span class="duty">ยังไม่ได้เช็กอินวันนี้</span>
+                  {% endif %}
+                </span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        <div class="actions">
+          <a class="btn" href="{% url 'opd_list' %}">ยกเลิก</a>
+          <button class="btn primary" type="submit">ยืนยันและเข้าประเมิน</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty">ยังไม่มีบุคลากรประเภทแพทย์ที่ระบุชื่อจริงครบ กรุณาเพิ่มชื่อและกำหนดประเภทที่หน้าบุคลากรก่อน</div>
+    {% endif %}
+  </main>
+</body>
+</html>

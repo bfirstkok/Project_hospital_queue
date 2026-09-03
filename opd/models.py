@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 
 
@@ -7,6 +8,14 @@ class VisitAssessment(models.Model):
         "queues.Visit",
         on_delete=models.CASCADE,
         related_name="opd_assessment"
+    )
+    examiner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="opd_assessments",
+        verbose_name="แพทย์ผู้ตรวจ",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

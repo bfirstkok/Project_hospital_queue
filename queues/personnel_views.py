@@ -308,4 +308,8 @@ def personnel_dashboard(request):
         "present_count": sum(row["is_present"] for row in staff_rows),
         "available_count": len(available_nurses),
         "assigned_count": sum(bool(row["care_assignment"]) for row in patient_rows),
+        "role_counts": {
+            role: sum(row["profile"].role == role for row in staff_rows)
+            for role, _label in StaffProfile.Role.choices
+        },
     })

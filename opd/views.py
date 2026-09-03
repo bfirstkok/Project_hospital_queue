@@ -2,18 +2,37 @@ from datetime import timedelta
 import random
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.db import transaction
 from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
-from queues.models import DeviceAssignment, Queue, Visit, TelemetryLog, VitalSign
+from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign
 from queues.triage import SEVERITY_LEVELS
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
 
 EXAM_ROOMS = (1, 2, 3)
+
+
+def _doctor_queryset():
+    return (
+        get_user_model().objects
+        .filter(is_active=True, hospital_staff_profile__role=StaffProfile.Role.DOCTOR)
+        .select_related("hospital_staff_profile")
+        .order_by("first_name", "last_name", "username")
+    )
+
+
+def _selected_examiner(request, visit_id):
+    if request.session.get("opd_examiner_visit_id") != visit_id:
+        return None
+    doctor_id = request.session.get("opd_examiner_id")
+    if not doctor_id:
+        return None
+    return _doctor_queryset().filter(pk=doctor_id).first()
 
 
 def _get_related(obj, attr):
@@ -201,6 +220,54 @@ def opd_room_select(request):
 # OPD ASSESSMENT
 # -----------------------------
 @login_required
+def select_examiner(request, visit_id: int):
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "queue"),
+        pk=visit_id,
+    )
+    q = getattr(visit, "queue", None)
+    if not q or q.status != Queue.Status.CALLED:
+        return redirect("opd_list")
+
+    doctors = list(_doctor_queryset())
+    duties = {
+        duty.user_id: duty
+        for duty in StaffDuty.objects.filter(
+            user__in=doctors,
+            duty_date=timezone.localdate(),
+        )
+    }
+    error = ""
+    if request.method == "POST":
+        doctor_id = request.POST.get("doctor_id", "")
+        doctor = _doctor_queryset().filter(pk=doctor_id).first() if doctor_id.isdigit() else None
+        if doctor is None:
+            error = "กรุณาเลือกแพทย์ผู้ตรวจก่อนเข้าประเมิน"
+        elif not doctor.first_name.strip() or not doctor.last_name.strip():
+            error = "แพทย์ที่เลือกยังไม่มีชื่อจริงและนามสกุล กรุณาแก้ไขที่หน้าบุคลากร"
+        else:
+            request.session["opd_examiner_id"] = doctor.id
+            request.session["opd_examiner_visit_id"] = visit.id
+            return redirect("visit_assessment", visit_id=visit.id)
+
+    doctor_rows = [
+        {
+            "user": doctor,
+            "profile": doctor.hospital_staff_profile,
+            "name": doctor.get_full_name(),
+            "duty": duties.get(doctor.id),
+        }
+        for doctor in doctors
+        if doctor.first_name.strip() and doctor.last_name.strip()
+    ]
+    return render(request, "select_examiner.html", {
+        "visit": visit,
+        "doctor_rows": doctor_rows,
+        "error": error,
+    })
+
+
+@login_required
 @transaction.atomic
 def visit_assessment(request, visit_id: int):
     visit = get_object_or_404(
@@ -212,6 +279,10 @@ def visit_assessment(request, visit_id: int):
     if not q or q.status != "CALLED":
         return redirect("opd_list")
 
+    examiner = _selected_examiner(request, visit.id)
+    if examiner is None:
+        return redirect("select_examiner", visit_id=visit.id)
+
     assessment = VisitAssessment.objects.filter(visit=visit).first()
 
     if request.method == "POST":
@@ -219,6 +290,7 @@ def visit_assessment(request, visit_id: int):
         if form.is_valid():
             assessment = form.save(commit=False)
             assessment.visit = visit
+            assessment.examiner = examiner
 
             color, reasons = _compute_opd(assessment)
             assessment.opd_urgency = color
@@ -246,6 +318,9 @@ def visit_assessment(request, visit_id: int):
                 q.status = "OPD_DONE"
                 q.save(update_fields=["status"])
 
+            request.session.pop("opd_examiner_id", None)
+            request.session.pop("opd_examiner_visit_id", None)
+
             # Redirect ไปหน้ารายละเอียด Visit เพื่อให้เห็น Assessment ที่บันทึกไป
             return redirect("opd_visit_detail", visit_id=visit.id)
     else:
@@ -262,6 +337,7 @@ def visit_assessment(request, visit_id: int):
         "opd_color": color,
         "opd_reasons": reasons,
         "followup_visit_id": getattr(assessment, "followup_visit_id", None),
+        "examiner": examiner,
     })
 
 

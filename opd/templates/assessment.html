@@ -447,7 +447,12 @@
         <div class="muted" style="margin-top:10px">ยังไม่มีเหตุผลเร่งด่วนจากข้อมูลที่บันทึก</div>
       {% endif %}
     </div>
-    <div class="pill">สถานะ: CALLED</div>
+    <div>
+      <div class="pill">สถานะ: CALLED</div>
+      <div style="margin-top:10px;text-align:right;color:#526b7f;font-size:13px">แพทย์ผู้ตรวจ</div>
+      <div style="margin-top:3px;text-align:right;color:#17324d;font-weight:700">{{ examiner.get_full_name }}</div>
+      <a href="{% url 'select_examiner' visit.id %}" style="display:block;margin-top:5px;text-align:right;font-size:12px;color:#087f75">เปลี่ยนแพทย์</a>
+    </div>
   </section>
 
   {% with p=visit.patient vs=visit.vitals tr=visit.triage_result %}

@@ -1,98 +1,123 @@
 <!doctype html>
 <html lang="th">
 <head>
+  {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>บุคลากรและผู้ป่วยที่รับผิดชอบ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{--ink:#173047;--muted:#667b8c;--line:#d7e4e8;--teal:#078a7c;--teal-dark:#087467;--soft:#f3f8f9;--green:#16875e;--amber:#a56700;--red:#bd3434}
-    *{box-sizing:border-box}
-    body{margin:0;background:#f2f7f8;color:var(--ink);font-family:"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;padding:94px 22px 48px}
-    .page{max-width:1500px;margin:auto}
-    .hero{display:flex;align-items:center;justify-content:space-between;gap:24px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px 28px;box-shadow:0 12px 30px rgba(29,70,84,.07)}
-    h1{font-size:30px;margin:0 0 4px}.sub{color:var(--muted)}
-    .date{font-weight:800;background:#e6f6f3;color:var(--teal-dark);padding:10px 16px;border-radius:999px;white-space:nowrap}
-    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
-    .stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px}.stat b{font-size:30px;display:block}.stat span{color:var(--muted);font-weight:700}
-    .section{background:#fff;border:1px solid var(--line);border-radius:20px;margin-top:18px;overflow:hidden;box-shadow:0 10px 26px rgba(29,70,84,.05)}
-    .section-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.section-head h2{margin:0;font-size:22px}.hint{font-size:14px;color:var(--muted)}
-    .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:15px 18px;border-bottom:1px solid #e6eef0;vertical-align:middle}th{background:#eef6f7;color:#526b7b;font-size:13px;letter-spacing:.02em}tbody tr:last-child td{border-bottom:0}
-    .person{display:flex;align-items:center;gap:12px}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#dff4f0;color:var(--teal-dark);font-size:18px;font-weight:900;object-fit:cover;flex:0 0 48px}.name{font-weight:850}.username{font-size:13px;color:var(--muted)}
-    .status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-weight:800;font-size:13px;background:#fff}.dot{width:9px;height:9px;border-radius:50%;background:#98a8b2}.status.available{color:var(--green);border-color:#a8dfc6;background:#ecfaf3}.status.available .dot{background:#20a76d;box-shadow:0 0 0 4px #d9f4e7}.status.present{color:var(--teal-dark);background:#ecf8f6}.status.off{color:#7c8992;background:#f4f6f7}.role{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:850;background:#eaf1ff;color:#315ea7}
-    button,select{font:inherit}.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:9px 13px;font-weight:800;cursor:pointer}.btn:hover{border-color:#86bcb5}.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}.btn.danger{border-color:#efb7b7;color:var(--red);background:#fff7f7}.inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .identity-editor{margin-top:6px}.identity-editor summary{cursor:pointer;color:var(--teal-dark);font-size:12px;font-weight:800}.identity-form{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;min-width:310px}.identity-form input{min-width:0;border:1px solid #bfd2d8;border-radius:9px;padding:8px}.identity-form .photo-input{grid-column:1/-1}.identity-form button{grid-column:1/-1}
-    .patient-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}.patient-card{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fbfdfd}.patient-top{display:flex;justify-content:space-between;gap:14px}.queue{font-weight:900;color:#209bd2}.patient-name{font-size:20px;font-weight:900;margin:3px 0}.meta{color:var(--muted);font-size:14px}.type{height:max-content;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:850;background:#fff3cf;color:var(--amber);border:1px solid #efd17b}.type.inpatient{background:#e9f0ff;color:#315ea7;border-color:#c5d5f4}
-    .device{display:flex;gap:10px;align-items:center;margin:14px 0;padding:11px 13px;border-radius:12px;background:#eef7f7}.device b{color:var(--teal-dark)}
-    .care{border-top:1px solid var(--line);padding-top:13px}.care-current{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.warn{font-size:13px;color:var(--red);font-weight:800}.assign-form{display:grid;gap:8px}.nurse-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.nurse-choice{cursor:pointer}.nurse-choice input{position:absolute;opacity:0;pointer-events:none}.nurse-option{display:flex;align-items:center;gap:9px;border:1px solid #bfd2d8;border-radius:11px;padding:8px 10px;background:#fff}.nurse-choice input:checked+.nurse-option{border-color:var(--teal);background:#e9f8f5;box-shadow:0 0 0 2px rgba(7,138,124,.13)}.nurse-option .avatar{width:36px;height:36px;flex-basis:36px;font-size:14px}
-    .empty{padding:36px;text-align:center;color:var(--muted)}
-    .messages{margin:14px 0}.message{background:#ecfaf3;border:1px solid #a8dfc6;color:#176846;padding:12px 16px;border-radius:12px;margin-bottom:8px}.message.error{background:#fff0f0;border-color:#f1b4b4;color:#9c2e2e}
-    @media(max-width:900px){body{padding:86px 12px 30px}.hero{align-items:flex-start;flex-direction:column}.stats,.patient-grid{grid-template-columns:1fr}.section-head{align-items:flex-start;flex-direction:column}.assign-form{grid-template-columns:1fr}h1{font-size:25px}}
+    :root { --ink:#17324d; --muted:#607789; --line:#d6e5e8; --teal:#078e83; --teal-dark:#086e67; --green:#16875e; --red:#b82f3d; --blue:#315ea7; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:92px 22px 52px; background:linear-gradient(180deg,#edf6f7 0,#f7fafb 340px); color:var(--ink); font-family:"Sarabun","Leelawadee UI",sans-serif; }
+    button,input,select { font:inherit; }
+    .page { max-width:1500px; margin:auto; }
+    .hero { position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:center; gap:24px; min-height:180px; padding:30px 34px; border-radius:24px; color:#fff; background:linear-gradient(125deg,#075f5a 0%,#078e83 58%,#16aa96 100%); box-shadow:0 18px 40px rgba(7,91,85,.18); }
+    .hero::after { content:""; position:absolute; right:-65px; top:-110px; width:360px; height:360px; border:58px solid rgba(255,255,255,.09); border-radius:50%; }
+    .hero-copy,.date-card { position:relative; z-index:1; }
+    .eyebrow { margin-bottom:7px; color:#bdf7ed; font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+    h1 { margin:0 0 7px; font-size:clamp(27px,4vw,38px); line-height:1.15; }
+    .sub { max-width:760px; color:rgba(255,255,255,.78); font-size:15px; }
+    .date-card { min-width:175px; padding:15px 18px; border:1px solid rgba(255,255,255,.2); border-radius:16px; background:rgba(255,255,255,.12); backdrop-filter:blur(8px); }
+    .date-card small { display:block; color:#c8f8f0; }.date-card b { display:block; margin-top:3px; font-size:18px; }
+    .messages { margin:16px 0; }.message { margin-bottom:8px; padding:12px 16px; border:1px solid #a8dfc6; border-radius:12px; background:#ecfaf3; color:#176846; }.message.error { border-color:#f1b4b4; background:#fff0f0; color:#9c2e2e; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:18px 0; }
+    .stat { display:flex; align-items:center; gap:14px; min-height:104px; padding:18px 20px; border:1px solid var(--line); border-radius:18px; background:#fff; box-shadow:0 8px 22px rgba(29,70,84,.055); }
+    .stat-icon { width:46px; height:46px; flex:0 0 46px; display:grid; place-items:center; border-radius:14px; background:#e5f6f3; font-size:22px; }
+    .stat b { display:block; font-size:29px; line-height:1; }.stat span { display:block; margin-top:5px; color:var(--muted); font-size:13px; font-weight:600; }
+    .section { margin-top:18px; overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#fff; box-shadow:0 10px 28px rgba(29,70,84,.055); }
+    .section-head { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:22px 24px; border-bottom:1px solid #e4edef; }.section-head h2 { margin:0 0 3px; font-size:23px; }
+    .hint,.meta { color:var(--muted); font-size:13px; }
+    .toolbar { display:flex; align-items:center; gap:10px; padding:16px 24px; border-bottom:1px solid #edf2f3; background:#fbfdfd; }
+    .search { position:relative; flex:1; max-width:430px; }.search input { width:100%; height:43px; padding:0 14px 0 39px; border:1px solid #c9dcdf; border-radius:11px; background:#fff; color:var(--ink); outline:none; }.search input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(7,142,131,.1); }.search::before { content:"⌕"; position:absolute; left:14px; top:8px; color:#6f8796; font-size:20px; }
+    .filters { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }.filter { white-space:nowrap; padding:8px 11px; border:1px solid #d1e0e3; border-radius:999px; background:#fff; color:#526b7b; font-size:12px; font-weight:700; cursor:pointer; }.filter.active { border-color:var(--teal); background:#e6f7f4; color:var(--teal-dark); }
+    .staff-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; padding:18px; background:#f8fbfb; }
+    .staff-card { display:flex; flex-direction:column; min-width:0; padding:17px; border:1px solid #dbe8ea; border-radius:17px; background:#fff; transition:transform .15s,border-color .15s,box-shadow .15s; }.staff-card:hover { transform:translateY(-2px); border-color:#aed4d0; box-shadow:0 10px 22px rgba(29,70,84,.08); }
+    .staff-top { display:flex; align-items:flex-start; gap:12px; }.avatar { width:52px; height:52px; flex:0 0 52px; display:grid; place-items:center; border-radius:15px; object-fit:cover; background:linear-gradient(145deg,#d9f5f1,#effaf8); color:var(--teal-dark); font-size:19px; font-weight:700; }
+    .person-copy { min-width:0; flex:1; }.name { overflow:hidden; color:var(--ink); font-weight:700; text-overflow:ellipsis; white-space:nowrap; }.username { margin-top:2px; color:var(--muted); font-size:12px; }
+    .role-badge { display:inline-flex; margin-top:7px; padding:4px 9px; border-radius:999px; background:#eaf1ff; color:var(--blue); font-size:11px; font-weight:700; }.role-badge.nurse { background:#e5f7f3; color:#087467; }.role-badge.nurse_assistant { background:#f2ebff; color:#7650a7; }.role-badge.emergency { background:#fff0eb; color:#ad4f2e; }
+    .status-row { display:flex; flex-wrap:wrap; gap:7px; margin:15px 0 13px; }.status { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border:1px solid var(--line); border-radius:999px; background:#f5f7f8; color:#71818c; font-size:11px; font-weight:700; }.dot { width:7px; height:7px; border-radius:50%; background:#9cabb3; }.status.present { border-color:#b8e1d2; background:#edf9f4; color:#15714e; }.status.present .dot,.status.available .dot { background:#1ca16a; }.status.available { border-color:#9edac5; background:#e4f8ef; color:#107249; }
+    .staff-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; padding-top:13px; border-top:1px solid #edf2f3; }.btn { min-height:37px; padding:7px 11px; border:1px solid #cadbde; border-radius:9px; background:#fff; color:var(--ink); font-weight:700; font-size:12px; cursor:pointer; text-decoration:none; }.btn:hover { border-color:#75bdb5; }.btn.primary { border-color:var(--teal); background:var(--teal); color:#fff; }.btn.danger { border-color:#efb7b7; background:#fff7f7; color:var(--red); }.quick-form { display:inline-flex; }
+    .edit-details { width:100%; margin-top:9px; }.edit-details summary { color:var(--teal-dark); font-size:12px; font-weight:700; cursor:pointer; }.edit-panel { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; padding:12px; border-radius:11px; background:#f3f8f9; }.edit-panel input,.edit-panel select { min-width:0; height:38px; padding:7px 9px; border:1px solid #bfd2d8; border-radius:8px; background:#fff; }.edit-panel .wide,.edit-panel .label { grid-column:1/-1; }.edit-panel .label { color:#58707c; font-size:11px; font-weight:700; }
+    .empty { padding:36px; text-align:center; color:var(--muted); }.hidden { display:none !important; }
+    .patient-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; padding:18px; background:#f8fbfb; }.patient-card { padding:18px; border:1px solid var(--line); border-radius:17px; background:#fff; }.patient-top { display:flex; justify-content:space-between; gap:14px; }.queue { color:#1686b5; font-weight:700; }.patient-name { margin:3px 0; font-size:20px; font-weight:700; }.type { height:max-content; padding:6px 10px; border:1px solid #efd17b; border-radius:999px; background:#fff3cf; color:#a56700; font-size:12px; font-weight:700; }.type.inpatient { border-color:#c5d5f4; background:#e9f0ff; color:var(--blue); }
+    .device { display:flex; align-items:center; gap:10px; margin:14px 0; padding:11px 13px; border-radius:12px; background:#eef7f7; }.device b { color:var(--teal-dark); }.care { padding-top:13px; border-top:1px solid var(--line); }.care-current { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }.person { display:flex; align-items:center; gap:10px; }.person .avatar { width:40px; height:40px; flex-basis:40px; border-radius:12px; font-size:14px; }.warn { color:var(--red); font-size:12px; font-weight:700; }
+    .assign-form { display:grid; gap:8px; }.nurse-picker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }.nurse-choice { cursor:pointer; }.nurse-choice input { position:absolute; opacity:0; pointer-events:none; }.nurse-option { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid #bfd2d8; border-radius:11px; background:#fff; }.nurse-choice input:checked + .nurse-option { border-color:var(--teal); background:#e9f8f5; box-shadow:0 0 0 2px rgba(7,138,124,.13); }.nurse-option .avatar { width:36px; height:36px; flex-basis:36px; }
+    @media(max-width:1150px) { .staff-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.stats { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:760px) { body { padding:82px 11px 30px; }.hero,.section-head,.toolbar { align-items:flex-start; flex-direction:column; }.hero { padding:24px 20px; }.date-card { min-width:0; }.staff-grid,.patient-grid,.stats { grid-template-columns:1fr; }.toolbar,.search { width:100%; max-width:none; }.staff-grid,.patient-grid { padding:11px; }.nurse-picker { grid-template-columns:1fr; }.care-current { align-items:flex-start; flex-direction:column; } }
   </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=personnel-20260903">
 </head>
 <body>
   {% include "includes/main_nav.html" %}
   <main class="page">
     <header class="hero">
-      <div>
-        <h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1>
-        <div class="sub">หัวหน้าเวรลงเวลาบุคลากรและเลือกพยาบาลที่พร้อมดูแลผู้ป่วย ไม่ต้องให้ทุกคนล็อกอิน</div>
-      </div>
-      <div class="date">วันนี้ {{ today|date:"d/m/Y" }}</div>
+      <div class="hero-copy"><div class="eyebrow">Hospital workforce</div><h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1><div class="sub">จัดการรายชื่อ เช็กการขึ้นเวร และเลือกผู้ดูแลผู้ป่วยจากหน้าเดียว โดยบุคลากรไม่จำเป็นต้องล็อกอินเอง</div></div>
+      <div class="date-card"><small>วันที่ปฏิบัติงาน</small><b>{{ today|date:"d/m/Y" }}</b></div>
     </header>
 
     {% if messages %}<div class="messages">{% for message in messages %}<div class="message {% if message.tags == 'error' %}error{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
     <section class="stats">
-      <div class="stat"><b>{{ present_count }}</b><span>มาปฏิบัติงานวันนี้</span></div>
-      <div class="stat"><b>{{ available_count }}</b><span>พยาบาลพร้อมรับผู้ป่วย</span></div>
-      <div class="stat"><b>{{ assigned_count }}/{{ patient_rows|length }}</b><span>ผู้ป่วยที่มอบหมายแล้ว</span></div>
+      <div class="stat"><div class="stat-icon">👥</div><div><b>{{ staff_rows|length }}</b><span>บุคลากรทั้งหมด</span></div></div>
+      <div class="stat"><div class="stat-icon">✓</div><div><b>{{ present_count }}</b><span>มาปฏิบัติงานวันนี้</span></div></div>
+      <div class="stat"><div class="stat-icon">●</div><div><b>{{ available_count }}</b><span>พยาบาลพร้อมรับผู้ป่วย</span></div></div>
+      <div class="stat"><div class="stat-icon">⌚</div><div><b>{{ assigned_count }}/{{ patient_rows|length }}</b><span>ผู้ป่วยที่มอบหมายแล้ว</span></div></div>
     </section>
 
     <section class="section">
-      <div class="section-head"><div><h2>บุคลากรวันนี้</h2><div class="hint">หัวหน้าเวรกำหนดประเภท ลงเวลา และเปิดสถานะพร้อมรับผู้ป่วยให้บุคลากรจากหน้านี้ได้</div></div></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>บุคลากร</th><th>ประเภท</th><th>การมาปฏิบัติงาน</th><th>ความพร้อม</th><th>ใช้งานระบบล่าสุด</th><th>คำสั่ง</th></tr></thead>
-          <tbody>
-          {% for row in staff_rows %}
-            <tr>
-              <td><div class="person">{% if row.profile.photo %}<img class="avatar" src="{% url 'staff_photo' row.profile.id %}" alt="รูป {{ row.name }}">{% else %}<div class="avatar">{{ row.name|slice:":1" }}</div>{% endif %}<div><div class="name">{{ row.name }}</div><div class="username">{{ row.user.username }}</div><details class="identity-editor"><summary>แก้ไขชื่อและรูป</summary><form class="identity-form" method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="update_staff_identity"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง" required><input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล" required><input class="photo-input" type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="btn primary" type="submit">บันทึกชื่อและรูป</button></form></details></div></div></td>
-              <td><form class="inline" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><select class="btn" name="role" aria-label="ประเภทบุคลากร {{ row.name }}">{% for value,label in staff_role_choices %}<option value="{{ value }}" {% if row.profile.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn" type="submit">บันทึก</button></form></td>
-              <td>{% if row.is_present %}<span class="status present"><span class="dot"></span>ขึ้นเวรวันนี้</span>{% else %}<span class="status off"><span class="dot"></span>ยังไม่ขึ้นเวร</span>{% endif %}</td>
-              <td>{% if row.profile.role == 'NURSE' %}{% if row.is_available %}<span class="status available"><span class="dot"></span>พร้อมรับผู้ป่วย</span>{% elif row.is_present %}<span class="status off"><span class="dot"></span>ยังไม่พร้อมรับ</span>{% else %}<span class="status off"><span class="dot"></span>ต้องขึ้นเวรก่อน</span>{% endif %}{% else %}<span class="role">{{ row.profile.get_role_display }}</span>{% endif %}</td>
-              <td>{% if row.duty %}{{ row.duty.last_seen_at|date:"H:i" }} น.{% else %}-{% endif %}</td>
-              <td>
-                <div class="inline"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}">
-                  {% if row.is_present %}<input type="hidden" name="is_present" value="0"><button class="btn" type="submit">ลงเวร</button>{% else %}<input type="hidden" name="is_present" value="1"><button class="btn primary" type="submit">ขึ้นเวร</button>{% endif %}
-                </form>{% if row.profile.role == 'NURSE' and row.is_present %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}">{% if row.is_available %}<input type="hidden" name="is_available" value="0"><button class="btn" type="submit">พักรับผู้ป่วย</button>{% else %}<input type="hidden" name="is_available" value="1"><button class="btn primary" type="submit">พร้อมรับผู้ป่วย</button>{% endif %}</form>{% endif %}</div>
-              </td>
-            </tr>
-          {% empty %}<tr><td colspan="5" class="empty">ยังไม่มีบัญชีบุคลากรที่เปิดใช้งาน</td></tr>{% endfor %}
-          </tbody>
-        </table>
+      <div class="section-head"><div><h2>บุคลากรวันนี้</h2><div class="hint">ค้นหารายชื่อ กรองตามวิชาชีพ และจัดการสถานะได้จากการ์ดแต่ละคน</div></div></div>
+      <div class="toolbar">
+        <label class="search"><input id="staff-search" type="search" placeholder="ค้นหาชื่อหรือชื่อผู้ใช้…" autocomplete="off"></label>
+        <div class="filters" aria-label="กรองประเภทบุคลากร">
+          <button class="filter active" type="button" data-role="ALL">ทั้งหมด {{ staff_rows|length }}</button>
+          <button class="filter" type="button" data-role="DOCTOR">แพทย์ {{ role_counts.DOCTOR }}</button>
+          <button class="filter" type="button" data-role="NURSE">พยาบาล {{ role_counts.NURSE }}</button>
+          <button class="filter" type="button" data-role="NURSE_ASSISTANT">ผู้ช่วยฯ {{ role_counts.NURSE_ASSISTANT }}</button>
+          <button class="filter" type="button" data-role="EMERGENCY">ฉุกเฉิน {{ role_counts.EMERGENCY }}</button>
+          <button class="filter" type="button" data-role="STAFF">เจ้าหน้าที่ {{ role_counts.STAFF }}</button>
+        </div>
       </div>
+
+      {% if staff_rows %}
+        <div class="staff-grid" id="staff-grid">
+          {% for row in staff_rows %}
+            <article class="staff-card" data-role="{{ row.profile.role }}" data-search="{{ row.name|lower }} {{ row.user.username|lower }}">
+              <div class="staff-top">
+                {% if row.profile.photo %}<img class="avatar" src="{% url 'staff_photo' row.profile.id %}" alt="รูป {{ row.name }}">{% else %}<div class="avatar">{{ row.name|slice:":1" }}</div>{% endif %}
+                <div class="person-copy"><div class="name" title="{{ row.name }}">{{ row.name }}</div><div class="username">{{ row.user.username }}</div><span class="role-badge {{ row.profile.role|lower }}">{{ row.profile.get_role_display }}</span></div>
+              </div>
+              <div class="status-row">
+                {% if row.is_present %}<span class="status present"><span class="dot"></span>ขึ้นเวรวันนี้</span>{% else %}<span class="status"><span class="dot"></span>ยังไม่ขึ้นเวร</span>{% endif %}
+                {% if row.profile.role == 'NURSE' %}{% if row.is_available %}<span class="status available"><span class="dot"></span>พร้อมรับผู้ป่วย</span>{% elif row.is_present %}<span class="status"><span class="dot"></span>พักรับผู้ป่วย</span>{% endif %}{% endif %}
+                {% if row.duty and row.duty.last_seen_at %}<span class="status">ใช้งานล่าสุด {{ row.duty.last_seen_at|date:"H:i" }} น.</span>{% endif %}
+              </div>
+              <div class="staff-actions">
+                <form class="quick-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}">{% if row.is_present %}<input type="hidden" name="is_present" value="0"><button class="btn" type="submit">ลงเวร</button>{% else %}<input type="hidden" name="is_present" value="1"><button class="btn primary" type="submit">ขึ้นเวร</button>{% endif %}</form>
+                {% if row.profile.role == 'NURSE' and row.is_present %}<form class="quick-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}">{% if row.is_available %}<input type="hidden" name="is_available" value="0"><button class="btn" type="submit">พักรับผู้ป่วย</button>{% else %}<input type="hidden" name="is_available" value="1"><button class="btn primary" type="submit">พร้อมรับผู้ป่วย</button>{% endif %}</form>{% endif %}
+              </div>
+              <details class="edit-details">
+                <summary>แก้ไขชื่อ รูป และประเภท</summary>
+                <form class="edit-panel" method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="update_staff_identity"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง" required><input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล" required><span class="label">รูปประจำตัว (JPG, PNG หรือ WebP ไม่เกิน 5 MB)</span><input class="wide" type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="btn primary wide" type="submit">บันทึกชื่อและรูป</button></form>
+                <form class="edit-panel" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><span class="label">ประเภทบุคลากร</span><select class="wide" name="role" aria-label="ประเภทบุคลากร {{ row.name }}">{% for value,label in staff_role_choices %}<option value="{{ value }}" {% if row.profile.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn wide" type="submit">บันทึกประเภท</button></form>
+              </details>
+            </article>
+          {% endfor %}
+          <div class="empty hidden" id="staff-empty">ไม่พบรายชื่อที่ตรงกับการค้นหา</div>
+        </div>
+      {% else %}<div class="empty">ยังไม่มีบัญชีบุคลากรที่เปิดใช้งาน</div>{% endif %}
     </section>
 
     <section class="section">
-      <div class="section-head"><div><h2>ผู้ป่วยที่สวมอุปกรณ์</h2><div class="hint">แสดงเฉพาะกลุ่มเฝ้าระวังและผู้ป่วยนอนรักษา/ติดตามหลังตรวจที่มีอุปกรณ์ active</div></div></div>
+      <div class="section-head"><div><h2>ผู้ป่วยที่สวมอุปกรณ์</h2><div class="hint">แสดงเฉพาะผู้ป่วยเฝ้าระวังและผู้ป่วยนอนรักษา/ติดตามหลังตรวจที่มีอุปกรณ์ active</div></div></div>
       {% if patient_rows %}<div class="patient-grid">
         {% for row in patient_rows %}
           <article class="patient-card">
-            <div class="patient-top">
-              <div><div class="queue">{{ row.queue.display_number }}</div><div class="patient-name">{{ row.patient.first_name }} {{ row.patient.last_name }}</div><div class="meta">Visit #{{ row.visit.id }} · {{ row.queue.get_status_display }}</div></div>
-              <span class="type {% if row.queue.status == 'MONITORING' %}inpatient{% endif %}">{{ row.care_type }}</span>
-            </div>
+            <div class="patient-top"><div><div class="queue">{{ row.queue.display_number }}</div><div class="patient-name">{{ row.patient.first_name }} {{ row.patient.last_name }}</div><div class="meta">Visit #{{ row.visit.id }} · {{ row.queue.get_status_display }}</div></div><span class="type {% if row.queue.status == 'MONITORING' %}inpatient{% endif %}">{{ row.care_type }}</span></div>
             <div class="device"><span>⌚</span><div><div class="meta">อุปกรณ์ที่สวม</div><b>{{ row.device.device_id }}</b></div></div>
             <div class="care">
-              {% if row.care_assignment %}
-                <div class="care-current"><div><div class="meta">พยาบาลผู้รับผิดชอบ</div><div class="person" style="margin-top:5px">{% if row.care_assignment.nurse.hospital_staff_profile.photo %}<img class="avatar" src="{% url 'staff_photo' row.care_assignment.nurse.hospital_staff_profile.id %}" alt="รูปพยาบาลผู้รับผิดชอบ">{% else %}<span class="avatar">{{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username|slice:":1" }}</span>{% endif %}<div><div class="name">{{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</div>{% if not row.assigned_nurse_available %}<div class="warn">พยาบาลคนนี้ไม่พร้อมรับผู้ป่วยเพิ่ม สามารถเปลี่ยนผู้ดูแลได้</div>{% endif %}</div></div></div>
-                  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="end_assignment"><input type="hidden" name="assignment_id" value="{{ row.care_assignment.id }}"><button class="btn danger" type="submit">ยุติการดูแล</button></form>
-                </div>
-              {% else %}<div class="hint" style="margin-bottom:10px">ยังไม่ได้มอบหมายพยาบาล</div>{% endif %}
-              <form class="assign-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}">
-                {% if available_nurses %}<div class="meta">เลือกพยาบาลที่ขึ้นเวรและพร้อมรับผู้ป่วย</div><div class="nurse-picker">{% for nurse_row in available_nurses %}<label class="nurse-choice"><input type="radio" name="nurse_id" value="{{ nurse_row.user.id }}" required><span class="nurse-option">{% if nurse_row.profile.photo %}<img class="avatar" src="{% url 'staff_photo' nurse_row.profile.id %}" alt="รูป {{ nurse_row.name }}">{% else %}<span class="avatar">{{ nurse_row.name|slice:":1" }}</span>{% endif %}<span><span class="name">{{ nurse_row.name }}</span><span class="username">พยาบาล · พร้อมรับผู้ป่วย</span></span></span></label>{% endfor %}</div>{% endif %}
-                {% if available_nurses %}<button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนพยาบาล{% else %}มอบหมาย{% endif %}</button>{% endif %}
-              </form>
+              {% if row.care_assignment %}<div class="care-current"><div><div class="meta">พยาบาลผู้รับผิดชอบ</div><div class="person" style="margin-top:6px">{% if row.care_assignment.nurse.hospital_staff_profile.photo %}<img class="avatar" src="{% url 'staff_photo' row.care_assignment.nurse.hospital_staff_profile.id %}" alt="รูปพยาบาลผู้รับผิดชอบ">{% else %}<span class="avatar">{{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username|slice:":1" }}</span>{% endif %}<div><div class="name">{{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</div>{% if not row.assigned_nurse_available %}<div class="warn">พยาบาลคนนี้ไม่พร้อมรับผู้ป่วยเพิ่ม</div>{% endif %}</div></div></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="end_assignment"><input type="hidden" name="assignment_id" value="{{ row.care_assignment.id }}"><button class="btn danger" type="submit">ยุติการดูแล</button></form></div>{% else %}<div class="hint" style="margin-bottom:10px">ยังไม่ได้มอบหมายพยาบาล</div>{% endif %}
+              <form class="assign-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}">{% if available_nurses %}<div class="meta">เลือกพยาบาลที่ขึ้นเวรและพร้อมรับผู้ป่วย</div><div class="nurse-picker">{% for nurse_row in available_nurses %}<label class="nurse-choice"><input type="radio" name="nurse_id" value="{{ nurse_row.user.id }}" required><span class="nurse-option">{% if nurse_row.profile.photo %}<img class="avatar" src="{% url 'staff_photo' nurse_row.profile.id %}" alt="รูป {{ nurse_row.name }}">{% else %}<span class="avatar">{{ nurse_row.name|slice:":1" }}</span>{% endif %}<span><span class="name">{{ nurse_row.name }}</span><span class="username">พยาบาล · พร้อมรับผู้ป่วย</span></span></span></label>{% endfor %}</div><button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนพยาบาล{% else %}มอบหมาย{% endif %}</button>{% endif %}</form>
               {% if not available_nurses %}<div class="warn" style="margin-top:8px">ยังไม่มีพยาบาลที่ขึ้นเวรและเปิดสถานะพร้อมรับผู้ป่วย</div>{% endif %}
             </div>
           </article>
@@ -100,5 +125,20 @@
       </div>{% else %}<div class="empty">ยังไม่มีผู้ป่วยที่สวมอุปกรณ์ในกลุ่มเฝ้าระวังหรือกลุ่มนอนรักษา</div>{% endif %}
     </section>
   </main>
+  <script>
+    const searchInput = document.getElementById("staff-search");
+    const cards = Array.from(document.querySelectorAll(".staff-card"));
+    const filterButtons = Array.from(document.querySelectorAll(".filter"));
+    const emptyState = document.getElementById("staff-empty");
+    let activeRole = "ALL";
+    function filterStaff() {
+      const query = (searchInput?.value || "").trim().toLocaleLowerCase("th");
+      let visible = 0;
+      cards.forEach((card) => { const show = (activeRole === "ALL" || card.dataset.role === activeRole) && (!query || card.dataset.search.toLocaleLowerCase("th").includes(query)); card.classList.toggle("hidden", !show); if (show) visible += 1; });
+      if (emptyState) emptyState.classList.toggle("hidden", visible !== 0);
+    }
+    searchInput?.addEventListener("input", filterStaff);
+    filterButtons.forEach((button) => button.addEventListener("click", () => { activeRole = button.dataset.role; filterButtons.forEach((item) => item.classList.toggle("active", item === button)); filterStaff(); }));
+  </script>
 </body>
 </html>

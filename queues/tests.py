@@ -334,6 +334,24 @@ class PersonnelDashboardTests(TestCase):
             user=self.manager,
             duty_date=timezone.localdate(),
         ).exists())
+        self.assertContains(response, 'id="staff-search"')
+        self.assertContains(response, 'data-role="NURSE"')
+
+    def test_seed_staff_creates_twenty_safe_idempotent_directory_entries(self):
+        call_command("seed_staff")
+        call_command("seed_staff")
+
+        seeded_users = get_user_model().objects.filter(username__startswith="staff_demo_")
+        self.assertEqual(seeded_users.count(), 20)
+        self.assertTrue(all(not user.has_usable_password() for user in seeded_users))
+        self.assertEqual(
+            StaffProfile.objects.filter(user__in=seeded_users, role=StaffProfile.Role.DOCTOR).count(),
+            5,
+        )
+        self.assertEqual(
+            StaffProfile.objects.filter(user__in=seeded_users, role=StaffProfile.Role.NURSE).count(),
+            9,
+        )
 
     def test_online_nurse_can_be_assigned_to_eligible_patient(self):
         response = self.client.post(reverse("personnel_dashboard"), {
