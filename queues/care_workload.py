@@ -14,11 +14,13 @@ from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit
 MAX_PATIENTS_PER_NURSE = 4
 
 CARE_ACTIVE_STATUSES = {
-    Queue.Status.WAITING_QUEUE,
-    Queue.Status.CALLED,
     Queue.Status.OBSERVATION_MONITORING,
     Queue.Status.REASSESSMENT_REQUIRED,
     Queue.Status.MONITORING,
+}
+PRE_MONITORING_YELLOW_STATUSES = {
+    Queue.Status.WAITING_QUEUE,
+    Queue.Status.CALLED,
 }
 
 TERMINAL_CARE_STATUSES = {
@@ -175,13 +177,19 @@ def choose_nurse_id(*, exclude_user_ids: Iterable[int] | None = None):
     return None
 
 
-def is_visit_assignable(visit: Visit) -> bool:
+def is_visit_assignable(visit: Visit, *, allow_pre_monitoring=False) -> bool:
     queue = getattr(visit, "queue", None)
-    if not queue or queue.status not in CARE_ACTIVE_STATUSES:
+    if not queue:
         return False
-    if queue.status in {Queue.Status.WAITING_QUEUE, Queue.Status.CALLED}:
-        return visit.final_severity == Visit.Severity.YELLOW
-    return True
+    if queue.status in CARE_ACTIVE_STATUSES:
+        return True
+    if (
+        allow_pre_monitoring
+        and queue.status in PRE_MONITORING_YELLOW_STATUSES
+        and visit.final_severity == Visit.Severity.YELLOW
+    ):
+        return True
+    return False
 
 
 def end_assignment_for_visit(visit: Visit, *, when=None) -> int:
@@ -192,9 +200,9 @@ def end_assignment_for_visit(visit: Visit, *, when=None) -> int:
     )
 
 
-def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None):
+def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None, allow_pre_monitoring=False):
     """Assign a visit while enforcing on-duty status and the four-patient cap."""
-    if not is_visit_assignable(visit):
+    if not is_visit_assignable(visit, allow_pre_monitoring=allow_pre_monitoring):
         raise ValueError("visit_not_assignable")
 
     with transaction.atomic():
@@ -226,7 +234,7 @@ def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None):
         return assignment, active_count + 1
 
 
-def auto_assign_visit(*, visit: Visit, assigned_by=None, exclude_user_ids: Iterable[int] | None = None):
+def auto_assign_visit(*, visit: Visit, assigned_by=None, exclude_user_ids: Iterable[int] | None = None, allow_pre_monitoring=False):
     attempted = set(exclude_user_ids or [])
     while True:
         nurse_id = choose_nurse_id(exclude_user_ids=attempted)
@@ -234,7 +242,12 @@ def auto_assign_visit(*, visit: Visit, assigned_by=None, exclude_user_ids: Itera
             raise ValueError("no_nurse_capacity")
         nurse = get_user_model().objects.get(pk=nurse_id)
         try:
-            return assign_visit_to_nurse(visit=visit, nurse=nurse, assigned_by=assigned_by)
+            return assign_visit_to_nurse(
+                visit=visit,
+                nurse=nurse,
+                assigned_by=assigned_by,
+                allow_pre_monitoring=allow_pre_monitoring,
+            )
         except ValueError as exc:
             if str(exc) not in {"nurse_full", "nurse_unavailable"}:
                 raise
@@ -254,12 +267,14 @@ def handover_nurse_cases(*, from_nurse, assigned_by=None, target_nurse=None, rel
                     visit=visit,
                     nurse=target_nurse,
                     assigned_by=assigned_by,
+                    allow_pre_monitoring=True,
                 )
             else:
                 auto_assign_visit(
                     visit=visit,
                     assigned_by=assigned_by,
                     exclude_user_ids={from_nurse.id},
+                    allow_pre_monitoring=True,
                 )
             result.moved += 1
         except ValueError:
