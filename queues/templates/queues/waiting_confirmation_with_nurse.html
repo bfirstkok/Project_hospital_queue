@@ -2,8 +2,8 @@
 
 <style>
   #yellow-nurse-modal {
-    width: min(620px, calc(100vw - 28px));
-    max-height: min(760px, calc(100vh - 32px));
+    width: min(660px, calc(100vw - 28px));
+    max-height: min(780px, calc(100vh - 32px));
     padding: 0 !important;
     border: 1px solid #d8c56a !important;
     border-radius: 16px !important;
@@ -29,7 +29,7 @@
   .yellow-nurse-head p { margin: 0; color: #756329 !important; font-size: 13px; }
   .yellow-nurse-body { padding: 18px 20px 20px; background: #fff !important; }
   .yellow-patient-context {
-    margin-bottom: 13px;
+    margin-bottom: 10px;
     padding: 10px 12px;
     border: 1px solid #eadc96;
     border-radius: 10px;
@@ -37,12 +37,23 @@
     color: #544514 !important;
     font-weight: 700;
   }
-  .yellow-nurse-list { display: grid; gap: 8px; max-height: 380px; overflow: auto; }
+  .yellow-auto-note {
+    margin-bottom: 12px;
+    padding: 9px 11px;
+    border: 1px solid #b9ded7;
+    border-radius: 9px;
+    background: #eef9f7;
+    color: #17675f;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .yellow-nurse-list { display: grid; gap: 8px; max-height: 390px; overflow: auto; padding-right: 3px; }
   .yellow-nurse-choice {
-    display: flex !important;
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
     align-items: center;
     gap: 11px;
-    min-height: 58px;
+    min-height: 68px;
     padding: 10px 12px;
     border: 1px solid #d9e3e6 !important;
     border-radius: 11px;
@@ -51,22 +62,50 @@
     cursor: pointer;
   }
   .yellow-nurse-choice:has(input:checked) {
-    border-color: #d3a900 !important;
-    background: #fff8d8 !important;
-    box-shadow: 0 0 0 2px rgba(211,169,0,.13);
+    border-color: #159688 !important;
+    background: #effaf8 !important;
+    box-shadow: 0 0 0 2px rgba(21,150,136,.12);
+  }
+  .yellow-nurse-choice.full {
+    opacity: .58;
+    cursor: not-allowed;
+    background: #f6f8f9 !important;
   }
   .yellow-nurse-choice input[type="radio"] {
     width: 19px !important;
     height: 19px !important;
     min-height: 19px !important;
-    flex: 0 0 19px;
     margin: 0 !important;
     padding: 0 !important;
-    accent-color: #c99600;
+    accent-color: #0f8d81;
   }
   .yellow-nurse-copy { min-width: 0; }
-  .yellow-nurse-copy strong { display: block; color: #173242 !important; font-size: 15px; }
-  .yellow-nurse-copy span { display: block; margin-top: 2px; color: #6b7d86 !important; font-size: 12px; }
+  .yellow-nurse-copy strong { display: flex; align-items: center; gap: 7px; color: #173242 !important; font-size: 15px; }
+  .yellow-nurse-copy span { display: block; margin-top: 3px; color: #6b7d86 !important; font-size: 12px; }
+  .auto-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 21px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #dff5f1;
+    color: #087f75;
+    font-size: 10px;
+    font-weight: 900;
+  }
+  .nurse-load {
+    min-width: 78px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    background: #f2f7f8;
+    color: #405d6b;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .nurse-load strong { display: block; color: #173242; font-size: 15px; line-height: 1.05; }
+  .nurse-load.full { background: #fff0f0; color: #a62929; }
+  .nurse-load.full strong { color: #b42323; }
   .yellow-nurse-empty {
     padding: 18px;
     border: 1px dashed #d8c56a;
@@ -100,30 +139,49 @@
 <dialog id="yellow-nurse-modal" aria-labelledby="yellow-nurse-title">
   <div class="yellow-nurse-head">
     <div>
-      <h2 id="yellow-nurse-title">เลือกพยาบาลผู้รับผิดชอบ</h2>
-      <p>ผู้ป่วยที่ยืนยันเป็นสีเหลืองต้องมีพยาบาลขึ้นเวรและพร้อมรับผู้ป่วยเป็นผู้ดูแล</p>
+      <h2 id="yellow-nurse-title">พยาบาลผู้รับผิดชอบ</h2>
+      <p>ระบบเลือกพยาบาลที่มีผู้ป่วยในความดูแลน้อยที่สุดให้อัตโนมัติ และจำกัดไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล</p>
     </div>
     <button class="yellow-nurse-cancel" type="button" data-yellow-close>ปิด</button>
   </div>
   <div class="yellow-nurse-body">
     <div class="yellow-patient-context" id="yellow-patient-context">ผู้ป่วยสีเหลือง</div>
+    {% if has_assignable_nurse %}
+      <div class="yellow-auto-note">✓ ระบบเลือกคนที่ว่างที่สุดไว้ให้แล้ว สามารถเปลี่ยนพยาบาลได้ก่อนกดยืนยัน</div>
+    {% endif %}
     <div class="yellow-nurse-list">
-      {% for nurse in available_nurses %}
-        <label class="yellow-nurse-choice">
-          <input type="radio" name="yellow_nurse_picker" value="{{ nurse.id }}">
-          <span class="yellow-nurse-copy">
-            <strong>{{ nurse.get_full_name|default:nurse.username }}</strong>
-            <span>{{ nurse.username }} · ขึ้นเวรวันนี้ · พร้อมรับผู้ป่วย</span>
-          </span>
-        </label>
+      {% for row in nurse_rows %}
+        {% with nurse=row.user %}
+          <label class="yellow-nurse-choice {% if not row.has_capacity %}full{% endif %}">
+            <input
+              type="radio"
+              name="yellow_nurse_picker"
+              value="{{ nurse.id }}"
+              data-recommended="{% if row.recommended %}1{% else %}0{% endif %}"
+              {% if row.recommended %}checked{% endif %}
+              {% if not row.has_capacity %}disabled{% endif %}
+            >
+            <span class="yellow-nurse-copy">
+              <strong>
+                {{ nurse.get_full_name|default:nurse.username }}
+                {% if row.recommended %}<span class="auto-badge">เลือกอัตโนมัติ</span>{% endif %}
+              </strong>
+              <span>{{ nurse.username }} · ขึ้นเวรวันนี้ · {% if row.has_capacity %}พร้อมรับผู้ป่วย{% else %}เต็มแล้ว{% endif %}</span>
+            </span>
+            <span class="nurse-load {% if not row.has_capacity %}full{% endif %}">
+              <strong>{{ row.patient_count }}/{{ max_patients_per_nurse }}</strong>
+              {% if row.has_capacity %}เหลือ {{ row.remaining_capacity }} คน{% else %}เต็ม{% endif %}
+            </span>
+          </label>
+        {% endwith %}
       {% empty %}
         <div class="yellow-nurse-empty">ยังไม่มีพยาบาลที่ขึ้นเวรและเปิดสถานะพร้อมรับผู้ป่วย กรุณาไปตั้งสถานะที่หน้าบุคลากรก่อน</div>
       {% endfor %}
     </div>
-    <div class="yellow-nurse-error" id="yellow-nurse-error" hidden>กรุณาเลือกพยาบาลผู้รับผิดชอบก่อนยืนยัน</div>
+    <div class="yellow-nurse-error" id="yellow-nurse-error" hidden>ไม่มีพยาบาลว่าง กรุณาเลือกพยาบาลที่ยังดูแลไม่ครบ {{ max_patients_per_nurse }} คน</div>
     <div class="yellow-nurse-actions">
       <button class="yellow-nurse-cancel" type="button" data-yellow-close>ยกเลิก</button>
-      <button class="yellow-nurse-confirm" id="yellow-nurse-confirm" type="button" {% if not available_nurses %}disabled{% endif %}>เลือกพยาบาลและยืนยันสีเหลือง</button>
+      <button class="yellow-nurse-confirm" id="yellow-nurse-confirm" type="button" {% if not has_assignable_nurse %}disabled{% endif %}>ยืนยันพยาบาลและสีเหลือง</button>
     </div>
   </div>
 </dialog>
@@ -148,6 +206,14 @@
       marker.value = "1";
       form.appendChild(marker);
     }
+  }
+
+  function selectRecommendedNurse() {
+    document.querySelectorAll("input[name='yellow_nurse_picker']").forEach((radio) => { radio.checked = false; });
+    const recommended = modal.querySelector("input[name='yellow_nurse_picker'][data-recommended='1']:not(:disabled)");
+    const firstAvailable = modal.querySelector("input[name='yellow_nurse_picker']:not(:disabled)");
+    const target = recommended || firstAvailable;
+    if (target) target.checked = true;
   }
 
   function closePicker() {
@@ -184,7 +250,7 @@
       pendingForm = form;
       pendingSubmitter = submitter;
 
-      document.querySelectorAll("input[name='yellow_nurse_picker']").forEach((radio) => { radio.checked = false; });
+      selectRecommendedNurse();
       const card = form.closest(".confirmation-card");
       const patientName = card?.querySelector(".patient-name")?.textContent?.trim() || "ผู้ป่วย";
       const queueNumber = card?.querySelector(".queue-chip")?.textContent?.trim() || "";
@@ -196,7 +262,7 @@
 
   confirmButton.addEventListener("click", () => {
     if (!pendingForm || !pendingSubmitter) return;
-    const selectedNurse = modal.querySelector("input[name='yellow_nurse_picker']:checked");
+    const selectedNurse = modal.querySelector("input[name='yellow_nurse_picker']:checked:not(:disabled)");
     if (!selectedNurse) {
       if (errorBox) errorBox.hidden = false;
       return;
