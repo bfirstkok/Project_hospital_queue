@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="th">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>บุคลากรและผู้ป่วยที่รับผิดชอบ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#17324d;--muted:#667d8b;--line:#d8e5e8;--teal:#078e83;--green:#11875e;--yellow:#b77905;--red:#b93242;--blue:#315ea7;--bg:#f2f7f8}
+    *{box-sizing:border-box} body{margin:0;padding:86px 20px 50px;background:var(--bg);color:var(--ink);font-family:"Sarabun",sans-serif} button,input,select{font:inherit}
+    .page{max-width:1540px;margin:auto}.hero{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:28px 32px;border-radius:22px;background:linear-gradient(120deg,#075f5a,#078e83 60%,#14a893);color:#fff;box-shadow:0 16px 36px rgba(7,95,90,.16)}
+    .hero h1{margin:0 0 5px;font-size:34px}.hero p{margin:0;color:rgba(255,255,255,.8)}.date{padding:13px 17px;border-radius:14px;background:#fff;color:var(--ink);min-width:170px}.date small{display:block;color:#087467;font-weight:800}.date b{font-size:18px}
+    .messages{margin:14px 0}.message{margin:7px 0;padding:11px 14px;border-radius:10px;background:#e9f8f1;border:1px solid #a8dfc6;color:#176846}.message.error{background:#fff0f0;border-color:#efb7b7;color:#9b2f37}.message.warning{background:#fff8e6;border-color:#ead08b;color:#7b5700}
+    .stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:16px 0}.stat{display:block;padding:15px 16px;border:1px solid var(--line);border-radius:15px;background:#fff;color:inherit;text-decoration:none;box-shadow:0 6px 18px rgba(23,50,77,.04)}.stat.active,.stat:hover{border-color:#7dc8c0;box-shadow:0 0 0 3px rgba(7,142,131,.08)}.stat b{display:block;font-size:27px}.stat span{font-size:12px;color:var(--muted)}
+    .section{margin-top:16px;border:1px solid var(--line);border-radius:19px;background:#fff;overflow:hidden}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:19px 21px;border-bottom:1px solid #e8eff1}.section-head h2{margin:0;font-size:21px}.hint{color:var(--muted);font-size:12px}
+    .toolbar{display:flex;gap:8px;align-items:center;padding:13px 18px;border-bottom:1px solid #edf2f3;background:#fbfdfd}.search{display:flex;gap:8px;flex:1;max-width:570px}.search input{flex:1;min-width:0;height:41px;padding:0 12px;border:1px solid #c8dade;border-radius:9px}.btn{min-height:37px;padding:7px 11px;border:1px solid #c9dade;border-radius:9px;background:#fff;color:var(--ink);font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}.btn.warn{background:#fff8e6;border-color:#e4c86d;color:#7d5900}.btn.danger{background:#fff3f3;border-color:#efb9bd;color:var(--red)}
+    .filters{display:flex;gap:6px;overflow:auto}.filter{white-space:nowrap;padding:7px 10px;border:1px solid #d2e0e3;border-radius:999px;background:#fff;color:#526b7b;font-size:11px;font-weight:700;cursor:pointer}.filter.active{background:#e6f7f4;color:#087467;border-color:#77c7bc}
+    .staff-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:15px;background:#f8fbfb}.staff-card{padding:15px;border:1px solid #dce7ea;border-radius:15px;background:#fff;min-width:0}.staff-top{display:flex;gap:13px;align-items:center}.avatar{width:76px;height:76px;flex:0 0 76px;display:grid;place-items:center;border-radius:18px;object-fit:cover;background:#e5f6f3;color:#087467;font-weight:800;font-size:23px}.name{font-size:16px;font-weight:800}.username{font-size:11px;color:var(--muted)}.role{display:inline-flex;margin-top:5px;padding:3px 8px;border-radius:999px;background:#eaf1ff;color:var(--blue);font-size:10px;font-weight:800}.role.nurse{background:#e5f7f3;color:#087467}
+    .status-row{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;border:1px solid #d7e3e6;background:#f5f8f9;color:#637681;font-size:10px;font-weight:700}.pill.ok{background:#e9f8f1;border-color:#afe0cc;color:#14714e}.pill.full{background:#fff0f0;border-color:#efb9bd;color:#a22f3b}.pill.busy{background:#fff8e6;border-color:#e8d28a;color:#805c06}
+    .load{margin:9px 0 11px;padding:10px;border-radius:11px;background:#f5fafb;border:1px solid #e0eaec}.load-line{display:flex;justify-content:space-between;font-size:11px;font-weight:800}.bar{height:7px;margin-top:7px;border-radius:999px;background:#e3ecee;overflow:hidden}.bar i{display:block;height:100%;background:#25a57d}.load.busy .bar i{background:#d6a51b}.load.full .bar i{background:#d14b57}.cases{margin:8px 0 0;padding:0;list-style:none}.cases li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px dashed #e5ecee;font-size:11px}.cases b{color:#1d6487}.staff-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;padding-top:10px;border-top:1px solid #edf2f3}.quick{display:inline-flex}.edit{margin-top:8px}.edit summary{font-size:11px;font-weight:800;color:#087467;cursor:pointer}.edit form{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;padding:9px;border-radius:9px;background:#f5f9fa}.edit input,.edit select{min-width:0;height:35px;padding:5px 7px;border:1px solid #c9dade;border-radius:7px}.edit .wide{grid-column:1/-1}
+    .handover{padding:14px 18px;background:#fbfdfd}.handover-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.handover-card{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.handover-card form{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}.handover-card select{min-width:0;height:37px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}
+    .patient-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px;background:#f8fbfb}.patient-card{padding:15px;border:1px solid var(--line);border-radius:15px;background:#fff;scroll-margin-top:90px}.patient-card.focus{box-shadow:0 0 0 4px rgba(7,142,131,.16);border-color:#4eb8ad}.patient-head{display:flex;justify-content:space-between;gap:12px}.queue{color:#176f9a;font-size:17px;font-weight:800}.patient-name{font-size:18px;font-weight:800}.care-type{padding:5px 9px;height:max-content;border-radius:999px;background:#fff5d7;color:#8b6100;font-size:10px;font-weight:800}.reassess{margin-top:9px;padding:8px 10px;border-radius:9px;background:#fff0f0;border:1px solid #efb8bd;color:#a52f3a;font-size:11px;font-weight:800}.device{margin:10px 0;padding:8px 10px;border-radius:9px;background:#edf7f7;font-size:11px}.owner{padding:10px;border-top:1px solid #e7eff0}.owner strong{display:block}.owner small{color:var(--muted)}.assign{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-top:9px}.assign select{min-width:0;height:37px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}.empty{padding:30px;text-align:center;color:var(--muted)}
+    @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}.staff-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){body{padding:78px 10px 30px}.hero,.section-head,.toolbar{align-items:flex-start;flex-direction:column}.hero{padding:22px}.stats,.staff-grid,.patient-grid,.handover-grid{grid-template-columns:1fr}.search{width:100%}.assign{grid-template-columns:1fr}.handover-card form{grid-template-columns:1fr}.avatar{width:68px;height:68px;flex-basis:68px}}
+  </style>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=personnel-workload-20260903">
+</head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="page">
+  <header class="hero">
+    <div><h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1><p>จัดเวร ดูภาระงาน ส่งต่อเคส และควบคุมไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล</p></div>
+    <div class="date"><small>วันที่ปฏิบัติงาน</small><b>{{ today|date:"d/m/Y" }}</b></div>
+  </header>
+
+  {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="stats" aria-label="สรุปหัวหน้าเวร">
+    <a class="stat {% if active_filter == 'all' %}active{% endif %}" href="?filter=all"><b>{{ on_duty_nurse_count }}</b><span>พยาบาลเข้าเวร</span></a>
+    <a class="stat {% if active_filter == 'ready' %}active{% endif %}" href="?filter=ready"><b>{{ ready_nurse_count }}</b><span>ว่างรับเคส</span></a>
+    <a class="stat {% if active_filter == 'full' %}active{% endif %}" href="?filter=full"><b>{{ full_nurse_count }}</b><span>เต็ม {{ max_patients_per_nurse }}/{{ max_patients_per_nurse }}</span></a>
+    <a class="stat {% if active_filter == 'unassigned' %}active{% endif %}" href="?filter=unassigned"><b>{{ unassigned_count }}</b><span>ผู้ป่วยยังไม่มีผู้ดูแล</span></a>
+    <a class="stat {% if active_filter == 'reassessment' %}active{% endif %}" href="?filter=reassessment"><b>{{ reassessment_count }}</b><span>ต้องประเมินซ้ำ</span></a>
+    <div class="stat"><b>{{ assigned_count }}/{{ patient_rows|length }}</b><span>เคสที่มีผู้รับผิดชอบ</span></div>
+  </section>
+
+  <section class="section" id="staff-section">
+    <div class="section-head"><div><h2>บุคลากรวันนี้</h2><div class="hint">คนขึ้นเวรอยู่ก่อน และพยาบาลเรียงตามภาระงาน</div></div><div class="hint">0–1 ว่าง · 2–3 กำลังดูแล · 4 เต็ม</div></div>
+    <div class="toolbar">
+      <div class="search"><input id="staff-search" type="search" placeholder="ค้นหาชื่อหรือชื่อผู้ใช้..."><button class="btn primary" id="staff-search-btn" type="button">ค้นหา</button></div>
+      <div class="filters"><button class="filter active" data-role-filter="ALL">ทั้งหมด</button>{% for role,label in staff_role_choices %}<button class="filter" data-role-filter="{{ role }}">{{ label }}</button>{% endfor %}</div>
+    </div>
+    <div class="staff-grid" id="staff-grid">
+      {% for row in staff_rows %}
+      <article class="staff-card" data-role="{{ row.profile.role }}" data-present="{% if row.is_present %}1{% else %}0{% endif %}" data-load="{{ row.load_state }}" data-search="{{ row.name|lower }} {{ row.user.username|lower }}">
+        <div class="staff-top">
+          {% if row.profile.photo %}<img class="avatar" src="{% url 'staff_photo' row.profile.id %}" alt="{{ row.name }}">{% else %}<div class="avatar">{{ row.user.first_name|default:row.user.username|slice:":1" }}</div>{% endif %}
+          <div><div class="name">{{ row.name }}</div><div class="username">{{ row.user.username }}</div><span class="role {% if row.profile.role == 'NURSE' %}nurse{% endif %}">{{ row.profile.get_role_display }}</span></div>
+        </div>
+        <div class="status-row">
+          <span class="pill {% if row.is_present %}ok{% endif %}">{% if row.is_present %}● ขึ้นเวรวันนี้{% else %}○ ไม่ขึ้นเวร{% endif %}</span>
+          {% if row.profile.role == 'NURSE' %}<span class="pill {% if row.ready %}ok{% elif row.load_state == 'full' %}full{% endif %}">{% if row.ready %}พร้อมรับผู้ป่วย{% elif row.load_state == 'full' %}เต็มแล้ว{% else %}ไม่พร้อมรับเคสใหม่{% endif %}</span>{% endif %}
+        </div>
+        {% if row.profile.role == 'NURSE' %}
+          <div class="load {{ row.load_state }}"><div class="load-line"><span>ภาระงาน</span><span>{{ row.patient_count }}/{{ max_patients_per_nurse }}</span></div><div class="bar"><i style="width:{% widthratio row.patient_count max_patients_per_nurse 100 %}%"></i></div>
+            {% if row.active_cases %}<ul class="cases">{% for a in row.active_cases %}<li><span><b>{{ a.visit.queue.display_number }}</b> {{ a.visit.patient.first_name }} {{ a.visit.patient.last_name }}</span><span>{{ a.visit.queue.get_status_display }}</span></li>{% endfor %}</ul>{% else %}<div class="hint" style="margin-top:7px">ยังไม่มีผู้ป่วยในความดูแล</div>{% endif %}
+          </div>
+        {% endif %}
+        <div class="staff-actions">
+          <form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_present" value="{% if row.is_present %}0{% else %}1{% endif %}"><button class="btn" type="submit">{% if row.is_present %}ลงเวร{% else %}ขึ้นเวร{% endif %}</button></form>
+          {% if row.profile.role == 'NURSE' and row.is_present %}<form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_available" value="{% if row.is_available %}0{% else %}1{% endif %}"><button class="btn {% if not row.is_available %}primary{% endif %}" type="submit">{% if row.is_available %}พักรับผู้ป่วย{% else %}พร้อมรับผู้ป่วย{% endif %}</button></form>{% endif %}
+        </div>
+        <details class="edit"><summary>แก้ไขชื่อ รูป และประเภท</summary><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="update_staff_identity"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง"><input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล"><input class="wide" type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="btn primary wide" type="submit">บันทึกชื่อและรูป</button></form><form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><select name="role" style="height:35px;border:1px solid #c9dade;border-radius:7px">{% for role,label in staff_role_choices %}<option value="{{ role }}" {% if row.profile.role == role %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn" type="submit">เปลี่ยนประเภท</button></form></details>
+      </article>
+      {% empty %}<div class="empty">ยังไม่มีบุคลากร</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="section" id="handover-section">
+    <div class="section-head"><div><h2>ส่งต่อเวร</h2><div class="hint">ส่งผู้ป่วยทั้งหมดของพยาบาลคนหนึ่งไปคนรับช่วง หรือปล่อยให้ระบบกระจายไปคนที่ว่างที่สุด</div></div></div>
+    <div class="handover"><div class="handover-grid">
+      {% for row in nurse_rows %}{% if row.active_cases %}
+      <div class="handover-card"><strong>{{ row.user.get_full_name|default:row.user.username }}</strong><div class="hint">มี {{ row.patient_count }} เคสในความดูแล</div>
+        <form method="post" onsubmit="return confirm('ยืนยันส่งต่อเคสทั้งหมดของพยาบาลคนนี้?');">{% csrf_token %}<input type="hidden" name="action" value="handover_nurse"><input type="hidden" name="from_nurse_id" value="{{ row.user.id }}"><select name="to_nurse_id"><option value="">กระจายอัตโนมัติไปคนที่ว่างที่สุด</option>{% for target in assignable_nurses %}{% if target.user.id != row.user.id %}<option value="{{ target.user.id }}">{{ target.user.get_full_name|default:target.user.username }} · {{ target.patient_count }}/{{ max_patients_per_nurse }}</option>{% endif %}{% endfor %}</select><button class="btn warn" type="submit">ส่งต่อทั้งหมด</button></form>
+      </div>{% endif %}{% empty %}<div class="empty">ยังไม่มีเคสสำหรับส่งต่อ</div>{% endfor %}
+    </div></div>
+  </section>
+
+  <section class="section" id="patients-section">
+    <div class="section-head"><div><h2>ผู้ป่วยและผู้รับผิดชอบ</h2><div class="hint">เปลี่ยนพยาบาลได้จากตรงนี้ และระบบจะเก็บ assignment เดิมเป็นประวัติ</div></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_all_unassigned"><button class="btn primary" type="submit">มอบหมายเคสที่ว่างอัตโนมัติ</button></form></div>
+    <div class="patient-grid">
+      {% for row in patient_rows %}
+      <article id="patient-{{ row.visit.id }}" class="patient-card {% if focus_visit_id == row.visit.id|stringformat:'s' %}focus{% endif %}" data-unassigned="{% if row.care_assignment %}0{% else %}1{% endif %}" data-reassessment="{% if row.needs_reassessment %}1{% else %}0{% endif %}">
+        <div class="patient-head"><div><div class="queue">{{ row.queue.display_number }}</div><div class="patient-name">{{ row.patient.first_name }} {{ row.patient.last_name }}</div><div class="hint">Visit {{ row.visit.id }} · {{ row.queue.get_status_display }}</div></div><span class="care-type">{{ row.care_type }}</span></div>
+        {% if row.needs_reassessment %}<div class="reassess">⚠ ต้องประเมินซ้ำทันที{% if row.care_assignment %} · แจ้ง {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}{% endif %}</div>{% endif %}
+        <div class="device">อุปกรณ์: <b>{% if row.device %}{{ row.device.device_id }}{% else %}ยังไม่ผูกอุปกรณ์{% endif %}</b></div>
+        <div class="owner">
+          {% if row.care_assignment %}<strong>พยาบาลผู้ดูแล: {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</strong><small>{{ row.care_assignment.nurse.username }} · เริ่ม {{ row.care_assignment.assigned_at|date:"d/m H:i" }}</small>{% else %}<strong style="color:#a36f00">ยังไม่มีพยาบาลผู้ดูแล</strong>{% endif %}
+          <form class="assign" method="post">{% csrf_token %}<input type="hidden" name="action" value="{% if row.care_assignment %}reassign_patient{% else %}assign_patient{% endif %}"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><select name="nurse_id" required><option value="">เลือกพยาบาล...</option>{% for nurse in assignable_nurses %}<option value="{{ nurse.user.id }}">{{ nurse.user.get_full_name|default:nurse.user.username }} · {{ nurse.patient_count }}/{{ max_patients_per_nurse }}</option>{% endfor %}</select><button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนผู้ดูแล{% else %}มอบหมาย{% endif %}</button>{% if row.care_assignment %}<button class="btn danger" type="submit" name="action" value="end_assignment" onclick="this.form.insertAdjacentHTML('beforeend','<input type=hidden name=assignment_id value={{ row.care_assignment.id }}>')">ยุติ</button>{% endif %}</form>
+          {% if not row.care_assignment %}<form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><button class="btn" type="submit">เลือกคนว่างให้อัตโนมัติ</button></form>{% endif %}
+        </div>
+      </article>
+      {% empty %}<div class="empty">ยังไม่มีผู้ป่วยในกลุ่มที่ต้องจัดผู้ดูแล</div>{% endfor %}
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  const search = document.getElementById('staff-search');
+  const searchBtn = document.getElementById('staff-search-btn');
+  let role = 'ALL';
+  const activeFilter = '{{ active_filter|escapejs }}';
+  function applyStaff(){
+    const q=(search?.value||'').trim().toLowerCase();
+    document.querySelectorAll('.staff-card').forEach(card=>{
+      const roleOk=role==='ALL'||card.dataset.role===role;
+      const textOk=!q||(card.dataset.search||'').includes(q);
+      const stateOk=activeFilter==='ready' ? (card.dataset.role==='NURSE' && card.dataset.present==='1' && card.dataset.load!=='full') : activeFilter==='full' ? (card.dataset.role==='NURSE' && card.dataset.load==='full') : true;
+      card.style.display=(roleOk&&textOk&&stateOk)?'':'none';
+    });
+  }
+  search?.addEventListener('input',applyStaff); searchBtn?.addEventListener('click',applyStaff); search?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyStaff();}});
+  document.querySelectorAll('[data-role-filter]').forEach(btn=>btn.addEventListener('click',()=>{role=btn.dataset.roleFilter;document.querySelectorAll('[data-role-filter]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');applyStaff();}));
+  if(activeFilter==='unassigned'||activeFilter==='reassessment'){
+    document.getElementById('staff-section').style.display='none';
+    document.getElementById('handover-section').style.display='none';
+    document.querySelectorAll('.patient-card').forEach(card=>{card.style.display=(activeFilter==='unassigned'?card.dataset.unassigned==='1':card.dataset.reassessment==='1')?'':'none';});
+    document.getElementById('patients-section')?.scrollIntoView({block:'start'});
+  }
+  const focused=document.querySelector('.patient-card.focus'); if(focused) setTimeout(()=>focused.scrollIntoView({behavior:'smooth',block:'center'}),150);
+  applyStaff();
+})();
+</script>
+</body>
+</html>
