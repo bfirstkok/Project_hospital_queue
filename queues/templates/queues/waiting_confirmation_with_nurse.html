@@ -1,0 +1,210 @@
+{% include "queues/waiting_confirmation.html" %}
+
+<style>
+  #yellow-nurse-modal {
+    width: min(620px, calc(100vw - 28px));
+    max-height: min(760px, calc(100vh - 32px));
+    padding: 0 !important;
+    border: 1px solid #d8c56a !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    color: #173242 !important;
+    box-shadow: 0 24px 80px rgba(30,45,55,.28) !important;
+    overflow: hidden;
+  }
+  #yellow-nurse-modal::backdrop {
+    background: rgba(20,35,45,.58);
+    backdrop-filter: blur(3px);
+  }
+  .yellow-nurse-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #eadc96;
+    background: #fff8d8 !important;
+  }
+  .yellow-nurse-head h2 { margin: 0 0 4px; color: #6d4d00 !important; font-size: 21px; }
+  .yellow-nurse-head p { margin: 0; color: #756329 !important; font-size: 13px; }
+  .yellow-nurse-body { padding: 18px 20px 20px; background: #fff !important; }
+  .yellow-patient-context {
+    margin-bottom: 13px;
+    padding: 10px 12px;
+    border: 1px solid #eadc96;
+    border-radius: 10px;
+    background: #fffbea !important;
+    color: #544514 !important;
+    font-weight: 700;
+  }
+  .yellow-nurse-list { display: grid; gap: 8px; max-height: 380px; overflow: auto; }
+  .yellow-nurse-choice {
+    display: flex !important;
+    align-items: center;
+    gap: 11px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid #d9e3e6 !important;
+    border-radius: 11px;
+    background: #fff !important;
+    color: #173242 !important;
+    cursor: pointer;
+  }
+  .yellow-nurse-choice:has(input:checked) {
+    border-color: #d3a900 !important;
+    background: #fff8d8 !important;
+    box-shadow: 0 0 0 2px rgba(211,169,0,.13);
+  }
+  .yellow-nurse-choice input[type="radio"] {
+    width: 19px !important;
+    height: 19px !important;
+    min-height: 19px !important;
+    flex: 0 0 19px;
+    margin: 0 !important;
+    padding: 0 !important;
+    accent-color: #c99600;
+  }
+  .yellow-nurse-copy { min-width: 0; }
+  .yellow-nurse-copy strong { display: block; color: #173242 !important; font-size: 15px; }
+  .yellow-nurse-copy span { display: block; margin-top: 2px; color: #6b7d86 !important; font-size: 12px; }
+  .yellow-nurse-empty {
+    padding: 18px;
+    border: 1px dashed #d8c56a;
+    border-radius: 10px;
+    background: #fffbea;
+    color: #7a5a00;
+    text-align: center;
+  }
+  .yellow-nurse-error { margin-top: 10px; color: #b42323 !important; font-size: 13px; font-weight: 700; }
+  .yellow-nurse-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .yellow-nurse-actions button {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 9px !important;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .yellow-nurse-cancel {
+    border: 1px solid #cbd7dc !important;
+    background: #fff !important;
+    color: #405d6b !important;
+  }
+  .yellow-nurse-confirm {
+    border: 1px solid #c99600 !important;
+    background: #facc15 !important;
+    color: #422006 !important;
+  }
+  .yellow-nurse-confirm:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+
+<dialog id="yellow-nurse-modal" aria-labelledby="yellow-nurse-title">
+  <div class="yellow-nurse-head">
+    <div>
+      <h2 id="yellow-nurse-title">เลือกพยาบาลผู้รับผิดชอบ</h2>
+      <p>ผู้ป่วยที่ยืนยันเป็นสีเหลืองต้องมีพยาบาลขึ้นเวรและพร้อมรับผู้ป่วยเป็นผู้ดูแล</p>
+    </div>
+    <button class="yellow-nurse-cancel" type="button" data-yellow-close>ปิด</button>
+  </div>
+  <div class="yellow-nurse-body">
+    <div class="yellow-patient-context" id="yellow-patient-context">ผู้ป่วยสีเหลือง</div>
+    <div class="yellow-nurse-list">
+      {% for nurse in available_nurses %}
+        <label class="yellow-nurse-choice">
+          <input type="radio" name="yellow_nurse_picker" value="{{ nurse.id }}">
+          <span class="yellow-nurse-copy">
+            <strong>{{ nurse.get_full_name|default:nurse.username }}</strong>
+            <span>{{ nurse.username }} · ขึ้นเวรวันนี้ · พร้อมรับผู้ป่วย</span>
+          </span>
+        </label>
+      {% empty %}
+        <div class="yellow-nurse-empty">ยังไม่มีพยาบาลที่ขึ้นเวรและเปิดสถานะพร้อมรับผู้ป่วย กรุณาไปตั้งสถานะที่หน้าบุคลากรก่อน</div>
+      {% endfor %}
+    </div>
+    <div class="yellow-nurse-error" id="yellow-nurse-error" hidden>กรุณาเลือกพยาบาลผู้รับผิดชอบก่อนยืนยัน</div>
+    <div class="yellow-nurse-actions">
+      <button class="yellow-nurse-cancel" type="button" data-yellow-close>ยกเลิก</button>
+      <button class="yellow-nurse-confirm" id="yellow-nurse-confirm" type="button" {% if not available_nurses %}disabled{% endif %}>เลือกพยาบาลและยืนยันสีเหลือง</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const modal = document.getElementById("yellow-nurse-modal");
+  const confirmButton = document.getElementById("yellow-nurse-confirm");
+  const errorBox = document.getElementById("yellow-nurse-error");
+  const patientContext = document.getElementById("yellow-patient-context");
+  if (!modal || !confirmButton) return;
+
+  let pendingForm = null;
+  let pendingSubmitter = null;
+
+  function closePicker() {
+    modal.close();
+    pendingForm = null;
+    pendingSubmitter = null;
+    if (errorBox) errorBox.hidden = true;
+  }
+
+  document.querySelectorAll("[data-yellow-close]").forEach((button) => {
+    button.addEventListener("click", closePicker);
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closePicker();
+  });
+
+  document.querySelectorAll("input[name='yellow_nurse_picker']").forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (errorBox) errorBox.hidden = true;
+    });
+  });
+
+  document.querySelectorAll(".confirm-form").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      const submitter = event.submitter;
+      const selectedSeverity = submitter && submitter.value;
+      if (selectedSeverity !== "YELLOW" || form.dataset.yellowNurseReady === "1") return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pendingForm = form;
+      pendingSubmitter = submitter;
+
+      document.querySelectorAll("input[name='yellow_nurse_picker']").forEach((radio) => { radio.checked = false; });
+      const card = form.closest(".confirmation-card");
+      const patientName = card?.querySelector(".patient-name")?.textContent?.trim() || "ผู้ป่วย";
+      const queueNumber = card?.querySelector(".queue-chip")?.textContent?.trim() || "";
+      if (patientContext) patientContext.textContent = `${queueNumber ? queueNumber + " · " : ""}${patientName} · ผลยืนยันสีเหลือง`;
+      if (errorBox) errorBox.hidden = true;
+      modal.showModal();
+    }, true);
+  });
+
+  confirmButton.addEventListener("click", () => {
+    if (!pendingForm || !pendingSubmitter) return;
+    const selectedNurse = modal.querySelector("input[name='yellow_nurse_picker']:checked");
+    if (!selectedNurse) {
+      if (errorBox) errorBox.hidden = false;
+      return;
+    }
+
+    let hiddenNurse = pendingForm.querySelector("input[name='nurse_id']");
+    if (!hiddenNurse) {
+      hiddenNurse = document.createElement("input");
+      hiddenNurse.type = "hidden";
+      hiddenNurse.name = "nurse_id";
+      pendingForm.appendChild(hiddenNurse);
+    }
+    hiddenNurse.value = selectedNurse.value;
+    pendingForm.dataset.yellowNurseReady = "1";
+
+    const formToSubmit = pendingForm;
+    const submitterToUse = pendingSubmitter;
+    modal.close();
+    pendingForm = null;
+    pendingSubmitter = null;
+    formToSubmit.requestSubmit(submitterToUse);
+  });
+})();
+</script>
