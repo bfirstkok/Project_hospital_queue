@@ -101,11 +101,13 @@ def triage_visit(request, visit_id: int):
                 visit=visit,
                 nurse=requested_nurse,
                 assigned_by=request.user,
+                allow_pre_monitoring=True,
             )
         else:
             assignment, patient_count = auto_assign_visit(
                 visit=visit,
                 assigned_by=request.user,
+                allow_pre_monitoring=True,
             )
     except ValueError as exc:
         transaction.set_rollback(True)
