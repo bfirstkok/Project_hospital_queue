@@ -183,12 +183,14 @@ def is_visit_assignable(visit: Visit, *, allow_pre_monitoring=False) -> bool:
         return False
     if queue.status in CARE_ACTIVE_STATUSES:
         return True
-    if (
-        allow_pre_monitoring
-        and queue.status in PRE_MONITORING_YELLOW_STATUSES
-        and visit.final_severity == Visit.Severity.YELLOW
-    ):
-        return True
+    if queue.status in PRE_MONITORING_YELLOW_STATUSES and visit.final_severity == Visit.Severity.YELLOW:
+        # Initial assignment before wearable pairing is allowed only from the
+        # yellow-confirmation flow. Once an owner already exists, reassignment
+        # is also allowed from the personnel/detail UI.
+        return bool(
+            allow_pre_monitoring
+            or NurseCareAssignment.objects.filter(visit=visit, is_active=True).exists()
+        )
     return False
 
 
