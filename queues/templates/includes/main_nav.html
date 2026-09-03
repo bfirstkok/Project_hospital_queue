@@ -1,3 +1,4 @@
+{% load care_assignment_tags %}
 <style>
   /* The workflow navigation is fixed to the viewport, so reserve vertical
      space on every page that includes it instead of letting it cover titles. */
@@ -79,6 +80,55 @@
     transform: translateX(-50%);
   }
 
+  .responsible-nurse-banner {
+    position: fixed;
+    top: 66px;
+    right: 18px;
+    z-index: 95;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: min(360px, calc(100vw - 36px));
+    padding: 9px 12px;
+    border: 1px solid #badfd8;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #234650;
+    box-shadow: 0 6px 22px rgba(38, 75, 89, .12);
+    font-size: 12px;
+  }
+
+  .responsible-nurse-banner .nurse-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border-radius: 50%;
+    background: #0e9f83;
+    box-shadow: 0 0 0 4px rgba(14, 159, 131, .12);
+  }
+
+  .responsible-nurse-banner.unassigned {
+    border-color: #ead08b;
+    background: #fffaf0;
+    color: #7a5700;
+  }
+
+  .responsible-nurse-banner.unassigned .nurse-dot {
+    background: #d7a313;
+    box-shadow: 0 0 0 4px rgba(215, 163, 19, .12);
+  }
+
+  .responsible-nurse-banner strong {
+    color: inherit;
+    font-size: 13px;
+  }
+
+  .responsible-nurse-banner .nurse-user {
+    margin-left: 3px;
+    color: #6a7f88;
+    font-size: 11px;
+  }
+
   @media (max-width: 760px) {
     body {
       padding-top: 58px !important;
@@ -100,6 +150,14 @@
       position: static;
       transform: none;
       margin-top: 12px;
+    }
+
+    .responsible-nurse-banner {
+      position: static;
+      width: 100%;
+      max-width: none;
+      margin-top: 10px;
+      box-sizing: border-box;
     }
   }
 
@@ -137,6 +195,22 @@
   <a class="opd-main-tab {% if request.resolver_match.app_name == 'dashboard' or request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}" href="/dashboard/">แดชบอร์ด</a>
   <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_time_report' %}active{% endif %}" href="{% url 'dashboard:waiting_time_report' %}">รายงาน</a>
 </nav>
+
+{% if visit and request.resolver_match.url_name == 'opd_visit_detail' or visit and request.resolver_match.url_name == 'followup_visit_detail' or visit and request.resolver_match.url_name == 'waiting_monitor_visit_detail' %}
+  {% active_responsible_nurse visit as responsible_nurse %}
+  {% if responsible_nurse %}
+    <div class="responsible-nurse-banner" aria-label="พยาบาลผู้ดูแล">
+      <span class="nurse-dot"></span>
+      <span>พยาบาลผู้ดูแล: <strong>{{ responsible_nurse.get_full_name|default:responsible_nurse.username }}</strong><span class="nurse-user">{{ responsible_nurse.username }}</span></span>
+    </div>
+  {% elif visit.final_severity == 'YELLOW' %}
+    <div class="responsible-nurse-banner unassigned" aria-label="ยังไม่มอบหมายพยาบาล">
+      <span class="nurse-dot"></span>
+      <span><strong>ยังไม่มอบหมายพยาบาลผู้ดูแล</strong></span>
+    </div>
+  {% endif %}
+{% endif %}
+
 <script>
   // Keep the personnel page's online indicator accurate while a staff member
   // has any main workflow page open.
