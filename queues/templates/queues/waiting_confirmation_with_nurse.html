@@ -139,6 +139,17 @@
   let pendingForm = null;
   let pendingSubmitter = null;
 
+  function ensureYellowAssignmentMarker(form) {
+    let marker = form.querySelector("input[name='yellow_assignment_required']");
+    if (!marker) {
+      marker = document.createElement("input");
+      marker.type = "hidden";
+      marker.name = "yellow_assignment_required";
+      marker.value = "1";
+      form.appendChild(marker);
+    }
+  }
+
   function closePicker() {
     modal.close();
     pendingForm = null;
@@ -161,6 +172,8 @@
   });
 
   document.querySelectorAll(".confirm-form").forEach((form) => {
+    ensureYellowAssignmentMarker(form);
+
     form.addEventListener("submit", (event) => {
       const submitter = event.submitter;
       const selectedSeverity = submitter && submitter.value;
