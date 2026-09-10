@@ -34,6 +34,24 @@ def load_env_file(path):
 load_env_file(BASE_DIR / ".env")
 
 
+def parse_rate(value, default_limit=3, default_window=900):
+    """Parse compact rates such as 3/15m into a request limit and seconds."""
+    try:
+        limit_text, window_text = value.lower().split("/", 1)
+        multiplier = 1
+        if window_text.endswith("m"):
+            multiplier = 60
+            window_text = window_text[:-1]
+        elif window_text.endswith("h"):
+            multiplier = 3600
+            window_text = window_text[:-1]
+        elif window_text.endswith("s"):
+            window_text = window_text[:-1]
+        return int(limit_text), int(window_text) * multiplier
+    except (AttributeError, TypeError, ValueError):
+        return default_limit, default_window
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -80,11 +98,22 @@ PATIENT_APP_ORIGINS = {
     origin.strip().rstrip("/")
     for origin in os.getenv(
         "PATIENT_APP_ORIGINS",
-        "http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io",
+        "http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io,https://hospital.bfirstkok.me",
     ).split(",")
     if origin.strip()
 }
 PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", str(60 * 60 * 12)))
+OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "300"))
+OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+OTP_REQUEST_RATE = os.getenv("OTP_REQUEST_RATE", "3/15m")
+OTP_REQUEST_LIMIT, OTP_REQUEST_WINDOW = parse_rate(OTP_REQUEST_RATE)
+PIN_VERIFY_RATE_LIMIT = int(os.getenv("PIN_VERIFY_RATE_LIMIT", "30"))
+PIN_VERIFY_RATE_WINDOW = int(os.getenv("PIN_VERIFY_RATE_WINDOW", "300"))
+PIN_LOCKOUT_TIERS = [
+    int(value.strip())
+    for value in os.getenv("PIN_LOCKOUT_TIERS", "60,300,1800").strip("[]").split(",")
+    if value.strip()
+]
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
@@ -201,6 +230,19 @@ else:
     }
 
 DATABASES["default"]["CONN_MAX_AGE"] = int(os.getenv("DB_CONN_MAX_AGE", "60"))
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes", "on")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "โรงพยาบาล <noreply@hospital.example>")
 
 
 # Password validation

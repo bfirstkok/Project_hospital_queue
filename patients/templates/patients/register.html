@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วย{% endif %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
-  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=patient-style-20260826">
+  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=patient-style-20260908">
 </head>
 
 <body>
@@ -120,10 +120,39 @@
                      value="{{ form.phone.value|default:'' }}">
               {% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}
             </div>
+
+            <div class="field">
+              <label>อีเมลสำหรับกู้คืนรหัส PIN</label>
+              <input name="email" type="email" placeholder="patient@example.com"
+                     class="{% if form.email.errors %}has-error{% endif %}"
+                     value="{{ form.email.value|default:'' }}">
+              {% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+            </div>
           </div>
 
-          <!-- ================= SECTION 2: สุขภาพ ================= -->
-          <h3>ข้อมูลสุขภาพ</h3>
+          <!-- ================= SECTION 2: อาการที่มารับบริการ ================= -->
+          <h3>อาการสำคัญที่มารับบริการ <span class="required-mark">*</span></h3>
+          <p class="section-help">เลือกอาการเบื้องต้นได้มากกว่า 1 รายการ และระบุรายละเอียดเพิ่มเติม</p>
+          <div class="choice-chips" data-chip-group data-target="note" aria-label="ตัวเลือกอาการสำคัญ">
+            <button type="button" class="choice-chip" data-value="มีไข้ / หนาวสั่น">มีไข้ / หนาวสั่น</button>
+            <button type="button" class="choice-chip" data-value="ไอ / เจ็บคอ / มีน้ำมูก">ไอ / เจ็บคอ / มีน้ำมูก</button>
+            <button type="button" class="choice-chip" data-value="เวียนศีรษะ / หน้ามืด">เวียนศีรษะ / หน้ามืด</button>
+            <button type="button" class="choice-chip" data-value="ปวดท้อง / คลื่นไส้">ปวดท้อง / คลื่นไส้</button>
+            <button type="button" class="choice-chip" data-value="แน่นหน้าอก / หายใจเหนื่อย">แน่นหน้าอก / หายใจเหนื่อย</button>
+            <button type="button" class="choice-chip" data-value="ปวดกล้ามเนื้อ / ปวดข้อ">ปวดกล้ามเนื้อ / ปวดข้อ</button>
+            <button type="button" class="choice-chip" data-value="มีบาดแผล / อุบัติเหตุ">มีบาดแผล / อุบัติเหตุ</button>
+            <button type="button" class="choice-chip" data-value="ตาแดง / ระคายเคืองตา">ตาแดง / ระคายเคืองตา</button>
+          </div>
+          <div class="field full">
+            <label>ระบุรายละเอียดอาการสำคัญ <span class="required-mark">*</span></label>
+            <textarea id="note" name="note" required placeholder="เช่น มีไข้สูง ปวดศีรษะ และไอต่อเนื่องมา 2 วัน">{{ form.note.value|default:'' }}</textarea>
+            {% if form.note.errors %}<div class="field-error">{{ form.note.errors.0 }}</div>{% endif %}
+          </div>
+
+          <!-- ================= SECTION 3: สุขภาพ ================= -->
+          <h3>ข้อมูลสุขภาพและประวัติการแพ้</h3>
+          <p class="section-help">ข้อมูลเบื้องต้นเพื่อความปลอดภัยในการตรวจรักษา</p>
+          <div class="health-notice">ข้อมูลสัญญาณชีพ เช่น ชีพจร อุณหภูมิ และออกซิเจนในเลือด จะบันทึกในขั้นตอนวัดสัญญาณชีพ</div>
           <div class="grid">
             <div class="field">
               <label>หมู่เลือด</label>
@@ -152,43 +181,46 @@
               {% if form.weight_kg.errors %}<div class="field-error">{{ form.weight_kg.errors.0 }}</div>{% endif %}
             </div>
 
-            <div class="field">
-              <label>BP ตัวบน</label>
-              <input name="bp_sys" type="number" min="0" placeholder="เช่น 120"
-                     class="{% if form.bp_sys.errors %}has-error{% endif %}"
-                     value="{{ form.bp_sys.value|default:'' }}">
-              {% if form.bp_sys.errors %}<div class="field-error">{{ form.bp_sys.errors.0 }}</div>{% endif %}
-            </div>
-
-            <div class="field">
-              <label>BP ตัวล่าง</label>
-              <input name="bp_dia" type="number" min="0" placeholder="เช่น 80"
-                     class="{% if form.bp_dia.errors %}has-error{% endif %}"
-                     value="{{ form.bp_dia.value|default:'' }}">
-              {% if form.bp_dia.errors %}<div class="field-error">{{ form.bp_dia.errors.0 }}</div>{% endif %}
-            </div>
           </div>
 
           <div class="field full">
             <label>โรคประจำตัว</label>
-            <textarea name="chronic_diseases">{{ form.chronic_diseases.value|default:'' }}</textarea>
+            <div class="choice-chips" data-chip-group data-target="chronic_diseases">
+              <button type="button" class="choice-chip" data-value="ไม่มีโรคประจำตัว">ไม่มีโรคประจำตัว</button>
+              <button type="button" class="choice-chip" data-value="ความดันโลหิตสูง">ความดันโลหิตสูง</button>
+              <button type="button" class="choice-chip" data-value="เบาหวาน">เบาหวาน</button>
+              <button type="button" class="choice-chip" data-value="โรคหัวใจ">โรคหัวใจ</button>
+              <button type="button" class="choice-chip" data-value="โรคไต">โรคไต</button>
+              <button type="button" class="choice-chip" data-value="หอบหืด / ภูมิแพ้">หอบหืด / ภูมิแพ้</button>
+              <button type="button" class="choice-chip" data-value="ไขมันในเลือดสูง">ไขมันในเลือดสูง</button>
+            </div>
+            <textarea id="chronic_diseases" name="chronic_diseases" placeholder="ระบุโรคประจำตัวเพิ่มเติม (ถ้ามี)">{{ form.chronic_diseases.value|default:'' }}</textarea>
           </div>
 
           <div class="field full">
             <label>แพ้ยา / อาหาร</label>
-            <textarea name="allergies">{{ form.allergies.value|default:'' }}</textarea>
+            <div class="choice-chips" data-chip-group data-target="allergies">
+              <button type="button" class="choice-chip" data-value="ไม่มีประวัติแพ้ยา">ไม่มีประวัติแพ้ยา</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยากลุ่มเพนิซิลลิน">แพ้ยากลุ่มเพนิซิลลิน</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยาแก้ปวด / แอสไพริน">แพ้ยาแก้ปวด / แอสไพริน</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยาซัลฟา">แพ้ยาซัลฟา</button>
+              <button type="button" class="choice-chip" data-value="แพ้อาหารทะเล">แพ้อาหารทะเล</button>
+            </div>
+            <textarea id="allergies" name="allergies" placeholder="ระบุประวัติแพ้ยา อาหาร หรือสารอื่นเพิ่มเติม">{{ form.allergies.value|default:'' }}</textarea>
           </div>
 
           <div class="field full">
             <label>ยาที่ใช้ประจำ</label>
-            <textarea name="medications">{{ form.medications.value|default:'' }}</textarea>
-          </div>
-
-          <!-- ================= SECTION 3: อาการที่มารับบริการ ================= -->
-          <h3>อาการที่มารับบริการ</h3>
-          <div class="field full">
-            <label>อาการของผู้ป่วย</label>
-            <textarea name="note" placeholder="ระบุอาการสำคัญหรือเหตุผลที่มารับบริการ">{{ form.note.value|default:'' }}</textarea>
+            <div class="choice-chips" data-chip-group data-target="medications">
+              <button type="button" class="choice-chip" data-value="ไม่มียาที่ใช้ประจำ">ไม่มียาที่ใช้ประจำ</button>
+              <button type="button" class="choice-chip" data-value="ยาลดความดันโลหิต">ยาลดความดันโลหิต</button>
+              <button type="button" class="choice-chip" data-value="ยารักษาโรคเบาหวาน">ยารักษาโรคเบาหวาน</button>
+              <button type="button" class="choice-chip" data-value="ยาลดไขมันในเลือด">ยาลดไขมันในเลือด</button>
+              <button type="button" class="choice-chip" data-value="ยาโรคหัวใจ">ยาโรคหัวใจ</button>
+              <button type="button" class="choice-chip" data-value="ยาละลายลิ่มเลือด / ต้านเกล็ดเลือด">ยาละลายลิ่มเลือด / ต้านเกล็ดเลือด</button>
+              <button type="button" class="choice-chip" data-value="ยาพ่นหอบหืด / ยาภูมิแพ้">ยาพ่นหอบหืด / ยาภูมิแพ้</button>
+            </div>
+            <textarea id="medications" name="medications" placeholder="ระบุชื่อยาและขนาดยาที่ใช้เพิ่มเติม">{{ form.medications.value|default:'' }}</textarea>
           </div>
 
           <!-- ================= SECTION 4: ที่อยู่ ================= -->
@@ -231,6 +263,8 @@
 
           <!-- ================= SECTION 5: ติดต่อฉุกเฉิน ================= -->
           <h3>ผู้ติดต่อฉุกเฉิน</h3>
+          <p class="section-help">บุคคลที่สามารถติดต่อได้ในกรณีฉุกเฉิน</p>
+          <div class="emergency-box">
           <div class="grid">
             <div class="field">
               <label>ชื่อผู้ติดต่อ</label>
@@ -258,10 +292,18 @@
               <input name="emergency_phone" value="{{ form.emergency_phone.value|default:'' }}">
             </div>
           </div>
+          </div>
+
+          {% if not is_edit %}
+          <label class="consent-box">
+            <input type="checkbox" name="consent" required>
+            <span>ข้าพเจ้ายืนยันว่าข้อมูลข้างต้นถูกต้อง และยินยอมให้ใช้ข้อมูลเพื่อการลงทะเบียนและให้บริการทางการแพทย์</span>
+          </label>
+          {% endif %}
 
           <!-- ================= FOOTER ================= -->
           <div class="footer">
-            <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}✅ บันทึกการแก้ไข{% else %}✅ บันทึกผู้ป่วย{% endif %}</button>
+            <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}บันทึกการแก้ไข →{% else %}ยืนยันลงทะเบียน →{% endif %}</button>
             <a class="btn ghost" href="{% if is_edit %}{% url 'waiting_vitals' %}{% else %}{% url 'queue_list' %}{% endif %}">ยกเลิก</a>
           </div>
 
@@ -276,9 +318,39 @@
   const nid = document.querySelector('input[name="national_id"]');
   if (nid) {
     nid.addEventListener("input", () => {
-      nid.value = nid.value.replace(/\s+/g, "");
+      nid.value = nid.value.replace(/\D/g, "").slice(0, 13);
     });
   }
+
+  // ตัวเลือกแบบชิป: เพิ่ม/ลบข้อความในช่องที่ส่งเข้า backend เดิม
+  document.querySelectorAll("[data-chip-group]").forEach(group => {
+    const target = document.getElementById(group.dataset.target);
+    if (!target) return;
+
+    const syncSelectedState = () => {
+      const values = target.value.split(/\s*,\s*/).filter(Boolean);
+      group.querySelectorAll(".choice-chip").forEach(chip => {
+        chip.classList.toggle("selected", values.includes(chip.dataset.value));
+        chip.setAttribute("aria-pressed", values.includes(chip.dataset.value) ? "true" : "false");
+      });
+    };
+
+    group.querySelectorAll(".choice-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        const values = target.value.split(/\s*,\s*/).filter(Boolean);
+        const value = chip.dataset.value;
+        const index = values.indexOf(value);
+        if (index >= 0) values.splice(index, 1);
+        else values.push(value);
+        target.value = values.join(", ");
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        syncSelectedState();
+      });
+    });
+
+    target.addEventListener("input", syncSelectedState);
+    syncSelectedState();
+  });
 
   const registerForm = document.getElementById("patientRegisterForm");
   const submitPatientBtn = document.getElementById("submitPatientBtn");

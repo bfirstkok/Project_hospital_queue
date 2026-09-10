@@ -24,7 +24,7 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         model = Patient
         fields = [
             "first_name", "last_name", "national_id",
-            "gender", "birth_date", "age", "phone",
+            "gender", "birth_date", "age", "phone", "email",
             "blood_type",
             "height_cm", "weight_kg", "bp_sys", "bp_dia",
             "province","district","subdistrict","postal_code",
@@ -46,6 +46,9 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         if nid and (not nid.isdigit() or len(nid) != 13):
             raise forms.ValidationError("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก")
         return nid
+
+    def clean_phone(self):
+        return normalize_thai_phone(self.cleaned_data.get("phone"))
 
     def validate_unique(self):
         # หน้าลงทะเบียนรับบริการต้องค้นหาผู้ป่วยเดิมด้วยเลขบัตรก่อน
@@ -69,7 +72,7 @@ class PublicPatientRegistrationForm(BirthDateValidationMixin, forms.ModelForm):
         model = Patient
         fields = [
             "first_name", "last_name", "national_id",
-            "gender", "birth_date", "age", "phone", "blood_type",
+            "gender", "birth_date", "age", "phone", "email", "blood_type",
             "height_cm", "weight_kg",
             "province", "district", "subdistrict", "postal_code",
             "chronic_diseases", "allergies", "medications",
@@ -92,6 +95,19 @@ class PublicPatientRegistrationForm(BirthDateValidationMixin, forms.ModelForm):
             raise forms.ValidationError("กรุณาตรวจสอบอายุ")
         return age
 
+    def clean_phone(self):
+        return normalize_thai_phone(self.cleaned_data.get("phone"))
+
     def validate_unique(self):
         # ผู้ป่วยเดิมลงทะเบียนรับบริการครั้งใหม่ได้ โดย view จะอัปเดตข้อมูลเดิม
         pass
+
+
+def normalize_thai_phone(value):
+    """Store Thai phone numbers consistently in local 0xxxxxxxxx form."""
+    phone = "".join(character for character in str(value or "") if character.isdigit() or character == "+")
+    if phone.startswith("+66"):
+        phone = "0" + phone[3:]
+    elif phone.startswith("66") and len(phone) == 11:
+        phone = "0" + phone[2:]
+    return phone

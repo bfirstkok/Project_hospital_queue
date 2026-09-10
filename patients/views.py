@@ -1,8 +1,10 @@
 # patients/views.py
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password, make_password
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.db import transaction
 from django.http import JsonResponse
@@ -13,12 +15,13 @@ from django.views.decorators.http import require_POST
 from datetime import timedelta
 import hashlib
 import json
+import logging
 import re
 import secrets
 
 from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm
-from .models import Appointment, Patient, PatientAccessToken
-from .security import rate_limited
+from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
+from .security import rate_limited, rate_limited_by_identifier
 from queues.models import Visit, Queue, VitalSign
 
 
@@ -34,6 +37,9 @@ ACTIVE_QUEUE_STATUSES = {
     Queue.Status.EMERGENCY_TRANSFER,
     Queue.Status.FOLLOWUP,
 }
+
+security_logger = logging.getLogger("security.audit")
+PIN_PATTERN = re.compile(r"[0-9]{6}")
 
 PATIENT_CANCELLABLE_QUEUE_STATUSES = {
     Queue.Status.WAITING_VITALS,
@@ -122,6 +128,57 @@ def _authenticated_patient(request):
     if not access_token.last_used_at or access_token.last_used_at < now - timedelta(minutes=5):
         PatientAccessToken.objects.filter(pk=access_token.pk).update(last_used_at=now)
     return access_token.patient
+
+
+def _pin_is_locked(pin_state, now=None):
+    now = now or timezone.now()
+    if pin_state.locked_until and pin_state.locked_until > now:
+        return True
+    if pin_state.locked_until:
+        pin_state.locked_until = None
+        pin_state.failed_attempts = 0
+        pin_state.save(update_fields=["locked_until", "failed_attempts", "updated_at"])
+    return False
+
+
+def _record_pin_failure(pin_state):
+    pin_state.failed_attempts += 1
+    locked_until = None
+    if pin_state.failed_attempts >= 3:
+        tiers = list(getattr(settings, "PIN_LOCKOUT_TIERS", [60, 300, 1800])) or [60, 300, 1800]
+        duration = tiers[min(pin_state.lockout_level, len(tiers) - 1)]
+        locked_until = timezone.now() + timedelta(seconds=duration)
+        pin_state.locked_until = locked_until
+        pin_state.lockout_level += 1
+        pin_state.failed_attempts = 0
+    pin_state.save(
+        update_fields=["failed_attempts", "locked_until", "lockout_level", "updated_at"]
+    )
+    return 3 - pin_state.failed_attempts if locked_until is None else 0, locked_until
+
+
+def _reset_pin_state(pin_state, new_pin=None):
+    if new_pin is not None:
+        pin_state.pin_hash = make_password(new_pin)
+    pin_state.failed_attempts = 0
+    pin_state.locked_until = None
+    pin_state.lockout_level = 0
+    fields = ["failed_attempts", "locked_until", "lockout_level", "updated_at"]
+    if new_pin is not None:
+        fields.insert(0, "pin_hash")
+    pin_state.save(update_fields=fields)
+
+
+def _locked_response(request, pin_state):
+    return _cors_json(
+        request,
+        {
+            "ok": False,
+            "error": "ถูกระงับชั่วคราว",
+            "locked_until": pin_state.locked_until.isoformat(),
+        },
+        status=423,
+    )
 
 
 def _masked_national_id(national_id):
@@ -348,6 +405,334 @@ def patient_login(request):
 
 
 @csrf_exempt
+def patient_pin_setup(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    patient = _authenticated_patient(request)
+    if not patient:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่"},
+            status=401,
+        )
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    pin = str(payload.get("pin") or "")
+    if not PIN_PATTERN.fullmatch(pin):
+        return _cors_json(
+            request,
+            {"ok": False, "error": "รหัส PIN ต้องเป็นตัวเลข 6 หลัก"},
+            status=400,
+        )
+    with transaction.atomic():
+        pin_state, _ = PatientPin.objects.select_for_update().get_or_create(
+            patient=patient,
+            defaults={"pin_hash": make_password(pin)},
+        )
+        _reset_pin_state(pin_state, pin)
+    access_token, _ = _issue_patient_token(patient)
+    return _cors_json(
+        request,
+        {"ok": True, "access_token": access_token, "message": "ตั้งรหัส PIN สำเร็จ"},
+    )
+
+
+@csrf_exempt
+def patient_pin_verify(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    national_id = str(payload.get("national_id") or "").strip()
+    pin = str(payload.get("pin") or "")
+    if not re.fullmatch(r"[0-9]{13}", national_id) or not PIN_PATTERN.fullmatch(pin):
+        return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
+    if rate_limited_by_identifier(
+        request,
+        "patient-pin-verify",
+        national_id,
+        limit=int(getattr(settings, "PIN_VERIFY_RATE_LIMIT", 30)),
+        window_seconds=int(getattr(settings, "PIN_VERIFY_RATE_WINDOW", 300)),
+    ):
+        return _cors_json(
+            request,
+            {"ok": False, "error": "พยายามตรวจรหัสถี่เกินไป กรุณารอสักครู่"},
+            status=429,
+        )
+
+    with transaction.atomic():
+        pin_state = (
+            PatientPin.objects.select_for_update()
+            .select_related("patient")
+            .filter(patient__national_id=national_id)
+            .first()
+        )
+        if not pin_state:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ยังไม่ได้ตั้งรหัส PIN"},
+                status=404,
+            )
+        if _pin_is_locked(pin_state):
+            return _locked_response(request, pin_state)
+        if not check_password(pin, pin_state.pin_hash):
+            attempts_left, locked_until = _record_pin_failure(pin_state)
+            payload = {"ok": False, "error": "รหัส PIN ไม่ถูกต้อง", "attempts_left": attempts_left}
+            if locked_until:
+                payload["locked_until"] = locked_until.isoformat()
+            return _cors_json(request, payload, status=401)
+        _reset_pin_state(pin_state)
+        patient = pin_state.patient
+
+    access_token, _ = _issue_patient_token(patient)
+    return _cors_json(request, {"ok": True, "access_token": access_token})
+
+
+@csrf_exempt
+def patient_pin_change(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    patient = _authenticated_patient(request)
+    if not patient:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่"},
+            status=401,
+        )
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    current_pin = str(payload.get("current_pin") or "")
+    new_pin = str(payload.get("new_pin") or "")
+    if not PIN_PATTERN.fullmatch(current_pin) or not PIN_PATTERN.fullmatch(new_pin):
+        return _cors_json(
+            request,
+            {"ok": False, "error": "รหัส PIN ต้องเป็นตัวเลข 6 หลัก"},
+            status=400,
+        )
+
+    with transaction.atomic():
+        pin_state = PatientPin.objects.select_for_update().filter(patient=patient).first()
+        if not pin_state:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ยังไม่ได้ตั้งรหัส PIN"},
+                status=404,
+            )
+        if _pin_is_locked(pin_state):
+            return _locked_response(request, pin_state)
+        if not check_password(current_pin, pin_state.pin_hash):
+            attempts_left, locked_until = _record_pin_failure(pin_state)
+            response_payload = {
+                "ok": False,
+                "error": "รหัส PIN เดิมไม่ถูกต้อง",
+                "attempts_left": attempts_left,
+            }
+            if locked_until:
+                response_payload["locked_until"] = locked_until.isoformat()
+            return _cors_json(request, response_payload, status=401)
+        if new_pin == current_pin:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "รหัส PIN ใหม่ต้องไม่ซ้ำกับรหัสเดิม"},
+                status=400,
+            )
+        _reset_pin_state(pin_state, new_pin)
+
+    if patient.email:
+        try:
+            send_mail(
+                "แจ้งเตือนการเปลี่ยนรหัส PIN - โรงพยาบาล",
+                "รหัส PIN สำหรับบัญชีผู้ป่วยของคุณถูกเปลี่ยนแล้ว หากไม่ใช่คุณ กรุณาติดต่อโรงพยาบาลทันที",
+                settings.DEFAULT_FROM_EMAIL,
+                [patient.email],
+                fail_silently=False,
+            )
+        except Exception:
+            security_logger.exception("patient_pin_change_notification_failed")
+    return _cors_json(request, {"ok": True, "message": "เปลี่ยนรหัส PIN สำเร็จ"})
+
+
+@csrf_exempt
+def patient_pin_reset_request(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    national_id = str(payload.get("national_id") or "").strip()
+    channel = str(payload.get("channel") or "").strip().lower()
+    if not re.fullmatch(r"[0-9]{13}", national_id):
+        return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
+    if channel not in {OtpChallenge.Channel.EMAIL, OtpChallenge.Channel.PHONE}:
+        return _cors_json(request, {"ok": False, "error": "ช่องทางรับรหัสไม่ถูกต้อง"}, status=400)
+    if rate_limited_by_identifier(
+        request,
+        "patient-pin-reset",
+        national_id,
+        limit=int(getattr(settings, "OTP_REQUEST_LIMIT", 3)),
+        window_seconds=int(getattr(settings, "OTP_REQUEST_WINDOW", 900)),
+    ):
+        return _cors_json(
+            request,
+            {"ok": False, "error": "ขอรหัสถี่เกินไป กรุณารอสักครู่"},
+            status=429,
+        )
+    if channel == OtpChallenge.Channel.PHONE:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "ยังไม่เปิดให้บริการรับรหัสทาง SMS กรุณาใช้อีเมล"},
+            status=400,
+        )
+
+    patient = Patient.objects.filter(national_id=national_id).only("email").first()
+    generic_response = {"ok": True, "resend_after_seconds": 60}
+    if not patient or not patient.email:
+        return _cors_json(request, generic_response)
+
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    now = timezone.now()
+    with transaction.atomic():
+        # Serialize reset requests for this patient so concurrent requests cannot
+        # leave more than one active challenge.
+        Patient.objects.select_for_update().only("pk").get(pk=patient.pk)
+        OtpChallenge.objects.filter(
+            national_id=national_id,
+            channel=channel,
+            purpose=OtpChallenge.Purpose.PIN_RESET,
+            consumed_at__isnull=True,
+        ).update(consumed_at=now)
+        challenge = OtpChallenge.objects.create(
+            national_id=national_id,
+            channel=channel,
+            purpose=OtpChallenge.Purpose.PIN_RESET,
+            code_hash=make_password(otp),
+            expires_at=now + timedelta(seconds=int(getattr(settings, "OTP_TTL_SECONDS", 300))),
+        )
+
+    try:
+        send_mail(
+            "รหัสยืนยัน (OTP) สำหรับตั้งรหัส PIN ใหม่ - โรงพยาบาล",
+            (
+                f"รหัสยืนยันของคุณคือ  {otp}\n"
+                "รหัสนี้ใช้ได้ภายใน 5 นาที และใช้ได้ครั้งเดียว\n"
+                "หากคุณไม่ได้เป็นผู้ขอ กรุณาละเว้นอีเมลฉบับนี้"
+            ),
+            settings.DEFAULT_FROM_EMAIL,
+            [patient.email],
+            fail_silently=False,
+        )
+    except Exception:
+        OtpChallenge.objects.filter(pk=challenge.pk).update(consumed_at=timezone.now())
+        security_logger.exception("patient_pin_reset_email_delivery_failed")
+    return _cors_json(request, generic_response)
+
+
+@csrf_exempt
+def patient_pin_reset_confirm(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    national_id = str(payload.get("national_id") or "").strip()
+    otp = str(payload.get("otp") or "")
+    pin = str(payload.get("pin") or "")
+    if not re.fullmatch(r"[0-9]{13}", national_id):
+        return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
+    if not PIN_PATTERN.fullmatch(pin):
+        return _cors_json(
+            request,
+            {"ok": False, "error": "รหัส PIN ต้องเป็นตัวเลข 6 หลัก"},
+            status=400,
+        )
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                national_id=national_id,
+                purpose=OtpChallenge.Purpose.PIN_RESET,
+                consumed_at__isnull=True,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not challenge:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ไม่พบรหัส OTP ที่ใช้งานได้ กรุณาขอใหม่"},
+                status=400,
+            )
+        if challenge.expires_at <= timezone.now():
+            return _cors_json(
+                request,
+                {"ok": False, "error": "รหัส OTP หมดอายุ กรุณาขอใหม่"},
+                status=400,
+            )
+        max_attempts = int(getattr(settings, "OTP_MAX_ATTEMPTS", 5))
+        if challenge.attempts >= max_attempts:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่"},
+                status=400,
+            )
+        if not re.fullmatch(r"[0-9]{6}", otp) or not check_password(otp, challenge.code_hash):
+            challenge.attempts += 1
+            challenge.save(update_fields=["attempts"])
+            message = (
+                "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่"
+                if challenge.attempts >= max_attempts
+                else "รหัส OTP ไม่ถูกต้อง"
+            )
+            return _cors_json(request, {"ok": False, "error": message}, status=400)
+
+        patient = Patient.objects.filter(national_id=national_id).first()
+        if not patient:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ไม่สามารถยืนยันรหัส OTP ได้ กรุณาขอใหม่"},
+                status=400,
+            )
+        challenge.consumed_at = timezone.now()
+        challenge.save(update_fields=["consumed_at"])
+        pin_state, _ = PatientPin.objects.select_for_update().get_or_create(
+            patient=patient,
+            defaults={"pin_hash": make_password(pin)},
+        )
+        _reset_pin_state(pin_state, pin)
+
+    access_token, _ = _issue_patient_token(patient)
+    if patient.email:
+        try:
+            send_mail(
+                "แจ้งเตือนการตั้งรหัส PIN ใหม่ - โรงพยาบาล",
+                "รหัส PIN สำหรับบัญชีผู้ป่วยของคุณถูกตั้งใหม่เรียบร้อยแล้ว หากไม่ใช่คุณ กรุณาติดต่อโรงพยาบาลทันที",
+                settings.DEFAULT_FROM_EMAIL,
+                [patient.email],
+                fail_silently=False,
+            )
+        except Exception:
+            security_logger.exception("patient_pin_reset_notification_failed")
+    return _cors_json(
+        request,
+        {"ok": True, "access_token": access_token, "message": "ตั้งรหัส PIN ใหม่สำเร็จ"},
+    )
+
+
+@csrf_exempt
 def patient_me(request):
     if request.method == "OPTIONS":
         return _cors_json(request, {})
@@ -402,6 +787,7 @@ def patient_me(request):
             "age": patient.age_years,
             "age_display": patient.age_display,
             "phone": patient.phone,
+            "email": patient.email,
             "blood_type": patient.get_blood_type_display(),
             "height_cm": patient.height_cm,
             "weight_kg": patient.weight_kg,

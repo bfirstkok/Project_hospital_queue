@@ -41,6 +41,29 @@ def rate_limited(request, scope, limit, window_seconds):
     return request_count > limit
 
 
+def rate_limited_by_identifier(request, scope, identifier, limit, window_seconds):
+    """Limit independently by client IP and a privacy-safe hash of an identifier."""
+    identities = (f"ip:{client_fingerprint(request)}", f"id:{identifier}")
+    blocked = False
+    for identity in identities:
+        key_material = f"{scope}:{identity}"
+        digest = hmac.new(
+            settings.SECRET_KEY.encode("utf-8"),
+            key_material.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        cache_key = f"patient-rate:{digest}"
+        if cache.add(cache_key, 1, timeout=window_seconds):
+            continue
+        try:
+            request_count = cache.incr(cache_key)
+        except ValueError:
+            cache.set(cache_key, 1, timeout=window_seconds)
+            request_count = 1
+        blocked = blocked or request_count > limit
+    return blocked
+
+
 def audit_patient_api_request(request, status_code):
     if not request.path.startswith("/api/patient/"):
         return

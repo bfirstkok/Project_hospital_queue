@@ -60,8 +60,13 @@ body {
 .logo-text { color: var(--register-ink); font-size: 16px; font-weight: 800; }
 .logo-sub { margin-top: 2px; color: var(--register-muted); font-size: 12px; }
 
-.content { padding: 32px 24px 56px; }
-.content-wrapper { width: min(100%, 1080px); margin: 0 auto; }
+.content {
+  padding: 30px 20px 64px;
+  background:
+    radial-gradient(circle at 50% -180px, rgba(13, 138, 125, 0.1), transparent 430px),
+    #f2f7f7;
+}
+.content-wrapper { width: min(100%, 920px); margin: 0 auto; }
 
 .register-intro { text-align: center; margin: 8px auto 24px; }
 .register-intro .eyebrow {
@@ -121,7 +126,7 @@ body {
 .service-steps li.active span { background: var(--register-primary); color: #fff; }
 
 .card {
-  padding: 14px 36px 36px;
+  padding: 14px 32px 32px;
   background: var(--register-surface);
   border: 1px solid var(--register-line);
   border-radius: 18px;
@@ -140,6 +145,7 @@ form { counter-reset: register-section; }
   font-size: 21px;
   border-bottom: 2px solid #dfedeb;
 }
+.card h3 .required-mark { margin-left: -8px; }
 .card h3::before {
   content: counter(register-section);
   flex: 0 0 40px;
@@ -159,6 +165,54 @@ form { counter-reset: register-section; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   margin-bottom: 18px;
+}
+.section-help {
+  margin: -14px 0 18px 54px;
+  color: var(--register-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.required-mark { color: var(--register-danger); font-weight: 800; }
+
+.health-notice {
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  border: 1px solid #9fdad2;
+  border-radius: 10px;
+  background: #effbf8;
+  color: #17685f;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 0 0 14px;
+}
+.choice-chip {
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 1px solid #bdd8d5;
+  border-radius: 999px;
+  background: #fff;
+  color: #365766;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s, box-shadow .16s;
+}
+.choice-chip:hover {
+  border-color: var(--register-primary);
+  background: var(--register-primary-soft);
+}
+.choice-chip.selected {
+  border-color: var(--register-primary);
+  background: var(--register-primary);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(13, 138, 125, .2);
 }
 .field { display: flex; flex-direction: column; gap: 7px; }
 .field.full { grid-column: 1 / -1; margin-bottom: 16px; }
@@ -198,6 +252,35 @@ form { counter-reset: register-section; }
   color: #a61b18;
   font-size: 15px;
   font-weight: 700;
+}
+
+.emergency-box {
+  padding: 18px;
+  border: 1px solid #b9ddd8;
+  border-radius: 12px;
+  background: #f7fcfb;
+}
+.emergency-box .grid { margin-bottom: 0; }
+
+.consent-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #c7e1dd;
+  border-radius: 10px;
+  background: #f8fcfb;
+  color: #355664;
+  font-size: 14px;
+  line-height: 1.55;
+  cursor: pointer;
+}
+.consent-box input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--register-primary);
 }
 
 .footer {
@@ -246,5 +329,9 @@ form { counter-reset: register-section; }
   .grid { grid-template-columns: 1fr; gap: 14px; }
   .field.full { grid-column: 1; }
   .card h3 { font-size: 19px; }
+  .section-help { margin-left: 0; }
+  .choice-chips { gap: 7px; }
+  .choice-chip { min-height: 34px; padding: 6px 11px; font-size: 12px; }
+  .emergency-box { padding: 14px; }
   .footer { grid-template-columns: 1fr; }
 }

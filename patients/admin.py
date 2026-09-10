@@ -13,8 +13,9 @@ class PatientAdmin(admin.ModelAdmin):
         "gender",
         "age",
         "phone",
+        "email",
     )
-    search_fields = ("hn", "national_id", "first_name", "last_name", "phone")
+    search_fields = ("hn", "national_id", "first_name", "last_name", "phone", "email")
     list_filter = ("gender",)
 
 

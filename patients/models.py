@@ -48,6 +48,7 @@ class Patient(models.Model):
     age = models.PositiveIntegerField(null=True, blank=True)
 
     phone = models.CharField(max_length=20, blank=True, default="")
+    email = models.EmailField(blank=True, null=True)
 
     # ✅ HN เจนอัตโนมัติ 6 หลัก และกันซ้ำ
     hn = models.CharField(max_length=6, unique=True, blank=True, default="", db_index=True)
@@ -154,6 +155,49 @@ class PatientAccessToken(models.Model):
 
     def __str__(self):
         return f"PatientAccessToken(patient={self.patient_id}, expires={self.expires_at:%Y-%m-%d %H:%M})"
+
+
+class PatientPin(models.Model):
+    """Server-side PIN state. PIN values are stored only as Django password hashes."""
+
+    patient = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name="pin")
+    pin_hash = models.CharField(max_length=128)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    lockout_level = models.PositiveSmallIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"PatientPin(patient={self.patient_id}, level={self.lockout_level})"
+
+
+class OtpChallenge(models.Model):
+    class Channel(models.TextChoices):
+        EMAIL = "email", "Email"
+        PHONE = "phone", "Phone"
+
+    class Purpose(models.TextChoices):
+        PIN_RESET = "PIN_RESET", "PIN reset"
+
+    national_id = models.CharField(max_length=13, db_index=True)
+    channel = models.CharField(max_length=10, choices=Channel.choices)
+    purpose = models.CharField(max_length=24, choices=Purpose.choices, default=Purpose.PIN_RESET)
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["national_id", "channel", "purpose", "created_at"],
+                name="otp_lookup_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"OtpChallenge(channel={self.channel}, purpose={self.purpose}, consumed={bool(self.consumed_at)})"
 
 
 class Appointment(models.Model):
