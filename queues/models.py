@@ -268,6 +268,51 @@ class StaffDuty(models.Model):
         return f"{self.user} {self.duty_date}"
 
 
+class ShiftSchedule(models.Model):
+    """Planned staff roster; StaffDuty remains the actual attendance record."""
+
+    class Status(models.TextChoices):
+        SCHEDULED = "SCHEDULED", "จัดเวรแล้ว"
+        LEAVE = "LEAVE", "ลา"
+        CANCELLED = "CANCELLED", "ยกเลิกเวร"
+
+    user = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="shift_schedules",
+    )
+    shift_date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SCHEDULED)
+    note = models.CharField(max_length=200, blank=True, default="")
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_shift_schedules",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "shift_date", "start_time"],
+                name="unique_staff_shift_start",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["shift_date", "status"]),
+            models.Index(fields=["user", "shift_date"]),
+        ]
+        ordering = ["shift_date", "start_time", "user__first_name", "user__username"]
+
+    def __str__(self):
+        return f"{self.user} {self.shift_date} {self.start_time}-{self.end_time}"
+
+
 class NurseCareAssignment(models.Model):
     """Current nurse responsible for a wearable-monitored visit."""
 

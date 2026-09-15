@@ -1,10 +1,12 @@
 import mimetypes
+from datetime import date, timedelta
 from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db import IntegrityError
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -19,7 +21,7 @@ from .care_workload import (
     handover_nurse_cases,
     nurse_workload_rows,
 )
-from .models import DeviceAssignment, NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit
+from .models import DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, Visit
 
 
 CARE_QUEUE_STATUSES = {
@@ -153,6 +155,136 @@ def staff_photo(request, profile_id):
     response["Cache-Control"] = "private, max-age=3600"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def shift_schedule(request):
+    can_manage = has_capability(request.user, Capability.MANAGE_PERSONNEL)
+    user_model = get_user_model()
+
+    if request.method == "POST":
+        if not can_manage:
+            return render(
+                request,
+                "403.html",
+                {
+                    "required_capability": Capability.MANAGE_PERSONNEL,
+                    "current_role": getattr(
+                        getattr(request.user, "hospital_staff_profile", None),
+                        "role",
+                        "ADMIN" if request.user.is_superuser else "STAFF",
+                    ),
+                },
+                status=403,
+            )
+        action = request.POST.get("action")
+        return_week = request.POST.get("week", "")
+        if action == "delete_shift":
+            shift = get_object_or_404(ShiftSchedule, pk=request.POST.get("shift_id"))
+            shift.delete()
+            messages.success(request, "ลบเวรที่วางไว้แล้ว")
+        elif action == "save_shift":
+            try:
+                shift_date = date.fromisoformat(request.POST.get("shift_date", ""))
+                start_time = timezone.datetime.strptime(request.POST.get("start_time", ""), "%H:%M").time()
+                end_time = timezone.datetime.strptime(request.POST.get("end_time", ""), "%H:%M").time()
+            except (TypeError, ValueError):
+                messages.error(request, "วันที่หรือเวลาเวรไม่ถูกต้อง")
+                return redirect(f"{request.path}?week={return_week}")
+            staff_user = get_object_or_404(
+                user_model.objects.select_related("hospital_staff_profile"),
+                pk=request.POST.get("user_id"),
+                is_active=True,
+                hospital_staff_profile__isnull=False,
+            )
+            valid_statuses = {value for value, _label in ShiftSchedule.Status.choices}
+            status = request.POST.get("status", ShiftSchedule.Status.SCHEDULED)
+            if status not in valid_statuses:
+                status = ShiftSchedule.Status.SCHEDULED
+            shift_id = request.POST.get("shift_id")
+            shift = get_object_or_404(ShiftSchedule, pk=shift_id) if shift_id else ShiftSchedule()
+            shift.user = staff_user
+            shift.shift_date = shift_date
+            shift.start_time = start_time
+            shift.end_time = end_time
+            shift.status = status
+            shift.note = request.POST.get("note", "").strip()[:200]
+            shift.created_by = shift.created_by or request.user
+            try:
+                shift.save()
+            except IntegrityError:
+                messages.error(request, "บุคลากรคนนี้มีเวรที่เริ่มเวลาเดียวกันอยู่แล้ว")
+            else:
+                messages.success(request, "บันทึกตารางเวรแล้ว")
+        else:
+            messages.error(request, "คำสั่งไม่ถูกต้อง")
+        return redirect(f"{request.path}?week={return_week}")
+
+    week_value = request.GET.get("week", "")
+    try:
+        selected = date.fromisoformat(week_value) if week_value else timezone.localdate()
+    except ValueError:
+        selected = timezone.localdate()
+    week_start = selected - timedelta(days=selected.weekday())
+    week_end = week_start + timedelta(days=6)
+    previous_week = week_start - timedelta(days=7)
+    next_week = week_start + timedelta(days=7)
+
+    users = list(
+        user_model.objects.filter(is_active=True, hospital_staff_profile__isnull=False)
+        .exclude(is_superuser=True)
+        .select_related("hospital_staff_profile")
+        .order_by("hospital_staff_profile__role", "first_name", "username")
+    )
+    schedules = list(
+        ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
+        .select_related("user", "user__hospital_staff_profile")
+    )
+    duties = {
+        (duty.user_id, duty.duty_date): duty
+        for duty in StaffDuty.objects.filter(duty_date__range=(week_start, week_end), user__in=users)
+    }
+    active_case_counts = dict(
+        NurseCareAssignment.objects.filter(is_active=True)
+        .values("nurse_id").annotate(total=Count("id"))
+        .values_list("nurse_id", "total")
+    )
+    schedule_by_day = {week_start + timedelta(days=offset): [] for offset in range(7)}
+    for shift in schedules:
+        duty = duties.get((shift.user_id, shift.shift_date))
+        shift.actual_duty = duty
+        shift.active_case_count = active_case_counts.get(shift.user_id, 0)
+        schedule_by_day[shift.shift_date].append(shift)
+    day_rows = [
+        {
+            "date": day,
+            "is_today": day == timezone.localdate(),
+            "shifts": schedule_by_day[day],
+        }
+        for day in schedule_by_day
+    ]
+    on_duty_now = [
+        {
+            "user": duty.user,
+            "profile": duty.user.hospital_staff_profile,
+            "case_count": active_case_counts.get(duty.user_id, 0),
+        }
+        for duty in StaffDuty.objects.filter(
+            duty_date=timezone.localdate(), is_present=True, user__in=users,
+        ).select_related("user", "user__hospital_staff_profile")
+    ]
+    return render(request, "queues/shift_schedule.html", {
+        "can_manage": can_manage,
+        "users": users,
+        "day_rows": day_rows,
+        "on_duty_now": on_duty_now,
+        "week_start": week_start,
+        "week_end": week_end,
+        "previous_week": previous_week,
+        "next_week": next_week,
+        "shift_statuses": ShiftSchedule.Status.choices,
+    })
 
 
 @login_required

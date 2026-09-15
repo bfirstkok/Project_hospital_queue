@@ -15,7 +15,7 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -1136,4 +1136,76 @@ class DutyAndResponsibleNurseAlertTests(TestCase):
         )
         self.visit.queue.refresh_from_db()
         self.assertEqual(self.visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+
+
+class ShiftScheduleTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.manager = user_model.objects.create_superuser(
+            username="shift-manager", email="manager@example.test", password="secret",
+        )
+        self.nurse = user_model.objects.create_user(username="shift-nurse", password="secret")
+        StaffProfile.objects.create(user=self.nurse, role=StaffProfile.Role.NURSE)
+        self.doctor = user_model.objects.create_user(username="shift-doctor", password="secret")
+        StaffProfile.objects.create(user=self.doctor, role=StaffProfile.Role.DOCTOR)
+
+    def test_all_staff_roles_can_view_but_only_manager_can_edit(self):
+        self.client.force_login(self.doctor)
+        response = self.client.get(reverse("shift_schedule"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ตารางเวรบุคลากร")
+        self.assertNotContains(response, "+ บันทึกเวร")
+
+        response = self.client.post(reverse("shift_schedule"), {
+            "action": "save_shift",
+            "user_id": self.doctor.id,
+            "shift_date": timezone.localdate().isoformat(),
+            "start_time": "08:00",
+            "end_time": "16:00",
+        })
+        self.assertEqual(response.status_code, 403)
+
+    def test_manager_can_create_edit_and_delete_shift(self):
+        self.client.force_login(self.manager)
+        payload = {
+            "action": "save_shift",
+            "week": timezone.localdate().isoformat(),
+            "user_id": self.nurse.id,
+            "shift_date": timezone.localdate().isoformat(),
+            "start_time": "08:00",
+            "end_time": "16:00",
+            "status": ShiftSchedule.Status.SCHEDULED,
+            "note": "ห้องเฝ้าระวัง",
+        }
+        response = self.client.post(reverse("shift_schedule"), payload)
+        self.assertEqual(response.status_code, 302)
+        shift = ShiftSchedule.objects.get()
+        self.assertEqual(shift.user, self.nurse)
+        self.assertEqual(shift.created_by, self.manager)
+
+        payload.update({"shift_id": shift.id, "status": ShiftSchedule.Status.LEAVE})
+        self.client.post(reverse("shift_schedule"), payload)
+        shift.refresh_from_db()
+        self.assertEqual(shift.status, ShiftSchedule.Status.LEAVE)
+
+        self.client.post(reverse("shift_schedule"), {
+            "action": "delete_shift",
+            "shift_id": shift.id,
+            "week": timezone.localdate().isoformat(),
+        })
+        self.assertFalse(ShiftSchedule.objects.exists())
+
+    def test_planned_shift_and_actual_attendance_are_separate(self):
+        ShiftSchedule.objects.create(
+            user=self.nurse,
+            shift_date=timezone.localdate(),
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            created_by=self.manager,
+        )
+        self.client.force_login(self.nurse)
+        response = self.client.get(reverse("shift_schedule"))
+        self.assertContains(response, "จัดเวรแล้ว")
+        self.assertContains(response, "ยังไม่มีบุคลากรกดเริ่มเวร")
+        self.assertFalse(StaffDuty.objects.filter(user=self.nurse).exists())
 

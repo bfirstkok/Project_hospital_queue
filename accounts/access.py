@@ -19,6 +19,7 @@ class Capability:
     MONITOR_PATIENT = "monitor_patient"
     ACKNOWLEDGE_ALERT = "acknowledge_alert"
     VIEW_PERSONNEL = "view_personnel"
+    VIEW_SHIFT_SCHEDULE = "view_shift_schedule"
     MANAGE_PERSONNEL = "manage_personnel"
     MANAGE_DEVICE = "manage_device"
     VIEW_REPORT = "view_report"
@@ -28,6 +29,7 @@ class Capability:
 ROLE_CAPABILITIES = {
     StaffProfile.Role.DOCTOR: {
         Capability.DOCTOR_ASSESSMENT,
+        Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.NURSE: {
         Capability.VIEW_QUEUE,
@@ -40,6 +42,7 @@ ROLE_CAPABILITIES = {
         Capability.MONITOR_PATIENT,
         Capability.ACKNOWLEDGE_ALERT,
         Capability.VIEW_PERSONNEL,
+        Capability.VIEW_SHIFT_SCHEDULE,
         Capability.MANAGE_DEVICE,
     },
     StaffProfile.Role.NURSE_ASSISTANT: {
@@ -47,6 +50,7 @@ ROLE_CAPABILITIES = {
         Capability.VIEW_PATIENT,
         Capability.EDIT_PATIENT,
         Capability.RECORD_VITALS,
+        Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.EMERGENCY: {
         Capability.VIEW_QUEUE,
@@ -54,6 +58,7 @@ ROLE_CAPABILITIES = {
         Capability.VIEW_PATIENT,
         Capability.MONITOR_PATIENT,
         Capability.ACKNOWLEDGE_ALERT,
+        Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.STAFF: {
         Capability.VIEW_QUEUE,
@@ -61,6 +66,7 @@ ROLE_CAPABILITIES = {
         Capability.REGISTER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.EDIT_PATIENT,
+        Capability.VIEW_SHIFT_SCHEDULE,
     },
 }
 
@@ -86,6 +92,7 @@ CAPABILITY_LABELS = {
     Capability.MONITOR_PATIENT: "ติดตามข้อมูลจากอุปกรณ์",
     Capability.ACKNOWLEDGE_ALERT: "รับทราบสัญญาณเตือน",
     Capability.VIEW_PERSONNEL: "ดูรายชื่อและสถานะบุคลากร",
+    Capability.VIEW_SHIFT_SCHEDULE: "ดูตารางเวรบุคลากร",
     Capability.MANAGE_PERSONNEL: "จัดบทบาท เวร และมอบหมายพยาบาล",
     Capability.MANAGE_DEVICE: "สร้างและจับคู่อุปกรณ์",
     Capability.VIEW_REPORT: "ดูและส่งออกรายงาน",
