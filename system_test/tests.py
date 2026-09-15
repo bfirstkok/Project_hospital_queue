@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from patients.models import Patient
-from queues.models import VitalSign
+from queues.models import Queue, VitalSign
 
 from .models import TestScenarioRun
 
@@ -41,6 +41,42 @@ class SystemTestConsoleTests(TestCase):
 
         self.assertTrue(Patient.objects.filter(pk=real_patient.pk).exists())
         self.assertFalse(Patient.objects.filter(pk=synthetic_patient_id).exists())
+
+    def test_random_registered_patient_has_complete_profile_and_waiting_queue(self):
+        response = self.client.post(reverse("system_test:create_random_registered_patient"))
+
+        self.assertRedirects(response, reverse("system_test:index"))
+        run = TestScenarioRun.objects.select_related("patient", "visit").get()
+        patient = run.patient
+        required_values = [
+            patient.first_name,
+            patient.last_name,
+            patient.national_id,
+            patient.birth_date,
+            patient.phone,
+            patient.email,
+            patient.address_area,
+            patient.address,
+            patient.province,
+            patient.district,
+            patient.subdistrict,
+            patient.postal_code,
+            patient.blood_type,
+            patient.chronic_diseases,
+            patient.allergies,
+            patient.medications,
+            patient.height_cm,
+            patient.weight_kg,
+            patient.bp_sys,
+            patient.bp_dia,
+            patient.emergency_name,
+            patient.emergency_relationship,
+            patient.emergency_phone,
+        ]
+        self.assertTrue(all(value not in (None, "") for value in required_values))
+        self.assertIn("[SYSTEM TEST]", run.visit.note)
+        self.assertEqual(run.visit.queue.status, Queue.Status.WAITING_VITALS)
+        self.assertTrue(VitalSign.objects.filter(visit=run.visit).exists())
 
     def test_database_explorer_masks_user_password(self):
         response = self.client.get(reverse("system_test:database_table", args=["auth", "user"]))

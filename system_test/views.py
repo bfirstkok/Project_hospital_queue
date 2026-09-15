@@ -105,6 +105,107 @@ def _unique_test_national_id():
 @superuser_required
 @require_POST
 @transaction.atomic
+def create_random_registered_patient(request):
+    """Create one complete synthetic registration at the waiting-vitals step."""
+    first_name, gender = random.choice([
+        ("สมชาย", "M"),
+        ("อนันต์", "M"),
+        ("ธนกฤต", "M"),
+        ("กิตติพงษ์", "M"),
+        ("มาลี", "F"),
+        ("พิมพ์ชนก", "F"),
+        ("สุภาวดี", "F"),
+        ("นภัสสร", "F"),
+    ])
+    last_name = random.choice([
+        "ใจดี",
+        "สุขสวัสดิ์",
+        "รุ่งเรือง",
+        "แสงทอง",
+        "ศรีสุข",
+        "บุญช่วย",
+        "มั่นคง",
+        "วัฒนา",
+    ])
+    symptom = random.choice([
+        "มีไข้ ไอ และอ่อนเพลีย",
+        "เวียนศีรษะ คลื่นไส้ รับประทานอาหารได้น้อย",
+        "ปวดท้องเป็นพัก ๆ ไม่มีอาเจียน",
+        "ปวดศีรษะและนอนไม่หลับ",
+        "เจ็บคอ มีน้ำมูก และไอเล็กน้อย",
+        "ปวดข้อเข่าหลังเดินเป็นเวลานาน",
+        "แน่นหน้าอกเล็กน้อยและใจสั่น",
+        "มีผื่นคันบริเวณแขนและลำตัว",
+    ])
+    chronic_disease, medication = random.choice([
+        ("ไม่มี", "ไม่มี"),
+        ("ความดันโลหิตสูง", "Amlodipine 5 mg"),
+        ("เบาหวานชนิดที่ 2", "Metformin 500 mg"),
+        ("ภูมิแพ้", "Cetirizine 10 mg"),
+        ("ไขมันในเลือดสูง", "Simvastatin 20 mg"),
+    ])
+    allergy = random.choice(["ไม่มี", "แพ้ยา Penicillin", "แพ้ยา Sulfa", "แพ้อาหารทะเล"])
+    province, district, subdistrict, postal_code = random.choice([
+        ("กรุงเทพมหานคร", "บางเขน", "อนุสาวรีย์", "10220"),
+        ("นนทบุรี", "เมืองนนทบุรี", "บางกระสอ", "11000"),
+        ("ปทุมธานี", "คลองหลวง", "คลองหนึ่ง", "12120"),
+        ("สมุทรปราการ", "เมืองสมุทรปราการ", "ปากน้ำ", "10270"),
+    ])
+    unique_suffix = "".join(str(secrets.randbelow(10)) for _ in range(8))
+    years_old = random.randint(18, 82)
+    birth_date = date.today() - timedelta(days=(years_old * 365) + random.randint(0, 364))
+    height = random.randint(150, 182)
+    weight = random.randint(48, 92)
+
+    patient = Patient.objects.create(
+        first_name=first_name,
+        last_name=last_name,
+        national_id=_unique_test_national_id(),
+        gender=gender,
+        birth_date=birth_date,
+        nationality="ไทย",
+        phone=f"09{unique_suffix}",
+        email=f"test.{unique_suffix}@example.test",
+        address_area=random.choice(["AREA1", "AREA2", "AREA3"]),
+        address=f"{random.randint(1, 199)}/{random.randint(1, 99)} ถนนทดสอบ",
+        province=province,
+        district=district,
+        subdistrict=subdistrict,
+        postal_code=postal_code,
+        blood_type=random.choice(["A", "B", "AB", "O"]),
+        chronic_diseases=chronic_disease,
+        allergies=allergy,
+        medications=medication,
+        height_cm=height,
+        weight_kg=weight,
+        bp_sys=random.randint(105, 145),
+        bp_dia=random.randint(65, 95),
+        emergency_name=f"{random.choice(['วิชัย', 'อรทัย', 'สมพร', 'วาสนา'])} {last_name}",
+        emergency_relationship=random.choice(["SPOUSE", "CHILD", "SIBLING", "RELATIVE"]),
+        emergency_phone=f"08{''.join(str(secrets.randbelow(10)) for _ in range(8))}",
+        note="[SYSTEM TEST] ผู้ป่วยลงทะเบียนด้วยข้อมูลสุ่ม สามารถลบจากหน้า /test",
+    )
+    visit = Visit.objects.create(patient=patient, note=f"[SYSTEM TEST] {symptom}")
+    VitalSign.objects.create(visit=visit)
+    queue = Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS, priority=5)
+    run = TestScenarioRun.objects.create(
+        scenario=TestScenarioRun.Scenario.WAITING,
+        patient=patient,
+        visit=visit,
+        created_by=request.user,
+    )
+
+    messages.success(
+        request,
+        f"เพิ่มผู้ป่วยสุ่ม {patient.first_name} {patient.last_name} · {queue.display_number} "
+        f"· อาการ: {symptom} (TEST #{run.id})",
+    )
+    return redirect("system_test:index")
+
+
+@superuser_required
+@require_POST
+@transaction.atomic
 def create_scenario(request):
     scenario = request.POST.get("scenario", TestScenarioRun.Scenario.FULL)
     if scenario not in TestScenarioRun.Scenario.values:
