@@ -15,6 +15,7 @@ class YellowNurseAssignmentTests(TestCase):
             password="test-pass-123",
             first_name="ผู้ประสานงาน",
         )
+        StaffProfile.objects.create(user=self.coordinator, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.coordinator)
 
         self.nurse = user_model.objects.create_user(

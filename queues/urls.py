@@ -6,50 +6,51 @@ from . import triage_confirmation
 
 # ✅ FOLLOWUP monitor อยู่ที่ opd
 from opd import views as opd_views
+from accounts.access import Capability, capability_required, superuser_required
 
 urlpatterns = [
-    path("", views.queue_list, name="queue_list"),
+    path("", capability_required(Capability.VIEW_QUEUE)(views.queue_list), name="queue_list"),
     path("display/", views.queue_display, name="queue_display"),
-    path("waiting-vitals/", views.waiting_vitals, name="waiting_vitals"),
-    path("waiting-confirmation/", triage_confirmation.waiting_confirmation, name="waiting_confirmation"),
-    path("emergency-transfers/", views.emergency_transfers, name="emergency_transfers"),
-    path("personnel/", personnel_views.personnel_dashboard, name="personnel_dashboard"),
+    path("waiting-vitals/", capability_required(Capability.VIEW_QUEUE)(views.waiting_vitals), name="waiting_vitals"),
+    path("waiting-confirmation/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.waiting_confirmation), name="waiting_confirmation"),
+    path("emergency-transfers/", capability_required(Capability.VIEW_QUEUE)(views.emergency_transfers), name="emergency_transfers"),
+    path("personnel/", capability_required(Capability.VIEW_PERSONNEL)(personnel_views.personnel_dashboard), name="personnel_dashboard"),
     path("personnel/heartbeat/", personnel_views.staff_heartbeat, name="staff_heartbeat"),
     path("personnel/photo/<int:profile_id>/", personnel_views.staff_photo, name="staff_photo"),
 
     # queue actions
-    path("assessment/<int:visit_id>/", views.nurse_triage_assessment, name="nurse_triage_assessment"),
-    path("return-to-vitals/<int:visit_id>/", views.return_to_waiting_vitals, name="return_to_waiting_vitals"),
-    path("triage/<int:visit_id>/", triage_confirmation.triage_visit, name="triage_visit"),
-    path("call/<int:visit_id>/", views.call_visit, name="call_visit"),
-    path("monitoring/<int:visit_id>/", views.send_to_monitoring, name="send_to_monitoring"),
-    path("discharge/<int:visit_id>/", views.discharge_visit, name="discharge_visit"),
-    path("cancel/<int:visit_id>/", views.cancel_queue, name="cancel_queue"),
-    path("api/update-severity/<int:visit_id>/", views.update_severity_api, name="update_severity_api"),
-    path("api/alerts/<int:alert_id>/ack/", views.acknowledge_alert, name="acknowledge_alert"),
+    path("assessment/<int:visit_id>/", capability_required(Capability.RECORD_VITALS)(views.nurse_triage_assessment), name="nurse_triage_assessment"),
+    path("return-to-vitals/<int:visit_id>/", capability_required(Capability.RECORD_VITALS)(views.return_to_waiting_vitals), name="return_to_waiting_vitals"),
+    path("triage/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.triage_visit), name="triage_visit"),
+    path("call/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.call_visit), name="call_visit"),
+    path("monitoring/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.send_to_monitoring), name="send_to_monitoring"),
+    path("discharge/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.discharge_visit), name="discharge_visit"),
+    path("cancel/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.cancel_queue), name="cancel_queue"),
+    path("api/update-severity/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(views.update_severity_api), name="update_severity_api"),
+    path("api/alerts/<int:alert_id>/ack/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.acknowledge_alert), name="acknowledge_alert"),
 
     # /queues/monitor/ is the waiting-area wearable monitor. Post-OPD
     # monitoring remains available under /opd/monitor/.
-    path("monitor/", views.monitor_dashboard, name="monitor_dashboard"),
-    path("monitor/api/latest/", views.monitor_latest_api, name="monitor_latest_api"),
-    path("monitor/api/summary/", views.monitor_summary_api, name="monitor_summary_api"),
-    path("monitor/visit/<int:visit_id>/", views.monitor_visit_detail, name="followup_visit_detail"),
-    path("monitor/demo/push/<int:visit_id>/", opd_views.post_opd_demo_push_telemetry, name="followup_demo_push"),
+    path("monitor/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_dashboard), name="monitor_dashboard"),
+    path("monitor/api/latest/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_latest_api), name="monitor_latest_api"),
+    path("monitor/api/summary/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_summary_api), name="monitor_summary_api"),
+    path("monitor/visit/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_visit_detail), name="followup_visit_detail"),
+    path("monitor/demo/push/<int:visit_id>/", superuser_required(opd_views.post_opd_demo_push_telemetry), name="followup_demo_push"),
 
     # ✅ monitor เดิม (WAITING) ย้ายไป /queues/monitor/waiting/
-    path("monitor/waiting/", views.monitor_dashboard, name="waiting_monitor_dashboard"),
-    path("monitor/waiting/api/latest/", views.monitor_latest_api, name="waiting_monitor_latest_api"),
-    path("monitor/waiting/api/summary/", views.monitor_summary_api, name="waiting_monitor_summary_api"),
-    path("monitor/waiting/visit/<int:visit_id>/", views.monitor_visit_detail, name="waiting_monitor_visit_detail"),
-    path("monitor/waiting/api/sparklines/", views.monitor_sparklines_api, name="waiting_monitor_sparklines_api"),
-    path("devices/pairing/", views.device_pairing, name="device_pairing"),
+    path("monitor/waiting/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_dashboard), name="waiting_monitor_dashboard"),
+    path("monitor/waiting/api/latest/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_latest_api), name="waiting_monitor_latest_api"),
+    path("monitor/waiting/api/summary/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_summary_api), name="waiting_monitor_summary_api"),
+    path("monitor/waiting/visit/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_visit_detail), name="waiting_monitor_visit_detail"),
+    path("monitor/waiting/api/sparklines/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_sparklines_api), name="waiting_monitor_sparklines_api"),
+    path("devices/pairing/", capability_required(Capability.MANAGE_DEVICE)(views.device_pairing), name="device_pairing"),
 
     # iot api
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
 
     # demo
-    path("demo/create/", views.demo_create_visit_queue, name="demo_create_visit_queue"),
-    path("dashboard/api/demo-create/", views.dashboard_demo_create, name="dashboard_demo_create"),
+    path("demo/create/", superuser_required(views.demo_create_visit_queue), name="demo_create_visit_queue"),
+    path("dashboard/api/demo-create/", superuser_required(views.dashboard_demo_create), name="dashboard_demo_create"),
 
     path("patients/", RedirectView.as_view(url="/patients/register/", permanent=False)),
 ]

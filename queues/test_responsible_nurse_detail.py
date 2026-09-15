@@ -10,6 +10,7 @@ class ResponsibleNurseDetailTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
         self.viewer = user_model.objects.create_user(username="detail-viewer", password="secret")
+        StaffProfile.objects.create(user=self.viewer, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.viewer)
 
         self.nurse = user_model.objects.create_user(

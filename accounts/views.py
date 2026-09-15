@@ -6,6 +6,32 @@ from django.views.decorators.cache import never_cache
 
 
 from queues.models import Queue
+from .access import CAPABILITY_LABELS, Capability, capabilities_for, has_capability
+
+
+@login_required
+def role_landing(request):
+    """Send each account to the first page that matches its actual duty."""
+    if request.user.is_superuser:
+        return redirect("system_test:index")
+    if has_capability(request.user, Capability.DOCTOR_ASSESSMENT):
+        return redirect("opd_room_select")
+    if has_capability(request.user, Capability.RECORD_VITALS):
+        return redirect("waiting_vitals")
+    if has_capability(request.user, Capability.MANAGE_QUEUE):
+        return redirect("queue_list")
+    return redirect("dashboard:home")
+
+
+@login_required
+def my_permissions(request):
+    """Explain the signed-in account's actual duties in plain language."""
+    capability_values = capabilities_for(request.user)
+    capability_rows = [
+        {"code": code, "label": CAPABILITY_LABELS[code]}
+        for code in sorted(capability_values)
+    ]
+    return render(request, "accounts/my_permissions.html", {"capability_rows": capability_rows})
 
 @login_required
 def dashboard(request):

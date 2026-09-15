@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
+from accounts.access import Capability, has_capability
 
 from .care_workload import (
     MAX_PATIENTS_PER_NURSE,
@@ -111,6 +112,20 @@ def personnel_dashboard(request):
     user_model = get_user_model()
 
     if request.method == "POST":
+        if not has_capability(request.user, Capability.MANAGE_PERSONNEL):
+            return render(
+                request,
+                "403.html",
+                {
+                    "required_capability": Capability.MANAGE_PERSONNEL,
+                    "current_role": getattr(
+                        getattr(request.user, "hospital_staff_profile", None),
+                        "role",
+                        "ADMIN" if request.user.is_superuser else "STAFF",
+                    ),
+                },
+                status=403,
+            )
         action = request.POST.get("action", "")
 
         if action == "set_attendance":

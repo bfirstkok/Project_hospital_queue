@@ -40,7 +40,7 @@
 {% include "includes/main_nav.html" %}
 <main class="page">
   <header class="hero">
-    <div><h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1><p>จัดเวร ดูภาระงาน ส่งต่อเคส และควบคุมไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล</p></div>
+    <div><h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1><p>{% if 'manage_personnel' in access_capabilities %}จัดเวร ดูภาระงาน ส่งต่อเคส และควบคุมไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล{% else %}ดูรายชื่อผู้ขึ้นเวร ภาระงาน และผู้รับผิดชอบแต่ละเคส{% endif %}</p></div>
     <div class="date"><small>วันที่ปฏิบัติงาน</small><b>{{ today|date:"d/m/Y" }}</b></div>
   </header>
 
@@ -57,7 +57,7 @@
 
   <nav class="workspace-tabs" aria-label="เมนูจัดการบุคลากร">
     <button type="button" class="workspace-tab active" data-panel="staff">รายชื่อบุคลากร <span class="tab-count">{{ staff_rows|length }}</span></button>
-    <button type="button" class="workspace-tab" data-panel="handover">ส่งต่อเวร <span class="tab-count">{{ assigned_count }}</span></button>
+    {% if 'manage_personnel' in access_capabilities %}<button type="button" class="workspace-tab" data-panel="handover">ส่งต่อเวร <span class="tab-count">{{ assigned_count }}</span></button>{% endif %}
     <button type="button" class="workspace-tab" data-panel="patients">ผู้ป่วยและผู้รับผิดชอบ <span class="tab-count">{{ patient_rows|length }}</span></button>
   </nav>
 
@@ -84,11 +84,12 @@
               {% if row.active_cases %}<ul class="cases">{% for a in row.active_cases %}<li><span><b>{{ a.visit.queue.display_number }}</b> {{ a.visit.patient.first_name }} {{ a.visit.patient.last_name }}</span><span>{{ a.visit.queue.get_status_display }}</span></li>{% endfor %}</ul>{% else %}<div class="hint" style="margin-top:7px">ยังไม่มีผู้ป่วยในความดูแล</div>{% endif %}
             </div>
           {% endif %}
-          <div class="staff-actions">
+          {% if 'manage_personnel' in access_capabilities %}<div class="staff-actions">
             <form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_present" value="{% if row.is_present %}0{% else %}1{% endif %}"><button class="btn" type="submit">{% if row.is_present %}ลงเวร{% else %}ขึ้นเวร{% endif %}</button></form>
             {% if row.profile.role == 'NURSE' and row.is_present %}<form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_available" value="{% if row.is_available %}0{% else %}1{% endif %}"><button class="btn {% if not row.is_available %}primary{% endif %}" type="submit">{% if row.is_available %}พักรับผู้ป่วย{% else %}พร้อมรับผู้ป่วย{% endif %}</button></form>{% endif %}
           </div>
           <details class="edit"><summary>แก้ไขชื่อ รูป และประเภท</summary><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="update_staff_identity"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง" required><input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล" required><input class="wide" type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="btn primary wide" type="submit">บันทึกชื่อและรูป</button></form><form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><select name="role" style="height:35px;border:1px solid #c9dade;border-radius:7px">{% for role,label in staff_role_choices %}<option value="{{ role }}" {% if row.profile.role == role %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn" type="submit">เปลี่ยนประเภท</button></form></details>
+          {% endif %}
         </article>
         {% empty %}<div class="empty">ยังไม่มีบุคลากร</div>{% endfor %}
         <div id="staff-filter-empty" class="filter-empty"><b>ไม่พบบุคลากรในกลุ่มนี้</b><span>ลองเลือก “ทั้งหมด” หรือค้นหาด้วยชื่อ/ชื่อผู้ใช้อีกครั้ง</span></div>
@@ -96,7 +97,7 @@
     </section>
   </div>
 
-  <div class="panel" id="panel-handover">
+  {% if 'manage_personnel' in access_capabilities %}<div class="panel" id="panel-handover">
     <section class="section" id="handover-section">
       <div class="section-head"><div><h2>ส่งต่อเวร</h2><div class="hint">ใช้เมื่อพยาบาลลงเวร พักรับเคส หรือจำเป็นต้องเปลี่ยนผู้รับผิดชอบทั้งชุด</div></div></div>
       <div class="handover-intro">
@@ -111,11 +112,11 @@
         </div>{% endif %}{% empty %}<div class="empty">ยังไม่มีเคสสำหรับส่งต่อ</div>{% endfor %}
       </div></div>
     </section>
-  </div>
+  </div>{% endif %}
 
   <div class="panel" id="panel-patients">
     <section class="section" id="patients-section">
-      <div class="section-head"><div><h2>ผู้ป่วยและผู้รับผิดชอบ</h2><div class="hint">ดูว่าใครดูแลใคร เปลี่ยนผู้รับผิดชอบ หรือให้ระบบเลือกคนว่างให้อัตโนมัติ</div></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_all_unassigned"><button class="btn primary" type="submit">มอบหมายเคสที่ว่างอัตโนมัติ</button></form></div>
+      <div class="section-head"><div><h2>ผู้ป่วยและผู้รับผิดชอบ</h2><div class="hint">{% if 'manage_personnel' in access_capabilities %}ดูว่าใครดูแลใคร เปลี่ยนผู้รับผิดชอบ หรือให้ระบบเลือกคนว่างให้อัตโนมัติ{% else %}แสดงผู้ป่วย อุปกรณ์ และพยาบาลผู้รับผิดชอบในปัจจุบัน{% endif %}</div></div>{% if 'manage_personnel' in access_capabilities %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_all_unassigned"><button class="btn primary" type="submit">มอบหมายเคสที่ว่างอัตโนมัติ</button></form>{% endif %}</div>
       <div id="patient-filter-note" class="patient-filter-note"></div>
       <div class="patient-grid">
         {% for row in patient_rows %}
@@ -125,8 +126,8 @@
           <div class="device">อุปกรณ์: <b>{% if row.device %}{{ row.device.device_id }}{% else %}ยังไม่ผูกอุปกรณ์{% endif %}</b></div>
           <div class="owner">
             {% if row.care_assignment %}<strong>พยาบาลผู้ดูแล: {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</strong><small>{{ row.care_assignment.nurse.username }} · เริ่ม {{ row.care_assignment.assigned_at|date:"d/m H:i" }}</small>{% else %}<strong style="color:#a36f00">ยังไม่มีพยาบาลผู้ดูแล</strong>{% endif %}
-            <form class="assign" method="post">{% csrf_token %}<input type="hidden" name="action" value="{% if row.care_assignment %}reassign_patient{% else %}assign_patient{% endif %}"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><select name="nurse_id" required><option value="">เลือกพยาบาล...</option>{% for nurse in assignable_nurses %}<option value="{{ nurse.user.id }}">{{ nurse.user.get_full_name|default:nurse.user.username }} · {{ nurse.patient_count }}/{{ max_patients_per_nurse }}</option>{% endfor %}</select><button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนผู้ดูแล{% else %}มอบหมาย{% endif %}</button>{% if row.care_assignment %}<button class="btn danger" type="submit" name="action" value="end_assignment" onclick="this.form.insertAdjacentHTML('beforeend','<input type=hidden name=assignment_id value={{ row.care_assignment.id }}>')">ยุติ</button>{% endif %}</form>
-            {% if not row.care_assignment %}<form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><button class="btn" type="submit">เลือกคนว่างให้อัตโนมัติ</button></form>{% endif %}
+            {% if 'manage_personnel' in access_capabilities %}<form class="assign" method="post">{% csrf_token %}<input type="hidden" name="action" value="{% if row.care_assignment %}reassign_patient{% else %}assign_patient{% endif %}"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><select name="nurse_id" required><option value="">เลือกพยาบาล...</option>{% for nurse in assignable_nurses %}<option value="{{ nurse.user.id }}">{{ nurse.user.get_full_name|default:nurse.user.username }} · {{ nurse.patient_count }}/{{ max_patients_per_nurse }}</option>{% endfor %}</select><button class="btn primary" type="submit">{% if row.care_assignment %}เปลี่ยนผู้ดูแล{% else %}มอบหมาย{% endif %}</button>{% if row.care_assignment %}<button class="btn danger" type="submit" name="action" value="end_assignment" onclick="this.form.insertAdjacentHTML('beforeend','<input type=hidden name=assignment_id value={{ row.care_assignment.id }}>')">ยุติ</button>{% endif %}</form>
+            {% if not row.care_assignment %}<form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><button class="btn" type="submit">เลือกคนว่างให้อัตโนมัติ</button></form>{% endif %}{% endif %}
           </div>
         </article>
         {% empty %}<div class="empty">ยังไม่มีผู้ป่วยในกลุ่มที่ต้องจัดผู้ดูแล</div>{% endfor %}

@@ -44,6 +44,7 @@ class FullPatientWorkflowReportTests(TestCase):
             first_name="เจ้าหน้าที่",
             last_name="ทดสอบระบบ",
         )
+        StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.operator)
 
         self.nurse = get_user_model().objects.create_user(

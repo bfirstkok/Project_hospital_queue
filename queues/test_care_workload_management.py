@@ -22,6 +22,8 @@ class NurseWorkloadManagementTests(TestCase):
             password="secret",
             first_name="หัวหน้า",
             last_name="เวร",
+            is_staff=True,
+            is_superuser=True,
         )
         self.nurse_a = user_model.objects.create_user(
             username="nurse-workload-a",

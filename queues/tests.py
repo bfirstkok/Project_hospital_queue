@@ -201,6 +201,7 @@ class ObservationMonitoringVisibilityTests(TestCase):
             username="monitor-nurse",
             password="secret",
         )
+        StaffProfile.objects.create(user=self.user, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.user)
         patient = Patient.objects.create(
             first_name="Observation",
@@ -238,7 +239,8 @@ class ObservationMonitoringVisibilityTests(TestCase):
     def test_main_monitor_route_uses_waiting_area_monitor(self):
         match = resolve(reverse("monitor_dashboard"))
 
-        self.assertIs(match.func, queue_views.monitor_dashboard)
+        self.assertEqual(match.url_name, "monitor_dashboard")
+        self.assertIs(match.func.__wrapped__, queue_views.monitor_dashboard)
 
     def test_monitor_summary_includes_paired_observation_visit(self):
         response = self.client.get(reverse("monitor_summary_api"))
@@ -284,6 +286,8 @@ class PersonnelDashboardTests(TestCase):
             password="secret",
             first_name="หัวหน้า",
             last_name="พยาบาล",
+            is_staff=True,
+            is_superuser=True,
         )
         self.nurse = get_user_model().objects.create_user(
             username="nurse-a",
@@ -291,7 +295,6 @@ class PersonnelDashboardTests(TestCase):
             first_name="พยาบาล",
             last_name="เอ",
         )
-        StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.NURSE)
         StaffProfile.objects.create(user=self.nurse, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.manager)
         self.patient = Patient.objects.create(
@@ -517,6 +520,7 @@ class QueueWorkflowTests(TestCase):
             username="nurse",
             password="secret",
         )
+        StaffProfile.objects.create(user=self.user, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.user)
 
     def register_patient(self):
@@ -555,7 +559,8 @@ class QueueWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="waiting-vitals-page"')
-        self.assertContains(response, "padding-top: 62px")
+        self.assertContains(response, "padding-top:76px")
+        self.assertContains(response, 'class="main-nav"')
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")
         self.assertContains(response, reverse("edit_patient", args=[patient.id]))
@@ -706,6 +711,7 @@ class ConfirmedTriageFlowTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = get_user_model().objects.create_user(username="flow-nurse", password="secret")
+        StaffProfile.objects.create(user=self.user, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.user)
         self.patient = Patient.objects.create(
             first_name="Flow",
@@ -744,7 +750,7 @@ class ConfirmedTriageFlowTests(TestCase):
         page = self.client.get(reverse("emergency_transfers"))
         self.assertContains(page, 'class="topbar"')
         self.assertContains(page, "ผู้ป่วยระดับ 1–2 ที่ต้องรับช่วงในระบบฉุกเฉิน")
-        self.assertContains(page, "backdrop-filter: none")
+        self.assertContains(page, 'class="main-nav"')
 
     def test_yellow_enters_observation_queue_and_can_pair_wearable(self):
         visit = self.make_visit()

@@ -134,7 +134,8 @@ INSTALLED_APPS = [
     'queues',
     'ai_triage',
     'dashboard',
-    "opd"
+    "opd",
+    "system_test.apps.SystemTestConfig",
 ] 
 
 MIDDLEWARE = [
@@ -187,6 +188,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.access_control',
             ],
         },
     },
@@ -319,7 +321,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 LOGIN_URL = "/" 
-LOGIN_REDIRECT_URL = "/queues/"
+LOGIN_REDIRECT_URL = "/accounts/landing/"
 LOGOUT_REDIRECT_URL = "/"
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field

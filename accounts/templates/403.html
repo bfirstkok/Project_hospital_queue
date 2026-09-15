@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ไม่มีสิทธิ์เข้าถึง</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f2f7f8;color:#173242;font-family:"Noto Sans Thai",Tahoma,sans-serif}.card{width:min(560px,100%);padding:32px;border:1px solid #d7e5e8;border-radius:20px;background:#fff;box-shadow:0 18px 50px rgba(31,67,78,.1)}.code{display:inline-grid;place-items:center;width:62px;height:62px;border-radius:18px;background:#fff1ef;color:#b43c30;font-size:22px;font-weight:900}h1{margin:20px 0 8px;font-size:28px}p{color:#617985;line-height:1.7}.role{padding:12px 14px;border-radius:12px;background:#eef7f6;color:#087467;font-weight:800}.actions{display:flex;gap:10px;margin-top:22px}.btn{padding:10px 15px;border-radius:10px;background:#087f75;color:#fff;text-decoration:none;font-weight:800}.btn.secondary{background:#edf3f5;color:#385965}
+  </style>
+</head>
+<body><main class="card"><span class="code">403</span><h1>บัญชีนี้ไม่มีสิทธิ์เปิดหน้านี้</h1><p>ระบบแยกหน้าที่ตามประเภทบุคลากรเพื่อป้องกันการดูหรือแก้ไขข้อมูลเกินขอบเขตงาน</p><div class="role">บทบาทปัจจุบัน: {{ access_role_label|default:current_role }}</div><div class="actions"><a class="btn" href="/accounts/landing/">กลับหน้าหลักของฉัน</a><a class="btn secondary" href="javascript:history.back()">ย้อนกลับ</a></div></main></body>
+</html>

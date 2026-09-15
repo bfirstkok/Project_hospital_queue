@@ -31,6 +31,7 @@ class FiftyPatientVariedSymptomWorkflowTests(TestCase):
             first_name="เจ้าหน้าที่",
             last_name="จำลอง 50 คน",
         )
+        StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.operator)
 
         self.nurses = []

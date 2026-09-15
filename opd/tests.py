@@ -11,7 +11,7 @@ from .models import VisitAssessment
 class DoctorSelectionTests(TestCase):
     def setUp(self):
         self.operator = get_user_model().objects.create_user("operator", password="test-pass")
-        StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.STAFF)
+        StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.DOCTOR)
         self.doctor = get_user_model().objects.create_user(
             "doctor-one",
             password="test-pass",

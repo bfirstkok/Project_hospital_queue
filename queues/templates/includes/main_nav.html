@@ -1,295 +1,38 @@
 {% load care_assignment_tags %}
 <style>
-  /* The workflow navigation is fixed to the viewport, so reserve vertical
-     space on every page that includes it instead of letting it cover titles. */
-  body {
-    padding-top: 62px !important;
-    box-sizing: border-box;
-  }
-
-  .topbar:has(> .opd-main-tabs) {
-    top: 62px !important;
-    backdrop-filter: none !important;
-  }
-
-  .opd-main-tabs {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    width: max-content;
-    max-width: 100%;
-    margin: 0;
-    padding: 5px;
-    border: 1px solid #dbe7ea;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 4px 18px rgba(38, 75, 89, .07);
-    overflow-x: auto;
-  }
-
-  .opd-main-tab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 32px;
-    padding: 0 13px;
-    border-radius: 7px;
-    color: #526d79 !important;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    text-decoration: none !important;
-    white-space: nowrap;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    transition: background .16s ease, color .16s ease;
-  }
-
-  .opd-main-tab:hover {
-    color: #087f75 !important;
-    background: #edf7f6;
-  }
-
-  .opd-main-tab.active {
-    color: #ffffff !important;
-    background: #087f75;
-  }
-
-  .topbar > .opd-main-tabs,
-  .top > .opd-main-tabs,
-  .page-head > .opd-main-tabs,
-  .header > .opd-main-tabs,
-  .hero > .opd-main-tabs {
-    justify-self: center;
-    align-self: start;
-  }
-
-  .top > .opd-main-tabs,
-  .page-head > .opd-main-tabs,
-  .header > .opd-main-tabs,
-  .hero > .opd-main-tabs {
-    position: fixed;
-    top: 24px;
-    left: 50%;
-    z-index: 40;
-    transform: translateX(-50%);
-  }
-
-  .responsible-nurse-banner {
-    position: fixed;
-    top: 66px;
-    right: 18px;
-    z-index: 95;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    max-width: min(440px, calc(100vw - 36px));
-    padding: 9px 12px;
-    border: 1px solid #badfd8;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #234650;
-    box-shadow: 0 6px 22px rgba(38, 75, 89, .12);
-    font-size: 12px;
-  }
-
-  .responsible-nurse-banner .nurse-dot {
-    width: 9px;
-    height: 9px;
-    flex: 0 0 9px;
-    border-radius: 50%;
-    background: #0e9f83;
-    box-shadow: 0 0 0 4px rgba(14, 159, 131, .12);
-  }
-
-  .responsible-nurse-banner.unassigned {
-    border-color: #ead08b;
-    background: #fffaf0;
-    color: #7a5700;
-  }
-
-  .responsible-nurse-banner.unassigned .nurse-dot {
-    background: #d7a313;
-    box-shadow: 0 0 0 4px rgba(215, 163, 19, .12);
-  }
-
-  .responsible-nurse-banner strong {
-    color: inherit;
-    font-size: 13px;
-  }
-
-  .responsible-nurse-banner .nurse-user {
-    margin-left: 3px;
-    color: #6a7f88;
-    font-size: 11px;
-  }
-
-  .nurse-change-link,
-  .nurse-quick-change {
-    margin-left: auto;
-    padding: 5px 8px;
-    border: 1px solid #9dd2ca;
-    border-radius: 7px;
-    background: #edf9f6;
-    color: #087467 !important;
-    font-size: 11px;
-    font-weight: 800;
-    text-decoration: none !important;
-    white-space: nowrap;
-  }
-
-  .nurse-quick-change {
-    display: inline-flex;
-    margin: 5px auto 0;
-  }
-
-  .monitor-owner-alert {
-    display: block;
-    margin-top: 5px;
-    padding: 5px 7px;
-    border: 1px solid rgba(255,95,114,.35);
-    border-radius: 7px;
-    background: rgba(255,95,114,.12);
-    color: #ff8b98;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  @media (max-width: 760px) {
-    body {
-      padding-top: 58px !important;
-    }
-
-    .topbar:has(> .opd-main-tabs) {
-      top: 58px !important;
-    }
-
-    .opd-main-tabs {
-      justify-content: flex-start;
-      width: 100%;
-    }
-
-    .top > .opd-main-tabs,
-    .page-head > .opd-main-tabs,
-    .header > .opd-main-tabs,
-    .hero > .opd-main-tabs {
-      position: static;
-      transform: none;
-      margin-top: 12px;
-    }
-
-    .responsible-nurse-banner {
-      position: static;
-      width: 100%;
-      max-width: none;
-      margin-top: 10px;
-      box-sizing: border-box;
-      flex-wrap: wrap;
-    }
-  }
-
-  .opd-main-tabs {
-    position: fixed !important;
-    top: 14px !important;
-    left: 50% !important;
-    z-index: 100 !important;
-    width: max-content !important;
-    max-width: calc(100vw - 32px) !important;
-    margin: 0 !important;
-    transform: translateX(-50%) !important;
-  }
-
-  @media (max-width: 760px) {
-    .opd-main-tabs {
-      top: 10px !important;
-      width: calc(100vw - 24px) !important;
-      justify-content: flex-start !important;
-    }
-  }
+  body{padding-top:76px!important;box-sizing:border-box}
+  .main-nav{position:fixed;inset:0 0 auto 0;z-index:1000;display:flex;align-items:center;gap:10px;height:64px;padding:8px 18px;border-bottom:1px solid #d8e5e8;background:rgba(255,255,255,.98);box-shadow:0 4px 18px rgba(23,50,77,.08);font-family:"Sarabun",sans-serif}
+  .main-nav__brand{display:flex;align-items:center;gap:9px;min-width:max-content;color:#075f5a;text-decoration:none;font-weight:800}.main-nav__logo{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#078e83;color:#fff}.main-nav__links{display:flex;align-items:center;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}.main-nav__links::-webkit-scrollbar{display:none}
+  .main-nav__link{display:inline-flex;align-items:center;min-height:36px;padding:0 11px;border-radius:9px;color:#526d79!important;text-decoration:none!important;white-space:nowrap;font-size:12px;font-weight:700}.main-nav__link:hover{background:#edf7f6;color:#087f75!important}.main-nav__link.active{background:#087f75;color:#fff!important}.main-nav__link.admin{background:#fff3dd;color:#885c00!important}
+  .main-nav__account{display:flex;align-items:center;gap:9px;min-width:max-content}.main-nav__identity{text-align:right;line-height:1.15}.main-nav__identity b{display:block;font-size:12px}.main-nav__identity small{color:#607783;font-size:10px}.main-nav__logout{padding:8px 10px;border:1px solid #cbdcdf;border-radius:9px;color:#526d79!important;text-decoration:none!important;font-size:11px;font-weight:700}
+  .responsible-nurse-banner{position:fixed;top:70px;right:18px;z-index:95;display:flex;align-items:center;gap:9px;max-width:min(440px,calc(100vw - 36px));padding:9px 12px;border:1px solid #badfd8;border-radius:10px;background:#fff;color:#234650;box-shadow:0 6px 22px rgba(38,75,89,.12);font-size:12px}.responsible-nurse-banner.unassigned{border-color:#ead08b;background:#fffaf0;color:#7a5700}.nurse-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#0e9f83}.responsible-nurse-banner.unassigned .nurse-dot{background:#d7a313}.nurse-user{margin-left:3px;color:#6a7f88;font-size:11px}.nurse-change-link,.nurse-quick-change{margin-left:auto;padding:5px 8px;border:1px solid #9dd2ca;border-radius:7px;background:#edf9f6;color:#087467!important;font-size:11px;font-weight:800;text-decoration:none!important;white-space:nowrap}.monitor-owner-alert{display:block;margin-top:5px;padding:5px 7px;border:1px solid rgba(255,95,114,.35);border-radius:7px;background:rgba(255,95,114,.12);color:#b5293a;font-size:10px;font-weight:700}
+  @media(max-width:850px){body{padding-top:66px!important}.main-nav{height:56px;padding:6px 10px}.main-nav__brand span,.main-nav__identity{display:none}.main-nav__logo{width:34px;height:34px}.main-nav__link{padding:0 9px}.responsible-nurse-banner{position:static;max-width:none;margin:0 10px 10px}.main-nav__logout{padding:7px}}
 </style>
-<nav class="opd-main-tabs" aria-label="หลัก">
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_vitals' %}active{% endif %}" href="{% url 'waiting_vitals' %}">รอวัดค่า</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_confirmation' %}active{% endif %}" href="{% url 'waiting_confirmation' %}">รอยืนยัน</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'queue_list' %}active{% endif %}" href="{% url 'queue_list' %}">คิว</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'patient_search' or request.resolver_match.url_name == 'patient_history' %}active{% endif %}" href="{% url 'patient_search' %}">ผู้ป่วย</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'opd_list' or request.resolver_match.url_name == 'opd_room_select' or request.resolver_match.url_name == 'visit_assessment' or request.resolver_match.url_name == 'opd_visit_detail' %}active{% endif %}" href="{% url 'opd_list' %}">ห้องตรวจ</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'monitor_dashboard' or request.resolver_match.url_name == 'followup_visit_detail' or request.resolver_match.url_name == 'waiting_monitor_dashboard' or request.resolver_match.url_name == 'waiting_monitor_visit_detail' %}active{% endif %}" href="/queues/monitor/">ติดตาม</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'personnel_dashboard' %}active{% endif %}" href="{% url 'personnel_dashboard' %}">บุคลากร</a>
-  <a class="opd-main-tab {% if request.path|slice:':8' == '/device/' %}active{% endif %}" href="/device/">อุปกรณ์</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'emergency_transfers' %}active{% endif %}" href="{% url 'emergency_transfers' %}">ส่งต่อฉุกเฉิน</a>
-  <a class="opd-main-tab {% if request.resolver_match.app_name == 'dashboard' or request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}" href="/dashboard/">แดชบอร์ด</a>
-  <a class="opd-main-tab {% if request.resolver_match.url_name == 'waiting_time_report' %}active{% endif %}" href="{% url 'dashboard:waiting_time_report' %}">รายงาน</a>
+<nav class="main-nav" aria-label="เมนูตามสิทธิ์">
+  <a class="main-nav__brand" href="{% url 'role_landing' %}"><span class="main-nav__logo">OPD</span><span>ระบบผู้ป่วย</span></a>
+  <div class="main-nav__links">
+    {% if 'record_vitals' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'waiting_vitals' %}active{% endif %}" href="{% url 'waiting_vitals' %}">รอวัดค่า</a>{% endif %}
+    {% if 'confirm_triage' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'waiting_confirmation' %}active{% endif %}" href="{% url 'waiting_confirmation' %}">รอยืนยัน</a>{% endif %}
+    {% if 'view_queue' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'queue_list' %}active{% endif %}" href="{% url 'queue_list' %}">คิว</a>{% endif %}
+    {% if 'view_patient' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'patient_search' or request.resolver_match.url_name == 'patient_history' %}active{% endif %}" href="{% url 'patient_search' %}">ผู้ป่วย</a>{% endif %}
+    {% if 'doctor_assessment' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'opd_list' or request.resolver_match.url_name == 'opd_room_select' or request.resolver_match.url_name == 'visit_assessment' %}active{% endif %}" href="{% url 'opd_room_select' %}">ห้องตรวจ</a>{% endif %}
+    {% if 'monitor_patient' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'monitor_dashboard' or request.resolver_match.url_name == 'waiting_monitor_dashboard' %}active{% endif %}" href="{% url 'monitor_dashboard' %}">ติดตาม</a>{% endif %}
+    {% if 'view_personnel' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'personnel_dashboard' %}active{% endif %}" href="{% url 'personnel_dashboard' %}">บุคลากร</a>{% endif %}
+    {% if 'manage_device' in access_capabilities %}<a class="main-nav__link {% if request.path|slice:':8' == '/device/' %}active{% endif %}" href="/device/">อุปกรณ์</a>{% endif %}
+    {% if 'view_dashboard' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="/dashboard/">แดชบอร์ด</a>{% endif %}
+    {% if 'view_report' in access_capabilities %}<a class="main-nav__link {% if request.resolver_match.url_name == 'waiting_time_report' %}active{% endif %}" href="{% url 'dashboard:waiting_time_report' %}">รายงาน</a>{% endif %}
+    {% if 'system_test' in access_capabilities %}<a class="main-nav__link admin {% if request.resolver_match.app_name == 'system_test' %}active{% endif %}" href="{% url 'system_test:index' %}">ทดสอบ / ฐานข้อมูล</a>{% endif %}
+  </div>
+  <div class="main-nav__account"><a class="main-nav__identity" href="{% url 'my_permissions' %}" style="color:inherit;text-decoration:none" title="ดูหน้าที่และสิทธิ์ของฉัน"><b>{{ request.user.get_full_name|default:request.user.username }}</b><small>{{ access_role_label }} · ดูสิทธิ์</small></a><a class="main-nav__logout" href="{% url 'logout' %}">ออก</a></div>
 </nav>
 
 {% if visit and request.resolver_match.url_name == 'opd_visit_detail' or visit and request.resolver_match.url_name == 'followup_visit_detail' or visit and request.resolver_match.url_name == 'waiting_monitor_visit_detail' %}
   {% active_responsible_nurse visit as responsible_nurse %}
-  {% if responsible_nurse %}
-    <div class="responsible-nurse-banner" aria-label="พยาบาลผู้ดูแล">
-      <span class="nurse-dot"></span>
-      <span>พยาบาลผู้ดูแล: <strong>{{ responsible_nurse.get_full_name|default:responsible_nurse.username }}</strong><span class="nurse-user">{{ responsible_nurse.username }}</span></span>
-      <a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">เปลี่ยนผู้ดูแล</a>
-    </div>
-  {% elif visit.final_severity == 'YELLOW' %}
-    <div class="responsible-nurse-banner unassigned" aria-label="ยังไม่มอบหมายพยาบาล">
-      <span class="nurse-dot"></span>
-      <span><strong>ยังไม่มอบหมายพยาบาลผู้ดูแล</strong></span>
-      <a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">มอบหมายตอนนี้</a>
-    </div>
-  {% endif %}
+  {% if responsible_nurse %}<div class="responsible-nurse-banner"><span class="nurse-dot"></span><span>พยาบาลผู้ดูแล: <strong>{{ responsible_nurse.get_full_name|default:responsible_nurse.username }}</strong><span class="nurse-user">{{ responsible_nurse.username }}</span></span>{% if 'manage_personnel' in access_capabilities %}<a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">เปลี่ยนผู้ดูแล</a>{% endif %}</div>
+  {% elif visit.final_severity == 'YELLOW' %}<div class="responsible-nurse-banner unassigned"><span class="nurse-dot"></span><strong>ยังไม่มอบหมายพยาบาลผู้ดูแล</strong>{% if 'manage_personnel' in access_capabilities %}<a class="nurse-change-link" href="{% url 'personnel_dashboard' %}?visit={{ visit.id }}#patient-{{ visit.id }}">มอบหมาย</a>{% endif %}</div>{% endif %}
 {% endif %}
-
 <script>
-  (() => {
-    const heartbeat = () => fetch("{% url 'staff_heartbeat' %}", {
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: {"X-Requested-With": "XMLHttpRequest"}
-    }).catch(() => {});
-    heartbeat();
-    window.setInterval(heartbeat, 60000);
-
-    // Queue page: make the caregiver cell actionable without widening the
-    // already dense action column. The visit id is read from the existing
-    // detail link and points to the same workload-aware reassignment control.
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll(".queue-table tbody tr").forEach((row) => {
-        const detailLink = row.querySelector('a[href*="/opd/visit/"][href*="/detail/"]');
-        const nurseCell = row.children[5];
-        if (!detailLink || !nurseCell || nurseCell.querySelector(".nurse-quick-change")) return;
-        const match = detailLink.getAttribute("href")?.match(/\/opd\/visit\/(\d+)\/detail\//);
-        if (!match) return;
-        const visitId = match[1];
-        const link = document.createElement("a");
-        link.className = "nurse-quick-change";
-        link.href = `/queues/personnel/?visit=${visitId}#patient-${visitId}`;
-        link.textContent = nurseCell.querySelector(".nurse-missing") ? "มอบหมาย" : "เปลี่ยนผู้ดูแล";
-        nurseCell.appendChild(document.createElement("br"));
-        nurseCell.appendChild(link);
-      });
-    });
-
-    // The monitor refreshes its table every five seconds. Attach the urgent
-    // reassessment message to the responsible nurse after each refresh so the
-    // alert says exactly who owns the case rather than showing a generic flag.
-    if (document.body.classList.contains("monitor-page")) {
-      const decorateOwnerAlerts = () => {
-        document.querySelectorAll("#rows tr").forEach((row) => {
-          const reassessLink = row.querySelector('a[href*="/queues/assessment/"]');
-          if (!reassessLink) return;
-          const nurseCell = row.children[2];
-          if (!nurseCell || nurseCell.querySelector(".monitor-owner-alert")) return;
-          const nurseName = nurseCell.querySelector(".nurse-owner b")?.textContent?.trim() || "พยาบาลผู้รับผิดชอบ";
-          const alert = document.createElement("span");
-          alert.className = "monitor-owner-alert";
-          alert.textContent = `⚠ แจ้ง ${nurseName}: ผู้ป่วยต้องประเมินซ้ำ`;
-          nurseCell.appendChild(alert);
-        });
-      };
-      decorateOwnerAlerts();
-      window.setInterval(decorateOwnerAlerts, 1000);
-    }
-  })();
+(()=>{const heartbeat=()=>fetch("{% url 'staff_heartbeat' %}",{credentials:"same-origin",cache:"no-store",headers:{"X-Requested-With":"XMLHttpRequest"}}).catch(()=>{});heartbeat();setInterval(heartbeat,60000);
+{% if 'manage_personnel' in access_capabilities %}document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".queue-table tbody tr").forEach(row=>{const d=row.querySelector('a[href*="/opd/visit/"][href*="/detail/"]'),cell=row.children[5];if(!d||!cell||cell.querySelector(".nurse-quick-change"))return;const m=d.getAttribute("href")?.match(/\/opd\/visit\/(\d+)\/detail\//);if(!m)return;const a=document.createElement("a");a.className="nurse-quick-change";a.href=`/queues/personnel/?visit=${m[1]}#patient-${m[1]}`;a.textContent=cell.querySelector(".nurse-missing")?"มอบหมาย":"เปลี่ยนผู้ดูแล";cell.append(document.createElement("br"),a)})});{% endif %}
+if(document.body.classList.contains("monitor-page")){const decorate=()=>document.querySelectorAll("#rows tr").forEach(row=>{const link=row.querySelector('a[href*="/queues/assessment/"]'),cell=row.children[2];if(!link||!cell||cell.querySelector(".monitor-owner-alert"))return;const n=cell.querySelector(".nurse-owner b")?.textContent?.trim()||"พยาบาลผู้รับผิดชอบ",a=document.createElement("span");a.className="monitor-owner-alert";a.textContent=`⚠ แจ้ง ${n}: ผู้ป่วยต้องประเมินซ้ำ`;cell.appendChild(a)});decorate();setInterval(decorate,1000)}})();
 </script>

@@ -4,6 +4,8 @@ from django.contrib.auth import views as auth_views
 from queues import device_views, views
 from patients import views as patient_views
 from accounts import views as accounts_views
+from accounts.access import Capability, capability_required
+from system_test import views as system_test_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -17,10 +19,14 @@ urlpatterns = [
 
     path("accounts/login/", auth_views.LoginView.as_view(), name="login_alt"),
     path("accounts/logout/", accounts_views.custom_logout, name="logout"),
+    path("accounts/", include("accounts.urls")),
     path("dashboard/", include("dashboard.urls")),
     path("patients/", include("patients.urls")),
     path("opd/", include("opd.urls")),
-    path("device/", device_views.device_management, name="device_management"),
+    path("test/", include("system_test.urls")),
+    path("database/", system_test_views.database_index, name="database_index"),
+    path("database/<str:app_label>/<str:model_name>/", system_test_views.database_table, name="database_table_root"),
+    path("device/", capability_required(Capability.MANAGE_DEVICE)(device_views.device_management), name="device_management"),
 
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
     path("api/iot/vitals/", views.iot_vitals, name="iot_vitals"),

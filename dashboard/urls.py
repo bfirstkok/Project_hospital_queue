@@ -8,15 +8,16 @@ from .views import (
     waiting_time_report_pdf,
     waiting_time_report_xls,
 )
+from accounts.access import Capability, capability_required
 
 app_name = "dashboard"
 
 urlpatterns = [
-    path("", dashboard_view, name="home"),
-    path("ai-evaluation/", ai_evaluation_view, name="ai_evaluation"),
-    path("api/live-summary/", live_summary_api, name="live_summary_api"),
-    path("reports/waiting-time/", waiting_time_report, name="waiting_time_report"),
-    path("reports/waiting-time.csv", waiting_time_report_csv, name="waiting_time_report_csv"),
-    path("reports/waiting-time.xls", waiting_time_report_xls, name="waiting_time_report_xls"),
-    path("reports/waiting-time.pdf", waiting_time_report_pdf, name="waiting_time_report_pdf"),
+    path("", capability_required(Capability.VIEW_DASHBOARD)(dashboard_view), name="home"),
+    path("ai-evaluation/", capability_required(Capability.VIEW_REPORT)(ai_evaluation_view), name="ai_evaluation"),
+    path("api/live-summary/", capability_required(Capability.VIEW_DASHBOARD)(live_summary_api), name="live_summary_api"),
+    path("reports/waiting-time/", capability_required(Capability.VIEW_REPORT)(waiting_time_report), name="waiting_time_report"),
+    path("reports/waiting-time.csv", capability_required(Capability.VIEW_REPORT)(waiting_time_report_csv), name="waiting_time_report_csv"),
+    path("reports/waiting-time.xls", capability_required(Capability.VIEW_REPORT)(waiting_time_report_xls), name="waiting_time_report_xls"),
+    path("reports/waiting-time.pdf", capability_required(Capability.VIEW_REPORT)(waiting_time_report_pdf), name="waiting_time_report_pdf"),
 ]
