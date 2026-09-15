@@ -7,6 +7,7 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import Client, TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils import timezone
@@ -355,6 +356,55 @@ class PersonnelDashboardTests(TestCase):
             StaffProfile.objects.filter(user__in=seeded_users, role=StaffProfile.Role.NURSE).count(),
             9,
         )
+
+    def test_provision_staff_accounts_enables_real_logins_without_resetting_existing_users(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        call_command("seed_staff")
+        seeded_ids = list(
+            get_user_model().objects.filter(username__startswith="staff_demo_")
+            .values_list("pk", flat=True)
+        )
+        existing = get_user_model().objects.get(username="staff_demo_001")
+        existing.set_password("already-secure")
+        existing.save(update_fields=["password"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            credentials_path = Path(directory) / "staff-credentials.csv"
+            call_command(
+                "provision_staff_accounts",
+                credentials_file=str(credentials_path),
+            )
+
+            provisioned = get_user_model().objects.filter(
+                hospital_staff_profile__isnull=False
+            )
+            self.assertTrue(all(user.is_active for user in provisioned))
+            self.assertTrue(all(user.has_usable_password() for user in provisioned))
+            self.assertFalse(provisioned.filter(username__startswith="staff_demo_").exists())
+            self.assertTrue(
+                get_user_model().objects.get(pk=existing.pk).check_password("already-secure")
+            )
+
+            with credentials_path.open(encoding="utf-8-sig", newline="") as csv_file:
+                rows = list(csv.DictReader(csv_file))
+            self.assertEqual(len(rows), 19)
+            self.assertEqual(
+                {row["username"] for row in rows},
+                set(
+                    provisioned.filter(pk__in=seeded_ids)
+                    .exclude(pk=existing.pk)
+                    .values_list("username", flat=True)
+                ),
+            )
+
+            with self.assertRaises(CommandError):
+                call_command(
+                    "provision_staff_accounts",
+                    credentials_file=str(credentials_path),
+                )
 
     def test_online_nurse_can_be_assigned_to_eligible_patient(self):
         response = self.client.post(reverse("personnel_dashboard"), {
