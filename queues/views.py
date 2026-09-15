@@ -110,6 +110,27 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
             "อัตราการหายใจสูงกว่า 30 ครั้ง/นาที",
             "> 30",
         ),
+        (
+            CriticalAlert.AlertType.HIGH_HEART_RATE,
+            vitals.pr,
+            lambda value: value is not None and value >= 120,
+            "ชีพจรสูงตั้งแต่ 120 ครั้ง/นาที",
+            ">= 120",
+        ),
+        (
+            CriticalAlert.AlertType.LOW_HEART_RATE,
+            vitals.pr,
+            lambda value: value is not None and value < 40,
+            "ชีพจรต่ำกว่า 40 ครั้ง/นาที",
+            "< 40",
+        ),
+        (
+            CriticalAlert.AlertType.HIGH_TEMPERATURE,
+            vitals.bt,
+            lambda value: value is not None and value >= 39,
+            "อุณหภูมิสูงตั้งแต่ 39 °C",
+            ">= 39",
+        ),
     ]
 
     created = []
@@ -1124,6 +1145,40 @@ def acknowledge_alert(request, alert_id: int):
     alert.acknowledged_by = request.user
     alert.save(update_fields=["status", "acknowledged_at", "acknowledged_by"])
     return JsonResponse({"ok": True, "alert_id": alert.id, "status": alert.status})
+
+
+@login_required
+@require_GET
+def my_critical_alerts(request):
+    """Return unresolved wearable alerts assigned to the signed-in nurse."""
+    alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
+    if not request.user.is_superuser:
+        alerts = alerts.filter(
+            visit__nurse_care_assignments__nurse=request.user,
+            visit__nurse_care_assignments__is_active=True,
+        )
+    alerts = (
+        alerts.select_related("visit", "visit__patient", "visit__queue")
+        .distinct()
+        .order_by("-created_at")[:20]
+    )
+    return JsonResponse({
+        "ok": True,
+        "count": alerts.count(),
+        "alerts": [
+            {
+                "id": alert.id,
+                "visit_id": alert.visit_id,
+                "queue": alert.visit.queue.display_number,
+                "patient": f"{alert.visit.patient.first_name} {alert.visit.patient.last_name}",
+                "message": alert.message,
+                "value": alert.value,
+                "threshold": alert.threshold,
+                "created_at": alert.created_at.isoformat(),
+            }
+            for alert in alerts
+        ],
+    })
 
 
 @login_required

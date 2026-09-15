@@ -86,9 +86,60 @@ def _care_visits():
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "POST"])
 def staff_heartbeat(request):
-    return JsonResponse({"online": True, "at": timezone.now().isoformat()})
+    now = timezone.now()
+    today = timezone.localdate(now)
+    duty = StaffDuty.objects.filter(user=request.user, duty_date=today).first()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        profile = getattr(request.user, "hospital_staff_profile", None)
+        is_nurse = bool(profile and profile.role == StaffProfile.Role.NURSE)
+
+        if action == "check_in":
+            duty, _ = StaffDuty.objects.get_or_create(
+                user=request.user,
+                duty_date=today,
+                defaults={"checked_in_at": now},
+            )
+            duty.is_present = True
+            duty.is_available = is_nurse
+            duty.checked_in_at = now
+            duty.checked_out_at = None
+            duty.last_seen_at = now
+            duty.save(update_fields=[
+                "is_present", "is_available", "checked_in_at", "checked_out_at", "last_seen_at",
+            ])
+        elif action == "check_out":
+            active_cases = NurseCareAssignment.objects.filter(
+                nurse=request.user,
+                is_active=True,
+            ).count()
+            if active_cases:
+                return JsonResponse({
+                    "ok": False,
+                    "message": f"ยังมีผู้ป่วยในความดูแล {active_cases} ราย กรุณาส่งต่อเวรก่อน",
+                }, status=409)
+            if duty:
+                duty.is_present = False
+                duty.is_available = False
+                duty.checked_out_at = now
+                duty.last_seen_at = now
+                duty.save(update_fields=["is_present", "is_available", "checked_out_at", "last_seen_at"])
+        else:
+            return JsonResponse({"ok": False, "message": "คำสั่งไม่ถูกต้อง"}, status=400)
+
+    duty = StaffDuty.objects.filter(user=request.user, duty_date=today).first()
+    profile = getattr(request.user, "hospital_staff_profile", None)
+    return JsonResponse({
+        "ok": True,
+        "online": True,
+        "at": now.isoformat(),
+        "is_present": bool(duty and duty.is_present),
+        "is_available": bool(duty and duty.is_available),
+        "is_nurse": bool(profile and profile.role == StaffProfile.Role.NURSE),
+    })
 
 
 @login_required

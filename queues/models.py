@@ -373,6 +373,9 @@ class CriticalAlert(models.Model):
         LOW_O2 = "LOW_O2", "Low SpO2"
         LOW_BP = "LOW_BP", "Low systolic BP"
         HIGH_RR = "HIGH_RR", "High respiratory rate"
+        HIGH_HEART_RATE = "HIGH_HEART_RATE", "High heart rate"
+        LOW_HEART_RATE = "LOW_HEART_RATE", "Low heart rate"
+        HIGH_TEMPERATURE = "HIGH_TEMPERATURE", "High temperature"
 
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="critical_alerts")
     alert_type = models.CharField(max_length=24, choices=AlertType.choices)

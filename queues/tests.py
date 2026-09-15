@@ -1070,3 +1070,70 @@ class ConfirmedTriageExportTests(TestCase):
         self.assertNotIn("first_name", rows[0])
         self.assertNotIn("phone", rows[0])
 
+
+class DutyAndResponsibleNurseAlertTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.nurse = user_model.objects.create_user(username="alert-nurse", password="secret")
+        StaffProfile.objects.create(user=self.nurse, role=StaffProfile.Role.NURSE)
+        self.other_nurse = user_model.objects.create_user(username="other-nurse", password="secret")
+        StaffProfile.objects.create(user=self.other_nurse, role=StaffProfile.Role.NURSE)
+
+        patient = Patient.objects.create(
+            first_name="สมหญิง",
+            last_name="เฝ้าระวัง",
+            national_id="1111111111111",
+        )
+        self.visit = Visit.objects.create(patient=patient, final_severity=Visit.Severity.YELLOW)
+        Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+        NurseCareAssignment.objects.create(nurse=self.nurse, visit=self.visit)
+        self.client.force_login(self.nurse)
+
+    def test_staff_explicitly_checks_in_and_cannot_end_shift_with_active_case(self):
+        response = self.client.post(reverse("staff_heartbeat"), {"action": "check_in"})
+        self.assertEqual(response.status_code, 200)
+        duty = StaffDuty.objects.get(user=self.nurse, duty_date=timezone.localdate())
+        self.assertTrue(duty.is_present)
+        self.assertTrue(duty.is_available)
+
+        response = self.client.post(reverse("staff_heartbeat"), {"action": "check_out"})
+        self.assertEqual(response.status_code, 409)
+        duty.refresh_from_db()
+        self.assertTrue(duty.is_present)
+
+    def test_only_responsible_nurse_receives_the_alert(self):
+        alert = CriticalAlert.objects.create(
+            visit=self.visit,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำกว่า 95%",
+            value=88,
+            threshold="< 95",
+        )
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 1)
+        self.assertEqual(response.json()["alerts"][0]["id"], alert.id)
+
+        self.client.force_login(self.other_nurse)
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 0)
+
+    def test_wearable_creates_pulse_and_temperature_alerts(self):
+        vitals = VitalSign.objects.create(visit=self.visit, pr=128, bt=39.4)
+        alerts = queue_views.create_critical_alerts_for_visit(self.visit, vitals, source="iot_vitals")
+
+        self.assertEqual(
+            {alert.alert_type for alert in alerts},
+            {
+                CriticalAlert.AlertType.HIGH_HEART_RATE,
+                CriticalAlert.AlertType.HIGH_TEMPERATURE,
+            },
+        )
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+
