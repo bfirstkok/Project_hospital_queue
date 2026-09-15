@@ -1,7 +1,7 @@
 import csv
 import json
 import tempfile
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -1208,4 +1208,57 @@ class ShiftScheduleTests(TestCase):
         self.assertContains(response, "จัดเวรแล้ว")
         self.assertContains(response, "ยังไม่มีบุคลากรกดเริ่มเวร")
         self.assertFalse(StaffDuty.objects.filter(user=self.nurse).exists())
+
+    def test_superuser_with_staff_profile_is_visible_as_system_admin(self):
+        StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.STAFF)
+        self.manager.first_name = "สว่าง"
+        self.manager.last_name = "ขจรกิจ"
+        self.manager.save(update_fields=["first_name", "last_name"])
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("personnel_dashboard"))
+
+        self.assertContains(response, "สว่าง ขจรกิจ")
+        self.assertContains(response, "ผู้ดูแลระบบสูงสุด")
+        self.assertNotContains(
+            response,
+            f'<input type="hidden" name="user_id" value="{self.manager.id}">',
+            html=False,
+        )
+
+    def test_setup_demo_roster_adds_low_count_roles_and_weekly_coverage(self):
+        for role, total in {
+            StaffProfile.Role.DOCTOR: 5,
+            StaffProfile.Role.NURSE: 9,
+            StaffProfile.Role.NURSE_ASSISTANT: 2,
+            StaffProfile.Role.EMERGENCY: 2,
+            StaffProfile.Role.STAFF: 2,
+        }.items():
+            for index in range(total):
+                user = get_user_model().objects.create_user(
+                    username=f"{role.lower()}-{index}",
+                    password="secret",
+                )
+                StaffProfile.objects.create(user=user, role=role)
+
+        selected_week = date(2026, 9, 14)
+        with tempfile.TemporaryDirectory() as directory:
+            credentials = Path(directory) / "new-staff.csv"
+            call_command(
+                "setup_demo_roster",
+                week=selected_week.isoformat(),
+                credentials_file=str(credentials),
+            )
+            self.assertTrue(credentials.exists())
+
+        non_admin_profiles = StaffProfile.objects.filter(user__is_superuser=False)
+        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.NURSE_ASSISTANT).count(), 4)
+        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.EMERGENCY).count(), 4)
+        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.STAFF).count(), 4)
+        self.assertEqual(
+            ShiftSchedule.objects.filter(
+                shift_date__range=(selected_week, selected_week + timedelta(days=6)),
+            ).count(),
+            119,
+        )
 

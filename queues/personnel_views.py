@@ -509,7 +509,6 @@ def personnel_dashboard(request):
     users = list(
         user_model.objects
         .filter(is_active=True, hospital_staff_profile__isnull=False)
-        .exclude(is_superuser=True)
         .select_related("hospital_staff_profile")
         .order_by("first_name", "username")
     )
@@ -529,6 +528,12 @@ def personnel_dashboard(request):
         row = {
             "user": staff_user,
             "name": staff_user.get_full_name() or staff_user.username,
+            "is_system_admin": staff_user.is_superuser,
+            "role_label": (
+                "ผู้ดูแลระบบสูงสุด"
+                if staff_user.is_superuser
+                else profile.get_role_display()
+            ),
             "duty": duty,
             "profile": profile,
             "is_present": bool(duty and duty.is_present),
@@ -624,7 +629,11 @@ def personnel_dashboard(request):
         "can_manage_personnel": can_manage,
         "personal_assignments_only": not can_manage,
         "role_counts": {
-            role: sum(row["profile"].role == role for row in staff_rows)
+            role: sum(
+                not row["is_system_admin"] and row["profile"].role == role
+                for row in staff_rows
+            )
             for role, _label in StaffProfile.Role.choices
         },
+        "system_admin_count": sum(row["is_system_admin"] for row in staff_rows),
     })
