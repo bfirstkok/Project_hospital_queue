@@ -5,16 +5,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>รายงานเวลารอ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
   <style>
-    .wait-report { width: min(1440px, calc(100vw - 40px)); margin: 0 auto; padding: 34px 0 54px; color: #183044; }
-    .report-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
-    .report-eyebrow { margin: 0 0 4px; color: #087f75; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
-    .report-hero h1 { margin: 0; font-size: clamp(28px, 3vw, 38px); line-height: 1.2; }
-    .report-description { max-width: 720px; margin: 7px 0 0; color: #607783; font-size: 16px; }
+    body { background: radial-gradient(circle at 88% 2%, #dff3ef 0, transparent 24%), #f3f8f9; font-family: "Sarabun", sans-serif; }
+    .wait-report { width: min(1380px, calc(100% - 40px)); margin: 0 auto; padding: 20px 0 54px; color: #183044; }
+    .report-hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 176px; margin-bottom: 18px; padding: 28px 32px; overflow: hidden; border-radius: 22px; background: linear-gradient(125deg, #123a50, #087f75); box-shadow: 0 16px 38px rgba(12, 92, 91, .2); color: #fff; }
+    .report-hero::after { content: ""; position: absolute; right: -70px; bottom: -120px; width: 300px; height: 300px; border: 50px solid rgba(255,255,255,.07); border-radius: 50%; }
+    .report-hero > * { position: relative; z-index: 1; }
+    .report-eyebrow { margin: 0 0 4px; color: #9be6da; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+    .report-hero h1 { margin: 0; color: #fff; font-size: clamp(28px, 3vw, 40px); line-height: 1.2; }
+    .report-description { max-width: 720px; margin: 7px 0 0; color: #d5ecea; font-size: 15px; }
     .export-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-    .export-btn { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 1px solid #c5d8dd; border-radius: 10px; background: #fff; color: #274653 !important; font-size: 14px; font-weight: 700; box-shadow: 0 3px 10px rgba(35, 73, 88, .05); }
-    .export-btn:hover { border-color: #087f75; color: #087f75 !important; transform: translateY(-1px); }
+    .export-btn { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 1px solid rgba(255,255,255,.35); border-radius: 10px; background: rgba(255,255,255,.12); color: #fff !important; font-size: 14px; font-weight: 700; box-shadow: none; backdrop-filter: blur(6px); }
+    .export-btn:hover { border-color: #fff; background: #fff; color: #087f75 !important; transform: translateY(-1px); }
     .summary-grid { display: grid; grid-template-columns: .75fr repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
     .metric-card, .report-panel, .severity-panel { background: #fff; border: 1px solid #d3e1e5; border-radius: 14px; box-shadow: 0 5px 20px rgba(38, 75, 89, .055); }
     .metric-card {
@@ -68,7 +74,9 @@
     .table-scroll { width: 100%; overflow-x: auto; scrollbar-color: #a8bec6 transparent; }
     .detail-table { min-width: 1120px; }
     .detail-table th, .detail-table td { padding: 13px 12px !important; vertical-align: middle; font-size: 13px; }
-    .detail-table th { position: sticky; top: 0; z-index: 1; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+    .detail-table th { position: sticky; top: 0; z-index: 1; background: #f4f8f9; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+    .detail-table tbody tr:nth-child(even) { background: #fbfdfd; }
+    .detail-table tbody tr:hover { background: #f0f9f7; }
     .visit-id { color: #176b9c; font-weight: 800; white-space: nowrap; }
     .patient-cell strong { display: block; color: #183044; font-size: 14px; }
     .patient-cell small { color: #748993; }

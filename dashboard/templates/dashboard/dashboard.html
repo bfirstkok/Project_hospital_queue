@@ -5,668 +5,101 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>แดชบอร์ด - ระบบคิว</title>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <title>แดชบอร์ดระบบผู้ป่วย</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=dashboard-20260915">
   <style>
-    /* ===== RESET ===== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* ===== BODY & SHELL ===== */
-    body {
-      font-family: 'Sarabun', sans-serif;
-      background: #0a0e1a;
-      color: #e8eaf0;
-      min-height: 100vh;
-    }
-
-    .shell {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
-      background: #0a0e1a;
-    }
-
-    /* ===== TOPBAR ===== */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 17px;
-    }
-
-    .logo-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 17px;
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: -0.3px;
-    }
-
-    .logo-sub {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 0px;
-    }
-
-    .nav-pills {
-      display: flex;
-      gap: 3px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      padding: 3px;
-    }
-
-    .nav-pill {
-      padding: 5px 13px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.45);
-      transition: all 0.2s;
-      border: none;
-      background: transparent;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .nav-pill.active {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .nav-pill:hover:not(.active) {
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .logout-btn {
-      padding: 5px 12px;
-      border-radius: 5px;
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-      border: 1px solid rgba(255, 95, 114, 0.2);
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      font-family: 'Sarabun', sans-serif;
-    }
-
-    .logout-btn:hover {
-      background: rgba(255, 95, 114, 0.25);
-    }
-
-    /* ===== MAIN CONTENT ===== */
-    .wrap {
-      display: grid;
-      grid-template-columns: 1fr;
-      padding: 10px 28px;
-      gap: 8px;
-      overflow-y: auto;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-      align-content: start;
-      align-items: stretch;
-    }
-
-    /* ===== CARDS ===== */
-    .card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 10px 14px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #00d4aa, transparent);
-    }
-
-    .kpi {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 4px;
-    }
-
-    .label {
-      font-size: 13px;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
-      margin-bottom: 4px;
-    }
-
-    .val {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 28px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    /* ===== INDICATORS ===== */
-    .dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .dot.good {
-      background: #86efac;
-    }
-
-    .dot.warn {
-      background: #ffb830;
-    }
-
-    .dot.bad {
-      background: #ff5f72;
-    }
-
-    /* ===== CHIPS ===== */
-    .chips {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .chip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    .muted {
-      color: rgba(255, 255, 255, 0.35);
-      font-size: 18px;
-      margin-top: 4px;
-    }
-
-    /* ===== TABLE CARD ===== */
-    .table-card {
-      grid-column: 1 / -1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .table-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 19px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .table-wrap {
-      border-radius: 12px;
-      overflow: auto;
-      flex: 1;
-    }
-
-    /* ===== TABLE ===== */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    thead {
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    th {
-      padding: 14px 16px;
-      font-size: 14px;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.3);
-      font-weight: 600;
-      text-align: left;
-    }
-
-    td {
-      padding: 13px 16px;
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      vertical-align: middle;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .nurse-owner { display:flex; align-items:center; gap:10px; min-width:230px; }
-    .nurse-photo { width:38px; height:38px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 38px; }
-    .nurse-owner b { display:block; color:#17324d; font-size:15px; font-weight:700; white-space:nowrap; }
-    .nurse-owner small { display:block; color:#526b7f; font-size:12px; font-weight:500; margin-top:2px; }
-    .unassigned { color:#ffb830; font-size:14px; font-weight:600; }
-
-    /* ===== BADGES ===== */
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .badge.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .badge.pink { color: #e85d9e; background: rgba(232,93,158,.14); border-color: rgba(232,93,158,.25); }
-
-    .badge.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-    }
-
-    .badge.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .badge.white { color: #94a3b8; background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.25); }
-
-    /* ===== ACTION BUTTONS ===== */
-    .action-btn {
-      padding: 5px 10px;
-      border-radius: 5px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none;
-      display: inline-block;
-      margin-right: 4px;
-    }
-
-    .action-btn-blue {
-      background: rgba(0, 150, 255, 0.15);
-      color: #5ac8ff;
-    }
-
-    .action-btn-blue:hover {
-      background: rgba(0, 150, 255, 0.25);
-    }
-
-    .action-btn-red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .action-btn-red:hover {
-      background: rgba(255, 95, 114, 0.25);
-    }
-
-    .action-btn-pink { color: #e85d9e; background: rgba(232,93,158,.14); border: 1px solid rgba(232,93,158,.25); }
-    .action-btn-pink:hover { background: rgba(232,93,158,.25); }
-
-    .action-btn-yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-    }
-
-    .action-btn-yellow:hover {
-      background: rgba(255, 184, 48, 0.25);
-    }
-
-    .action-btn-green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    .action-btn-green:hover {
-      background: rgba(0, 212, 170, 0.25);
-    }
-
-    .action-btn-white { color: #94a3b8; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.25); }
-    .action-btn-white:hover { background: rgba(148,163,184,.25); }
+    :root{--ink:#17324d;--muted:#657d88;--line:#d8e5e8;--teal:#087f75;--teal-soft:#e7f6f3;--surface:#fff;--shadow:0 10px 28px rgba(24,60,74,.08)}
+    *{box-sizing:border-box}
+    body.dashboard-page{min-height:100vh;background:radial-gradient(circle at 85% 4%,#daf2ee 0,transparent 25%),#f3f8f9;color:var(--ink);font-family:"Sarabun",sans-serif}
+    .dashboard-shell{width:min(1460px,calc(100% - 40px));margin:0 auto;padding:20px 0 48px}
+    .hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:174px;padding:30px 34px;overflow:hidden;border-radius:22px;background:linear-gradient(125deg,#123a50,#087f75);box-shadow:0 16px 38px rgba(12,92,91,.2);color:#fff}
+    .hero::after{content:"";position:absolute;right:-65px;bottom:-115px;width:300px;height:300px;border:50px solid rgba(255,255,255,.07);border-radius:50%}
+    .hero-copy{position:relative;z-index:1}.hero-eyebrow{margin:0 0 6px;color:#9be6da;font-size:13px;font-weight:800;letter-spacing:.05em}.hero h1{margin:0;font-size:clamp(28px,3vw,42px);line-height:1.18}.hero p{max-width:700px;margin:9px 0 0;color:#d5ecea;font-size:15px}
+    .live-state{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(255,255,255,.1);white-space:nowrap}.pulse{width:10px;height:10px;border-radius:50%;background:#67f3c2;box-shadow:0 0 0 6px rgba(103,243,194,.13)}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:-28px 22px 18px;position:relative;z-index:2}
+    .stat-card{min-height:134px;padding:19px 20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+    .stat-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.stat-label{color:var(--muted);font-size:13px;font-weight:700}.stat-icon{display:grid;width:34px;height:34px;place-items:center;border-radius:10px;background:var(--teal-soft);color:var(--teal);font-size:16px;font-weight:800}.stat-value{margin-top:9px;color:var(--ink);font-size:34px;font-weight:800;line-height:1}.stat-help{margin-top:9px;color:#81949c;font-size:12px}
+    .severity-strip{display:grid;grid-template-columns:1.2fr repeat(5,1fr);overflow:hidden;margin-bottom:18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow)}
+    .severity-heading,.severity-item{padding:15px 18px}.severity-heading{display:flex;flex-direction:column;justify-content:center;background:#f8fbfb}.severity-heading span{color:var(--muted);font-size:12px}.severity-item{display:flex;align-items:center;justify-content:center;gap:10px;border-left:1px solid #e5edef}.sev-dot{width:10px;height:10px;border-radius:50%}.severity-item small{display:block;color:var(--muted);font-size:11px}.severity-item b{font-size:21px}.red{background:#dc2626}.pink{background:#db2777}.yellow{background:#eab308}.green{background:#16a34a}.white{background:#fff;border:2px solid #94a3b8}
+    .workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px}.panel{border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:var(--shadow);overflow:hidden}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #e5edef}.panel-head h2{margin:0;font-size:20px}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.refresh{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#edf8f6;color:var(--teal);font-size:11px;font-weight:800}.refresh .dot{width:7px;height:7px;border-radius:50%;background:#16a34a}
+    .table-wrap{width:100%;overflow:auto}.patient-table{width:100%;min-width:960px;border-collapse:collapse}.patient-table th{padding:12px 14px;background:#f7fafb;color:#607783;text-align:left;font-size:11px;letter-spacing:.03em}.patient-table td{padding:14px;border-top:1px solid #edf2f3;vertical-align:middle;font-size:13px}.patient-table tbody tr:hover{background:#fbfdfd}.visit-link{color:#1986bd;font-weight:800}.patient-name{font-weight:700}.nurse-owner{display:flex;align-items:center;gap:9px;min-width:185px}.nurse-photo{display:grid;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;background:#e6f4f2;object-fit:cover}.nurse-owner b{display:block;font-size:13px}.nurse-owner small{display:block;color:var(--muted);font-size:10px}.unassigned{color:#a46d06;font-weight:700}.badge,.online-pill{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:800}.badge.red{background:#fee2e2;color:#b91c1c}.badge.pink{background:#fce7f3;color:#be185d}.badge.yellow{background:#fef3c7;color:#9a6500}.badge.green{background:#dcfce7;color:#18794e}.badge.white{background:#edf2f4;color:#536b77;border:0}.badge.unknown{background:#f1f5f6;color:#718690}.online-pill{gap:6px;background:#edf8f6;color:#157563}.online-pill.offline{background:#f2f4f5;color:#72858d}.online-pill i{width:6px;height:6px;border-radius:50%;background:#18a67d}.online-pill.offline i{background:#9aa9af}.vitals{color:#526c78;white-space:nowrap}.detail-btn{display:inline-flex;padding:7px 11px;border-radius:8px;background:#087f75;color:#fff!important;font-size:11px;font-weight:800;text-decoration:none}.empty{padding:32px!important;color:var(--muted);text-align:center!important}
+    .side-stack{display:grid;align-content:start;gap:18px}.alerts{padding:14px}.alert-item{display:grid;grid-template-columns:10px 1fr auto;gap:9px;align-items:start;padding:11px 8px;border-bottom:1px solid #edf2f3}.alert-item:last-child{border-bottom:0}.alert-item .signal{width:8px;height:8px;margin-top:5px;border-radius:50%;background:#dc3545}.alert-copy b{display:block;font-size:12px}.alert-copy span{display:block;margin-top:2px;color:var(--muted);font-size:11px;line-height:1.35}.ack-btn{padding:5px 8px;border:0;border-radius:7px;background:#e8f4f2;color:#087f75;font:700 10px "Sarabun",sans-serif;cursor:pointer}.no-alerts{padding:24px;color:var(--muted);text-align:center;font-size:12px}
+    .quick-links{display:grid;gap:8px;padding:14px}.quick-link{display:flex;align-items:center;justify-content:space-between;padding:12px 13px;border:1px solid #dce8ea;border-radius:11px;color:var(--ink)!important;text-decoration:none;font-size:12px;font-weight:700}.quick-link:hover{border-color:#8bcac2;background:#f1faf8;color:#087f75!important}
+    @media(max-width:1120px){.stats{grid-template-columns:repeat(2,1fr)}.workspace{grid-template-columns:1fr}.side-stack{grid-template-columns:1fr 1fr}.severity-strip{grid-template-columns:repeat(5,1fr)}.severity-heading{grid-column:1/-1;border-bottom:1px solid #e5edef}.severity-item:first-of-type{border-left:0}}
+    @media(max-width:720px){.dashboard-shell{width:calc(100% - 22px);padding-top:10px}.hero{align-items:flex-start;flex-direction:column;padding:24px 22px}.stats{grid-template-columns:1fr;margin:-18px 10px 14px}.stat-card{min-height:110px}.severity-strip{grid-template-columns:repeat(2,1fr)}.severity-heading{grid-column:1/-1}.severity-item:last-child{grid-column:1/-1}.side-stack{grid-template-columns:1fr}.panel-head{padding:17px}}
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
-
 <body class="dashboard-page">
-<div class="shell">
-  <div class="topbar">
-    <div class="logo-area">
-      <div class="logo-icon">📊</div>
-      <div>
-        <div class="logo-text">แดชบอร์ด</div>
-        <div class="logo-sub">ศูนย์รวมระบบจัดการคิว</div>
-      </div>
-    </div>
-    {% include "includes/main_nav.html" %}
-  </div>
+  {% include "includes/main_nav.html" %}
+  <main class="dashboard-shell">
+    <header class="hero">
+      <div class="hero-copy"><p class="hero-eyebrow">ศูนย์ควบคุมการให้บริการ OPD</p><h1>ภาพรวมระบบบริการผู้ป่วย</h1><p>ติดตามคิว สัญญาณชีพ และเหตุการณ์สำคัญแบบเรียลไทม์ เพื่อให้ทีมดูแลเห็นสถานการณ์เดียวกัน</p></div>
+      <div class="live-state"><span class="pulse"></span><span><strong>ระบบกำลังทำงาน</strong><br><small id="serverTime">กำลังเชื่อมต่อข้อมูล...</small></span></div>
+    </header>
 
-  <div class="wrap">
-    <div class="grid">
-      <!-- KPI Cards -->
-      <div class="card">
-        <div class="kpi">
-          <div>
-            <div class="label">รอคิวทั้งหมด</div>
-            <div class="val">{{ waiting_total }}</div>
-          </div>
-          <div class="pill"><span class="dot warn"></span>สด</div>
-        </div>
-        <div class="chips">
-          <span class="chip"><span class="dot bad"></span>RED: {{ red_total }}</span>
-          <span class="chip">PINK: {{ pink_total }}</span>
-          <span class="chip"><span class="dot warn"></span>YELLOW: {{ yellow_total }}</span>
-          <span class="chip"><span class="dot good"></span>GREEN: {{ green_total }}</span>
-          <span class="chip">WHITE: {{ white_total }}</span>
-        </div>
-      </div>
+    <section class="stats" aria-label="ตัวชี้วัดสำคัญ">
+      <article class="stat-card"><div class="stat-top"><span class="stat-label">รอรับบริการ</span><span class="stat-icon">Q</span></div><div class="stat-value">{{ waiting_total }}</div><div class="stat-help">ผู้ป่วยที่อยู่ในคิวขณะนี้</div></article>
+      <article class="stat-card"><div class="stat-top"><span class="stat-label">เรียกแล้ว</span><span class="stat-icon">✓</span></div><div class="stat-value">{{ called_total }}</div><div class="stat-help">คิวที่เรียกเข้ารับบริการ</div></article>
+      <article class="stat-card"><div class="stat-top"><span class="stat-label">อุปกรณ์ออนไลน์</span><span class="stat-icon">⌁</span></div><div class="stat-value" id="onlineCount">-</div><div class="stat-help">การเชื่อมต่อข้อมูลผู้ป่วยล่าสุด</div></article>
+      <article class="stat-card"><div class="stat-top"><span class="stat-label">การแจ้งเตือนใหม่</span><span class="stat-icon">!</span></div><div class="stat-value" id="alertCount">{{ new_alert_total }}</div><div class="stat-help">เหตุการณ์ที่ยังไม่ได้รับทราบ</div></article>
+    </section>
 
-      <div class="card">
-        <div class="kpi">
-          <div>
-            <div class="label">เรียกแล้วทั้งหมด</div>
-            <div class="val">{{ called_total }}</div>
-          </div>
-          <div class="pill"><span class="dot good"></span>ปกติ</div>
-        </div>
-        <div class="muted">อัปเดต ณ {{ now }}</div>
-      </div>
+    <section class="severity-strip" aria-label="สรุประดับความรุนแรง">
+      <div class="severity-heading"><strong>ผู้ป่วยแยกตามระดับ</strong><span>จำนวนเคสที่ยังอยู่ในกระบวนการ</span></div>
+      <div class="severity-item"><span class="sev-dot red"></span><span><small>สีแดง</small><b>{{ red_total }}</b></span></div>
+      <div class="severity-item"><span class="sev-dot pink"></span><span><small>สีชมพู</small><b>{{ pink_total }}</b></span></div>
+      <div class="severity-item"><span class="sev-dot yellow"></span><span><small>สีเหลือง</small><b>{{ yellow_total }}</b></span></div>
+      <div class="severity-item"><span class="sev-dot green"></span><span><small>สีเขียว</small><b>{{ green_total }}</b></span></div>
+      <div class="severity-item"><span class="sev-dot white"></span><span><small>สีขาว</small><b>{{ white_total }}</b></span></div>
+    </section>
 
-      <div class="card">
-        <div class="kpi">
-          <div>
-            <div class="label">ออนไลน์จาก IoT</div>
-            <div class="val" id="onlineCount">-</div>
-          </div>
-          <div class="pill"><span class="dot good"></span>Live</div>
-        </div>
-        <div class="muted" id="serverTime">loading...</div>
-      </div>
-
-      <div class="card">
-        <div class="kpi">
-          <div>
-            <div class="label">Critical Alerts</div>
-            <div class="val" id="alertCount">{{ new_alert_total }}</div>
-          </div>
-          <div class="pill"><span class="dot bad"></span>NEW</div>
-        </div>
-        <div id="alertList" class="chips">
-          {% for alert in latest_alerts %}
-            <span class="chip"><span class="dot bad"></span>#{{ alert.visit_id }} {{ alert.message }}</span>
-          {% empty %}
-            <span class="chip muted">ไม่มี alert ใหม่</span>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Table Card -->
-      <div class="card table-card">
-        <div class="table-header">
-          <div class="table-title">รายการล่าสุด (Top 12) - FOLLOWUP</div>
-          <div class="pill" id="lastRefresh"><span class="dot warn"></span>loading...</div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ลำดับ</th>
-                <th>ผู้ป่วย</th>
-                <th style="min-width:230px">พยาบาลผู้ดูแล</th>
-                <th>ระดับ</th>
-                <th>ออนไลน์</th>
-                <th>สัญญาณชีพ</th>
-                <th>คำสั่ง</th>
-              </tr>
-            </thead>
-            <tbody id="rows">
-              <tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  (function() {
-    const perfEntries = performance.getEntriesByType("navigation");
-    if (perfEntries.length > 0 && perfEntries[0].type === 'back_forward') {
-      if (sessionStorage.getItem('loggedOut') === 'true') {
-        location.replace('/');
-        return;
-      }
-      location.replace(location.href);
-      return;
+    <section class="workspace">
+      <article class="panel">
+        <div class="panel-head"><div><h2>ผู้ป่วยที่กำลังติดตาม</h2><p>12 รายการล่าสุด พร้อมพยาบาลผู้ดูแลและสัญญาณชีพ</p></div><span class="refresh" id="lastRefresh"><span class="dot"></span>กำลังโหลด</span></div>
+        <div class="table-wrap"><table class="patient-table"><thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>พยาบาลผู้ดูแล</th><th>ระดับ</th><th>เชื่อมต่อ</th><th>สัญญาณชีพล่าสุด</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="7" class="empty">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
+      </article>
+      <aside class="side-stack">
+        <section class="panel"><div class="panel-head"><div><h2>แจ้งเตือนสำคัญ</h2><p>รายการที่ต้องตรวจสอบ</p></div></div><div class="alerts" id="alertList">{% for alert in latest_alerts %}<div class="alert-item"><span class="signal"></span><div class="alert-copy"><b>Visit #{{ alert.visit_id }}</b><span>{{ alert.message }}</span></div></div>{% empty %}<div class="no-alerts">ยังไม่มีการแจ้งเตือนใหม่</div>{% endfor %}</div></section>
+        <section class="panel"><div class="panel-head"><div><h2>ทางลัด</h2><p>เปิดงานที่ใช้บ่อย</p></div></div><div class="quick-links"><a class="quick-link" href="{% url 'queue_list' %}"><span>จัดการคิวผู้ป่วย</span><span>→</span></a><a class="quick-link" href="{% url 'monitor_dashboard' %}"><span>ติดตามสัญญาณชีพ</span><span>→</span></a><a class="quick-link" href="{% url 'dashboard:waiting_time_report' %}"><span>รายงานเวลารอ</span><span>→</span></a></div></section>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const pendingSeverity=new Map();let cachedItems=[];
+    const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||"";
+    const vitals=v=>v?`BPM ${v.bpm??"-"} · O₂ ${v.o2sat??"-"} · BT ${v.bt??"-"} · RR ${v.rr??"-"}`:"-";
+    function render(){
+      const rows=document.getElementById("rows");
+      if(!cachedItems.length){rows.innerHTML='<tr><td colspan="7" class="empty">ยังไม่มีผู้ป่วยที่กำลังติดตาม</td></tr>';return}
+      rows.innerHTML=cachedItems.slice(0,12).map(x=>{
+        const n=x.responsible_nurse;
+        const nurse=n?`<div class="nurse-owner">${n.photo_url?`<img class="nurse-photo" src="${esc(n.photo_url)}" alt="">`:'<span class="nurse-photo">พย.</span>'}<span><b>${esc(n.name)}</b><small>ผู้รับผิดชอบ</small></span></div>`:'<span class="unassigned">ยังไม่ได้มอบหมาย</span>';
+        const sev=x.severity?x.severity.toLowerCase():"unknown";
+        return `<tr><td><span class="visit-link">#${x.visit_id}</span></td><td><span class="patient-name">${esc(x.patient_name||"-")}</span></td><td>${nurse}</td><td><span class="badge ${sev}">${esc(x.severity||"-")}</span></td><td><span class="online-pill ${x.online?"":"offline"}"><i></i>${x.online?"ออนไลน์":"ออฟไลน์"}</span></td><td><span class="vitals">${vitals(x.vitals)}</span></td><td><a class="detail-btn" href="/queues/monitor/visit/${x.visit_id}/">ดูข้อมูล</a></td></tr>`
+      }).join("")
     }
-    sessionStorage.removeItem('loggedOut');
-  })();
-
-  let cachedItems = [];
-  const pendingSeverity = new Map();
-
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-    return "";
-  }
-
-  function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return (meta && meta.content) || getCookie('csrftoken');
-  }
-
-  function vitalsText(v){
-    if(!v) return "-";
-    return `BPM ${v.bpm != null ? v.bpm : "-"} | O2 ${v.o2sat != null ? v.o2sat : "-"} | BT ${v.bt != null ? v.bt : "-"} | RR ${v.rr != null ? v.rr : "-"}`;
-  }
-
-  function escapeHtml(value){
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
-  }
-
-  async function setSeverity(visitId, sev){
-    const item = cachedItems.find(x=>x.visit_id===visitId);
-    if(!item) return;
-    item.severity = sev;
-    pendingSeverity.set(visitId, sev);
-    render();
-
-    try {
-      const res = await fetch(`/queues/api/update-severity/${visitId}/`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({ severity: sev })
-      });
-      if(!res.ok){
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if(!data.ok){
-        console.error('Failed to update severity:', data.error);
-        pendingSeverity.delete(visitId);
-        await loadSummary();
-        return;
-      }
-      item.severity = data.severity || sev;
-      pendingSeverity.delete(visitId);
-    } catch(err) {
-      console.error('Error updating severity:', err);
-      pendingSeverity.delete(visitId);
-      await loadSummary();
+    async function loadSummary(){
+      try{
+        const res=await fetch("/queues/monitor/api/summary/",{credentials:"same-origin",cache:"no-store"});if(!res.ok)throw new Error(res.status);
+        const data=await res.json();cachedItems=data.items||[];cachedItems.forEach(x=>{if(pendingSeverity.has(x.visit_id))x.severity=pendingSeverity.get(x.visit_id)});
+        document.getElementById("onlineCount").textContent=`${cachedItems.filter(x=>x.online).length}/${cachedItems.length}`;
+        document.getElementById("serverTime").textContent=data.server_time?`อัปเดต ${new Date(data.server_time).toLocaleTimeString("th-TH")}`:"เชื่อมต่อแล้ว";
+        document.getElementById("lastRefresh").innerHTML=`<span class="dot"></span>อัปเดต ${new Date().toLocaleTimeString("th-TH")}`;render()
+      }catch(error){document.getElementById("lastRefresh").textContent="เชื่อมต่อข้อมูลไม่ได้";console.error(error)}
     }
-  }
-
-  function render(){
-    const el = document.getElementById("rows");
-    if(cachedItems.length===0){
-      el.innerHTML = `<tr><td colspan="7" class="muted">ไม่มีข้อมูล</td></tr>`;
-      return;
+    async function ackAlert(id){await fetch(`/queues/api/alerts/${id}/ack/`,{method:"POST",credentials:"same-origin",headers:{"X-CSRFToken":csrf()}});loadAlerts()}
+    async function loadAlerts(){
+      try{
+        const res=await fetch("/dashboard/api/live-summary/",{credentials:"same-origin",cache:"no-store"}),data=await res.json();if(!data.ok)return;
+        document.getElementById("alertCount").textContent=data.new_alert_total;
+        document.getElementById("alertList").innerHTML=data.alerts.length?data.alerts.map(a=>`<div class="alert-item"><span class="signal"></span><div class="alert-copy"><b>Visit #${a.visit_id} · ${esc(a.patient)}</b><span>${esc(a.message)}</span></div><button class="ack-btn" onclick="ackAlert(${a.id})">รับทราบ</button></div>`).join(""):'<div class="no-alerts">ยังไม่มีการแจ้งเตือนใหม่</div>'
+      }catch(error){console.error(error)}
     }
-
-    el.innerHTML = cachedItems.slice(0,12).map(x=>{
-      const nurse = x.responsible_nurse;
-      const nurseHtml = nurse ? `
-        <div class="nurse-owner">
-          ${nurse.photo_url ? `<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">` : `<span class="nurse-photo">🧑‍⚕️</span>`}
-          <span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span>
-        </div>` : `<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
-      return `
-      <tr>
-        <td><b>#${x.visit_id}</b></td>
-        <td>${x.name != null ? x.name : "-"}</td>
-        <td>${nurseHtml}</td>
-        <td><span class="badge ${x.severity ? x.severity.toLowerCase() : ""}">${x.severity || "-"}</span></td>
-        <td>
-          ${x.online
-            ? `<span class="pill"><span class="dot good"></span>ออนไลน์</span>`
-            : `<span class="pill"><span class="dot bad"></span>ออฟไลน์</span>`}
-        </td>
-        <td class="muted">${vitalsText(x.vitals)}</td>
-        <td>
-          <a class="action-btn action-btn-blue" href="/queues/monitor/visit/${x.visit_id}/">ดู</a>
-          <button class="action-btn action-btn-red" onclick="setSeverity('${x.visit_id}', 'RED')">แดง</button>
-          <button class="action-btn action-btn-pink" onclick="setSeverity('${x.visit_id}', 'PINK')">ชมพู</button>
-          <button class="action-btn action-btn-yellow" onclick="setSeverity('${x.visit_id}', 'YELLOW')">เหลือง</button>
-          <button class="action-btn action-btn-green" onclick="setSeverity('${x.visit_id}', 'GREEN')">เขียว</button>
-          <button class="action-btn action-btn-white" onclick="setSeverity('${x.visit_id}', 'WHITE')">ขาว</button>
-        </td>
-      </tr>
-    `}).join("");
-  }
-
-  async function loadSummary(){
-    const res = await fetch("/queues/monitor/api/summary/");
-    const data = await res.json();
-    cachedItems = (data.items || []).map(item => ({
-      ...item,
-      name: item.patient_name,
-    }));
-    cachedItems.forEach(item => {
-      if (pendingSeverity.has(item.visit_id)) {
-        item.severity = pendingSeverity.get(item.visit_id);
-      }
-    });
-
-    document.getElementById("onlineCount").textContent =
-      `${cachedItems.filter(x=>x.online).length}/${cachedItems.length}`;
-    document.getElementById("serverTime").textContent =
-      "Server time: " + (data.server_time || "-");
-    document.getElementById("lastRefresh").innerHTML =
-      `<span class="dot good"></span>${new Date().toLocaleTimeString()}`;
-
-    render();
-  }
-
-  async function ackAlert(alertId) {
-    await fetch(`/queues/api/alerts/${alertId}/ack/`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {'X-CSRFToken': getCsrfToken()}
-    });
-    await loadLiveDashboard();
-  }
-
-  async function loadLiveDashboard() {
-    try {
-      const res = await fetch('/dashboard/api/live-summary/', {credentials: 'same-origin'});
-      const data = await res.json();
-      if (!data.ok) return;
-      document.getElementById('alertCount').textContent = data.new_alert_total;
-      const alertList = document.getElementById('alertList');
-      if (!data.alerts.length) {
-        alertList.innerHTML = '<span class="chip muted">ไม่มี alert ใหม่</span>';
-        return;
-      }
-      alertList.innerHTML = data.alerts.map(a => `
-        <span class="chip">
-          <span class="dot bad"></span>
-          #${a.visit_id} ${a.patient}: ${a.message}
-          <button class="action-btn action-btn-blue" onclick="ackAlert(${a.id})">รับทราบ</button>
-        </span>
-      `).join('');
-    } catch (err) {
-      console.error('live dashboard failed', err);
-    }
-  }
-
-  loadSummary();
-  loadLiveDashboard();
-  setInterval(loadSummary, 5000);
-  setInterval(loadLiveDashboard, 5000);
-</script>
+    loadSummary();loadAlerts();setInterval(loadSummary,10000);setInterval(loadAlerts,10000);
+  </script>
 </body>
 </html>
