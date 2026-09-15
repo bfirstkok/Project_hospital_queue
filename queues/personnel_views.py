@@ -110,6 +110,7 @@ def personnel_dashboard(request):
     now = timezone.now()
     today = timezone.localdate(now)
     user_model = get_user_model()
+    can_manage = has_capability(request.user, Capability.MANAGE_PERSONNEL)
 
     if request.method == "POST":
         if not has_capability(request.user, Capability.MANAGE_PERSONNEL):
@@ -324,22 +325,11 @@ def personnel_dashboard(request):
 
     users = list(
         user_model.objects
-        .filter(is_active=True)
+        .filter(is_active=True, hospital_staff_profile__isnull=False)
+        .exclude(is_superuser=True)
         .select_related("hospital_staff_profile")
         .order_by("first_name", "username")
     )
-    existing_profile_ids = {user.id for user in users if hasattr(user, "hospital_staff_profile")}
-    StaffProfile.objects.bulk_create(
-        [StaffProfile(user=user) for user in users if user.id not in existing_profile_ids],
-        ignore_conflicts=True,
-    )
-    if len(existing_profile_ids) != len(users):
-        users = list(
-            user_model.objects
-            .filter(is_active=True)
-            .select_related("hospital_staff_profile")
-            .order_by("first_name", "username")
-        )
 
     duties = {
         duty.user_id: duty
@@ -364,7 +354,11 @@ def personnel_dashboard(request):
             "patient_count": nurse_data["patient_count"] if nurse_data else 0,
             "remaining_capacity": nurse_data["remaining_capacity"] if nurse_data else MAX_PATIENTS_PER_NURSE,
             "load_state": nurse_data["load_state"] if nurse_data else "none",
-            "active_cases": nurse_data["active_cases"] if nurse_data else [],
+            "active_cases": (
+                nurse_data["active_cases"]
+                if nurse_data and (can_manage or staff_user.id == request.user.id)
+                else []
+            ),
         }
         staff_rows.append(row)
 
@@ -406,6 +400,16 @@ def personnel_dashboard(request):
             "needs_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
         })
 
+    # The personnel page doubles as a nurse workspace. A regular nurse sees
+    # only patients currently assigned to that account; coordinators/admins
+    # retain the complete assignment board.
+    if not can_manage:
+        patient_rows = [
+            row
+            for row in patient_rows
+            if row["care_assignment"] and row["care_assignment"].nurse_id == request.user.id
+        ]
+
     assignable_nurses = [row for row in nurse_rows if row["ready"]]
     ready_nurse_count = len(assignable_nurses)
     full_nurse_count = sum(row["is_present"] and row["patient_count"] >= MAX_PATIENTS_PER_NURSE for row in nurse_rows)
@@ -434,6 +438,8 @@ def personnel_dashboard(request):
         "assigned_count": sum(bool(row["care_assignment"]) for row in patient_rows),
         "active_filter": active_filter,
         "focus_visit_id": request.GET.get("visit", ""),
+        "can_manage_personnel": can_manage,
+        "personal_assignments_only": not can_manage,
         "role_counts": {
             role: sum(row["profile"].role == role for row in staff_rows)
             for role, _label in StaffProfile.Role.choices

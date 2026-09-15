@@ -255,6 +255,12 @@ class ObservationMonitoringVisibilityTests(TestCase):
 
     def test_monitor_and_dashboard_include_responsible_nurse_column(self):
         monitor_response = self.client.get(reverse("monitor_dashboard"))
+        admin = get_user_model().objects.create_superuser(
+            username="dashboard-admin",
+            email="admin@example.test",
+            password="secret",
+        )
+        self.client.force_login(admin)
         dashboard_response = self.client.get(reverse("dashboard:home"))
 
         self.assertContains(monitor_response, "พยาบาลผู้ดูแล")
@@ -609,7 +615,7 @@ class QueueWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="waiting-vitals-page"')
-        self.assertContains(response, "padding-top:76px")
+        self.assertContains(response, "padding-left:244px")
         self.assertContains(response, 'class="main-nav"')
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")

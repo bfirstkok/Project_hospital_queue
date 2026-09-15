@@ -27,17 +27,9 @@ class Capability:
 
 ROLE_CAPABILITIES = {
     StaffProfile.Role.DOCTOR: {
-        Capability.VIEW_DASHBOARD,
-        Capability.VIEW_QUEUE,
-        Capability.VIEW_PATIENT,
         Capability.DOCTOR_ASSESSMENT,
-        Capability.MONITOR_PATIENT,
-        Capability.ACKNOWLEDGE_ALERT,
-        Capability.VIEW_PERSONNEL,
-        Capability.VIEW_REPORT,
     },
     StaffProfile.Role.NURSE: {
-        Capability.VIEW_DASHBOARD,
         Capability.VIEW_QUEUE,
         Capability.MANAGE_QUEUE,
         Capability.REGISTER_PATIENT,
@@ -49,36 +41,26 @@ ROLE_CAPABILITIES = {
         Capability.ACKNOWLEDGE_ALERT,
         Capability.VIEW_PERSONNEL,
         Capability.MANAGE_DEVICE,
-        Capability.VIEW_REPORT,
     },
     StaffProfile.Role.NURSE_ASSISTANT: {
-        Capability.VIEW_DASHBOARD,
-        Capability.VIEW_QUEUE,
         Capability.REGISTER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.EDIT_PATIENT,
         Capability.RECORD_VITALS,
-        Capability.MONITOR_PATIENT,
-        Capability.VIEW_PERSONNEL,
     },
     StaffProfile.Role.EMERGENCY: {
-        Capability.VIEW_DASHBOARD,
         Capability.VIEW_QUEUE,
         Capability.MANAGE_QUEUE,
         Capability.VIEW_PATIENT,
         Capability.MONITOR_PATIENT,
         Capability.ACKNOWLEDGE_ALERT,
-        Capability.VIEW_PERSONNEL,
     },
     StaffProfile.Role.STAFF: {
-        Capability.VIEW_DASHBOARD,
         Capability.VIEW_QUEUE,
         Capability.MANAGE_QUEUE,
         Capability.REGISTER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.EDIT_PATIENT,
-        Capability.VIEW_PERSONNEL,
-        Capability.VIEW_REPORT,
     },
 }
 

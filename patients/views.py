@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+
+from accounts.access import Capability, has_capability
 from datetime import timedelta
 import hashlib
 import json
@@ -868,6 +870,15 @@ def patient_cancel_queue(request):
     return _cors_json(request, {"ok": True, "message": "ยกเลิกคิวเรียบร้อยแล้ว"})
 
 
+def _after_patient_change(request, patient):
+    """Continue in the signed-in user's workflow instead of leaking into another role."""
+    if has_capability(request.user, Capability.RECORD_VITALS):
+        return redirect("waiting_vitals")
+    if has_capability(request.user, Capability.VIEW_PATIENT):
+        return redirect("patient_history", patient_id=patient.id)
+    return redirect("role_landing")
+
+
 @login_required
 def register_patient(request):
     if request.method == "POST":
@@ -923,7 +934,7 @@ def register_patient(request):
                 status=Queue.Status.WAITING_VITALS,
             )
 
-        return redirect("waiting_vitals")
+        return _after_patient_change(request, patient)
 
     # GET
     return render(request, "patients/register.html", {"form": PatientForm()})
@@ -937,7 +948,7 @@ def edit_patient(request, patient_id):
         if form.is_valid():
             form.save()
             messages.success(request, "แก้ไขข้อมูลผู้ป่วยเรียบร้อยแล้ว")
-            return redirect("waiting_vitals")
+            return _after_patient_change(request, patient)
     else:
         form = PatientForm(instance=patient)
 
@@ -959,7 +970,7 @@ def update_patient_birth_date(request, patient_id):
     else:
         error = form.errors.get("birth_date", ["กรุณาตรวจสอบวันเกิด"])[0]
         messages.error(request, str(error))
-    return redirect("waiting_vitals")
+    return _after_patient_change(request, patient)
 
 
 @login_required

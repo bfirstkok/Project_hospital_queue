@@ -10,7 +10,12 @@ from .models import VisitAssessment
 
 class DoctorSelectionTests(TestCase):
     def setUp(self):
-        self.operator = get_user_model().objects.create_user("operator", password="test-pass")
+        self.operator = get_user_model().objects.create_user(
+            "operator",
+            password="test-pass",
+            first_name="แพทย์",
+            last_name="ผู้ใช้งาน",
+        )
         StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.DOCTOR)
         self.doctor = get_user_model().objects.create_user(
             "doctor-one",
@@ -40,10 +45,11 @@ class DoctorSelectionTests(TestCase):
 
         self.assertRedirects(response, reverse("select_examiner", args=[self.visit.id]))
 
-    def test_picker_only_lists_named_doctors(self):
+    def test_picker_only_lists_signed_in_doctor(self):
         response = self.client.get(reverse("select_examiner", args=[self.visit.id]))
 
-        self.assertContains(response, "สมชาย ใจดี")
+        self.assertContains(response, "แพทย์ ผู้ใช้งาน")
+        self.assertNotContains(response, "สมชาย ใจดี")
         self.assertNotContains(response, "สมหญิง พยาบาล")
 
     def test_nurse_cannot_be_selected_as_examiner(self):
@@ -56,10 +62,18 @@ class DoctorSelectionTests(TestCase):
         self.assertContains(response, "กรุณาเลือกแพทย์ผู้ตรวจก่อนเข้าประเมิน")
         self.assertNotIn("opd_examiner_id", self.client.session)
 
-    def test_selected_doctor_is_saved_with_assessment(self):
+    def test_doctor_cannot_submit_another_doctor_as_examiner(self):
         response = self.client.post(
             reverse("select_examiner", args=[self.visit.id]),
             {"doctor_id": self.doctor.id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("opd_examiner_id", self.client.session)
+
+    def test_signed_in_doctor_is_saved_with_assessment(self):
+        response = self.client.post(
+            reverse("select_examiner", args=[self.visit.id]),
+            {"doctor_id": self.operator.id},
         )
         self.assertRedirects(response, reverse("visit_assessment", args=[self.visit.id]))
 
@@ -67,4 +81,4 @@ class DoctorSelectionTests(TestCase):
 
         self.assertRedirects(response, reverse("opd_visit_detail", args=[self.visit.id]))
         assessment = VisitAssessment.objects.get(visit=self.visit)
-        self.assertEqual(assessment.examiner, self.doctor)
+        self.assertEqual(assessment.examiner, self.operator)

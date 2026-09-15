@@ -130,6 +130,20 @@ class NurseWorkloadManagementTests(TestCase):
         self.assertContains(response, 'id="staff-search"')
         self.assertContains(response, 'data-role="NURSE"')
 
+    def test_regular_nurse_sees_only_own_patient_details(self):
+        own_visit = self.make_visit()
+        other_visit = self.make_visit()
+        self.assign_direct(self.nurse_a, own_visit)
+        self.assign_direct(self.nurse_b, other_visit)
+        self.client.force_login(self.nurse_a)
+
+        response = self.client.get(reverse("personnel_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ผู้ป่วยที่ฉันรับผิดชอบ")
+        self.assertContains(response, own_visit.patient.first_name)
+        self.assertNotContains(response, other_visit.patient.first_name)
+
     def test_going_off_shift_auto_handover_moves_active_case(self):
         visit = self.make_visit()
         old_assignment = self.assign_direct(self.nurse_a, visit)

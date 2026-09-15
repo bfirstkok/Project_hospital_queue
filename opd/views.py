@@ -32,7 +32,10 @@ def _selected_examiner(request, visit_id):
     doctor_id = request.session.get("opd_examiner_id")
     if not doctor_id:
         return None
-    return _doctor_queryset().filter(pk=doctor_id).first()
+    examiner = _doctor_queryset().filter(pk=doctor_id).first()
+    if examiner and not request.user.is_superuser and examiner.pk != request.user.pk:
+        return None
+    return examiner
 
 
 def _get_related(obj, attr):
@@ -229,7 +232,11 @@ def select_examiner(request, visit_id: int):
     if not q or q.status != Queue.Status.CALLED:
         return redirect("opd_list")
 
-    doctors = list(_doctor_queryset())
+    doctors = list(
+        _doctor_queryset()
+        if request.user.is_superuser
+        else _doctor_queryset().filter(pk=request.user.pk)
+    )
     duties = {
         duty.user_id: duty
         for duty in StaffDuty.objects.filter(
@@ -240,7 +247,13 @@ def select_examiner(request, visit_id: int):
     error = ""
     if request.method == "POST":
         doctor_id = request.POST.get("doctor_id", "")
-        doctor = _doctor_queryset().filter(pk=doctor_id).first() if doctor_id.isdigit() else None
+        doctor = (
+            _doctor_queryset().filter(pk=doctor_id).first()
+            if doctor_id.isdigit()
+            else None
+        )
+        if doctor and not request.user.is_superuser and doctor.pk != request.user.pk:
+            doctor = None
         if doctor is None:
             error = "กรุณาเลือกแพทย์ผู้ตรวจก่อนเข้าประเมิน"
         elif not doctor.first_name.strip() or not doctor.last_name.strip():

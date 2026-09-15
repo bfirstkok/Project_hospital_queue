@@ -41,7 +41,7 @@ class PatientAgeDisplayTests(TestCase):
             {"birth_date": "1959-05-09"},
         )
 
-        self.assertRedirects(response, reverse("waiting_vitals"))
+        self.assertRedirects(response, reverse("patient_history", args=[patient.id]))
         patient.refresh_from_db()
         self.assertEqual(patient.birth_date, date(1959, 5, 9))
         self.assertEqual(patient.age_display, "67 ปี 3 เดือน 12 วัน")
@@ -78,7 +78,7 @@ class PatientAgeDisplayTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("waiting_vitals"))
+        self.assertRedirects(response, reverse("patient_history", args=[patient.id]))
         patient.refresh_from_db()
         self.assertEqual(patient.first_name, "ชื่อใหม่")
         self.assertEqual(patient.age, 46)
@@ -174,7 +174,8 @@ class PublicPatientApiTests(TestCase):
         first = self.client.post(reverse("register_patient"), staff_payload)
         second = self.client.post(reverse("register_patient"), staff_payload)
 
-        self.assertRedirects(first, reverse("waiting_vitals"))
+        registered_patient = Patient.objects.get(national_id=staff_payload["national_id"])
+        self.assertRedirects(first, reverse("patient_history", args=[registered_patient.id]))
         self.assertEqual(second.status_code, 200)
         self.assertContains(second, "ที่กำลังรับบริการอยู่แล้ว")
         self.assertEqual(Visit.objects.count(), 1)

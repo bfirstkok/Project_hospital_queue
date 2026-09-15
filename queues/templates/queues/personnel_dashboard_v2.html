@@ -31,6 +31,7 @@
     .handover-intro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:15px 15px 0;background:#f8fbfb}.handover-tip{padding:12px;border:1px solid #dce7ea;border-radius:12px;background:#fff}.handover-tip b{display:block;margin-bottom:3px}.handover{padding:15px;background:#f8fbfb}.handover-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.handover-card{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fff}.handover-card form{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:9px}.handover-card select{min-width:0;height:39px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}
     .patient-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px;background:#f8fbfb}.patient-card{padding:15px;border:1px solid var(--line);border-radius:15px;background:#fff;scroll-margin-top:90px}.patient-card.focus{box-shadow:0 0 0 4px rgba(7,142,131,.16);border-color:#4eb8ad}.patient-head{display:flex;justify-content:space-between;gap:12px}.queue{color:#176f9a;font-size:17px;font-weight:800}.patient-name{font-size:18px;font-weight:800}.care-type{padding:5px 9px;height:max-content;border-radius:999px;background:#fff5d7;color:#8b6100;font-size:10px;font-weight:800}.reassess{margin-top:9px;padding:8px 10px;border-radius:9px;background:#fff0f0;border:1px solid #efb8bd;color:#a52f3a;font-size:11px;font-weight:800}.device{margin:10px 0;padding:8px 10px;border-radius:9px;background:#edf7f7;font-size:11px}.owner{padding:10px;border-top:1px solid #e7eff0}.owner strong{display:block}.owner small{color:var(--muted)}.assign{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-top:9px}.assign select{min-width:0;height:37px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}.empty{padding:34px;text-align:center;color:var(--muted)}
     .patient-filter-note{display:none;margin:12px 15px 0;padding:9px 12px;border-radius:9px;background:#eaf7f5;color:#176a62;font-size:12px;font-weight:700}.patient-filter-note.show{display:block}
+    .workflow-note{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:14px 0;padding:14px 16px;border:1px solid #a9dcd5;border-radius:14px;background:#edf9f7;color:#175f59}.workflow-note b{display:block}.workflow-note span{font-size:12px;color:#4f7775}.workflow-step{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#078e83;color:#fff;font-weight:800}
     @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}.staff-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:760px){body{padding:74px 10px 30px}.hero,.section-head,.toolbar{align-items:flex-start;flex-direction:column}.hero{padding:20px}.date{width:100%}.stats,.staff-grid,.patient-grid,.handover-grid,.handover-intro{grid-template-columns:1fr}.search{width:100%;max-width:none}.assign{grid-template-columns:1fr}.handover-card form{grid-template-columns:1fr}.avatar{width:72px;height:72px;flex-basis:72px}.workspace-tab{min-width:150px}}
   </style>
@@ -40,25 +41,27 @@
 {% include "includes/main_nav.html" %}
 <main class="page">
   <header class="hero">
-    <div><h1>บุคลากรและผู้ป่วยที่รับผิดชอบ</h1><p>{% if 'manage_personnel' in access_capabilities %}จัดเวร ดูภาระงาน ส่งต่อเคส และควบคุมไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล{% else %}ดูรายชื่อผู้ขึ้นเวร ภาระงาน และผู้รับผิดชอบแต่ละเคส{% endif %}</p></div>
+    <div><h1>{% if can_manage_personnel %}จัดเวรและมอบหมายผู้ดูแล{% else %}เวรและผู้ป่วยของฉัน{% endif %}</h1><p>{% if can_manage_personnel %}เช็กคนขึ้นเวร → เปิดรับเคส → มอบหมายผู้ป่วยที่สวมอุปกรณ์ → ส่งต่อก่อนลงเวร{% else %}ตรวจสอบทีมที่ขึ้นเวรและติดตามเฉพาะผู้ป่วยที่มอบหมายให้คุณ{% endif %}</p></div>
     <div class="date"><small>วันที่ปฏิบัติงาน</small><b>{{ today|date:"d/m/Y" }}</b></div>
   </header>
 
   {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
-  <section class="stats" aria-label="สรุปหัวหน้าเวร">
+  <div class="workflow-note"><div class="workflow-step">{% if can_manage_personnel %}1–4{% else %}✓{% endif %}</div><div><b>{% if can_manage_personnel %}ลำดับการทำงานของผู้ดูแลเวร{% else %}พื้นที่ทำงานส่วนตัวของพยาบาล{% endif %}</b><span>{% if can_manage_personnel %}ผู้ป่วยจะมอบหมายได้เมื่ออยู่ในกลุ่มเฝ้าระวัง/นอนรักษาและผูกอุปกรณ์แล้วเท่านั้น{% else %}หน้านี้ไม่แสดงเคสของพยาบาลคนอื่น และคุณไม่มีสิทธิ์แก้ประเภทบุคลากรหรือเปลี่ยนผู้รับผิดชอบ{% endif %}</span></div></div>
+
+  <section class="stats" aria-label="สรุปเวร">
     <a class="stat {% if active_filter == 'all' %}active{% endif %}" href="?view=staff&filter=all"><b>{{ on_duty_nurse_count }}</b><span>พยาบาลเข้าเวร</span></a>
     <a class="stat {% if active_filter == 'ready' %}active{% endif %}" href="?view=staff&filter=ready"><b>{{ ready_nurse_count }}</b><span>ว่างรับเคส</span></a>
     <a class="stat {% if active_filter == 'full' %}active{% endif %}" href="?view=staff&filter=full"><b>{{ full_nurse_count }}</b><span>เต็ม {{ max_patients_per_nurse }}/{{ max_patients_per_nurse }}</span></a>
-    <a class="stat {% if active_filter == 'unassigned' %}active{% endif %}" href="?view=patients&filter=unassigned"><b>{{ unassigned_count }}</b><span>ผู้ป่วยยังไม่มีผู้ดูแล</span></a>
-    <a class="stat {% if active_filter == 'reassessment' %}active{% endif %}" href="?view=patients&filter=reassessment"><b>{{ reassessment_count }}</b><span>ต้องประเมินซ้ำ</span></a>
-    <a class="stat" href="?view=patients&filter=all"><b>{{ assigned_count }}/{{ patient_rows|length }}</b><span>เคสที่มีผู้รับผิดชอบ</span></a>
+    {% if can_manage_personnel %}<a class="stat {% if active_filter == 'unassigned' %}active{% endif %}" href="?view=patients&filter=unassigned"><b>{{ unassigned_count }}</b><span>ผู้ป่วยยังไม่มีผู้ดูแล</span></a>{% endif %}
+    <a class="stat {% if active_filter == 'reassessment' %}active{% endif %}" href="?view=patients&filter=reassessment"><b>{{ reassessment_count }}</b><span>ต้องประเมินซ้ำ{% if personal_assignments_only %}ของฉัน{% endif %}</span></a>
+    <a class="stat" href="?view=patients&filter=all"><b>{{ assigned_count }}</b><span>{% if personal_assignments_only %}ผู้ป่วยที่ฉันดูแล{% else %}เคสที่มีผู้รับผิดชอบ{% endif %}</span></a>
   </section>
 
   <nav class="workspace-tabs" aria-label="เมนูจัดการบุคลากร">
     <button type="button" class="workspace-tab active" data-panel="staff">รายชื่อบุคลากร <span class="tab-count">{{ staff_rows|length }}</span></button>
     {% if 'manage_personnel' in access_capabilities %}<button type="button" class="workspace-tab" data-panel="handover">ส่งต่อเวร <span class="tab-count">{{ assigned_count }}</span></button>{% endif %}
-    <button type="button" class="workspace-tab" data-panel="patients">ผู้ป่วยและผู้รับผิดชอบ <span class="tab-count">{{ patient_rows|length }}</span></button>
+    <button type="button" class="workspace-tab" data-panel="patients">{% if personal_assignments_only %}ผู้ป่วยของฉัน{% else %}ผู้ป่วยและผู้รับผิดชอบ{% endif %} <span class="tab-count">{{ patient_rows|length }}</span></button>
   </nav>
 
   <div class="panel active" id="panel-staff">
@@ -116,7 +119,7 @@
 
   <div class="panel" id="panel-patients">
     <section class="section" id="patients-section">
-      <div class="section-head"><div><h2>ผู้ป่วยและผู้รับผิดชอบ</h2><div class="hint">{% if 'manage_personnel' in access_capabilities %}ดูว่าใครดูแลใคร เปลี่ยนผู้รับผิดชอบ หรือให้ระบบเลือกคนว่างให้อัตโนมัติ{% else %}แสดงผู้ป่วย อุปกรณ์ และพยาบาลผู้รับผิดชอบในปัจจุบัน{% endif %}</div></div>{% if 'manage_personnel' in access_capabilities %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_all_unassigned"><button class="btn primary" type="submit">มอบหมายเคสที่ว่างอัตโนมัติ</button></form>{% endif %}</div>
+      <div class="section-head"><div><h2>{% if personal_assignments_only %}ผู้ป่วยที่ฉันรับผิดชอบ{% else %}ผู้ป่วยและผู้รับผิดชอบ{% endif %}</h2><div class="hint">{% if can_manage_personnel %}ดูว่าใครดูแลใคร เปลี่ยนผู้รับผิดชอบ หรือให้ระบบเลือกคนว่างให้อัตโนมัติ{% else %}แสดงเฉพาะผู้ป่วยที่กำลังมอบหมายให้บัญชีของคุณ{% endif %}</div></div>{% if can_manage_personnel %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_all_unassigned"><button class="btn primary" type="submit">มอบหมายเคสที่ว่างอัตโนมัติ</button></form>{% endif %}</div>
       <div id="patient-filter-note" class="patient-filter-note"></div>
       <div class="patient-grid">
         {% for row in patient_rows %}
@@ -130,7 +133,7 @@
             {% if not row.care_assignment %}<form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="auto_assign_patient"><input type="hidden" name="visit_id" value="{{ row.visit.id }}"><button class="btn" type="submit">เลือกคนว่างให้อัตโนมัติ</button></form>{% endif %}{% endif %}
           </div>
         </article>
-        {% empty %}<div class="empty">ยังไม่มีผู้ป่วยในกลุ่มที่ต้องจัดผู้ดูแล</div>{% endfor %}
+        {% empty %}<div class="empty">{% if personal_assignments_only %}ขณะนี้ยังไม่มีผู้ป่วยที่มอบหมายให้คุณ{% else %}ยังไม่มีผู้ป่วยในกลุ่มที่ต้องจัดผู้ดูแล{% endif %}</div>{% endfor %}
       </div>
     </section>
   </div>

@@ -11,7 +11,7 @@ from accounts.access import Capability, capability_required, superuser_required
 urlpatterns = [
     path("", capability_required(Capability.VIEW_QUEUE)(views.queue_list), name="queue_list"),
     path("display/", views.queue_display, name="queue_display"),
-    path("waiting-vitals/", capability_required(Capability.VIEW_QUEUE)(views.waiting_vitals), name="waiting_vitals"),
+    path("waiting-vitals/", capability_required(Capability.RECORD_VITALS)(views.waiting_vitals), name="waiting_vitals"),
     path("waiting-confirmation/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.waiting_confirmation), name="waiting_confirmation"),
     path("emergency-transfers/", capability_required(Capability.VIEW_QUEUE)(views.emergency_transfers), name="emergency_transfers"),
     path("personnel/", capability_required(Capability.VIEW_PERSONNEL)(personnel_views.personnel_dashboard), name="personnel_dashboard"),
