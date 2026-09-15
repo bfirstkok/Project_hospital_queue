@@ -5,7 +5,8 @@ import secrets
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import OuterRef, Subquery
+from django.db.models import Count, OuterRef, Subquery
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
@@ -151,21 +152,41 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
 # -----------------------------
 @login_required
 def queue_list(request):
-    q_items = (
+    queue_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
+        .prefetch_related("visit__nurse_care_assignments__nurse")
         .filter(status__in=QUEUE_READY_STATUSES)
-        .order_by("priority", "visit__confirmed_at", "created_at")
+        .order_by("priority", "visit__confirmed_at", "created_at", "pk")
     )
-    
-    # Count by severity
-    severity_counts = {
-        severity: sum(1 for q in q_items if q.visit.final_severity == severity)
-        for severity in SEVERITY_LEVELS
-    }
+
+    severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
+    for item in queue_items.values("visit__final_severity").annotate(total=Count("id")):
+        severity = item["visit__final_severity"]
+        if severity in severity_counts:
+            severity_counts[severity] = item["total"]
+
+    page_size_choices = (10, 20, 30, 40, 50)
+    try:
+        page_size = int(request.GET.get("page_size", 10))
+    except (TypeError, ValueError):
+        page_size = 10
+    if page_size not in page_size_choices:
+        page_size = 10
+
+    paginator = Paginator(queue_items, page_size)
+    q_items = paginator.get_page(request.GET.get("page"))
+    pagination_items = [
+        item if isinstance(item, int) else None
+        for item in paginator.get_elided_page_range(q_items.number, on_each_side=2, on_ends=1)
+    ]
     
     return render(request, "queues/queue_list.html", {
         "q_items": q_items,
+        "queue_total": paginator.count,
+        "page_size": page_size,
+        "page_size_choices": page_size_choices,
+        "pagination_items": pagination_items,
         "severity_counts": severity_counts,
         "red_count": severity_counts["RED"],
         "pink_count": severity_counts["PINK"],

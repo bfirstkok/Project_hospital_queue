@@ -607,6 +607,54 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(vitals.dia_bp, 76)
         self.assertIsNone(vitals.rr)
 
+    def test_queue_list_is_paginated_and_supports_allowed_page_sizes(self):
+        confirmed_at = timezone.now()
+        for index in range(100):
+            patient = Patient.objects.create(
+                first_name="Patient",
+                last_name=f"Queue {index:02d}",
+                national_id=f"900000000{index:04d}",
+            )
+            visit = Visit.objects.create(
+                patient=patient,
+                final_severity=Visit.Severity.GREEN,
+                confirmed_at=confirmed_at + timedelta(seconds=index),
+            )
+            Queue.objects.create(
+                visit=visit,
+                status=Queue.Status.WAITING_QUEUE,
+                priority=4,
+            )
+
+        first_page = self.client.get(reverse("queue_list"))
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(first_page.context["queue_total"], 100)
+        self.assertEqual(first_page.context["q_items"].paginator.num_pages, 10)
+        self.assertEqual(len(first_page.context["q_items"]), 10)
+        self.assertContains(first_page, "Patient Queue 00")
+        self.assertNotContains(first_page, "Patient Queue 10")
+        self.assertContains(first_page, "แสดง 1–10 จาก 100 คิว")
+        self.assertContains(first_page, "แสดงต่อหน้า")
+
+        second_page = self.client.get(reverse("queue_list"), {"page": 2})
+        self.assertEqual(len(second_page.context["q_items"]), 10)
+        self.assertContains(second_page, "Patient Queue 10")
+        self.assertContains(second_page, '<span class="order-number">11</span>', html=True)
+
+        twenty_per_page = self.client.get(reverse("queue_list"), {"page": 2, "page_size": 20})
+        self.assertEqual(twenty_per_page.context["page_size"], 20)
+        self.assertEqual(len(twenty_per_page.context["q_items"]), 20)
+        self.assertContains(twenty_per_page, "แสดง 21–40 จาก 100 คิว")
+
+        last_page = self.client.get(reverse("queue_list"), {"page": 10})
+        self.assertEqual(len(last_page.context["q_items"]), 10)
+        self.assertContains(last_page, "Patient Queue 99")
+        self.assertContains(last_page, "แสดง 91–100 จาก 100 คิว")
+
+        invalid_size = self.client.get(reverse("queue_list"), {"page_size": 100})
+        self.assertEqual(invalid_size.context["page_size"], 10)
+        self.assertEqual(len(invalid_size.context["q_items"]), 10)
+
     def test_waiting_vitals_shows_patient_detail_modal(self):
         self.register_patient()
         patient = Patient.objects.get()

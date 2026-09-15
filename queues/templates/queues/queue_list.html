@@ -66,8 +66,17 @@
     .delete-form { display: inline-flex; margin: 0; }
     .delete-btn { color: #b4232a; border-color: #efc7ca; background: #fff6f6; }
     .empty { padding: 64px 20px !important; color: #6b818b; font-size: 20px !important; text-align: center; }
+    .queue-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; border-top: 1px solid #dce8eb; background: #f8fbfc; }
+    .page-size-form { display: flex; align-items: center; gap: 9px; color: #526d79; font-size: 15px; font-weight: 700; }
+    .page-size-select { min-height: 38px; padding: 0 34px 0 10px; border: 1px solid #b9cfd6; border-radius: 8px; color: #183042; background: #fff; font-weight: 700; cursor: pointer; }
+    .pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+    .page-link, .page-current { display: inline-flex; min-width: 38px; min-height: 38px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid #c7d9df; border-radius: 8px; color: #294c5c; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+    .page-link:hover { color: #fff; border-color: #087f75; background: #087f75; }
+    .page-current { color: #fff; border-color: #183b77; background: #183b77; }
+    .page-ellipsis { padding: 0 3px; color: #718792; font-weight: 700; }
+    .page-summary { color: #657d88; font-size: 14px; }
     @media (max-width: 980px) { .summary { grid-template-columns: repeat(3, 1fr); } .page-head { align-items: flex-start; flex-direction: column; } }
-    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } }
+    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } .queue-controls { align-items: stretch; flex-direction: column; } .pagination { justify-content: flex-start; } }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260903-nurse">
 </head>
@@ -86,7 +95,7 @@
     </header>
 
     <section class="summary" aria-label="สรุปจำนวนคิว">
-      <div class="summary-item"><div class="summary-label">คิวทั้งหมด</div><div class="summary-value">{{ q_items|length }}</div></div>
+      <div class="summary-item"><div class="summary-label">คิวทั้งหมด</div><div class="summary-value">{{ queue_total }}</div></div>
       <div class="summary-item red"><div class="summary-label">สีแดง</div><div class="summary-value">{{ red_count }}</div></div>
       <div class="summary-item pink"><div class="summary-label">สีชมพู</div><div class="summary-value">{{ pink_count }}</div></div>
       <div class="summary-item yellow"><div class="summary-label">สีเหลือง</div><div class="summary-value">{{ yellow_count }}</div></div>
@@ -104,7 +113,7 @@
             {% for q in q_items %}
               {% with v=q.visit %}
               <tr>
-                <td><span class="order-number">{{ forloop.counter }}</span></td>
+                <td><span class="order-number">{{ q_items.start_index|add:forloop.counter0 }}</span></td>
                 <td><span class="queue-number">{{ q.display_number }}</span><span class="patient-secondary">{{ v.patient.first_name }} {{ v.patient.last_name }}</span></td>
                 <td><span class="wait-time js-wait-time" data-start="{% if v.confirmed_at %}{{ v.confirmed_at|date:'c' }}{% else %}{{ v.registered_at|date:'c' }}{% endif %}" data-end="{% if v.called_at %}{{ v.called_at|date:'c' }}{% endif %}">--:--</span></td>
                 <td>
@@ -145,6 +154,26 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="queue-controls">
+        <form class="page-size-form" method="get">
+          <label for="page-size">แสดงต่อหน้า</label>
+          <select id="page-size" class="page-size-select" name="page_size" onchange="this.form.submit()">
+            {% for size in page_size_choices %}<option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }} แถว</option>{% endfor %}
+          </select>
+          <span class="page-summary">แสดง {{ q_items.start_index }}–{{ q_items.end_index }} จาก {{ queue_total }} คิว</span>
+        </form>
+        {% if q_items.paginator.num_pages > 1 %}
+          <nav class="pagination" aria-label="เปลี่ยนหน้ารายการคิว">
+            {% if q_items.has_previous %}<a class="page-link" href="?page=1&amp;page_size={{ page_size }}" aria-label="หน้าแรก">«</a><a class="page-link" href="?page={{ q_items.previous_page_number }}&amp;page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}
+            {% for page_number in pagination_items %}
+              {% if page_number %}
+                {% if page_number == q_items.number %}<span class="page-current" aria-current="page">{{ page_number }}</span>{% else %}<a class="page-link" href="?page={{ page_number }}&amp;page_size={{ page_size }}">{{ page_number }}</a>{% endif %}
+              {% else %}<span class="page-ellipsis">…</span>{% endif %}
+            {% endfor %}
+            {% if q_items.has_next %}<a class="page-link" href="?page={{ q_items.next_page_number }}&amp;page_size={{ page_size }}">ถัดไป</a><a class="page-link" href="?page={{ q_items.paginator.num_pages }}&amp;page_size={{ page_size }}" aria-label="หน้าสุดท้าย">»</a>{% endif %}
+          </nav>
+        {% endif %}
       </div>
     </section>
   </main>
