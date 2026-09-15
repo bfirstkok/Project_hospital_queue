@@ -5,186 +5,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>รายงานเวลารอ</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=report-simple-20260915">
   <style>
-    body { background: radial-gradient(circle at 88% 2%, #dff3ef 0, transparent 24%), #f3f8f9; font-family: "Sarabun", sans-serif; }
-    .wait-report { width: min(1380px, calc(100% - 40px)); margin: 0 auto; padding: 20px 0 54px; color: #183044; }
-    .report-hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 176px; margin-bottom: 18px; padding: 28px 32px; overflow: hidden; border-radius: 22px; background: linear-gradient(125deg, #123a50, #087f75); box-shadow: 0 16px 38px rgba(12, 92, 91, .2); color: #fff; }
-    .report-hero::after { content: ""; position: absolute; right: -70px; bottom: -120px; width: 300px; height: 300px; border: 50px solid rgba(255,255,255,.07); border-radius: 50%; }
-    .report-hero > * { position: relative; z-index: 1; }
-    .report-eyebrow { margin: 0 0 4px; color: #9be6da; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
-    .report-hero h1 { margin: 0; color: #fff; font-size: clamp(28px, 3vw, 40px); line-height: 1.2; }
-    .report-description { max-width: 720px; margin: 7px 0 0; color: #d5ecea; font-size: 15px; }
-    .export-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-    .export-btn { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 1px solid rgba(255,255,255,.35); border-radius: 10px; background: rgba(255,255,255,.12); color: #fff !important; font-size: 14px; font-weight: 700; box-shadow: none; backdrop-filter: blur(6px); }
-    .export-btn:hover { border-color: #fff; background: #fff; color: #087f75 !important; transform: translateY(-1px); }
-    .summary-grid { display: grid; grid-template-columns: .75fr repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
-    .metric-card, .report-panel, .severity-panel { background: #fff; border: 1px solid #d3e1e5; border-radius: 14px; box-shadow: 0 5px 20px rgba(38, 75, 89, .055); }
-    .metric-card {
-      position: relative;
-      min-height: 134px;
-      padding: 20px 21px;
-      overflow: hidden;
-      background: linear-gradient(145deg, #ffffff 58%, #f4f9fa 100%) !important;
-      border: 1px solid #d3e1e5 !important;
-      box-shadow: 0 6px 20px rgba(38, 75, 89, .07) !important;
-    }
-    .metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: #8bbec1; }
-    .metric-card.metric-total { background: linear-gradient(145deg, #ffffff 48%, #eaf7f5 100%) !important; }
-    .metric-card.metric-total::before { background: #087f75; }
-    .metric-card.metric-focus::before { background: #d18a13; }
-    .metric-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .metric-icon { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 9px; background: #e8f4f2; color: #087f75; font-size: 16px; font-weight: 800; }
-    .metric-focus .metric-icon { background: #fff3d8; color: #9a6500; }
-    .metric-label { color: #536b77 !important; font-size: 13px; font-weight: 700; }
-    .metric-value { margin-top: 10px; color: #183044 !important; font-size: clamp(27px, 2.5vw, 35px); font-weight: 800; line-height: 1.05; }
-    .metric-help { margin-top: 8px; color: #718690 !important; font-size: 12px; }
-    .severity-panel { display: grid; grid-template-columns: 1.15fr repeat(5, 1fr); align-items: stretch; margin-bottom: 18px; overflow: hidden; }
-    .severity-heading, .severity-item { padding: 15px 18px; }
-    .severity-heading { display: flex; flex-direction: column; justify-content: center; background: #f4f8f9; }
-    .severity-heading strong { font-size: 15px; }
-    .severity-heading span { color: #6d838d; font-size: 12px; }
-    .severity-item { display: flex; align-items: center; justify-content: center; gap: 10px; border-left: 1px solid #e3ecef; }
-    .severity-dot { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; }
-    .severity-name { color: #5e747e; font-size: 12px; font-weight: 700; }
-    .severity-count { color: #183044; font-size: 22px; font-weight: 800; }
-    .sev-red .severity-dot { background: #dc2626; }
-    .sev-pink .severity-dot { background: #db2777; }
-    .sev-yellow .severity-dot { background: #eab308; }
-    .sev-green .severity-dot { background: #16a34a; }
-    .sev-white .severity-dot { background: #94a3b8; border: 1px solid #64748b; }
-    .quality-alert { display: flex; align-items: flex-start; gap: 11px; margin: 0 0 18px; padding: 13px 16px; border: 1px solid #f0d39c; border-radius: 11px; background: #fff9eb; color: #795318; font-size: 13px; }
-    .quality-alert strong { color: #68440d; }
-    .analytics-grid { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-    .report-panel { padding: 20px; }
-    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .panel-head h2 { margin: 0; font-size: 19px; }
-    .panel-head p { margin: 3px 0 0; color: #718690; font-size: 12px; }
-    .panel-tag { padding: 4px 9px; border-radius: 999px; background: #e8f4f2; color: #087f75; font-size: 11px; font-weight: 800; white-space: nowrap; }
-    .compact-table, .detail-table { width: 100%; margin: 0; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-    .compact-table th, .compact-table td { padding: 10px 8px !important; font-size: 13px !important; }
-    .compact-table th { white-space: nowrap; }
-    .compact-table td:last-child, .compact-table th:last-child { text-align: right; }
-    .compact-table .value-strong { color: #183044; font-weight: 800; }
-    .detail-panel { padding: 0; overflow: hidden; }
-    .detail-panel .panel-head { margin: 0; padding: 20px 22px; border-bottom: 1px solid #dce7ea; }
-    .table-scroll { width: 100%; overflow-x: auto; scrollbar-color: #a8bec6 transparent; }
-    .detail-table { min-width: 1120px; }
-    .detail-table th, .detail-table td { padding: 13px 12px !important; vertical-align: middle; font-size: 13px; }
-    .detail-table th { position: sticky; top: 0; z-index: 1; background: #f4f8f9; text-transform: none; letter-spacing: 0; white-space: nowrap; }
-    .detail-table tbody tr:nth-child(even) { background: #fbfdfd; }
-    .detail-table tbody tr:hover { background: #f0f9f7; }
-    .visit-id { color: #176b9c; font-weight: 800; white-space: nowrap; }
-    .patient-cell strong { display: block; color: #183044; font-size: 14px; }
-    .patient-cell small { color: #748993; }
-    .level-badge, .status-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
-    .level-red { background: #fee2e2; color: #b91c1c; }
-    .level-pink { background: #fce7f3; color: #be185d; }
-    .level-yellow { background: #fef3c7; color: #9a6500; }
-    .level-green { background: #dcfce7; color: #18794e; }
-    .level-white { background: #edf2f4; color: #536b77; }
-    .level-none { background: #f1f5f6; color: #718690; }
-    .status-badge { background: #eaf3f5; color: #365967; }
-    .time-stack { line-height: 1.25; white-space: nowrap; }
-    .time-stack span { display: block; color: #1f3c49; }
-    .time-stack small { color: #7b9099; }
-    .wait-value { color: #274653; font-weight: 700; white-space: nowrap; }
-    .empty-row { padding: 32px !important; color: #718690; text-align: center !important; }
-    @media (max-width: 1100px) {
-      .summary-grid { grid-template-columns: repeat(2, 1fr); }
-      .analytics-grid { grid-template-columns: 1fr 1fr; }
-      .analytics-grid .bottleneck-panel { grid-column: 1 / -1; }
-      .severity-panel { grid-template-columns: repeat(5, 1fr); }
-      .severity-heading { grid-column: 1 / -1; border-bottom: 1px solid #e3ecef; }
-      .severity-item:first-of-type { border-left: 0; }
-    }
-    @media (max-width: 720px) {
-      .wait-report { width: min(100% - 24px, 1440px); padding-top: 18px; }
-      .report-hero { align-items: stretch; flex-direction: column; }
-      .export-actions { justify-content: flex-start; }
-      .export-btn { flex: 1 1 30%; }
-      .summary-grid, .analytics-grid { grid-template-columns: 1fr; }
-      .analytics-grid .bottleneck-panel { grid-column: auto; }
-      .metric-card { min-height: 108px; }
-      .severity-panel { grid-template-columns: repeat(2, 1fr); }
-      .severity-heading { grid-column: 1 / -1; }
-      .severity-item { justify-content: flex-start; border-top: 1px solid #e3ecef; }
-      .severity-item:nth-child(even) { border-left: 0; }
-      .severity-item:last-child { grid-column: 1 / -1; }
-      .report-panel { padding: 16px; }
-      .detail-panel { padding: 0; }
-    }
+    :root{--navy:#17324d;--muted:#647b86;--line:#dce7ea;--teal:#087f75;--bg:#f4f8f9}
+    *{box-sizing:border-box}
+    body{background:var(--bg);color:var(--navy);font-family:"Sarabun",sans-serif}
+    .report-page{width:min(1320px,calc(100% - 40px));margin:0 auto;padding:22px 0 52px}
+    .report-hero{display:flex;align-items:center;justify-content:space-between;gap:22px;margin-bottom:14px;padding:22px 24px;border:1px solid var(--line);border-radius:15px;background:#fff}
+    .eyebrow{margin:0 0 3px;color:var(--teal);font-size:12px;font-weight:800}.report-hero h1{margin:0;font-size:30px}.report-hero p{margin:5px 0 0;color:var(--muted);font-size:13px}.exports{display:flex;gap:7px}.export{padding:9px 12px;border:1px solid #c9dadd;border-radius:8px;background:#fff;color:#385665!important;text-decoration:none;font-size:11px;font-weight:800}.export:hover{border-color:var(--teal);color:var(--teal)!important}
+    .guide{display:flex;align-items:center;gap:7px;margin-bottom:14px;padding:10px 13px;border-radius:10px;background:#e9f5f3;color:#27685f;font-size:11px}.guide b{color:#075f5a}
+    .summary{display:grid;grid-template-columns:.75fr repeat(3,1fr);gap:11px;margin-bottom:14px}.metric{padding:17px 18px;border:1px solid var(--line);border-radius:13px;background:#fff}.metric.primary{background:#0b746c;color:#fff}.metric-label{color:var(--muted);font-size:11px;font-weight:700}.primary .metric-label{color:#cbeae6}.metric-value{margin-top:9px;font-size:28px;font-weight:800;line-height:1}.metric-help{margin-top:8px;color:#80949d;font-size:10px}.primary .metric-help{color:#d7efec}
+    .severity{display:grid;grid-template-columns:160px repeat(5,1fr);margin-bottom:14px;overflow:hidden;border:1px solid var(--line);border-radius:13px;background:#fff}.severity-title,.severity-item{min-height:66px;padding:12px 15px}.severity-title{display:flex;align-items:center;background:#f8fbfb;font-size:12px;font-weight:800}.severity-item{display:flex;align-items:center;justify-content:center;gap:8px;border-left:1px solid #e8eff1}.severity-item i{width:8px;height:8px;border-radius:50%}.severity-item span{color:var(--muted);font-size:10px}.severity-item b{display:block;font-size:18px}.red{background:#dc2626}.pink{background:#db2777}.yellow{background:#eab308}.green{background:#16a34a}.white{background:#fff;border:2px solid #94a3b8}
+    .quality{margin-bottom:14px;padding:11px 13px;border:1px solid #efd39c;border-radius:10px;background:#fff9e9;color:#78551b;font-size:11px}
+    .analysis{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:11px;margin-bottom:14px}.panel{border:1px solid var(--line);border-radius:13px;background:#fff;overflow:hidden}.panel-head{padding:15px 17px;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:15px}.panel-head p{margin:3px 0 0;color:var(--muted);font-size:10px}
+    table{width:100%;margin:0!important;border:0!important;border-collapse:collapse;box-shadow:none!important}.compact th,.compact td{padding:9px 12px!important;border-bottom:1px solid #edf2f3;text-align:left;font-size:10px!important}.compact th{background:#f8fbfb;color:#667e89}.compact td:nth-child(2),.compact th:nth-child(2){text-align:right}.compact td:nth-child(3),.compact th:nth-child(3){text-align:right}.compact b{font-size:11px}.empty{padding:24px!important;color:var(--muted);text-align:center!important}
+    .detail-toggle{border:1px solid var(--line);border-radius:13px;background:#fff;overflow:hidden}.detail-toggle summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 19px;cursor:pointer;list-style:none;font-weight:800}.detail-toggle summary::-webkit-details-marker{display:none}.detail-toggle summary span{color:var(--muted);font-size:10px;font-weight:600}.detail-toggle summary::after{content:"เปิดดู";padding:6px 9px;border-radius:7px;background:#e8f4f2;color:#087f75;font-size:10px}.detail-toggle[open] summary::after{content:"ซ่อน"}.table-scroll{overflow:auto;border-top:1px solid var(--line)}.detail{min-width:1080px}.detail th,.detail td{padding:10px 11px!important;border-bottom:1px solid #edf2f3;text-align:left;font-size:10px!important}.detail th{position:sticky;top:0;background:#f4f8f9;color:#607783}.detail tbody tr:nth-child(even){background:#fbfdfd}.patient b{display:block;font-size:11px}.patient small{color:var(--muted)}.badge{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800}.badge.red{background:#fee2e2;color:#b91c1c}.badge.pink{background:#fce7f3;color:#be185d}.badge.yellow{background:#fef3c7;color:#916300}.badge.green{background:#dcfce7;color:#18794e}.badge.white,.badge.none{background:#edf2f4;color:#536b77;border:0}.time{white-space:nowrap}.time small{display:block;color:var(--muted)}
+    @media(max-width:1080px){.summary{grid-template-columns:repeat(2,1fr)}.analysis{grid-template-columns:1fr 1fr}.analysis .bottleneck{grid-column:1/-1}.severity{grid-template-columns:repeat(5,1fr)}.severity-title{grid-column:1/-1}}
+    @media(max-width:700px){.report-page{width:calc(100% - 20px);padding-top:10px}.report-hero{align-items:flex-start;flex-direction:column}.exports{width:100%}.export{flex:1;text-align:center}.summary,.analysis{grid-template-columns:1fr}.analysis .bottleneck{grid-column:auto}.severity{grid-template-columns:repeat(2,1fr)}.severity-title{grid-column:1/-1}.severity-item:last-child{grid-column:1/-1}}
   </style>
 </head>
 <body>
   {% include "includes/main_nav.html" %}
-  <main class="wait-report">
+  <main class="report-page">
     <header class="report-hero">
-      <div>
-        <p class="report-eyebrow">รายงานประสิทธิภาพการให้บริการ</p>
-        <h1>เวลารอของผู้ป่วย</h1>
-        <p class="report-description">ดูภาพรวมเวลาตั้งแต่ลงทะเบียน คัดกรอง ยืนยันผล จนถึงเรียกคิว พร้อมค้นหาช่วงงานที่ใช้เวลานาน</p>
-      </div>
-      <div class="export-actions" aria-label="ส่งออกรายงาน">
-        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_csv' %}"><span aria-hidden="true">↓</span> CSV</a>
-        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_xls' %}"><span aria-hidden="true">↓</span> Excel</a>
-        <a class="export-btn" href="{% url 'dashboard:waiting_time_report_pdf' %}"><span aria-hidden="true">↓</span> PDF</a>
-      </div>
+      <div><p class="eyebrow">รายงานประสิทธิภาพบริการ</p><h1>เวลารอของผู้ป่วย</h1><p>ดูภาพรวมก่อน แล้วเปิดรายละเอียดเฉพาะเมื่อต้องตรวจสอบราย Visit</p></div>
+      <div class="exports"><a class="export" href="{% url 'dashboard:waiting_time_report_csv' %}">CSV</a><a class="export" href="{% url 'dashboard:waiting_time_report_xls' %}">Excel</a><a class="export" href="{% url 'dashboard:waiting_time_report_pdf' %}">PDF</a></div>
     </header>
-    <section class="summary-grid" aria-label="สรุปเวลารอ">
-      <article class="metric-card metric-total"><div class="metric-topline"><div class="metric-label">รายการทั้งหมด</div><span class="metric-icon" aria-hidden="true">≡</span></div><div class="metric-value">{{ total }}</div><div class="metric-help">Visit ล่าสุดที่นำมาคำนวณ</div></article>
-      <article class="metric-card"><div class="metric-topline"><div class="metric-label">ลงทะเบียน → คัดกรอง</div><span class="metric-icon" aria-hidden="true">1</span></div><div class="metric-value">{{ avg_triage_display }}</div><div class="metric-help">เวลาเฉลี่ยก่อนเริ่มประเมินสุขภาพ</div></article>
-      <article class="metric-card"><div class="metric-topline"><div class="metric-label">คัดกรอง → พยาบาลยืนยัน</div><span class="metric-icon" aria-hidden="true">✓</span></div><div class="metric-value">{{ avg_confirmation_display }}</div><div class="metric-help">เวลาเฉลี่ยสำหรับตรวจสอบผลคัดกรอง</div></article>
-      <article class="metric-card metric-focus"><div class="metric-topline"><div class="metric-label">ลงทะเบียน → เรียกคิว</div><span class="metric-icon" aria-hidden="true">↗</span></div><div class="metric-value">{{ avg_called_display }}</div><div class="metric-help">เวลารอรวมเฉลี่ยก่อนเรียกเข้ารับบริการ</div></article>
+    <div class="guide"><b>วิธีอ่าน:</b><span>เริ่มจากเวลารอรวม แล้วดู “ช่วงที่ใช้เวลานาน” หากต้องหาสาเหตุจึงเปิดรายละเอียดด้านล่าง</span></div>
+
+    <section class="summary" aria-label="สรุปเวลารอ">
+      <article class="metric primary"><div class="metric-label">จำนวน Visit</div><div class="metric-value">{{ total }}</div><div class="metric-help">ข้อมูลล่าสุดที่นำมาสรุป</div></article>
+      <article class="metric"><div class="metric-label">ลงทะเบียน → คัดกรอง</div><div class="metric-value">{{ avg_triage_display }}</div><div class="metric-help">เวลาก่อนเริ่มประเมิน</div></article>
+      <article class="metric"><div class="metric-label">คัดกรอง → ยืนยันผล</div><div class="metric-value">{{ avg_confirmation_display }}</div><div class="metric-help">เวลาตรวจสอบโดยพยาบาล</div></article>
+      <article class="metric"><div class="metric-label">ลงทะเบียน → เรียกคิว</div><div class="metric-value">{{ avg_called_display }}</div><div class="metric-help">เวลารอรวมเฉลี่ย</div></article>
     </section>
-    <section class="severity-panel" aria-label="จำนวนผู้ป่วยตามระดับคัดกรอง">
-      <div class="severity-heading"><strong>ระดับคัดกรอง</strong><span>จำนวนจากรายการในรายงานนี้</span></div>
-      <div class="severity-item sev-red"><span class="severity-dot"></span><div><div class="severity-name">สีแดง</div><div class="severity-count">{{ severity_counts.RED }}</div></div></div>
-      <div class="severity-item sev-pink"><span class="severity-dot"></span><div><div class="severity-name">สีชมพู</div><div class="severity-count">{{ severity_counts.PINK }}</div></div></div>
-      <div class="severity-item sev-yellow"><span class="severity-dot"></span><div><div class="severity-name">สีเหลือง</div><div class="severity-count">{{ severity_counts.YELLOW }}</div></div></div>
-      <div class="severity-item sev-green"><span class="severity-dot"></span><div><div class="severity-name">สีเขียว</div><div class="severity-count">{{ severity_counts.GREEN }}</div></div></div>
-      <div class="severity-item sev-white"><span class="severity-dot"></span><div><div class="severity-name">สีขาว</div><div class="severity-count">{{ severity_counts.WHITE }}</div></div></div>
+
+    <section class="severity" aria-label="จำนวนแยกตามระดับ">
+      <div class="severity-title">ผู้ป่วยแยกตามระดับ</div>
+      <div class="severity-item"><i class="red"></i><div><span>แดง</span><b>{{ severity_counts.RED }}</b></div></div>
+      <div class="severity-item"><i class="pink"></i><div><span>ชมพู</span><b>{{ severity_counts.PINK }}</b></div></div>
+      <div class="severity-item"><i class="yellow"></i><div><span>เหลือง</span><b>{{ severity_counts.YELLOW }}</b></div></div>
+      <div class="severity-item"><i class="green"></i><div><span>เขียว</span><b>{{ severity_counts.GREEN }}</b></div></div>
+      <div class="severity-item"><i class="white"></i><div><span>ขาว</span><b>{{ severity_counts.WHITE }}</b></div></div>
     </section>
-    {% if invalid_intervals %}<div class="quality-alert" role="status"><span aria-hidden="true">⚠</span><div><strong>พบเวลาที่บันทึกผิดลำดับ {{ invalid_intervals }} จุด</strong><br>ระบบไม่นำช่วงเวลาติดลบเหล่านี้มาคำนวณค่าเฉลี่ย กรุณาตรวจสอบข้อมูลต้นทางในตารางรายละเอียด</div></div>{% endif %}
-    <section class="analytics-grid" aria-label="วิเคราะห์เวลารอ">
-      <article class="report-panel bottleneck-panel">
-        <div class="panel-head"><div><h2>ช่วงงานที่ใช้เวลานาน</h2><p>เรียงจากเวลาเฉลี่ยมากไปน้อย</p></div><span class="panel-tag">Bottleneck</span></div>
-        <table class="compact-table"><thead><tr><th>ช่วงการให้บริการ</th><th>เวลาเฉลี่ย</th><th>ข้อมูล</th></tr></thead><tbody>{% for row in bottlenecks %}<tr><td>{{ row.label }}</td><td class="value-strong">{{ row.avg_display }}</td><td>{{ row.count }} รายการ</td></tr>{% endfor %}</tbody></table>
-      </article>
-      <article class="report-panel">
-        <div class="panel-head"><div><h2>แนวโน้มรายวัน</h2><p>เวลาจากลงทะเบียนถึงเรียกคิว</p></div></div>
-        <table class="compact-table"><thead><tr><th>วันที่</th><th>เวลาเฉลี่ย</th><th>จำนวน</th></tr></thead><tbody>{% for row in daily_rows|slice:":7" %}<tr><td>{{ row.period }}</td><td class="value-strong">{{ row.avg_called_display }}</td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty-row">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table>
-      </article>
-      <article class="report-panel">
-        <div class="panel-head"><div><h2>แนวโน้มรายเดือน</h2><p>สรุปเพื่อเปรียบเทียบระยะยาว</p></div></div>
-        <table class="compact-table"><thead><tr><th>เดือน</th><th>เวลาเฉลี่ย</th><th>จำนวน</th></tr></thead><tbody>{% for row in monthly_rows|slice:":6" %}<tr><td>{{ row.period }}</td><td class="value-strong">{{ row.avg_called_display }}</td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty-row">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table>
-      </article>
+
+    {% if invalid_intervals %}<div class="quality"><b>ควรตรวจสอบข้อมูล {{ invalid_intervals }} จุด:</b> พบเวลาที่บันทึกผิดลำดับ ระบบไม่นำช่วงติดลบมาคำนวณค่าเฉลี่ย</div>{% endif %}
+
+    <section class="analysis">
+      <article class="panel bottleneck"><div class="panel-head"><h2>ช่วงที่ใช้เวลานาน</h2><p>เรียงจากค่าเฉลี่ยมากไปน้อย</p></div><table class="compact"><thead><tr><th>ช่วงบริการ</th><th>เฉลี่ย</th><th>ข้อมูล</th></tr></thead><tbody>{% for row in bottlenecks %}<tr><td>{{ row.label }}</td><td><b>{{ row.avg_display }}</b></td><td>{{ row.count }}</td></tr>{% endfor %}</tbody></table></article>
+      <article class="panel"><div class="panel-head"><h2>7 วันล่าสุด</h2><p>ลงทะเบียนจนถึงเรียกคิว</p></div><table class="compact"><thead><tr><th>วันที่</th><th>เฉลี่ย</th><th>Visit</th></tr></thead><tbody>{% for row in daily_rows|slice:":7" %}<tr><td>{{ row.period }}</td><td><b>{{ row.avg_called_display }}</b></td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table></article>
+      <article class="panel"><div class="panel-head"><h2>6 เดือนล่าสุด</h2><p>ใช้เปรียบเทียบแนวโน้ม</p></div><table class="compact"><thead><tr><th>เดือน</th><th>เฉลี่ย</th><th>Visit</th></tr></thead><tbody>{% for row in monthly_rows|slice:":6" %}<tr><td>{{ row.period }}</td><td><b>{{ row.avg_called_display }}</b></td><td>{{ row.count }}</td></tr>{% empty %}<tr><td colspan="3" class="empty">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody></table></article>
     </section>
-    <section class="report-panel detail-panel">
-      <div class="panel-head"><div><h2>รายละเอียดแต่ละ Visit</h2><p>เลื่อนตารางในแนวนอนเพื่อดูช่วงเวลาทั้งหมด</p></div><span class="panel-tag">{{ total }} รายการ</span></div>
-      <div class="table-scroll" tabindex="0" aria-label="ตารางรายละเอียดเวลารอ">
-        <table class="detail-table">
-          <thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th><th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th><th>รอคัดกรอง</th><th>รอยืนยัน</th><th>รอเรียกคิวรวม</th></tr></thead>
-          <tbody>
-            {% for row in rows %}
-              <tr>
-                <td><span class="visit-id">#{{ row.visit.id }}</span></td>
-                <td class="patient-cell"><strong>{{ row.patient.first_name }} {{ row.patient.last_name }}</strong><small>ผู้ป่วยใน Visit นี้</small></td>
-                <td>{% if row.visit.final_severity %}<span class="level-badge level-{{ row.visit.final_severity|lower }}">{{ row.visit.final_severity }}</span>{% else %}<span class="level-badge level-none">ยังไม่ระบุ</span>{% endif %}</td>
-                <td><span class="status-badge">{{ row.status_label }}</span></td>
-                <td><div class="time-stack"><span>{{ row.visit.registered_at|date:"d/m/Y" }}</span><small>{{ row.visit.registered_at|date:"H:i" }} น.</small></div></td>
-                <td>{% if row.visit.triaged_at %}<div class="time-stack"><span>{{ row.visit.triaged_at|date:"d/m/Y" }}</span><small>{{ row.visit.triaged_at|date:"H:i" }} น.</small></div>{% else %}-{% endif %}</td>
-                <td>{% if row.visit.called_at %}<div class="time-stack"><span>{{ row.visit.called_at|date:"d/m/Y" }}</span><small>{{ row.visit.called_at|date:"H:i" }} น.</small></div>{% else %}-{% endif %}</td>
-                <td class="wait-value">{{ row.triage_wait_display }}</td><td class="wait-value">{{ row.confirmation_wait_display }}</td><td class="wait-value">{{ row.called_wait_display }}</td>
-              </tr>
-            {% empty %}<tr><td colspan="10" class="empty-row">ยังไม่มีรายการสำหรับสร้างรายงาน</td></tr>{% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
+
+    <details class="detail-toggle">
+      <summary>รายละเอียดราย Visit <span>{{ total }} รายการ — ตารางนี้ถูกซ่อนไว้เพื่อลดความซับซ้อน</span></summary>
+      <div class="table-scroll"><table class="detail"><thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>ระดับ</th><th>สถานะ</th><th>ลงทะเบียน</th><th>คัดกรอง</th><th>เรียกคิว</th><th>รอคัดกรอง</th><th>รอยืนยัน</th><th>รอรวม</th></tr></thead><tbody>
+        {% for row in rows %}<tr><td><b>#{{ row.visit.id }}</b></td><td class="patient"><b>{{ row.patient.first_name }} {{ row.patient.last_name }}</b><small>ผู้ป่วย</small></td><td>{% if row.visit.final_severity %}<span class="badge {{ row.visit.final_severity|lower }}">{{ row.visit.final_severity }}</span>{% else %}<span class="badge none">-</span>{% endif %}</td><td>{{ row.status_label }}</td><td class="time">{{ row.visit.registered_at|date:"d/m/Y" }}<small>{{ row.visit.registered_at|date:"H:i" }} น.</small></td><td class="time">{% if row.visit.triaged_at %}{{ row.visit.triaged_at|date:"d/m/Y" }}<small>{{ row.visit.triaged_at|date:"H:i" }} น.</small>{% else %}-{% endif %}</td><td class="time">{% if row.visit.called_at %}{{ row.visit.called_at|date:"d/m/Y" }}<small>{{ row.visit.called_at|date:"H:i" }} น.</small>{% else %}-{% endif %}</td><td>{{ row.triage_wait_display }}</td><td>{{ row.confirmation_wait_display }}</td><td>{{ row.called_wait_display }}</td></tr>{% empty %}<tr><td colspan="10" class="empty">ยังไม่มีข้อมูล</td></tr>{% endfor %}
+      </tbody></table></div>
+    </details>
   </main>
 </body>
 </html>

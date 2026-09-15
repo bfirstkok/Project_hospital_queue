@@ -17,9 +17,9 @@ class DashboardPresentationTests(TestCase):
         response = self.client.get(reverse("dashboard:home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "ภาพรวมระบบบริการผู้ป่วย")
+        self.assertContains(response, "แสดงเฉพาะข้อมูลที่ต้องใช้ตัดสินใจ")
         self.assertContains(response, "พยาบาลผู้ดูแล")
-        self.assertContains(response, 'class="severity-strip"')
+        self.assertContains(response, 'class="severity"')
         self.assertContains(response, "document.body.prepend(nav)")
 
     def test_waiting_time_report_uses_report_hero_and_exports(self):
@@ -27,6 +27,7 @@ class DashboardPresentationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="report-hero"')
+        self.assertContains(response, 'class="detail-toggle"')
         self.assertContains(response, reverse("dashboard:waiting_time_report_csv"))
         self.assertContains(response, reverse("dashboard:waiting_time_report_xls"))
         self.assertContains(response, reverse("dashboard:waiting_time_report_pdf"))

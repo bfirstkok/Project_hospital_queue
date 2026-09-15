@@ -251,6 +251,7 @@ class ObservationMonitoringVisibilityTests(TestCase):
         visit_ids = [item["visit_id"] for item in items]
         self.assertIn(str(self.visit.id), visit_ids)
         item = next(item for item in items if item["visit_id"] == str(self.visit.id))
+        self.assertEqual(item["queue_number"], self.visit.queue.display_number)
         self.assertEqual(item["responsible_nurse"]["name"], "วิภา ใจดี")
 
     def test_monitor_and_dashboard_include_responsible_nurse_column(self):

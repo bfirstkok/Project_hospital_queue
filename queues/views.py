@@ -1164,6 +1164,7 @@ def monitor_summary_api(request):
         items.append({
             # Keep the exact 64-bit identifier in JavaScript clients.
             "visit_id": str(v.id),
+            "queue_number": q.display_number,
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "queue_status": q.status,
