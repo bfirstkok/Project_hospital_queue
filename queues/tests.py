@@ -1,7 +1,7 @@
 import csv
 import json
 import tempfile
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -19,7 +19,7 @@ from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, Nur
 
 
 class QueueDisplayNumberTests(TestCase):
-    def test_number_starts_at_ten_and_never_duplicates(self):
+    def test_number_starts_at_one_and_never_duplicates(self):
         patient = Patient.objects.create(
             first_name="Queue",
             last_name="Number",
@@ -29,10 +29,34 @@ class QueueDisplayNumberTests(TestCase):
         second = Queue.objects.create(visit=Visit.objects.create(patient=patient))
         third = Queue.objects.create(visit=Visit.objects.create(patient=patient))
 
-        self.assertEqual(first.display_number, "Q-10")
-        self.assertEqual(second.display_number, "Q-11")
-        self.assertEqual(third.display_number, "Q-12")
+        self.assertEqual(first.display_number, "Q001")
+        self.assertEqual(second.display_number, "Q002")
+        self.assertEqual(third.display_number, "Q003")
         self.assertEqual(len({first.display_number, second.display_number, third.display_number}), 3)
+
+    def test_number_resets_at_six_am_for_the_new_service_day(self):
+        patient = Patient.objects.create(
+            first_name="Daily",
+            last_name="Queue",
+            national_id="9999999999998",
+        )
+        queues = [
+            Queue.objects.create(visit=Visit.objects.create(patient=patient))
+            for _ in range(3)
+        ]
+        current_tz = timezone.get_current_timezone()
+        created_times = [
+            timezone.make_aware(datetime.combine(timezone.localdate(), time(23, 0)), current_tz),
+            timezone.make_aware(datetime.combine(timezone.localdate() + timedelta(days=1), time(5, 59)), current_tz),
+            timezone.make_aware(datetime.combine(timezone.localdate() + timedelta(days=1), time(6, 0)), current_tz),
+        ]
+        for queue, created_at in zip(queues, created_times):
+            Queue.objects.filter(pk=queue.pk).update(created_at=created_at)
+            queue.created_at = created_at
+
+        self.assertEqual(queues[0].display_number, "Q001")
+        self.assertEqual(queues[1].display_number, "Q002")
+        self.assertEqual(queues[2].display_number, "Q001")
 
 
 class IotTelemetryAssignmentTests(TestCase):

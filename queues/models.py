@@ -1,5 +1,6 @@
 ﻿import re
 import uuid
+from datetime import datetime, time, timedelta
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -72,19 +73,34 @@ class Queue(models.Model):
 
     @property
     def display_sequence(self):
-        """Return a short, globally unique queue sequence starting at 10."""
+        """Return the sequence for the service day, which starts at 06:00."""
         if not self.created_at:
-            return 10
+            return 1
+
+        current_tz = timezone.get_current_timezone()
+        created_local = timezone.localtime(self.created_at, current_tz)
+        service_date = created_local.date()
+        if created_local.time() < time(hour=6):
+            service_date -= timedelta(days=1)
+
+        service_day_start = timezone.make_aware(
+            datetime.combine(service_date, time(hour=6)),
+            current_tz,
+        )
+        next_service_day = service_day_start + timedelta(days=1)
 
         earlier_queues = Queue.objects.filter(
+            created_at__gte=service_day_start,
+            created_at__lt=next_service_day,
+        ).filter(
             Q(created_at__lt=self.created_at)
-            | Q(created_at=self.created_at, pk__lt=self.pk)
+            | Q(created_at=self.created_at, pk__lt=self.pk),
         ).count()
-        return 10 + earlier_queues
+        return 1 + earlier_queues
 
     @property
     def display_number(self):
-        return f"Q-{self.display_sequence}"
+        return f"Q{self.display_sequence:03d}"
 
 
 class TriageResult(models.Model):
