@@ -1,0 +1,42 @@
+<style>
+  .severity-item.severity-open{width:100%;border:0;border-left:1px solid #e8eff1;background:#fff;color:inherit;font:inherit;cursor:pointer;transition:background .16s,box-shadow .16s,transform .16s}
+  .severity-item.severity-open:hover,.severity-item.severity-open:focus-visible{position:relative;z-index:1;background:#f3faf9;box-shadow:inset 0 -3px #0c8c80;outline:0;transform:translateY(-1px)}
+  .severity-item.severity-open::after{content:"ดูรายละเอียด";margin-left:5px;color:#087f75;font-size:9px;font-weight:800;opacity:0;transition:opacity .16s}
+  .severity-item.severity-open:hover::after,.severity-item.severity-open:focus-visible::after{opacity:1}
+  .severity-dialog{width:min(1050px,calc(100vw - 32px));max-height:min(82vh,760px);padding:0;border:0;border-radius:18px;background:#fff;color:#17324d;box-shadow:0 28px 80px rgba(13,40,56,.3)}
+  .severity-dialog::backdrop{background:rgba(12,31,43,.55);backdrop-filter:blur(3px)}
+  .severity-dialog-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #dce7ea;background:#fff}
+  .severity-dialog-title{display:flex;align-items:center;gap:11px}.severity-dialog-title i{width:12px;height:12px;border-radius:50%}.severity-dialog-title h2{margin:0;font-size:20px}.severity-dialog-title p{margin:3px 0 0;color:#647b86;font-size:11px}
+  .severity-dialog-close{width:36px;height:36px;border:1px solid #d3e1e4;border-radius:10px;background:#f7fafb;color:#526d79;font-size:20px;cursor:pointer}
+  .severity-dialog-body{max-height:calc(82vh - 74px);overflow:auto;padding:14px 18px 20px}
+  .severity-detail-list{display:grid;gap:10px}.severity-detail-row{display:grid;grid-template-columns:94px minmax(170px,1fr) 145px minmax(260px,1.7fr);gap:14px;align-items:start;padding:14px;border:1px solid #e0eaec;border-radius:12px;background:#fbfdfd}
+  .severity-detail-row b{display:block;font-size:13px}.severity-detail-row small{display:block;margin-top:4px;color:#6c818a;font-size:10px}.severity-queue{color:#117daf;font-size:14px!important}.severity-reasons{display:grid;gap:6px}.severity-reason{padding:7px 9px;border-radius:8px;background:#f1f6f7;color:#3c5966;font-size:11px;line-height:1.45}.severity-reason strong{display:inline;color:#17324d;font-size:10px}.severity-reason.nurse{background:#eaf8f5}.severity-reason.symptoms{background:#fff8e7}.severity-dialog-empty{padding:34px;text-align:center;color:#6f838c;font-size:12px}
+  @media(max-width:760px){.severity-item.severity-open::after{display:none}.severity-detail-row{grid-template-columns:75px 1fr}.severity-reasons{grid-column:1/-1}.severity-dialog-body{padding:10px}.severity-dialog-head{padding:14px}.severity-dialog-title h2{font-size:17px}}
+</style>
+{% for group in severity_groups %}
+<dialog class="severity-dialog" id="severity-dialog-{{ group.severity }}" aria-labelledby="severity-title-{{ group.severity }}">
+  <div class="severity-dialog-head">
+    <div class="severity-dialog-title"><i class="{{ group.severity|lower }}"></i><div><h2 id="severity-title-{{ group.severity }}">ระดับ{{ group.label }} · {{ group.count }} ราย</h2><p>{{ severity_context_label }} — ผลสุดท้ายยืนยันโดยพยาบาล</p></div></div>
+    <button class="severity-dialog-close" type="button" data-close-severity aria-label="ปิด">×</button>
+  </div>
+  <div class="severity-dialog-body">
+    {% if group.rows %}<div class="severity-detail-list">
+      {% for row in group.rows %}<article class="severity-detail-row">
+        <div><b class="severity-queue">{{ row.queue_number }}</b><small>Visit #{{ row.visit.id }}</small></div>
+        <div><b>{{ row.patient.first_name }} {{ row.patient.last_name }}</b><small>HN {{ row.patient.hn|default:"-" }} · {{ row.visit.registered_at|date:"d/m/Y H:i" }} น.</small></div>
+        <div><b>{{ row.status_label }}</b><small>สถานะปัจจุบัน</small></div>
+        <div class="severity-reasons">
+          <div class="severity-reason symptoms"><strong>อาการสำคัญ:</strong> {{ row.symptoms }}</div>
+          <div class="severity-reason"><strong>เหตุผลจากระบบ:</strong> {{ row.ai_reason }}</div>
+          <div class="severity-reason nurse"><strong>การยืนยันของพยาบาล:</strong> {{ row.nurse_note }}</div>
+        </div>
+      </article>{% endfor %}
+    </div>{% else %}<div class="severity-dialog-empty">ไม่มีผู้ป่วยในระดับนี้</div>{% endif %}
+  </div>
+</dialog>
+{% endfor %}
+<script>
+  document.querySelectorAll("[data-open-severity]").forEach(button=>button.addEventListener("click",()=>document.getElementById(`severity-dialog-${button.dataset.openSeverity}`)?.showModal()));
+  document.querySelectorAll("[data-close-severity]").forEach(button=>button.addEventListener("click",()=>button.closest("dialog")?.close()));
+  document.querySelectorAll(".severity-dialog").forEach(dialog=>dialog.addEventListener("click",event=>{if(event.target===dialog)dialog.close()}));
+</script>

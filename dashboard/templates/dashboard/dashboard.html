@@ -47,12 +47,13 @@
 
     <section class="severity" aria-label="จำนวนผู้ป่วยตามระดับคัดกรอง">
       <div class="severity-title">ระดับคัดกรอง</div>
-      <div class="severity-item"><i class="red"></i><div><span>แดง</span><b>{{ red_total }}</b></div></div>
-      <div class="severity-item"><i class="pink"></i><div><span>ชมพู</span><b>{{ pink_total }}</b></div></div>
-      <div class="severity-item"><i class="yellow"></i><div><span>เหลือง</span><b>{{ yellow_total }}</b></div></div>
-      <div class="severity-item"><i class="green"></i><div><span>เขียว</span><b>{{ green_total }}</b></div></div>
-      <div class="severity-item"><i class="white"></i><div><span>ขาว</span><b>{{ white_total }}</b></div></div>
+      <button class="severity-item severity-open" type="button" data-open-severity="RED"><i class="red"></i><div><span>แดง</span><b>{{ red_total }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="PINK"><i class="pink"></i><div><span>ชมพู</span><b>{{ pink_total }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="YELLOW"><i class="yellow"></i><div><span>เหลือง</span><b>{{ yellow_total }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="GREEN"><i class="green"></i><div><span>เขียว</span><b>{{ green_total }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="WHITE"><i class="white"></i><div><span>ขาว</span><b>{{ white_total }}</b></div></button>
     </section>
+    {% include "dashboard/includes/severity_detail_dialogs.html" %}
 
     <section class="layout">
       <article class="panel">

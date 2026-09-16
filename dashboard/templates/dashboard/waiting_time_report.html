@@ -42,12 +42,13 @@
 
     <section class="severity" aria-label="จำนวนแยกตามระดับ">
       <div class="severity-title">ผู้ป่วยแยกตามระดับ</div>
-      <div class="severity-item"><i class="red"></i><div><span>แดง</span><b>{{ severity_counts.RED }}</b></div></div>
-      <div class="severity-item"><i class="pink"></i><div><span>ชมพู</span><b>{{ severity_counts.PINK }}</b></div></div>
-      <div class="severity-item"><i class="yellow"></i><div><span>เหลือง</span><b>{{ severity_counts.YELLOW }}</b></div></div>
-      <div class="severity-item"><i class="green"></i><div><span>เขียว</span><b>{{ severity_counts.GREEN }}</b></div></div>
-      <div class="severity-item"><i class="white"></i><div><span>ขาว</span><b>{{ severity_counts.WHITE }}</b></div></div>
+      <button class="severity-item severity-open" type="button" data-open-severity="RED"><i class="red"></i><div><span>แดง</span><b>{{ severity_counts.RED }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="PINK"><i class="pink"></i><div><span>ชมพู</span><b>{{ severity_counts.PINK }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="YELLOW"><i class="yellow"></i><div><span>เหลือง</span><b>{{ severity_counts.YELLOW }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="GREEN"><i class="green"></i><div><span>เขียว</span><b>{{ severity_counts.GREEN }}</b></div></button>
+      <button class="severity-item severity-open" type="button" data-open-severity="WHITE"><i class="white"></i><div><span>ขาว</span><b>{{ severity_counts.WHITE }}</b></div></button>
     </section>
+    {% include "dashboard/includes/severity_detail_dialogs.html" %}
 
     {% if invalid_intervals %}<div class="quality"><b>ควรตรวจสอบข้อมูล {{ invalid_intervals }} จุด:</b> พบเวลาที่บันทึกผิดลำดับ ระบบไม่นำช่วงติดลบมาคำนวณค่าเฉลี่ย</div>{% endif %}
 

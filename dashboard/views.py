@@ -7,12 +7,76 @@ import csv
 from pathlib import Path
 from queues.models import CriticalAlert, Queue, TriageResult, Visit
 from queues.triage import SEVERITY_LEVELS
+from ai_triage.services import localize_ai_reason
+
+
+SEVERITY_LABELS = {
+    "RED": "แดง · วิกฤต",
+    "PINK": "ชมพู · ฉุกเฉิน",
+    "YELLOW": "เหลือง · เร่งด่วน",
+    "GREEN": "เขียว · เร่งด่วนน้อย",
+    "WHITE": "ขาว · ทั่วไป",
+}
+
+STATUS_LABELS = {
+    "WAITING_VITALS": "รอวัดสัญญาณชีพ",
+    "WAITING_CONFIRMATION": "รอพยาบาลยืนยัน",
+    "WAITING_QUEUE": "รอเรียกคิว",
+    "CALLED": "เรียกแล้ว",
+    "MONITORING": "กำลังเฝ้าระวัง",
+    "OBSERVATION_MONITORING": "เฝ้าระวังระหว่างรอ",
+    "REASSESSMENT_REQUIRED": "ต้องประเมินซ้ำ",
+    "EMERGENCY_TRANSFER": "ส่งต่อฉุกเฉิน",
+    "IN_ROOM": "อยู่ในห้องตรวจ",
+    "OPD_DONE": "ตรวจเสร็จ",
+    "DISCHARGED": "เสร็จสิ้น",
+    "CANCELLED": "ยกเลิก",
+}
+
+
+def _severity_detail_groups(visits):
+    """Build auditable patient details behind each severity summary card."""
+    grouped = {severity: [] for severity in SEVERITY_LEVELS}
+    for visit in visits:
+        severity = visit.final_severity
+        if severity not in grouped:
+            continue
+        triage = getattr(visit, "triage_result", None)
+        queue = getattr(visit, "queue", None)
+        ai_reason = localize_ai_reason(getattr(triage, "ai_reason", "") or "")
+        grouped[severity].append({
+            "visit": visit,
+            "patient": visit.patient,
+            "queue_number": queue.display_number if queue else "-",
+            "status_label": STATUS_LABELS.get(
+                getattr(queue, "status", ""),
+                getattr(queue, "status", "-").replace("_", " ").title(),
+            ),
+            "ai_reason": ai_reason or "ไม่ได้บันทึกเหตุผลจากระบบ",
+            "nurse_note": getattr(triage, "nurse_note", "") or "ยืนยันตามผลเดิม/ไม่ได้ระบุหมายเหตุ",
+            "symptoms": visit.note or "ไม่ได้บันทึกอาการสำคัญ",
+        })
+    return [
+        {
+            "severity": severity,
+            "label": SEVERITY_LABELS[severity],
+            "rows": grouped[severity],
+            "count": len(grouped[severity]),
+        }
+        for severity in SEVERITY_LEVELS
+    ]
 
 @login_required
 def dashboard_view(request):
     waiting = Queue.objects.filter(status="WAITING_QUEUE")
     called = Queue.objects.filter(status="CALLED")
     active = Queue.objects.exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"])
+    active_visits = list(
+        Visit.objects
+        .select_related("patient", "queue", "triage_result")
+        .filter(queue__in=active, final_severity__in=SEVERITY_LEVELS)
+        .order_by("queue__priority", "registered_at")
+    )
     alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
     severity_totals = {
         severity: active.filter(visit__final_severity=severity).count()
@@ -30,6 +94,8 @@ def dashboard_view(request):
         "white_total": severity_totals["WHITE"],
         "new_alert_total": alerts.count(),
         "latest_alerts": alerts.select_related("visit", "visit__patient")[:8],
+        "severity_groups": _severity_detail_groups(active_visits),
+        "severity_context_label": "ผู้ป่วยที่ยังอยู่ในกระบวนการบริการ",
         "now": timezone.now(),
     }
     return render(request, "dashboard/dashboard.html", context)
@@ -119,9 +185,9 @@ def _format_wait_minutes(minutes):
 
 @login_required
 def waiting_time_report(request):
-    visits = (
+    visits = list(
         Visit.objects
-        .select_related("patient", "queue")
+        .select_related("patient", "queue", "triage_result")
         .order_by("-registered_at")[:500]
     )
 
@@ -140,18 +206,6 @@ def waiting_time_report(request):
         "call_to_now_or_done": [],
     }
     invalid_intervals = 0
-
-    status_labels = {
-        "WAITING_VITALS": "รอวัดสัญญาณชีพ",
-        "WAITING_CONFIRMATION": "รอพยาบาลยืนยัน",
-        "WAITING_QUEUE": "รอเรียกคิว",
-        "CALLED": "เรียกแล้ว",
-        "MONITORING": "กำลังเฝ้าระวัง",
-        "IN_ROOM": "อยู่ในห้องตรวจ",
-        "OPD_DONE": "ตรวจเสร็จ",
-        "DISCHARGED": "เสร็จสิ้น",
-        "CANCELLED": "ยกเลิก",
-    }
 
     for visit in visits:
         for start, end in (
@@ -198,7 +252,7 @@ def waiting_time_report(request):
             "visit": visit,
             "patient": visit.patient,
             "status": status,
-            "status_label": status_labels.get(status, status.replace("_", " ").title()),
+            "status_label": STATUS_LABELS.get(status, status.replace("_", " ").title()),
             "triage_wait": triage_wait,
             "triage_wait_display": _format_wait_minutes(triage_wait),
             "called_wait": called_wait,
@@ -261,6 +315,8 @@ def waiting_time_report(request):
         "monthly_rows": monthly_rows,
         "total": len(rows),
         "invalid_intervals": invalid_intervals,
+        "severity_groups": _severity_detail_groups(visits),
+        "severity_context_label": "ผู้ป่วยในรายงานล่าสุดสูงสุด 500 Visit",
     })
 
 
