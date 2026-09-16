@@ -231,7 +231,7 @@
               <div class="detail-box">
                 <div class="patient-actions">
                   <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย</button>
-                  <a class="btn patient-edit" href="{% url 'edit_patient' p.id %}">แก้ไขข้อมูลผู้ป่วย</a>
+                  {% if 'edit_patient' in access_capabilities %}<a class="btn patient-edit" href="{% url 'edit_patient' p.id %}">แก้ไขข้อมูลผู้ป่วย</a>{% endif %}
                 </div>
                 <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
                   <div class="modal-head">
@@ -257,11 +257,11 @@
                                 <div class="birth-date-caption">วันเกิด {{ p.birth_date|date:"d/m/Y" }}</div>
                               {% else %}
                                 <div class="age-missing">ยังไม่มีข้อมูลวันเดือนปีเกิด</div>
-                                <form class="birth-date-form" method="post" action="{% url 'update_patient_birth_date' p.id %}">
+                                {% if 'edit_patient' in access_capabilities %}<form class="birth-date-form" method="post" action="{% url 'update_patient_birth_date' p.id %}">
                                   {% csrf_token %}
                                   <input type="date" name="birth_date" required aria-label="วันเดือนปีเกิดของผู้ป่วย">
                                   <button type="submit">บันทึก</button>
-                                </form>
+                                </form>{% endif %}
                               {% endif %}
                             </dd>
                           </div>

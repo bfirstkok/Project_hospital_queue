@@ -10,6 +10,7 @@ class Capability:
     VIEW_DASHBOARD = "view_dashboard"
     VIEW_QUEUE = "view_queue"
     MANAGE_QUEUE = "manage_queue"
+    VIEW_EMERGENCY = "view_emergency"
     REGISTER_PATIENT = "register_patient"
     VIEW_PATIENT = "view_patient"
     EDIT_PATIENT = "edit_patient"
@@ -18,6 +19,7 @@ class Capability:
     DOCTOR_ASSESSMENT = "doctor_assessment"
     MONITOR_PATIENT = "monitor_patient"
     ACKNOWLEDGE_ALERT = "acknowledge_alert"
+    END_MONITORING = "end_monitoring"
     VIEW_PERSONNEL = "view_personnel"
     VIEW_SHIFT_SCHEDULE = "view_shift_schedule"
     MANAGE_PERSONNEL = "manage_personnel"
@@ -29,43 +31,40 @@ class Capability:
 ROLE_CAPABILITIES = {
     StaffProfile.Role.DOCTOR: {
         Capability.DOCTOR_ASSESSMENT,
+        Capability.VIEW_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.NURSE: {
-        Capability.VIEW_QUEUE,
-        Capability.MANAGE_QUEUE,
-        Capability.REGISTER_PATIENT,
         Capability.VIEW_PATIENT,
-        Capability.EDIT_PATIENT,
-        Capability.RECORD_VITALS,
         Capability.CONFIRM_TRIAGE,
         Capability.MONITOR_PATIENT,
         Capability.ACKNOWLEDGE_ALERT,
+        Capability.END_MONITORING,
         Capability.VIEW_PERSONNEL,
         Capability.VIEW_SHIFT_SCHEDULE,
-        Capability.MANAGE_DEVICE,
     },
     StaffProfile.Role.NURSE_ASSISTANT: {
-        Capability.REGISTER_PATIENT,
-        Capability.VIEW_PATIENT,
-        Capability.EDIT_PATIENT,
         Capability.RECORD_VITALS,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.EMERGENCY: {
-        Capability.VIEW_QUEUE,
-        Capability.MANAGE_QUEUE,
+        Capability.VIEW_EMERGENCY,
         Capability.VIEW_PATIENT,
-        Capability.MONITOR_PATIENT,
-        Capability.ACKNOWLEDGE_ALERT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.STAFF: {
-        Capability.VIEW_QUEUE,
-        Capability.MANAGE_QUEUE,
         Capability.REGISTER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.EDIT_PATIENT,
+        Capability.VIEW_SHIFT_SCHEDULE,
+    },
+    StaffProfile.Role.QUEUE_OPERATOR: {
+        Capability.VIEW_QUEUE,
+        Capability.MANAGE_QUEUE,
+        Capability.VIEW_SHIFT_SCHEDULE,
+    },
+    StaffProfile.Role.BIOMEDICAL: {
+        Capability.MANAGE_DEVICE,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
 }
@@ -73,16 +72,19 @@ ROLE_CAPABILITIES = {
 
 ROLE_DESCRIPTIONS = {
     StaffProfile.Role.DOCTOR: "ตรวจรักษา บันทึกผลประเมิน และดูข้อมูลผู้ป่วยที่เกี่ยวข้อง",
-    StaffProfile.Role.NURSE: "วัดสัญญาณชีพ ยืนยันผลคัดกรอง จัดคิว และติดตามผู้ป่วย",
-    StaffProfile.Role.NURSE_ASSISTANT: "ลงทะเบียน ช่วยวัดสัญญาณชีพ และดูหน้าติดตาม",
-    StaffProfile.Role.EMERGENCY: "ดูคิวฉุกเฉิน ส่งต่อ และตอบรับสัญญาณเตือน",
-    StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหาผู้ป่วย เรียกคิว และจัดการนัดหมาย",
+    StaffProfile.Role.NURSE: "คัดกรอง ยืนยันระดับความเร่งด่วน เฝ้าระวัง และตอบรับสัญญาณเตือน",
+    StaffProfile.Role.NURSE_ASSISTANT: "วัดและบันทึกสัญญาณชีพภายใต้การกำกับของพยาบาลวิชาชีพ",
+    StaffProfile.Role.EMERGENCY: "รับช่วงและดูแลรายการผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
+    StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
+    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว กำหนดห้องตรวจ และจัดสถานะคิวบริการ",
+    StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
 }
 
 CAPABILITY_LABELS = {
     Capability.VIEW_DASHBOARD: "ดูแดชบอร์ดภาพรวม",
     Capability.VIEW_QUEUE: "ดูรายการคิว",
     Capability.MANAGE_QUEUE: "เรียกคิวและเปลี่ยนสถานะบริการ",
+    Capability.VIEW_EMERGENCY: "รับช่วงรายการผู้ป่วยฉุกเฉิน",
     Capability.REGISTER_PATIENT: "ลงทะเบียนผู้ป่วย",
     Capability.VIEW_PATIENT: "ค้นหาและดูประวัติผู้ป่วย",
     Capability.EDIT_PATIENT: "แก้ไขข้อมูลและนัดหมาย",
@@ -91,6 +93,7 @@ CAPABILITY_LABELS = {
     Capability.DOCTOR_ASSESSMENT: "ตรวจรักษาและบันทึกผลแพทย์",
     Capability.MONITOR_PATIENT: "ติดตามข้อมูลจากอุปกรณ์",
     Capability.ACKNOWLEDGE_ALERT: "รับทราบสัญญาณเตือน",
+    Capability.END_MONITORING: "สิ้นสุดการเฝ้าระวังตามแผนการรักษา",
     Capability.VIEW_PERSONNEL: "ดูรายชื่อและสถานะบุคลากร",
     Capability.VIEW_SHIFT_SCHEDULE: "ดูตารางเวรบุคลากร",
     Capability.MANAGE_PERSONNEL: "จัดบทบาท เวร และมอบหมายพยาบาล",

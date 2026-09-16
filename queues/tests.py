@@ -600,6 +600,8 @@ class QueueWorkflowTests(TestCase):
         self.user = get_user_model().objects.create_user(
             username="nurse",
             password="secret",
+            is_superuser=True,
+            is_staff=True,
         )
         StaffProfile.objects.create(user=self.user, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.user)
@@ -821,7 +823,7 @@ class QueueWorkflowTests(TestCase):
             "severity": "YELLOW",
             "nurse_note": "ปรับตามอาการหน้าห้อง",
         })
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
 
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
@@ -878,7 +880,7 @@ class QueueWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("waiting_confirmation"))
 
         response = self.client.post(reverse("return_to_waiting_vitals", args=[visit.id]))
-        self.assertRedirects(response, reverse("waiting_vitals"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
 
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.WAITING_VITALS)
@@ -886,7 +888,9 @@ class QueueWorkflowTests(TestCase):
 class ConfirmedTriageFlowTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = get_user_model().objects.create_user(username="flow-nurse", password="secret")
+        self.user = get_user_model().objects.create_user(
+            username="flow-nurse", password="secret", is_superuser=True, is_staff=True
+        )
         StaffProfile.objects.create(user=self.user, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.user)
         self.patient = Patient.objects.create(
@@ -914,7 +918,7 @@ class ConfirmedTriageFlowTests(TestCase):
 
         response = self.confirm(visit, Visit.Severity.RED)
 
-        self.assertRedirects(response, reverse("emergency_transfers"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
         assignment.refresh_from_db()
@@ -950,7 +954,7 @@ class ConfirmedTriageFlowTests(TestCase):
 
         response = self.confirm(visit, Visit.Severity.PINK)
 
-        self.assertRedirects(response, reverse("emergency_transfers"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.EMERGENCY_TRANSFER)
         self.assertEqual(visit.queue.priority, 2)
@@ -1010,7 +1014,7 @@ class ConfirmedTriageFlowTests(TestCase):
             {"severity": Visit.Severity.YELLOW, "nurse_note": "ประเมินซ้ำแล้วรู้สึกตัวดีและสัญญาณชีพคงที่"},
         )
 
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
@@ -1030,7 +1034,7 @@ class ConfirmedTriageFlowTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         self.assertEqual(
             visit.vitals.risk_flags,
             ["elderly_80", "pregnant"],

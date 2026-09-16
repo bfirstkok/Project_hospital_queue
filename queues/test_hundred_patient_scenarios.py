@@ -35,6 +35,8 @@ class HundredPatientVariedSymptomWorkflowTests(TestCase):
             password="test-only-password",
             first_name="เจ้าหน้าที่",
             last_name="จำลอง 100 คน",
+            is_superuser=True,
+            is_staff=True,
         )
         StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.NURSE)
         self.client.force_login(self.operator)

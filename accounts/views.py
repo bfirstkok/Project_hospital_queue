@@ -18,9 +18,19 @@ def role_landing(request):
         return redirect("opd_room_select")
     if has_capability(request.user, Capability.RECORD_VITALS):
         return redirect("waiting_vitals")
+    if has_capability(request.user, Capability.CONFIRM_TRIAGE):
+        return redirect("waiting_confirmation")
     if has_capability(request.user, Capability.MANAGE_QUEUE):
         return redirect("queue_list")
-    return redirect("dashboard:home")
+    if has_capability(request.user, Capability.VIEW_EMERGENCY):
+        return redirect("emergency_transfers")
+    if has_capability(request.user, Capability.REGISTER_PATIENT):
+        return redirect("register_patient")
+    if has_capability(request.user, Capability.MANAGE_DEVICE):
+        return redirect("device_pairing")
+    if has_capability(request.user, Capability.VIEW_SHIFT_SCHEDULE):
+        return redirect("shift_schedule")
+    return redirect("my_permissions")
 
 
 @login_required

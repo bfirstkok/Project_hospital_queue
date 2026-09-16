@@ -13,7 +13,7 @@ urlpatterns = [
     path("display/", views.queue_display, name="queue_display"),
     path("waiting-vitals/", capability_required(Capability.RECORD_VITALS)(views.waiting_vitals), name="waiting_vitals"),
     path("waiting-confirmation/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.waiting_confirmation), name="waiting_confirmation"),
-    path("emergency-transfers/", capability_required(Capability.VIEW_QUEUE)(views.emergency_transfers), name="emergency_transfers"),
+    path("emergency-transfers/", capability_required(Capability.VIEW_EMERGENCY)(views.emergency_transfers), name="emergency_transfers"),
     path("personnel/", capability_required(Capability.VIEW_PERSONNEL)(personnel_views.personnel_dashboard), name="personnel_dashboard"),
     path("shifts/", capability_required(Capability.VIEW_SHIFT_SCHEDULE)(personnel_views.shift_schedule), name="shift_schedule"),
     path("personnel/heartbeat/", personnel_views.staff_heartbeat, name="staff_heartbeat"),
@@ -21,11 +21,11 @@ urlpatterns = [
 
     # queue actions
     path("assessment/<int:visit_id>/", capability_required(Capability.RECORD_VITALS)(views.nurse_triage_assessment), name="nurse_triage_assessment"),
-    path("return-to-vitals/<int:visit_id>/", capability_required(Capability.RECORD_VITALS)(views.return_to_waiting_vitals), name="return_to_waiting_vitals"),
+    path("return-to-vitals/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(views.return_to_waiting_vitals), name="return_to_waiting_vitals"),
     path("triage/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.triage_visit), name="triage_visit"),
     path("call/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.call_visit), name="call_visit"),
     path("monitoring/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.send_to_monitoring), name="send_to_monitoring"),
-    path("discharge/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.discharge_visit), name="discharge_visit"),
+    path("discharge/<int:visit_id>/", capability_required(Capability.END_MONITORING)(views.discharge_visit), name="discharge_visit"),
     path("cancel/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.cancel_queue), name="cancel_queue"),
     path("api/update-severity/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(views.update_severity_api), name="update_severity_api"),
     path("api/alerts/<int:alert_id>/ack/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.acknowledge_alert), name="acknowledge_alert"),

@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from queues.models import StaffProfile
+from .access import Capability, capabilities_for
 
 
 class RoleAccessTests(TestCase):
@@ -17,10 +18,11 @@ class RoleAccessTests(TestCase):
             StaffProfile.objects.update_or_create(user=user, defaults={"role": role})
         return user
 
-    def test_nurse_can_open_vitals_but_not_doctor_room(self):
+    def test_nurse_can_confirm_triage_but_not_record_vitals_or_open_doctor_room(self):
         nurse = self.make_user("nurse", StaffProfile.Role.NURSE)
         self.client.force_login(nurse)
-        self.assertEqual(self.client.get(reverse("waiting_vitals")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("waiting_confirmation")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("waiting_vitals")).status_code, 403)
         self.assertEqual(self.client.get(reverse("opd_room_select")).status_code, 403)
 
     def test_doctor_can_open_room_but_not_confirm_triage(self):
@@ -40,26 +42,38 @@ class RoleAccessTests(TestCase):
             (
                 StaffProfile.Role.NURSE,
                 "nurse-only",
-                ("queue_list", "waiting_vitals", "waiting_confirmation", "personnel_dashboard"),
-                ("opd_room_select", "dashboard:home", "dashboard:waiting_time_report"),
+                ("waiting_confirmation", "personnel_dashboard", "monitor_dashboard"),
+                ("queue_list", "waiting_vitals", "register_patient", "opd_room_select", "emergency_transfers", "device_management", "dashboard:home"),
             ),
             (
                 StaffProfile.Role.NURSE_ASSISTANT,
                 "assistant-only",
-                ("waiting_vitals", "register_patient", "patient_search"),
-                ("queue_list", "waiting_confirmation", "personnel_dashboard", "opd_room_select", "dashboard:home"),
+                ("waiting_vitals",),
+                ("queue_list", "waiting_confirmation", "register_patient", "patient_search", "personnel_dashboard", "opd_room_select", "device_management", "dashboard:home"),
             ),
             (
                 StaffProfile.Role.EMERGENCY,
                 "emergency-only",
-                ("queue_list", "emergency_transfers"),
-                ("waiting_vitals", "waiting_confirmation", "register_patient", "personnel_dashboard", "opd_room_select", "dashboard:home"),
+                ("emergency_transfers", "patient_search"),
+                ("queue_list", "waiting_vitals", "waiting_confirmation", "register_patient", "personnel_dashboard", "opd_room_select", "device_management", "dashboard:home"),
             ),
             (
                 StaffProfile.Role.STAFF,
                 "staff-only",
-                ("queue_list", "register_patient", "patient_search"),
-                ("waiting_vitals", "waiting_confirmation", "personnel_dashboard", "opd_room_select", "dashboard:home"),
+                ("register_patient", "patient_search"),
+                ("queue_list", "waiting_vitals", "waiting_confirmation", "personnel_dashboard", "opd_room_select", "emergency_transfers", "device_management", "dashboard:home"),
+            ),
+            (
+                StaffProfile.Role.QUEUE_OPERATOR,
+                "queue-only",
+                ("queue_list",),
+                ("waiting_vitals", "waiting_confirmation", "register_patient", "patient_search", "opd_room_select", "emergency_transfers", "device_management", "dashboard:home"),
+            ),
+            (
+                StaffProfile.Role.BIOMEDICAL,
+                "biomedical-only",
+                ("device_management",),
+                ("queue_list", "waiting_vitals", "waiting_confirmation", "register_patient", "patient_search", "opd_room_select", "emergency_transfers", "dashboard:home"),
             ),
         )
         for role, username, allowed, denied in cases:
@@ -96,5 +110,26 @@ class RoleAccessTests(TestCase):
         response = self.client.get(reverse("my_permissions"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "พยาบาล")
-        self.assertContains(response, "วัดและบันทึกสัญญาณชีพ")
+        self.assertContains(response, "ยืนยันหรือแก้ผลคัดกรอง AI")
+        self.assertNotContains(response, "วัดและบันทึกสัญญาณชีพ")
         self.assertNotContains(response, "ตรวจรักษาและบันทึกผลแพทย์")
+
+    def test_operational_write_duties_do_not_overlap_between_roles(self):
+        unique_owner = {
+            Capability.REGISTER_PATIENT: StaffProfile.Role.STAFF,
+            Capability.EDIT_PATIENT: StaffProfile.Role.STAFF,
+            Capability.RECORD_VITALS: StaffProfile.Role.NURSE_ASSISTANT,
+            Capability.CONFIRM_TRIAGE: StaffProfile.Role.NURSE,
+            Capability.MANAGE_QUEUE: StaffProfile.Role.QUEUE_OPERATOR,
+            Capability.DOCTOR_ASSESSMENT: StaffProfile.Role.DOCTOR,
+            Capability.ACKNOWLEDGE_ALERT: StaffProfile.Role.NURSE,
+            Capability.END_MONITORING: StaffProfile.Role.NURSE,
+            Capability.MANAGE_DEVICE: StaffProfile.Role.BIOMEDICAL,
+        }
+        for capability, expected_role in unique_owner.items():
+            owners = []
+            for role, _label in StaffProfile.Role.choices:
+                user = self.make_user(f"owner-{role.lower()}-{capability}", role)
+                if capability in capabilities_for(user):
+                    owners.append(role)
+            self.assertEqual(owners, [expected_role], capability)

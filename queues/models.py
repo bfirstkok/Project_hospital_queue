@@ -216,10 +216,12 @@ class StaffProfile(models.Model):
 
     class Role(models.TextChoices):
         DOCTOR = "DOCTOR", "แพทย์"
-        NURSE = "NURSE", "พยาบาล"
-        NURSE_ASSISTANT = "NURSE_ASSISTANT", "ผู้ช่วยพยาบาล"
+        NURSE = "NURSE", "พยาบาลวิชาชีพ (คัดกรอง/เฝ้าระวัง)"
+        NURSE_ASSISTANT = "NURSE_ASSISTANT", "ผู้ช่วยพยาบาล (วัดสัญญาณชีพ)"
         EMERGENCY = "EMERGENCY", "เจ้าหน้าที่ฉุกเฉิน"
-        STAFF = "STAFF", "เจ้าหน้าที่"
+        STAFF = "STAFF", "เจ้าหน้าที่เวชระเบียน"
+        QUEUE_OPERATOR = "QUEUE_OPERATOR", "เจ้าหน้าที่จัดคิว"
+        BIOMEDICAL = "BIOMEDICAL", "เจ้าหน้าที่เครื่องมือแพทย์"
 
     user = models.OneToOneField(
         "auth.User",

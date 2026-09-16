@@ -97,7 +97,7 @@ class YellowNurseAssignmentTests(TestCase):
             self.yellow_payload(),
         )
 
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
         assignment = NurseCareAssignment.objects.get(visit=visit, is_active=True)
@@ -113,7 +113,7 @@ class YellowNurseAssignmentTests(TestCase):
             self.yellow_payload(nurse_id=str(self.nurse.id)),
         )
 
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         visit.refresh_from_db()
         visit.queue.refresh_from_db()
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
@@ -151,7 +151,7 @@ class YellowNurseAssignmentTests(TestCase):
             self.yellow_payload(),
         )
 
-        self.assertRedirects(response, reverse("queue_list"))
+        self.assertRedirects(response, reverse("waiting_confirmation"))
         assignment = NurseCareAssignment.objects.get(visit=visit, is_active=True)
         self.assertEqual(assignment.nurse, second_nurse)
 

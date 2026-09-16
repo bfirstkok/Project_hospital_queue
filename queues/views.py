@@ -359,7 +359,7 @@ def return_to_waiting_vitals(request, visit_id: int):
         q.save(update_fields=["status"])
         messages.info(request, "ส่งกลับไปหน้ารอวัดค่าแล้ว สามารถแก้ vital signs และประเมิน AI ใหม่ได้")
 
-    return redirect("waiting_vitals")
+    return redirect("waiting_confirmation")
 
 
 @login_required
@@ -545,15 +545,15 @@ def triage_visit(request, visit_id: int):
 
     if new_sev == Visit.Severity.RED:
         messages.error(request, "RED: ช่วยเหลือทันที ส่งต่อฉุกเฉิน ไม่เข้าคิว OPD และไม่รอสวมนาฬิกา")
-        return redirect("emergency_transfers")
+        return redirect("waiting_confirmation")
     if new_sev == Visit.Severity.PINK:
         messages.error(request, "PINK: ส่งประเมินฉุกเฉินอย่างรวดเร็ว ไม่เข้าคิว OPD ปกติ")
-        return redirect("emergency_transfers")
+        return redirect("waiting_confirmation")
     if new_sev == Visit.Severity.YELLOW:
         messages.warning(request, "YELLOW: เข้ากลุ่มเฝ้าระวัง สามารถจับคู่นาฬิกาได้")
     else:
         messages.success(request, f"{new_sev}: เข้าคิว OPD ตามลำดับ ไม่ต้องสวมนาฬิกา")
-    return redirect("queue_list")
+    return redirect("waiting_confirmation")
 
 
 @login_required
