@@ -82,6 +82,104 @@
     }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <style>
+    /* Waiting-vitals clinical board. Kept page-scoped so the shared navigation
+       can evolve independently without changing this workflow. */
+    .waiting-vitals-page { color: #17324d !important; background: #f4f8f9 !important; }
+    .waiting-vitals-page::before { display: none !important; }
+    .waiting-vitals-page .wrap { width: min(1380px, calc(100% - 48px)) !important; max-width: none; padding: 28px 0 42px; }
+    .waiting-vitals-page .top { align-items: center; margin-bottom: 20px; }
+    .waiting-vitals-page h1 { margin: 0; color: #17324d !important; font-size: clamp(28px, 2.4vw, 38px); line-height: 1.18; }
+    .waiting-vitals-page .muted { margin-top: 6px; color: #687f8b !important; font-size: 15px; }
+    .waiting-count { display: inline-flex; align-items: center; gap: 8px; margin-top: 13px; padding: 7px 11px; border: 1px solid #cce4df; border-radius: 999px; color: #08766e; background: #eaf8f5; font-size: 13px; font-weight: 800; }
+    .waiting-count::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #0b9b8d; box-shadow: 0 0 0 4px rgba(11,155,141,.11); }
+    .waiting-vitals-page .btn.primary { min-height: 42px; padding: 0 16px; border: 0 !important; border-radius: 10px; color: #fff !important; background: #087f75 !important; box-shadow: 0 8px 20px rgba(8,127,117,.17); }
+    .waiting-vitals-page .btn.primary:hover { background: #066d65 !important; transform: translateY(-1px); }
+
+    .waiting-board { overflow: hidden; border: 1px solid #d4e2e6; border-radius: 16px; background: #fff; box-shadow: 0 14px 38px rgba(42,79,92,.07); }
+    .waiting-board__head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; border-bottom: 1px solid #e0eaed; }
+    .waiting-board__title { margin: 0; color: #17324d; font-size: 19px; font-weight: 800; }
+    .waiting-board__hint { margin-top: 3px; color: #718792; font-size: 13px; }
+    .waiting-board__total { flex: 0 0 auto; color: #08766e; font-size: 14px; font-weight: 800; }
+
+    .waiting-vitals-page .list-tools { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; gap: 9px; margin: 0; padding: 13px 20px; border: 0; border-bottom: 1px solid #e0eaed; border-radius: 0; background: #f8fbfc !important; }
+    .waiting-vitals-page .search-input { width: 100%; min-height: 43px; padding: 0 14px 0 42px; border: 1px solid #bfd2d8 !important; border-radius: 10px !important; color: #17324d !important; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23677f8b' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.7-3.7'/%3E%3C/svg%3E") no-repeat 14px center !important; box-shadow: none; }
+    .waiting-vitals-page .search-input::placeholder { color: #8a9ba3; }
+    .waiting-vitals-page .search-input:focus { border-color: #0b9185 !important; box-shadow: 0 0 0 3px rgba(11,145,133,.11); outline: 0; }
+    .waiting-vitals-page .search-button,
+    .waiting-vitals-page .search-clear { min-height: 43px; border-radius: 10px; }
+    .waiting-vitals-page .search-button { border-color: #087f75; color: #fff; background: #087f75; }
+    .waiting-vitals-page .search-clear { border-color: #cbdcdf; color: #526d79; background: #fff; }
+    .waiting-vitals-page .search-result { grid-column: 1 / -1; margin: 0; color: #627984; }
+
+    .waiting-vitals-page .table-scroll { border-radius: 0; }
+    .waiting-vitals-page .table { min-width: 1120px; margin: 0; border: 0 !important; border-radius: 0 !important; background: #fff !important; box-shadow: none !important; }
+    .waiting-vitals-page .table th { padding: 12px 14px; border-bottom: 1px solid #dce8eb !important; color: #5d7581 !important; background: #f6fafb !important; font-size: 12px !important; letter-spacing: .02em; text-transform: none; }
+    .waiting-vitals-page .table td { padding: 16px 14px; border-bottom: 1px solid #e4edef !important; color: #17324d !important; background: #fff !important; font-size: 15px; }
+    .waiting-vitals-page .table tbody tr:hover td { background: #f8fcfc !important; }
+    .waiting-vitals-page .table tbody tr:last-child td { border-bottom: 0 !important; }
+    .waiting-vitals-page .table th:first-child,
+    .waiting-vitals-page .table td:first-child { padding-left: 20px; }
+    .waiting-vitals-page .table th:last-child,
+    .waiting-vitals-page .table td:last-child { padding-right: 20px; }
+    .waiting-vitals-page .table td:nth-child(2) { font-size: 15px; font-weight: 400; }
+    .queue-badge { display: inline-flex; min-width: 62px; min-height: 34px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid #c8e0eb; border-radius: 9px; color: #1977a4; background: #edf7fb; font-size: 14px; font-weight: 900; }
+    .patient-summary { display: flex; align-items: center; gap: 11px; }
+    .patient-avatar { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 11px; color: #08766e; background: #e4f5f2; font-size: 16px; font-weight: 900; }
+    .waiting-vitals-page .patient-name { color: #17324d; font-size: 17px; line-height: 1.25; }
+    .patient-meta { margin-top: 4px; color: #748993; font-size: 12px; font-weight: 500; }
+    .waiting-vitals-page .detail-box { margin-top: 8px; margin-left: 49px; }
+    .waiting-vitals-page .patient-actions { gap: 6px; }
+    .waiting-vitals-page .detail-open,
+    .waiting-vitals-page .patient-edit { min-height: 28px; padding: 0; border: 0 !important; color: #496874 !important; background: transparent !important; font-size: 12px; box-shadow: none !important; }
+    .waiting-vitals-page .detail-open:hover,
+    .waiting-vitals-page .patient-edit:hover { color: #087f75 !important; background: transparent !important; }
+    .waiting-vitals-page .patient-edit::before { content: "·"; margin-right: 6px; color: #a5b5bb; }
+    .registration-time { display: block; color: #17324d; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .registration-time small { display: block; margin-top: 3px; color: #82949c; font-size: 11px; font-weight: 500; }
+    .waiting-vitals-page .status { padding: 6px 10px; border: 1px solid #efd38d !important; border-radius: 8px; color: #8b6200 !important; background: #fff8e4 !important; font-size: 13px; }
+    .waiting-vitals-page .vitals { gap: 5px; }
+    .waiting-vitals-page .vital { padding: 5px 8px; border: 1px solid #d8e5e8 !important; border-radius: 7px; color: #49636f !important; background: #f7fafb !important; font-size: 12px; }
+    .waiting-vitals-page .action-stack { align-items: stretch; }
+    .waiting-vitals-page .action-stack .btn { justify-content: center; min-height: 38px; white-space: nowrap; }
+
+    .waiting-vitals-page .list-controls { margin: 0; padding: 14px 20px; border: 0; border-top: 1px solid #e0eaed; border-radius: 0; background: #f8fbfc !important; }
+    .waiting-vitals-page .page-size-form { color: #526d79; }
+    .waiting-vitals-page .page-size-select { width: auto; min-width: 112px; border-color: #bfd2d8 !important; color: #17324d !important; background: #fff !important; color-scheme: light; }
+    .waiting-vitals-page .page-summary { color: #718792; font-size: 13px; }
+    .waiting-vitals-page .page-link,
+    .waiting-vitals-page .page-current { border-color: #cbdcdf; color: #365765; background: #fff; }
+    .waiting-vitals-page .page-link:hover { border-color: #087f75; color: #fff; background: #087f75; }
+    .waiting-vitals-page .page-current { border-color: #087f75; color: #fff; background: #087f75; }
+
+    .waiting-vitals-page .patient-modal { color: #17324d !important; background: #fff !important; }
+    .waiting-vitals-page .modal-head { background: #f6fafb !important; }
+    .waiting-vitals-page .modal-title { color: #17324d; }
+    .waiting-vitals-page .modal-subtitle { color: #718792; }
+    .waiting-vitals-page .detail-section { border-color: #dbe7ea; background: #fbfdfd; }
+    .waiting-vitals-page .detail-section h3 { color: #087f75; }
+    .waiting-vitals-page .info-row dt { color: #718792; }
+    .waiting-vitals-page .info-row dd { color: #17324d; }
+    .waiting-vitals-page .birth-date-form input { color: #17324d !important; background: #fff !important; color-scheme: light; }
+    .waiting-vitals-page .birth-date-form button { color: #fff; background: #087f75; }
+    @media (max-width: 900px) {
+      .waiting-vitals-page .wrap { width: calc(100% - 24px) !important; padding-top: 18px; }
+      .waiting-vitals-page .top { align-items: flex-start; flex-direction: column; }
+      .waiting-vitals-page .list-tools { grid-template-columns: 1fr auto; }
+      .waiting-vitals-page .search-input { grid-column: 1 / -1; }
+      .waiting-vitals-page .list-controls { align-items: stretch; flex-direction: column; }
+      .waiting-vitals-page .pagination { justify-content: flex-start; }
+    }
+    @media (max-width: 560px) {
+      .waiting-vitals-page .wrap { width: calc(100% - 16px) !important; }
+      .waiting-board__head { align-items: flex-start; flex-direction: column; }
+      .waiting-vitals-page .list-tools { grid-template-columns: 1fr 1fr; padding: 12px; }
+      .waiting-vitals-page .search-button,
+      .waiting-vitals-page .search-clear { justify-content: center; }
+      .waiting-vitals-page .list-controls { padding: 12px; }
+      .waiting-vitals-page .page-size-form { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
 </head>
 <body class="waiting-vitals-page">
   <main class="wrap">
@@ -94,11 +192,17 @@
       <div>
         <h1>รอวัดค่าสัญญาณชีพ</h1>
         <div class="muted">ผู้ป่วยที่ลงทะเบียนแล้ว แต่ยังไม่พร้อมเข้าคิวตรวจตามระดับความเร่งด่วน</div>
+        <div class="waiting-count">กำลังรอ {{ waiting_total }} ราย</div>
       </div>
       {% include "includes/main_nav.html" %}
       <a class="btn primary" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
     </div>
 
+    <section class="waiting-board">
+      <header class="waiting-board__head">
+        <div><h2 class="waiting-board__title">รายการผู้ป่วยรอวัดค่า</h2><div class="waiting-board__hint">ค้นหาและดำเนินการประเมินได้จากรายการด้านล่าง</div></div>
+        <div class="waiting-board__total">ทั้งหมด {{ waiting_total }} ราย</div>
+      </header>
     <form class="list-tools" method="get" role="search">
       <input class="search-input" type="search" name="q" value="{{ search_query }}" placeholder="ค้นหาชื่อ นามสกุล HN เลขบัตรประชาชน หรือเบอร์โทร" aria-label="ค้นหาผู้ป่วยที่รอวัดค่า">
       <input type="hidden" name="page_size" value="{{ page_size }}">
@@ -121,9 +225,9 @@
         {% for q in q_items %}
           {% with v=q.visit vs=q.visit.vitals p=q.visit.patient %}
           <tr>
-            <td><span class="queue-no">{{ q.display_number }}</span></td>
+            <td><span class="queue-badge">{{ q.display_number }}</span></td>
             <td>
-              <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
+              <div class="patient-summary"><span class="patient-avatar">{{ p.first_name|default:"?"|slice:":1" }}</span><div><div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div><div class="patient-meta">HN {{ p.hn|default:"ยังไม่มีเลข HN" }}</div></div></div>
               <div class="detail-box">
                 <div class="patient-actions">
                   <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย</button>
@@ -194,7 +298,7 @@
                 </dialog>
               </div>
             </td>
-            <td>{{ v.registered_at|date:"H:i" }}</td>
+            <td><span class="registration-time">{{ v.registered_at|date:"H:i" }}<small>{{ v.registered_at|date:"d/m/Y" }}</small></span></td>
             <td><span class="status">รอวัดค่า</span></td>
             <td>
               <div class="vitals">
@@ -238,6 +342,7 @@
         </nav>
       {% endif %}
     </div>
+    </section>
   </main>
   <script>
     document.querySelectorAll(".js-open-modal").forEach((button) => {
