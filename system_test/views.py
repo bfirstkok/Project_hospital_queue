@@ -5,7 +5,11 @@ from datetime import date, timedelta
 
 from django.apps import apps
 from django.contrib import messages
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
+from django.db import models, transaction
+from django.db.models import Q
+from django.forms import modelform_factory
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch, reverse
@@ -32,6 +36,31 @@ from .models import TestScenarioRun
 
 VISIBLE_APPS = {"accounts", "admin", "auth", "dashboard", "opd", "patients", "queues", "sessions", "system_test"}
 SENSITIVE_PARTS = ("password", "secret", "token", "api_key", "pin_hash", "code_hash")
+
+
+def _allowed_model(app_label, model_name):
+    try:
+        model = apps.get_model(app_label, model_name)
+    except LookupError as exc:
+        raise Http404("ไม่พบตาราง") from exc
+    if model._meta.auto_created or model._meta.app_label not in VISIBLE_APPS:
+        raise Http404("ตารางนี้ไม่อนุญาตให้เปิดดู")
+    return model
+
+
+def _is_sensitive_field(field):
+    return any(part in field.name.lower() for part in SENSITIVE_PARTS)
+
+
+def _editable_field_names(model):
+    """Expose ordinary model fields, but never credentials or generated identifiers."""
+    return [
+        field.name
+        for field in model._meta.concrete_fields
+        if field.editable
+        and not field.primary_key
+        and not _is_sensitive_field(field)
+    ]
 
 
 def _model_catalog():
@@ -92,7 +121,19 @@ def index(request):
 @superuser_required
 @require_GET
 def database_index(request):
-    return render(request, "system_test/database_index.html", {"models": _model_catalog()})
+    catalog = _model_catalog()
+    grouped_models = []
+    for app_label in sorted({item["app_label"] for item in catalog}):
+        grouped_models.append({
+            "app_label": app_label,
+            "models": [item for item in catalog if item["app_label"] == app_label],
+        })
+    return render(request, "system_test/database_index.html", {
+        "models": catalog,
+        "grouped_models": grouped_models,
+        "table_count": len(catalog),
+        "row_count": sum(item["count"] for item in catalog),
+    })
 
 
 def _unique_test_national_id():
@@ -319,24 +360,83 @@ def delete_scenario(request, run_id):
 @superuser_required
 @require_GET
 def database_table(request, app_label, model_name):
-    try:
-        model = apps.get_model(app_label, model_name)
-    except LookupError as exc:
-        raise Http404("ไม่พบตาราง") from exc
-    if model._meta.auto_created or model._meta.app_label not in VISIBLE_APPS:
-        raise Http404("ตารางนี้ไม่อนุญาตให้เปิดดู")
+    model = _allowed_model(app_label, model_name)
 
     fields = [field for field in model._meta.concrete_fields]
-    records = model._default_manager.order_by(f"-{model._meta.pk.name}")[:100]
+    records = model._default_manager.order_by(f"-{model._meta.pk.name}")
+    search_query = request.GET.get("q", "").strip()
+    if search_query:
+        search_filter = Q()
+        searchable_fields = [
+            field for field in fields
+            if isinstance(field, (models.CharField, models.TextField, models.EmailField))
+            and not _is_sensitive_field(field)
+        ]
+        for field in searchable_fields:
+            search_filter |= Q(**{f"{field.name}__icontains": search_query})
+        try:
+            search_filter |= Q(**{model._meta.pk.name: model._meta.pk.to_python(search_query)})
+        except (TypeError, ValueError, ValidationError):
+            pass
+        if search_filter:
+            records = records.filter(search_filter)
+
+    page_size_choices = (25, 50, 100)
+    try:
+        page_size = int(request.GET.get("page_size", 25))
+    except (TypeError, ValueError):
+        page_size = 25
+    if page_size not in page_size_choices:
+        page_size = 25
+    paginator = Paginator(records, page_size)
+    page_obj = paginator.get_page(request.GET.get("page"))
     rows = [
-        [_safe_value(field.name, getattr(record, field.attname, None)) for field in fields]
-        for record in records
+        {
+            "pk": record.pk,
+            "values": [_safe_value(field.name, getattr(record, field.attname, None)) for field in fields],
+        }
+        for record in page_obj.object_list
     ]
     return render(request, "system_test/database_table.html", {
         "model": model,
+        "app_label": model._meta.app_label,
+        "model_name": model._meta.model_name,
         "db_table": model._meta.db_table,
         "model_label": model._meta.verbose_name_plural,
         "fields": fields,
         "rows": rows,
         "total": model._default_manager.count(),
+        "filtered_total": paginator.count,
+        "page_obj": page_obj,
+        "page_size": page_size,
+        "page_size_choices": page_size_choices,
+        "search_query": search_query,
+        "can_edit": bool(_editable_field_names(model)),
+    })
+
+
+@superuser_required
+@transaction.atomic
+def database_record_edit(request, app_label, model_name, object_id):
+    model = _allowed_model(app_label, model_name)
+    editable_fields = _editable_field_names(model)
+    if not editable_fields:
+        messages.error(request, "ตารางนี้ไม่มีฟิลด์ที่อนุญาตให้แก้ไขจากหน้านี้")
+        return redirect("database_table_root", app_label=app_label, model_name=model_name)
+
+    record = get_object_or_404(model._default_manager, pk=object_id)
+    form_class = modelform_factory(model, fields=editable_fields)
+    form = form_class(request.POST or None, instance=record)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, f"บันทึกข้อมูล {model._meta.verbose_name} #{record.pk} แล้ว")
+        return redirect("database_table_root", app_label=app_label, model_name=model_name)
+
+    return render(request, "system_test/database_record_edit.html", {
+        "form": form,
+        "record": record,
+        "model_label": model._meta.verbose_name,
+        "db_table": model._meta.db_table,
+        "app_label": app_label,
+        "model_name": model_name,
     })

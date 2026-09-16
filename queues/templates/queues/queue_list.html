@@ -10,7 +10,7 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; color: #183042; background: #eef5f6; font-family: "Sarabun", sans-serif; }
-    button, select { font: inherit; }
+    button, select, input { font: inherit; }
     .page-shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 26px 0 40px; }
     .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
     .page-title { margin: 0; font-size: clamp(30px, 3vw, 46px); line-height: 1.1; font-weight: 700; }
@@ -33,6 +33,11 @@
     .board-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; color: #fff; background: #183b77; }
     .board-title strong { font-size: 24px; }
     .board-title span { color: rgba(255,255,255,.8); font-size: 15px; }
+    .queue-search { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid #dce8eb; background: #f8fbfc; }
+    .queue-search__input { width: min(520px, 100%); min-height: 42px; padding: 0 13px; border: 1px solid #b9cfd6; border-radius: 9px; color: #183042; background: #fff; }
+    .queue-search__button, .queue-search__clear { display: inline-flex; min-height: 42px; align-items: center; padding: 0 14px; border: 1px solid #087f75; border-radius: 9px; color: #fff; background: #087f75; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .queue-search__clear { border-color: #c7d9df; color: #526d79; background: #fff; }
+    .queue-search__result { margin-left: auto; color: #657d88; font-size: 14px; font-weight: 700; white-space: nowrap; }
     .table-scroll { overflow-x: auto; }
     .queue-table { width: 100%; min-width: 1240px; border-collapse: collapse; table-layout: fixed; }
     .queue-table th { padding: 13px 12px; color: #fff; background: #244d92; border-right: 2px solid rgba(255,255,255,.22); font-size: 18px; font-weight: 700; text-align: center; }
@@ -76,7 +81,7 @@
     .page-ellipsis { padding: 0 3px; color: #718792; font-weight: 700; }
     .page-summary { color: #657d88; font-size: 14px; }
     @media (max-width: 980px) { .summary { grid-template-columns: repeat(3, 1fr); } .page-head { align-items: flex-start; flex-direction: column; } }
-    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } .queue-controls { align-items: stretch; flex-direction: column; } .pagination { justify-content: flex-start; } }
+    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } .queue-search { align-items: stretch; flex-wrap: wrap; } .queue-search__input { flex: 1 1 100%; } .queue-search__result { width: 100%; margin-left: 0; } .queue-controls { align-items: stretch; flex-direction: column; } .pagination { justify-content: flex-start; } }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260903-nurse">
 </head>
@@ -105,6 +110,12 @@
 
     <section class="board">
       <div class="board-title"><strong>รายการคิวพร้อมตรวจ</strong><span>ผู้ป่วยเร่งด่วนจะแสดงอยู่ด้านบนตามลำดับที่ระบบจัดไว้</span></div>
+      <form class="queue-search" method="get" role="search">
+        <input class="queue-search__input" type="search" name="q" value="{{ search_query }}" placeholder="ค้นหาชื่อ นามสกุล HN เลขบัตรประชาชน หรือเบอร์โทร" aria-label="ค้นหาผู้ป่วยในคิว">
+        <input type="hidden" name="page_size" value="{{ page_size }}">
+        <button class="queue-search__button" type="submit">ค้นหา</button>
+        {% if search_query %}<a class="queue-search__clear" href="?page_size={{ page_size }}">ล้างการค้นหา</a><span class="queue-search__result">พบ {{ queue_total }} คิว</span>{% endif %}
+      </form>
       <div class="table-scroll">
         <table class="queue-table">
           <colgroup><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:16%"><col style="width:26%"></colgroup>
@@ -150,13 +161,14 @@
               </tr>
               {% endwith %}
             {% empty %}
-              <tr><td class="empty" colspan="7">ยังไม่มีคิวรอตรวจ</td></tr>
+              <tr><td class="empty" colspan="7">{% if search_query %}ไม่พบผู้ป่วยที่ตรงกับ “{{ search_query }}”{% else %}ยังไม่มีคิวรอตรวจ{% endif %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
       <div class="queue-controls">
         <form class="page-size-form" method="get">
+          <input type="hidden" name="q" value="{{ search_query }}">
           <label for="page-size">แสดงต่อหน้า</label>
           <select id="page-size" class="page-size-select" name="page_size" onchange="this.form.submit()">
             {% for size in page_size_choices %}<option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }} แถว</option>{% endfor %}
@@ -165,13 +177,13 @@
         </form>
         {% if q_items.paginator.num_pages > 1 %}
           <nav class="pagination" aria-label="เปลี่ยนหน้ารายการคิว">
-            {% if q_items.has_previous %}<a class="page-link" href="?page=1&amp;page_size={{ page_size }}" aria-label="หน้าแรก">«</a><a class="page-link" href="?page={{ q_items.previous_page_number }}&amp;page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}
+            {% if q_items.has_previous %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page=1&amp;page_size={{ page_size }}" aria-label="หน้าแรก">«</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.previous_page_number }}&amp;page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}
             {% for page_number in pagination_items %}
               {% if page_number %}
-                {% if page_number == q_items.number %}<span class="page-current" aria-current="page">{{ page_number }}</span>{% else %}<a class="page-link" href="?page={{ page_number }}&amp;page_size={{ page_size }}">{{ page_number }}</a>{% endif %}
+                {% if page_number == q_items.number %}<span class="page-current" aria-current="page">{{ page_number }}</span>{% else %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ page_number }}&amp;page_size={{ page_size }}">{{ page_number }}</a>{% endif %}
               {% else %}<span class="page-ellipsis">…</span>{% endif %}
             {% endfor %}
-            {% if q_items.has_next %}<a class="page-link" href="?page={{ q_items.next_page_number }}&amp;page_size={{ page_size }}">ถัดไป</a><a class="page-link" href="?page={{ q_items.paginator.num_pages }}&amp;page_size={{ page_size }}" aria-label="หน้าสุดท้าย">»</a>{% endif %}
+            {% if q_items.has_next %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.next_page_number }}&amp;page_size={{ page_size }}">ถัดไป</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.paginator.num_pages }}&amp;page_size={{ page_size }}" aria-label="หน้าสุดท้าย">»</a>{% endif %}
           </nav>
         {% endif %}
       </div>

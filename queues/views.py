@@ -5,7 +5,8 @@ import secrets
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import Count, OuterRef, Subquery
+from django.db.models import Count, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Concat
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -181,6 +182,30 @@ def queue_list(request):
         .order_by("priority", "visit__confirmed_at", "created_at", "pk")
     )
 
+    search_query = request.GET.get("q", "").strip()
+    if search_query:
+        if len(search_query.split()) > 1:
+            queue_items = queue_items.annotate(
+                patient_full_name=Concat(
+                    "visit__patient__first_name",
+                    Value(" "),
+                    "visit__patient__last_name",
+                ),
+            ).filter(
+                Q(patient_full_name__icontains=search_query)
+                | Q(visit__patient__hn__iexact=search_query)
+                | Q(visit__patient__national_id__iexact=search_query)
+                | Q(visit__patient__phone__iexact=search_query)
+            )
+        else:
+            queue_items = queue_items.filter(
+                Q(visit__patient__first_name__icontains=search_query)
+                | Q(visit__patient__last_name__icontains=search_query)
+                | Q(visit__patient__hn__icontains=search_query)
+                | Q(visit__patient__national_id__icontains=search_query)
+                | Q(visit__patient__phone__icontains=search_query)
+            )
+
     severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
     for item in queue_items.values("visit__final_severity").annotate(total=Count("id")):
         severity = item["visit__final_severity"]
@@ -208,6 +233,7 @@ def queue_list(request):
         "page_size": page_size,
         "page_size_choices": page_size_choices,
         "pagination_items": pagination_items,
+        "search_query": search_query,
         "severity_counts": severity_counts,
         "red_count": severity_counts["RED"],
         "pink_count": severity_counts["PINK"],

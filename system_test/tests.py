@@ -87,4 +87,60 @@ class SystemTestConsoleTests(TestCase):
     def test_database_root_is_available_to_superuser(self):
         response = self.client.get(reverse("database_index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Database Management")
+        self.assertContains(response, "จัดการฐานข้อมูล")
+
+    def test_database_table_can_search_and_edit_allowed_patient_fields(self):
+        patient = Patient.objects.create(
+            first_name="สมชาย",
+            last_name="ทดสอบค้นหา",
+            national_id="1234567890998",
+        )
+        table_response = self.client.get(
+            reverse("database_table_root", args=["patients", "patient"]),
+            {"q": "ทดสอบค้นหา"},
+        )
+        self.assertEqual(table_response.status_code, 200)
+        self.assertContains(table_response, "สมชาย")
+        self.assertContains(table_response, "แก้ไข")
+
+        edit_url = reverse(
+            "database_record_edit_root",
+            args=["patients", "patient", patient.pk],
+        )
+        response = self.client.post(edit_url, {
+            "first_name": "สมหญิง",
+            "last_name": patient.last_name,
+            "national_id": patient.national_id,
+            "gender": patient.gender,
+            "nationality": patient.nationality,
+            "phone": patient.phone,
+            "hn": patient.hn,
+            "address_area": patient.address_area,
+            "address": patient.address,
+            "blood_type": patient.blood_type,
+            "chronic_diseases": patient.chronic_diseases,
+            "allergies": patient.allergies,
+            "medications": patient.medications,
+            "emergency_name": patient.emergency_name,
+            "emergency_relationship": patient.emergency_relationship,
+            "emergency_phone": patient.emergency_phone,
+            "note": patient.note,
+            "province": patient.province,
+            "district": patient.district,
+            "subdistrict": patient.subdistrict,
+            "postal_code": patient.postal_code,
+        })
+        self.assertRedirects(
+            response,
+            reverse("database_table_root", args=["patients", "patient"]),
+        )
+        patient.refresh_from_db()
+        self.assertEqual(patient.first_name, "สมหญิง")
+
+    def test_database_edit_never_exposes_user_password(self):
+        response = self.client.get(reverse(
+            "database_record_edit_root",
+            args=["auth", "user", self.admin.pk],
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="password"')

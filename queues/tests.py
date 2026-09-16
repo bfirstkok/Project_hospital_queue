@@ -680,6 +680,14 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(invalid_size.context["page_size"], 10)
         self.assertEqual(len(invalid_size.context["q_items"]), 10)
 
+        searched = self.client.get(reverse("queue_list"), {"q": "Patient Queue 42"})
+        self.assertEqual(searched.status_code, 200)
+        self.assertEqual(searched.context["queue_total"], 1)
+        self.assertEqual(searched.context["search_query"], "Patient Queue 42")
+        self.assertContains(searched, "Patient Queue 42")
+        self.assertNotContains(searched, "Patient Queue 41")
+        self.assertContains(searched, "พบ 1 คิว")
+
     def test_waiting_vitals_shows_patient_detail_modal(self):
         self.register_patient()
         patient = Patient.objects.get()
