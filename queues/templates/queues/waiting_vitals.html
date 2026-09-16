@@ -51,11 +51,34 @@
     .page-message { padding: 10px 12px; border: 1px solid rgba(125,211,252,.35); border-radius: 8px; color: #dff7ff; background: rgba(14,116,144,.22); font-size: 15px; font-weight: 700; }
     .page-message.error { color: #fecaca; border-color: rgba(248,113,113,.45); background: rgba(127,29,29,.3); }
     .action-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .list-tools { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; padding: 12px; border: 1px solid rgba(174,194,220,.14); border-radius: 10px; background: rgba(16,27,45,.78); }
+    .search-input { width: min(520px, 100%); min-height: 42px; padding: 0 13px; border: 1px solid rgba(174,194,220,.28); border-radius: 8px; color: #edf4ff; background: #14233a; font: inherit; }
+    .search-input::placeholder { color: rgba(237,244,255,.45); }
+    .search-button, .search-clear { display: inline-flex; min-height: 42px; align-items: center; padding: 0 14px; border: 1px solid #20d6b5; border-radius: 8px; color: #061522; background: #20d6b5; font: inherit; font-weight: 800; text-decoration: none; cursor: pointer; }
+    .search-clear { border-color: rgba(174,194,220,.25); color: #dbeafe; background: rgba(255,255,255,.06); }
+    .search-result { margin-left: auto; color: #9fb2c9; font-size: 14px; font-weight: 700; white-space: nowrap; }
+    .table-scroll { overflow-x: auto; border-radius: 10px; }
+    .table { min-width: 1080px; }
+    .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid rgba(174,194,220,.14); border-radius: 10px; background: rgba(16,27,45,.78); }
+    .page-size-form { display: flex; align-items: center; gap: 9px; color: #b7c7db; font-size: 14px; font-weight: 700; }
+    .page-size-select { min-height: 38px; padding: 0 32px 0 10px; border: 1px solid rgba(174,194,220,.28); border-radius: 8px; color: #edf4ff; background: #14233a; font: inherit; font-weight: 700; color-scheme: dark; }
+    .page-summary { color: #8fa5be; white-space: nowrap; }
+    .pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+    .page-link, .page-current { display: inline-flex; min-width: 38px; min-height: 38px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid rgba(174,194,220,.25); border-radius: 8px; color: #dbeafe; background: rgba(255,255,255,.06); font-size: 14px; font-weight: 800; text-decoration: none; }
+    .page-link:hover { color: #061522; border-color: #20d6b5; background: #20d6b5; }
+    .page-current { color: #061522; border-color: #5ac8ff; background: #5ac8ff; }
+    .page-ellipsis { padding: 0 3px; color: #8fa5be; font-weight: 800; }
     @media (max-width: 760px) {
       .detail-grid { grid-template-columns: 1fr; }
       .info-row { grid-template-columns: 112px minmax(0, 1fr); }
       .patient-modal { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
       .modal-head, .detail-content { padding: 14px; }
+      .list-tools { align-items: stretch; flex-wrap: wrap; }
+      .search-input { flex: 1 1 100%; }
+      .search-result { width: 100%; margin-left: 0; }
+      .list-controls { align-items: stretch; flex-direction: column; }
+      .page-size-form { flex-wrap: wrap; }
+      .pagination { justify-content: flex-start; }
     }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
@@ -76,7 +99,14 @@
       <a class="btn primary" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
     </div>
 
-    <table class="table">
+    <form class="list-tools" method="get" role="search">
+      <input class="search-input" type="search" name="q" value="{{ search_query }}" placeholder="ค้นหาชื่อ นามสกุล HN เลขบัตรประชาชน หรือเบอร์โทร" aria-label="ค้นหาผู้ป่วยที่รอวัดค่า">
+      <input type="hidden" name="page_size" value="{{ page_size }}">
+      <button class="search-button" type="submit">ค้นหา</button>
+      {% if search_query %}<a class="search-clear" href="?page_size={{ page_size }}">ล้างการค้นหา</a><span class="search-result">พบ {{ waiting_total }} ราย</span>{% endif %}
+    </form>
+
+    <div class="table-scroll"><table class="table">
       <thead>
         <tr>
           <th>เลขคิวรับข้อมูล</th>
@@ -183,10 +213,31 @@
           </tr>
           {% endwith %}
         {% empty %}
-          <tr><td colspan="6"><div class="empty">ไม่มีผู้ป่วยรอวัดค่าสัญญาณชีพ</div></td></tr>
+          <tr><td colspan="6"><div class="empty">{% if search_query %}ไม่พบผู้ป่วยที่ตรงกับ “{{ search_query }}”{% else %}ไม่มีผู้ป่วยรอวัดค่าสัญญาณชีพ{% endif %}</div></td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
+    <div class="list-controls">
+      <form class="page-size-form" method="get">
+        <input type="hidden" name="q" value="{{ search_query }}">
+        <label for="page-size">แสดงต่อหน้า</label>
+        <select id="page-size" class="page-size-select" name="page_size" onchange="this.form.submit()">
+          {% for size in page_size_choices %}<option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }} รายการ</option>{% endfor %}
+        </select>
+        <span class="page-summary">แสดง {{ q_items.start_index }}–{{ q_items.end_index }} จาก {{ waiting_total }} ราย</span>
+      </form>
+      {% if q_items.paginator.num_pages > 1 %}
+        <nav class="pagination" aria-label="เปลี่ยนหน้ารายการรอวัดค่า">
+          {% if q_items.has_previous %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page=1&amp;page_size={{ page_size }}" aria-label="หน้าแรก">«</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.previous_page_number }}&amp;page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}
+          {% for page_number in pagination_items %}
+            {% if page_number %}
+              {% if page_number == q_items.number %}<span class="page-current" aria-current="page">{{ page_number }}</span>{% else %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ page_number }}&amp;page_size={{ page_size }}">{{ page_number }}</a>{% endif %}
+            {% else %}<span class="page-ellipsis">…</span>{% endif %}
+          {% endfor %}
+          {% if q_items.has_next %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.next_page_number }}&amp;page_size={{ page_size }}">ถัดไป</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.paginator.num_pages }}&amp;page_size={{ page_size }}" aria-label="หน้าสุดท้าย">»</a>{% endif %}
+        </nav>
+      {% endif %}
+    </div>
   </main>
   <script>
     document.querySelectorAll(".js-open-modal").forEach((button) => {

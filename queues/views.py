@@ -276,7 +276,46 @@ def waiting_vitals(request):
         .filter(status=Queue.Status.WAITING_VITALS)
         .order_by("created_at")
     )
-    return render(request, "queues/waiting_vitals.html", {"q_items": q_items})
+
+    search_query = request.GET.get("q", "").strip()
+    if search_query:
+        q_items = q_items.annotate(
+            patient_full_name=Concat(
+                "visit__patient__first_name",
+                Value(" "),
+                "visit__patient__last_name",
+            ),
+        ).filter(
+            Q(patient_full_name__icontains=search_query)
+            | Q(visit__patient__first_name__icontains=search_query)
+            | Q(visit__patient__last_name__icontains=search_query)
+            | Q(visit__patient__hn__icontains=search_query)
+            | Q(visit__patient__national_id__icontains=search_query)
+            | Q(visit__patient__phone__icontains=search_query)
+        )
+
+    page_size_choices = (10, 20, 30, 40, 50)
+    try:
+        page_size = int(request.GET.get("page_size", 10))
+    except (TypeError, ValueError):
+        page_size = 10
+    if page_size not in page_size_choices:
+        page_size = 10
+
+    paginator = Paginator(q_items, page_size)
+    page = paginator.get_page(request.GET.get("page"))
+    pagination_items = [
+        item if isinstance(item, int) else None
+        for item in paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1)
+    ]
+    return render(request, "queues/waiting_vitals.html", {
+        "q_items": page,
+        "waiting_total": paginator.count,
+        "search_query": search_query,
+        "page_size": page_size,
+        "page_size_choices": page_size_choices,
+        "pagination_items": pagination_items,
+    })
 
 
 @login_required

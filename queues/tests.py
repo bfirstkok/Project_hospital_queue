@@ -708,6 +708,45 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "ยังไม่มีข้อมูลวันเดือนปีเกิด")
         self.assertContains(response, reverse("update_patient_birth_date", args=[patient.id]))
 
+    def test_waiting_vitals_is_paginated_searchable_and_supports_page_sizes(self):
+        for index in range(25):
+            patient = Patient.objects.create(
+                first_name="Waiting",
+                last_name=f"Vitals {index:02d}",
+                national_id=f"800000000{index:04d}",
+                phone=f"089000{index:04d}",
+            )
+            visit = Visit.objects.create(patient=patient)
+            Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
+
+        first_page = self.client.get(reverse("waiting_vitals"))
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(first_page.context["waiting_total"], 25)
+        self.assertEqual(len(first_page.context["q_items"]), 10)
+        self.assertEqual(first_page.context["q_items"].paginator.num_pages, 3)
+        self.assertContains(first_page, "Waiting Vitals 00")
+        self.assertNotContains(first_page, "Waiting Vitals 10")
+        self.assertContains(first_page, "แสดง 1–10 จาก 25 ราย")
+
+        second_page = self.client.get(reverse("waiting_vitals"), {"page": 2})
+        self.assertEqual(len(second_page.context["q_items"]), 10)
+        self.assertContains(second_page, "Waiting Vitals 10")
+
+        twenty_per_page = self.client.get(
+            reverse("waiting_vitals"),
+            {"page": 2, "page_size": 20},
+        )
+        self.assertEqual(twenty_per_page.context["page_size"], 20)
+        self.assertEqual(len(twenty_per_page.context["q_items"]), 5)
+        self.assertContains(twenty_per_page, "แสดง 21–25 จาก 25 ราย")
+
+        searched = self.client.get(reverse("waiting_vitals"), {"q": "Waiting Vitals 17"})
+        self.assertEqual(searched.context["waiting_total"], 1)
+        self.assertEqual(searched.context["search_query"], "Waiting Vitals 17")
+        self.assertContains(searched, "Waiting Vitals 17")
+        self.assertNotContains(searched, "Waiting Vitals 16")
+        self.assertContains(searched, "พบ 1 ราย")
+
     def test_health_assessment_has_clear_three_step_form(self):
         self.register_patient()
         visit = Visit.objects.get()
