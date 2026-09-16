@@ -8,26 +8,148 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
-    :root{--ink:#17324d;--muted:#667d8b;--line:#d8e5e8;--teal:#087f75;--bg:#f2f7f8;--green:#13845f;--amber:#a86e04;--red:#b72d3f}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Sarabun",sans-serif}.page{width:min(1480px,calc(100% - 36px));margin:0 auto 50px}.hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 27px;border-radius:20px;background:linear-gradient(120deg,#075f5a,#0b9386);color:#fff;box-shadow:0 14px 34px rgba(7,95,90,.15)}.hero h1{margin:0;font-size:30px}.hero p{margin:5px 0 0;color:#d5f0ec;font-size:13px}.week-nav{display:flex;align-items:center;gap:8px}.week-nav a,.week-label{padding:9px 12px;border:1px solid rgba(255,255,255,.26);border-radius:10px;color:#fff;text-decoration:none;font-size:12px;font-weight:700}.week-label{background:#fff;color:var(--ink)}
-    .messages{margin:12px 0}.message{padding:10px 13px;border:1px solid #a8dfc6;border-radius:10px;background:#e9f8f1;color:#176846;font-size:12px}.message.error{border-color:#efb7b7;background:#fff0f0;color:#9b2f37}.layout{display:grid;grid-template-columns:310px 1fr;gap:14px;margin-top:14px}.card{border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(23,50,77,.04);overflow:hidden}.card-head{padding:15px 17px;border-bottom:1px solid #e7eff0}.card-head h2{margin:0;font-size:18px}.card-head p{margin:3px 0 0;color:var(--muted);font-size:11px}.on-duty{display:grid;gap:8px;padding:12px}.person{display:grid;grid-template-columns:38px 1fr auto;gap:9px;align-items:center;padding:9px;border:1px solid #e1eaec;border-radius:11px}.avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#e4f6f2;color:var(--teal);font-weight:800}.person b{display:block;font-size:12px}.person small{color:var(--muted);font-size:10px}.live{color:var(--green);font-size:10px;font-weight:800}.empty{padding:24px;text-align:center;color:var(--muted);font-size:11px}
+    :root{--ink:#17324d;--muted:#667d8b;--line:#d8e5e8;--teal:#087f75;--teal-soft:#e7f6f3;--bg:#f2f7f8;--green:#13845f;--amber:#a86e04;--red:#b72d3f}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:"Sarabun",sans-serif}
+    .page{width:min(1420px,calc(100% - 32px));margin:0 auto 50px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 26px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 7px 22px rgba(23,50,77,.04)}
+    .hero h1{margin:0;font-size:28px}.hero p{margin:4px 0 0;color:var(--muted);font-size:12px}
+    .week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.week-nav a,.week-label{padding:9px 12px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px;font-weight:700;background:#fff}.week-label{background:var(--teal-soft);border-color:#b9dfd9;color:#086c64}
+    .messages{margin:12px 0}.message{padding:10px 13px;border:1px solid #a8dfc6;border-radius:10px;background:#e9f8f1;color:#176846;font-size:12px}.message.error{border-color:#efb7b7;background:#fff0f0;color:#9b2f37}
+    .day-picker{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(23,50,77,.04)}
+    .day-picker__top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.day-picker__title{font-size:13px;font-weight:800}.day-picker__hint{color:var(--muted);font-size:10px}
+    .day-tabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+    .day-tab{min-height:64px;padding:8px 6px;border:1px solid #dce7e9;border-radius:11px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;text-align:center;transition:.15s ease}
+    .day-tab:hover{border-color:#a6d2cd;background:#f7fbfa}.day-tab.active{border-color:var(--teal);background:var(--teal);color:#fff;box-shadow:0 6px 16px rgba(8,127,117,.18)}.day-tab.today:not(.active){background:var(--teal-soft);border-color:#b8ded8}
+    .day-tab b{display:block;font-size:12px}.day-tab small{display:block;margin-top:2px;font-size:9px;opacity:.78}.day-tab .day-count{display:inline-block;margin-top:4px;padding:1px 6px;border-radius:999px;background:#eef4f5;color:#60757f;font-size:9px;font-weight:800}.day-tab.active .day-count{background:rgba(255,255,255,.2);color:#fff}
+    .layout{display:grid;grid-template-columns:285px minmax(0,1fr);gap:14px;margin-top:14px}.card{border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(23,50,77,.04);overflow:hidden}.card-head{padding:15px 17px;border-bottom:1px solid #e7eff0}.card-head h2{margin:0;font-size:17px}.card-head p{margin:3px 0 0;color:var(--muted);font-size:10px}
+    .on-duty{display:grid;gap:8px;padding:12px}.person{display:grid;grid-template-columns:38px 1fr;gap:9px;align-items:center;padding:9px;border:1px solid #e1eaec;border-radius:11px}.avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#e4f6f2;color:var(--teal);font-weight:800}.person b{display:block;font-size:11px}.person small{display:block;color:var(--muted);font-size:9px}.live{display:block;margin-top:2px;color:var(--green);font-size:9px;font-weight:800}.empty{padding:28px 18px;text-align:center;color:var(--muted);font-size:11px}
     .create{display:grid;gap:8px;padding:13px}.create label,.edit-form label{display:grid;gap:3px;color:#536d79;font-size:10px;font-weight:700}.create input,.create select,.edit-form input,.edit-form select{width:100%;height:36px;padding:0 8px;border:1px solid #cbdcdf;border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:11px}.two{display:grid;grid-template-columns:1fr 1fr;gap:7px}.btn{min-height:35px;padding:7px 10px;border:1px solid #cbdcdf;border-radius:8px;background:#fff;color:var(--ink);font:700 11px "Sarabun",sans-serif;cursor:pointer;text-decoration:none}.btn.primary{border-color:var(--teal);background:var(--teal);color:#fff}.btn.danger{border-color:#efc0c5;background:#fff3f4;color:var(--red)}
-    .days{display:grid;grid-template-columns:repeat(7,minmax(185px,1fr));overflow-x:auto}.day{min-height:570px;border-right:1px solid #e3ecee}.day:last-child{border:0}.day-head{position:sticky;top:0;z-index:2;padding:12px;background:#f8fbfb;border-bottom:1px solid #e3ecee}.day-head.today{background:#e6f7f4}.day-head b{display:block;font-size:13px}.day-head span{color:var(--muted);font-size:10px}.shifts{display:grid;gap:8px;padding:8px}.shift{padding:10px;border:1px solid #dbe6e8;border-radius:11px;background:#fff}.shift.leave{background:#fff8e8;border-color:#ebd79b}.shift.cancelled{opacity:.62}.shift-name{font-size:12px;font-weight:800}.shift-role{color:var(--teal);font-size:10px;font-weight:700}.shift-time{margin-top:7px;font-size:15px;font-weight:800}.badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}.badge{padding:3px 6px;border-radius:999px;background:#eef4f5;color:#58717b;font-size:9px;font-weight:700}.badge.actual{background:#e4f7ef;color:var(--green)}.badge.cases{background:#fff0f1;color:var(--red)}.note{margin-top:6px;color:var(--muted);font-size:10px}.edit{margin-top:8px;border-top:1px dashed #dae5e7;padding-top:7px}.edit summary{color:var(--teal);font-size:10px;font-weight:800;cursor:pointer}.edit-form{display:grid;gap:6px;margin-top:7px}.actions{display:flex;gap:5px}.actions .btn{flex:1}
-    @media(max-width:1100px){.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px}.sidebar .card{height:max-content}}@media(max-width:700px){.page{width:calc(100% - 18px)}.hero{align-items:flex-start;flex-direction:column;padding:19px}.hero h1{font-size:24px}.week-nav{width:100%;overflow:auto}.sidebar{grid-template-columns:1fr}.days{grid-template-columns:repeat(7,210px)}}
+    .daily-card{min-width:0}.daily-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #e6eeee}.daily-heading{min-width:0}.daily-heading h2{margin:0;font-size:20px}.daily-heading p{margin:3px 0 0;color:var(--muted);font-size:11px}.daily-actions{display:flex;gap:6px;flex-shrink:0}.day-step{min-height:34px;padding:6px 10px;border:1px solid #d4e1e3;border-radius:8px;background:#fff;color:var(--ink);font:700 10px "Sarabun",sans-serif;cursor:pointer}.day-step:disabled{opacity:.4;cursor:not-allowed}
+    .day-panel{display:none;padding:14px}.day-panel.active{display:block}.shift-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:10px}.shift{padding:12px;border:1px solid #dbe6e8;border-radius:12px;background:#fff}.shift.leave{background:#fff8e8;border-color:#ebd79b}.shift.cancelled{opacity:.62}.shift-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.shift-name{font-size:13px;font-weight:800}.shift-role{margin-top:2px;color:var(--teal);font-size:10px;font-weight:700}.shift-time{white-space:nowrap;font-size:15px;font-weight:800;color:#203c55}.badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}.badge{padding:3px 6px;border-radius:999px;background:#eef4f5;color:#58717b;font-size:9px;font-weight:700}.badge.actual{background:#e4f7ef;color:var(--green)}.badge.cases{background:#fff0f1;color:var(--red)}.note{margin-top:7px;padding-top:7px;border-top:1px solid #edf2f3;color:var(--muted);font-size:10px}.edit{margin-top:9px;border-top:1px dashed #dae5e7;padding-top:7px}.edit summary{color:var(--teal);font-size:10px;font-weight:800;cursor:pointer}.edit-form{display:grid;gap:6px;margin-top:7px}.actions{display:flex;gap:5px}.actions .btn{flex:1}
+    .empty-day{padding:46px 18px;text-align:center;border:1px dashed #cfdee1;border-radius:13px;background:#fbfdfd}.empty-day b{display:block;font-size:14px}.empty-day span{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+    @media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px}.sidebar .card{height:max-content}.day-tabs{overflow-x:auto;grid-template-columns:repeat(7,minmax(105px,1fr));padding-bottom:2px}}
+    @media(max-width:700px){.page{width:calc(100% - 18px)}.hero{align-items:flex-start;flex-direction:column;padding:18px}.hero h1{font-size:23px}.week-nav{width:100%;overflow:auto;flex-wrap:nowrap}.day-picker__top{align-items:flex-start;flex-direction:column}.day-tabs{display:flex;overflow-x:auto}.day-tab{min-width:98px}.sidebar{grid-template-columns:1fr}.daily-toolbar{align-items:flex-start;flex-direction:column}.daily-actions{width:100%}.day-step{flex:1}.shift-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 {% include "includes/main_nav.html" %}
 <main class="page">
-  <header class="hero"><div><h1>ตารางเวรบุคลากร</h1><p>ตารางที่วางไว้และสถานะขึ้นเวรจริงเป็นข้อมูลคนละส่วน เพื่อให้ตรวจสอบย้อนหลังได้ถูกต้อง</p></div><nav class="week-nav"><a href="?week={{ previous_week|date:'Y-m-d' }}">← ก่อนหน้า</a><span class="week-label">{{ week_start|date:"d/m" }} – {{ week_end|date:"d/m/Y" }}</span><a href="?week={{ next_week|date:'Y-m-d' }}">ถัดไป →</a></nav></header>
+  <header class="hero">
+    <div><h1>ตารางเวรบุคลากร</h1><p>เลือกดูทีละวันเพื่อให้เห็นรายชื่อและเวลาเวรชัดเจนขึ้น</p></div>
+    <nav class="week-nav"><a href="?week={{ previous_week|date:'Y-m-d' }}">← สัปดาห์ก่อน</a><span class="week-label">{{ week_start|date:"d/m" }} – {{ week_end|date:"d/m/Y" }}</span><a href="?week={{ next_week|date:'Y-m-d' }}">สัปดาห์ถัดไป →</a></nav>
+  </header>
+
   {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="day-picker" aria-label="เลือกวันที่ต้องการดูตารางเวร">
+    <div class="day-picker__top"><div><div class="day-picker__title">เลือกวัน</div><div class="day-picker__hint">แสดงตารางเวรเพียงวันเดียว เพื่อลดข้อมูลที่รกตา</div></div></div>
+    <div class="day-tabs" role="tablist">
+      {% for day in day_rows %}
+      <button type="button" class="day-tab {% if day.is_today %}today{% endif %}" role="tab" data-day="{{ day.date|date:'Y-m-d' }}" data-label="{{ day.date|date:'l' }}" data-date-label="{{ day.date|date:'d/m/Y' }}" aria-selected="false">
+        <b>{{ day.date|date:"l" }}{% if day.is_today %} · วันนี้{% endif %}</b>
+        <small>{{ day.date|date:"d/m" }}</small>
+        <span class="day-count">{{ day.shifts|length }} เวร</span>
+      </button>
+      {% endfor %}
+    </div>
+  </section>
+
   <div class="layout">
     <aside class="sidebar">
-      <section class="card"><div class="card-head"><h2>กำลังขึ้นเวรตอนนี้</h2><p>อ้างอิงจากการกดเริ่มเวรจริงวันนี้</p></div><div class="on-duty">{% for row in on_duty_now %}<div class="person"><span class="avatar">{{ row.user.get_full_name|default:row.user.username|slice:":1" }}</span><span><b>{{ row.user.get_full_name|default:row.user.username }}</b><small>{{ row.profile.get_role_display }}{% if row.profile.role == 'NURSE' %} · ดูแล {{ row.case_count }} เคส{% endif %}</small></span><span class="live">● ONLINE</span></div>{% empty %}<div class="empty">ยังไม่มีบุคลากรกดเริ่มเวร</div>{% endfor %}</div></section>
-      {% if can_manage %}<section class="card" style="margin-top:14px"><div class="card-head"><h2>เพิ่มเวร</h2><p>รองรับเวรข้ามวัน เช่น 20:00–08:00</p></div><form class="create" method="post">{% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}"><label>บุคลากร<select name="user_id" required><option value="">เลือกบุคลากร</option>{% for user in users %}<option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} · {{ user.hospital_staff_profile.get_role_display }}</option>{% endfor %}</select></label><label>วันที่<input type="date" name="shift_date" value="{{ week_start|date:'Y-m-d' }}" required></label><div class="two"><label>เริ่ม<input type="time" name="start_time" value="08:00" required></label><label>สิ้นสุด<input type="time" name="end_time" value="16:00" required></label></div><label>สถานะ<select name="status">{% for value,label in shift_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><label>หมายเหตุ<input name="note" maxlength="200" placeholder="เช่น ห้องฉุกเฉิน"></label><button class="btn primary" type="submit">+ บันทึกเวร</button></form></section>{% endif %}
+      <section class="card">
+        <div class="card-head"><h2>กำลังขึ้นเวรตอนนี้</h2><p>อ้างอิงจากการกดเริ่มเวรจริงวันนี้</p></div>
+        <div class="on-duty">
+          {% for row in on_duty_now %}
+          <div class="person"><span class="avatar">{{ row.user.get_full_name|default:row.user.username|slice:":1" }}</span><span><b>{{ row.user.get_full_name|default:row.user.username }}</b><small>{{ row.profile.get_role_display }}{% if row.profile.role == 'NURSE' %} · ดูแล {{ row.case_count }} เคส{% endif %}</small><span class="live">● ONLINE</span></span></div>
+          {% empty %}<div class="empty">ยังไม่มีบุคลากรกดเริ่มเวร</div>{% endfor %}
+        </div>
+      </section>
+
+      {% if can_manage %}
+      <section class="card" style="margin-top:14px">
+        <div class="card-head"><h2>เพิ่มเวร</h2><p>วันที่จะเปลี่ยนตามวันที่เลือกด้านบนอัตโนมัติ</p></div>
+        <form class="create" method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="save_shift"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+          <label>บุคลากร<select name="user_id" required><option value="">เลือกบุคลากร</option>{% for user in users %}<option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} · {{ user.hospital_staff_profile.get_role_display }}</option>{% endfor %}</select></label>
+          <label>วันที่<input id="new-shift-date" type="date" name="shift_date" value="{{ week_start|date:'Y-m-d' }}" required></label>
+          <div class="two"><label>เริ่ม<input type="time" name="start_time" value="08:00" required></label><label>สิ้นสุด<input type="time" name="end_time" value="16:00" required></label></div>
+          <label>สถานะ<select name="status">{% for value,label in shift_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+          <label>หมายเหตุ<input name="note" maxlength="200" placeholder="เช่น ห้องฉุกเฉิน"></label>
+          <button class="btn primary" type="submit">+ บันทึกเวร</button>
+        </form>
+      </section>
+      {% endif %}
     </aside>
-    <section class="card"><div class="days">{% for day in day_rows %}<article class="day"><header class="day-head {% if day.is_today %}today{% endif %}"><b>{{ day.date|date:"l" }}</b><span>{{ day.date|date:"d/m/Y" }}{% if day.is_today %} · วันนี้{% endif %}</span></header><div class="shifts">{% for shift in day.shifts %}<div class="shift {% if shift.status == 'LEAVE' %}leave{% elif shift.status == 'CANCELLED' %}cancelled{% endif %}"><div class="shift-name">{{ shift.user.get_full_name|default:shift.user.username }}</div><div class="shift-role">{{ shift.user.hospital_staff_profile.get_role_display }}</div><div class="shift-time">{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</div><div class="badges"><span class="badge">{{ shift.get_status_display }}</span>{% if shift.actual_duty.is_present %}<span class="badge actual">● ขึ้นเวรจริง</span>{% endif %}{% if shift.active_case_count %}<span class="badge cases">{{ shift.active_case_count }} เคส</span>{% endif %}</div>{% if shift.note %}<div class="note">{{ shift.note }}</div>{% endif %}{% if can_manage %}<details class="edit"><summary>แก้ไขเวร</summary><form class="edit-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}"><label>บุคลากร<select name="user_id">{% for user in users %}<option value="{{ user.id }}" {% if user.id == shift.user_id %}selected{% endif %}>{{ user.get_full_name|default:user.username }}</option>{% endfor %}</select></label><label>วันที่<input type="date" name="shift_date" value="{{ shift.shift_date|date:'Y-m-d' }}" required></label><div class="two"><label>เริ่ม<input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label>สิ้นสุด<input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label></div><label>สถานะ<select name="status">{% for value,label in shift_statuses %}<option value="{{ value }}" {% if value == shift.status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label>หมายเหตุ<input name="note" value="{{ shift.note }}" maxlength="200"></label><div class="actions"><button class="btn primary" type="submit">บันทึก</button></div></form><form method="post" style="margin-top:5px">{% csrf_token %}<input type="hidden" name="action" value="delete_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}"><button class="btn danger" style="width:100%" type="submit" onclick="return confirm('ลบเวรนี้หรือไม่?')">ลบเวร</button></form></details>{% endif %}</div>{% empty %}<div class="empty">ไม่มีเวรที่จัดไว้</div>{% endfor %}</div></article>{% endfor %}</div></section>
+
+    <section class="card daily-card">
+      <div class="daily-toolbar">
+        <div class="daily-heading"><h2 id="selected-day-title">ตารางเวร</h2><p id="selected-day-date">เลือกวันที่ด้านบน</p></div>
+        <div class="daily-actions"><button type="button" class="day-step" id="prev-day">← วันก่อนหน้า</button><button type="button" class="day-step" id="next-day">วันถัดไป →</button></div>
+      </div>
+
+      {% for day in day_rows %}
+      <div class="day-panel" role="tabpanel" data-panel-day="{{ day.date|date:'Y-m-d' }}">
+        {% if day.shifts %}
+        <div class="shift-grid">
+          {% for shift in day.shifts %}
+          <div class="shift {% if shift.status == 'LEAVE' %}leave{% elif shift.status == 'CANCELLED' %}cancelled{% endif %}">
+            <div class="shift-top"><div><div class="shift-name">{{ shift.user.get_full_name|default:shift.user.username }}</div><div class="shift-role">{{ shift.user.hospital_staff_profile.get_role_display }}</div></div><div class="shift-time">{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</div></div>
+            <div class="badges"><span class="badge">{{ shift.get_status_display }}</span>{% if shift.actual_duty.is_present %}<span class="badge actual">● ขึ้นเวรจริง</span>{% endif %}{% if shift.active_case_count %}<span class="badge cases">{{ shift.active_case_count }} เคส</span>{% endif %}</div>
+            {% if shift.note %}<div class="note">{{ shift.note }}</div>{% endif %}
+            {% if can_manage %}
+            <details class="edit"><summary>แก้ไขเวร</summary>
+              <form class="edit-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                <label>บุคลากร<select name="user_id">{% for user in users %}<option value="{{ user.id }}" {% if user.id == shift.user_id %}selected{% endif %}>{{ user.get_full_name|default:user.username }}</option>{% endfor %}</select></label>
+                <label>วันที่<input type="date" name="shift_date" value="{{ shift.shift_date|date:'Y-m-d' }}" required></label>
+                <div class="two"><label>เริ่ม<input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label>สิ้นสุด<input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label></div>
+                <label>สถานะ<select name="status">{% for value,label in shift_statuses %}<option value="{{ value }}" {% if value == shift.status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label>หมายเหตุ<input name="note" value="{{ shift.note }}" maxlength="200"></label><div class="actions"><button class="btn primary" type="submit">บันทึก</button></div>
+              </form>
+              <form method="post" style="margin-top:5px">{% csrf_token %}<input type="hidden" name="action" value="delete_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}"><button class="btn danger" style="width:100%" type="submit" onclick="return confirm('ลบเวรนี้หรือไม่?')">ลบเวร</button></form>
+            </details>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="empty-day"><b>ไม่มีเวรที่จัดไว้ในวันนี้</b><span>เลือกวันอื่นด้านบน หรือเพิ่มเวรใหม่จากแถบด้านซ้าย</span></div>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
   </div>
 </main>
+<script>
+(function(){
+  const tabs=[...document.querySelectorAll('.day-tab')];
+  const panels=[...document.querySelectorAll('.day-panel')];
+  if(!tabs.length)return;
+  const title=document.getElementById('selected-day-title');
+  const dateText=document.getElementById('selected-day-date');
+  const prev=document.getElementById('prev-day');
+  const next=document.getElementById('next-day');
+  const createDate=document.getElementById('new-shift-date');
+  const params=new URLSearchParams(window.location.search);
+  const requested=params.get('day');
+  const todayTab=tabs.find(tab=>tab.classList.contains('today'));
+  let current=Math.max(0,tabs.findIndex(tab=>tab.dataset.day===requested));
+  if(!requested&&todayTab)current=tabs.indexOf(todayTab);
+
+  function selectDay(index,pushUrl=true){
+    current=Math.max(0,Math.min(index,tabs.length-1));
+    tabs.forEach((tab,i)=>{const active=i===current;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',active?'true':'false');tab.tabIndex=active?0:-1;});
+    panels.forEach((panel,i)=>panel.classList.toggle('active',i===current));
+    const tab=tabs[current];
+    title.textContent=tab.dataset.label+(tab.classList.contains('today')?' · วันนี้':'');
+    dateText.textContent=tab.dataset.dateLabel+' · '+tab.querySelector('.day-count').textContent;
+    prev.disabled=current===0;next.disabled=current===tabs.length-1;
+    if(createDate)createDate.value=tab.dataset.day;
+    if(pushUrl){const url=new URL(window.location.href);url.searchParams.set('day',tab.dataset.day);history.replaceState(null,'',url);}
+  }
+  tabs.forEach((tab,index)=>tab.addEventListener('click',()=>selectDay(index)));
+  prev.addEventListener('click',()=>selectDay(current-1));
+  next.addEventListener('click',()=>selectDay(current+1));
+  selectDay(current,false);
+})();
+</script>
 </body>
 </html>
