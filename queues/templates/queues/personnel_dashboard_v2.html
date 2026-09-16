@@ -27,7 +27,7 @@
     .status-row{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;border:1px solid #d7e3e6;background:#f5f8f9;color:#637681;font-size:10px;font-weight:700}.pill.ok{background:#e9f8f1;border-color:#afe0cc;color:#14714e}.pill.full{background:#fff0f0;border-color:#efb9bd;color:#a22f3b}.pill.busy{background:#fff8e6;border-color:#e8d28a;color:#805c06}
     .load{margin:9px 0 11px;padding:10px;border-radius:11px;background:#f5fafb;border:1px solid #e0eaec}.load-line{display:flex;justify-content:space-between;font-size:11px;font-weight:800}.bar{height:7px;margin-top:7px;border-radius:999px;background:#e3ecee;overflow:hidden}.bar i{display:block;height:100%;background:#25a57d}.load.busy .bar i{background:#d6a51b}.load.full .bar i{background:#d14b57}.cases{margin:8px 0 0;padding:0;list-style:none}.cases li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px dashed #e5ecee;font-size:11px}.cases b{color:#1d6487}
     .staff-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;padding-top:10px;border-top:1px solid #edf2f3}.quick{display:inline-flex}.edit{margin-top:8px}.edit summary{font-size:11px;font-weight:800;color:#087467;cursor:pointer}.edit form{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;padding:9px;border-radius:9px;background:#f5f9fa}.edit input,.edit select{min-width:0;height:35px;padding:5px 7px;border:1px solid #c9dade;border-radius:7px}.edit .wide{grid-column:1/-1}
-    .filter-empty{display:none;grid-column:1/-1;padding:42px 18px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #cddde1;border-radius:14px}.filter-empty.show{display:block}.filter-empty b{display:block;margin-bottom:4px;color:var(--ink);font-size:16px}
+    .filter-empty{display:none;grid-column:1/-1;padding:42px 18px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #cddde1;border-radius:14px}.filter-empty.show{display:block}.filter-empty b{display:block;margin-bottom:4px;color:var(--ink);font-size:16px}.staff-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid #e8eff1;background:#fff}.pager-info{color:var(--muted);font-size:11px}.pager-controls{display:flex;align-items:center;gap:7px}.pager-controls select{height:35px;padding:0 8px;border:1px solid #c9dade;border-radius:8px;background:#fff;color:var(--ink);font-size:11px}.pager-page{min-width:76px;text-align:center;color:#536d79;font-size:11px;font-weight:700}
     .handover-intro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:15px 15px 0;background:#f8fbfb}.handover-tip{padding:12px;border:1px solid #dce7ea;border-radius:12px;background:#fff}.handover-tip b{display:block;margin-bottom:3px}.handover{padding:15px;background:#f8fbfb}.handover-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.handover-card{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fff}.handover-card form{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:9px}.handover-card select{min-width:0;height:39px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}
     .patient-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px;background:#f8fbfb}.patient-card{padding:15px;border:1px solid var(--line);border-radius:15px;background:#fff;scroll-margin-top:90px}.patient-card.focus{box-shadow:0 0 0 4px rgba(7,142,131,.16);border-color:#4eb8ad}.patient-head{display:flex;justify-content:space-between;gap:12px}.queue{color:#176f9a;font-size:17px;font-weight:800}.patient-name{font-size:18px;font-weight:800}.care-type{padding:5px 9px;height:max-content;border-radius:999px;background:#fff5d7;color:#8b6100;font-size:10px;font-weight:800}.reassess{margin-top:9px;padding:8px 10px;border-radius:9px;background:#fff0f0;border:1px solid #efb8bd;color:#a52f3a;font-size:11px;font-weight:800}.device{margin:10px 0;padding:8px 10px;border-radius:9px;background:#edf7f7;font-size:11px}.owner{padding:10px;border-top:1px solid #e7eff0}.owner strong{display:block}.owner small{color:var(--muted)}.assign{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-top:9px}.assign select{min-width:0;height:37px;border:1px solid #c8dade;border-radius:8px;padding:0 8px}.empty{padding:34px;text-align:center;color:var(--muted)}
     .patient-filter-note{display:none;margin:12px 15px 0;padding:9px 12px;border-radius:9px;background:#eaf7f5;color:#176a62;font-size:12px;font-weight:700}.patient-filter-note.show{display:block}
@@ -97,6 +97,7 @@
         {% empty %}<div class="empty">ยังไม่มีบุคลากร</div>{% endfor %}
         <div id="staff-filter-empty" class="filter-empty"><b>ไม่พบบุคลากรในกลุ่มนี้</b><span>ลองเลือก “ทั้งหมด” หรือค้นหาด้วยชื่อ/ชื่อผู้ใช้อีกครั้ง</span></div>
       </div>
+      <div class="staff-pager" id="staff-pager"><div class="pager-info" id="staff-pager-info"></div><div class="pager-controls"><label class="hint" for="staff-page-size">แสดง</label><select id="staff-page-size"><option value="12">12 คน</option><option value="24">24 คน</option><option value="48">48 คน</option></select><button class="btn" id="staff-prev" type="button">← ก่อนหน้า</button><span class="pager-page" id="staff-page-label"></span><button class="btn" id="staff-next" type="button">ถัดไป →</button></div></div>
     </section>
   </div>
 
@@ -166,9 +167,15 @@
   const search = document.getElementById('staff-search');
   const searchBtn = document.getElementById('staff-search-btn');
   const empty = document.getElementById('staff-filter-empty');
+  const pageSizeSelect = document.getElementById('staff-page-size');
+  const pagerInfo = document.getElementById('staff-pager-info');
+  const pageLabel = document.getElementById('staff-page-label');
+  const prevPage = document.getElementById('staff-prev');
+  const nextPage = document.getElementById('staff-next');
+  let staffPage = 1;
   function applyStaff(){
     const q=(search?.value||'').trim().toLocaleLowerCase('th');
-    let visible=0;
+    const matches=[];
     document.querySelectorAll('.staff-card').forEach(card=>{
       const roleOk=role==='ALL'||card.dataset.role===role;
       const textOk=!q||(card.dataset.search||'').toLocaleLowerCase('th').includes(q);
@@ -177,21 +184,33 @@
         : activeFilter==='full'
           ? (card.dataset.role==='NURSE' && card.dataset.load==='full')
           : true;
-      const show=roleOk&&textOk&&stateOk;
-      card.style.display=show?'':'none';
-      if(show) visible+=1;
+      card.style.display='none';
+      if(roleOk&&textOk&&stateOk) matches.push(card);
     });
-    empty?.classList.toggle('show',visible===0);
+    const pageSize=Number(pageSizeSelect?.value||12);
+    const pageTotal=Math.max(1,Math.ceil(matches.length/pageSize));
+    staffPage=Math.min(Math.max(1,staffPage),pageTotal);
+    const start=(staffPage-1)*pageSize;
+    matches.slice(start,start+pageSize).forEach(card=>card.style.display='');
+    empty?.classList.toggle('show',matches.length===0);
+    if(pagerInfo) pagerInfo.textContent=matches.length ? `แสดง ${start+1}–${Math.min(start+pageSize,matches.length)} จาก ${matches.length} คน` : 'ไม่พบข้อมูล';
+    if(pageLabel) pageLabel.textContent=`หน้า ${staffPage}/${pageTotal}`;
+    if(prevPage) prevPage.disabled=staffPage<=1;
+    if(nextPage) nextPage.disabled=staffPage>=pageTotal;
   }
-  search?.addEventListener('input',applyStaff);
+  search?.addEventListener('input',()=>{staffPage=1;applyStaff();});
   searchBtn?.addEventListener('click',()=>{applyStaff();search?.focus();});
   search?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyStaff();}});
   document.querySelectorAll('[data-role-filter]').forEach(btn=>btn.addEventListener('click',()=>{
     role=btn.dataset.roleFilter;
+    staffPage=1;
     document.querySelectorAll('[data-role-filter]').forEach(x=>x.classList.remove('active'));
     btn.classList.add('active');
     applyStaff();
   }));
+  pageSizeSelect?.addEventListener('change',()=>{staffPage=1;applyStaff();});
+  prevPage?.addEventListener('click',()=>{staffPage-=1;applyStaff();document.getElementById('staff-section')?.scrollIntoView({behavior:'smooth'});});
+  nextPage?.addEventListener('click',()=>{staffPage+=1;applyStaff();document.getElementById('staff-section')?.scrollIntoView({behavior:'smooth'});});
   applyStaff();
 
   const patientCards = Array.from(document.querySelectorAll('.patient-card'));

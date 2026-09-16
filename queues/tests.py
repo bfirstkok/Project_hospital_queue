@@ -1260,6 +1260,36 @@ class ShiftScheduleTests(TestCase):
         self.assertContains(response, "ยังไม่มีบุคลากรกดเริ่มเวร")
         self.assertFalse(StaffDuty.objects.filter(user=self.nurse).exists())
 
+    def test_schedule_can_be_viewed_one_selected_day_at_a_time(self):
+        selected = date(2026, 9, 16)
+        ShiftSchedule.objects.create(
+            user=self.nurse,
+            shift_date=selected,
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            note="เวรวันที่เลือก",
+            created_by=self.manager,
+        )
+        ShiftSchedule.objects.create(
+            user=self.doctor,
+            shift_date=selected + timedelta(days=1),
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            note="เวรวันถัดไป",
+            created_by=self.manager,
+        )
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("shift_schedule"), {"day": selected.isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_day"], selected)
+        self.assertEqual(response.context["selected_day_label"], "พุธ")
+        self.assertContains(response, "เวรวันที่เลือก")
+        self.assertNotContains(response, "เวรวันถัดไป")
+        self.assertContains(response, "จันทร์")
+        self.assertContains(response, "อาทิตย์")
+
     def test_superuser_with_staff_profile_is_visible_as_system_admin(self):
         StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.STAFF)
         self.manager.first_name = "สว่าง"

@@ -179,7 +179,7 @@ def shift_schedule(request):
                 status=403,
             )
         action = request.POST.get("action")
-        return_week = request.POST.get("week", "")
+        return_day = request.POST.get("day") or request.POST.get("week", "")
         if action == "delete_shift":
             shift = get_object_or_404(ShiftSchedule, pk=request.POST.get("shift_id"))
             shift.delete()
@@ -191,7 +191,7 @@ def shift_schedule(request):
                 end_time = timezone.datetime.strptime(request.POST.get("end_time", ""), "%H:%M").time()
             except (TypeError, ValueError):
                 messages.error(request, "วันที่หรือเวลาเวรไม่ถูกต้อง")
-                return redirect(f"{request.path}?week={return_week}")
+                return redirect(f"{request.path}?day={return_day}")
             staff_user = get_object_or_404(
                 user_model.objects.select_related("hospital_staff_profile"),
                 pk=request.POST.get("user_id"),
@@ -219,17 +219,17 @@ def shift_schedule(request):
                 messages.success(request, "บันทึกตารางเวรแล้ว")
         else:
             messages.error(request, "คำสั่งไม่ถูกต้อง")
-        return redirect(f"{request.path}?week={return_week}")
+        return redirect(f"{request.path}?day={return_day}")
 
-    week_value = request.GET.get("week", "")
+    day_value = request.GET.get("day") or request.GET.get("week", "")
     try:
-        selected = date.fromisoformat(week_value) if week_value else timezone.localdate()
+        selected = date.fromisoformat(day_value) if day_value else timezone.localdate()
     except ValueError:
         selected = timezone.localdate()
     week_start = selected - timedelta(days=selected.weekday())
     week_end = week_start + timedelta(days=6)
-    previous_week = week_start - timedelta(days=7)
-    next_week = week_start + timedelta(days=7)
+    previous_day = selected - timedelta(days=1)
+    next_day = selected + timedelta(days=1)
 
     users = list(
         user_model.objects.filter(is_active=True, hospital_staff_profile__isnull=False)
@@ -238,32 +238,49 @@ def shift_schedule(request):
         .order_by("hospital_staff_profile__role", "first_name", "username")
     )
     schedules = list(
-        ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
+        ShiftSchedule.objects.filter(shift_date=selected)
         .select_related("user", "user__hospital_staff_profile")
+        .order_by("start_time", "user__hospital_staff_profile__role", "user__first_name")
     )
     duties = {
         (duty.user_id, duty.duty_date): duty
-        for duty in StaffDuty.objects.filter(duty_date__range=(week_start, week_end), user__in=users)
+        for duty in StaffDuty.objects.filter(duty_date=selected, user__in=users)
     }
     active_case_counts = dict(
         NurseCareAssignment.objects.filter(is_active=True)
         .values("nurse_id").annotate(total=Count("id"))
         .values_list("nurse_id", "total")
     )
-    schedule_by_day = {week_start + timedelta(days=offset): [] for offset in range(7)}
     for shift in schedules:
         duty = duties.get((shift.user_id, shift.shift_date))
         shift.actual_duty = duty
         shift.active_case_count = active_case_counts.get(shift.user_id, 0)
-        schedule_by_day[shift.shift_date].append(shift)
-    day_rows = [
-        {
+    thai_weekdays = ("จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์")
+    week_count_by_date = dict(
+        ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
+        .values("shift_date")
+        .annotate(total=Count("id"))
+        .values_list("shift_date", "total")
+    )
+    week_days = []
+    for offset in range(7):
+        day = week_start + timedelta(days=offset)
+        week_days.append({
             "date": day,
+            "label": thai_weekdays[offset],
+            "is_selected": day == selected,
             "is_today": day == timezone.localdate(),
-            "shifts": schedule_by_day[day],
-        }
-        for day in schedule_by_day
-    ]
+            "shift_count": week_count_by_date.get(day, 0),
+        })
+    role_counts = list(
+        ShiftSchedule.objects.filter(shift_date=selected)
+        .values("user__hospital_staff_profile__role")
+        .annotate(total=Count("id"))
+        .order_by("user__hospital_staff_profile__role")
+    )
+    role_labels = dict(StaffProfile.Role.choices)
+    for row in role_counts:
+        row["label"] = role_labels.get(row["user__hospital_staff_profile__role"], "บุคลากร")
     on_duty_now = [
         {
             "user": duty.user,
@@ -277,12 +294,16 @@ def shift_schedule(request):
     return render(request, "queues/shift_schedule.html", {
         "can_manage": can_manage,
         "users": users,
-        "day_rows": day_rows,
+        "selected_day": selected,
+        "selected_day_label": thai_weekdays[selected.weekday()],
+        "selected_shifts": schedules,
+        "week_days": week_days,
+        "role_counts": role_counts,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
-        "previous_week": previous_week,
-        "next_week": next_week,
+        "previous_day": previous_day,
+        "next_day": next_day,
         "shift_statuses": ShiftSchedule.Status.choices,
     })
 
