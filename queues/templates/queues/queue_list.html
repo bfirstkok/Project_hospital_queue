@@ -4,287 +4,65 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>คิวรอตรวจ OPD</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; color: #183042; background: #eef5f6; font-family: "Sarabun", sans-serif; }
-    button, select, input, textarea { font: inherit; }
-    .page-shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 26px 0 40px; }
-    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-    .page-title { margin: 0; font-size: clamp(30px, 3vw, 46px); line-height: 1.1; font-weight: 700; }
-    .page-subtitle { margin: 7px 0 0; color: #647c88; font-size: 18px; }
-    .head-actions { display: flex; align-items: center; gap: 16px; }
-    .display-button { display: inline-flex; min-height: 44px; align-items: center; padding: 0 17px; border-radius: 9px; color: #fff; background: #183b77; font-size: 16px; font-weight: 700; text-decoration: none; box-shadow: 0 7px 18px rgba(24,59,119,.18); }
-    .display-button:hover { background: #244d92; }
-    .live-status { display: inline-flex; align-items: center; gap: 8px; color: #087f75; font-size: 17px; font-weight: 700; }
-    .live-status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #0eaa91; box-shadow: 0 0 0 6px rgba(14,170,145,.12); }
-    .summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
-    .summary-item { min-height: 76px; padding: 12px 14px; border: 1px solid #d4e2e6; border-radius: 12px; background: #fff; }
-    .summary-label { color: #657d88; font-size: 14px; font-weight: 700; }
-    .summary-value { margin-top: 3px; color: #183042; font-size: 28px; font-weight: 700; line-height: 1; }
-    .summary-item.red { border-top: 4px solid #df2b2f; }
-    .summary-item.pink { border-top: 4px solid #d92378; }
-    .summary-item.yellow { border-top: 4px solid #f2b900; }
-    .summary-item.green { border-top: 4px solid #19a94f; }
-    .summary-item.white { border-top: 4px solid #8798aa; }
-    .board { overflow: hidden; border: 1px solid #cbdde2; border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgba(43,80,92,.08); }
-    .board-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; color: #fff; background: #183b77; }
-    .board-title strong { font-size: 24px; }
-    .board-title span { color: rgba(255,255,255,.8); font-size: 15px; }
-    .queue-search { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid #dce8eb; background: #f8fbfc; }
-    .queue-search__input { width: min(520px, 100%); min-height: 42px; padding: 0 13px; border: 1px solid #b9cfd6; border-radius: 9px; color: #183042; background: #fff; }
-    .queue-search__button, .queue-search__clear { display: inline-flex; min-height: 42px; align-items: center; padding: 0 14px; border: 1px solid #087f75; border-radius: 9px; color: #fff; background: #087f75; font-weight: 700; text-decoration: none; cursor: pointer; }
-    .queue-search__clear { border-color: #c7d9df; color: #526d79; background: #fff; }
-    .queue-search__result { margin-left: auto; color: #657d88; font-size: 14px; font-weight: 700; white-space: nowrap; }
-    .table-scroll { overflow-x: auto; }
-    .queue-table { width: 100%; min-width: 1240px; border-collapse: collapse; table-layout: fixed; }
-    .queue-table th { padding: 13px 12px; color: #fff; background: #244d92; border-right: 2px solid rgba(255,255,255,.22); font-size: 18px; font-weight: 700; text-align: center; }
-    .queue-table th:last-child, .queue-table td:last-child { border-right: 0; }
-    .queue-table td { padding: 14px 12px; border-right: 1px solid #dce8eb; border-bottom: 1px solid #dce8eb; background: #fff; font-size: 18px; text-align: center; vertical-align: middle; }
-    .queue-table tbody tr:last-child td { border-bottom: 0; }
-    .queue-table tbody tr:hover td { background: #f5fbfb; }
-    .queue-table tbody tr.expedited td { background: #fff9e9; }
-    .queue-table tbody tr.expedited:hover td { background: #fff4d5; }
-    .order-number { font-size: 25px; font-weight: 700; }
-    .queue-number { display: block; color: #183b77; font-size: 29px; font-weight: 700; line-height: 1.05; }
-    .expedite-badge { display: inline-flex; margin-top: 7px; padding: 3px 8px; border-radius: 999px; color: #8a5b00; background: #ffedb5; font-size: 12px; font-weight: 700; }
-    .patient-secondary { display: block; margin-top: 5px; color: #627a86; font-size: 15px; }
-    .wait-time { color: #172d3e; font-size: 25px; font-variant-numeric: tabular-nums; font-weight: 700; }
-    .severity { display: inline-flex; min-width: 145px; min-height: 42px; align-items: center; justify-content: center; padding: 7px 13px; border: 2px solid currentColor; border-radius: 9px; font-size: 18px; font-weight: 700; }
-    .severity.red { color: #c92127; background: #fff0f0; }
-    .severity.pink { color: #c91e69; background: #fff0f7; }
-    .severity.yellow { color: #9a7000; background: #fff8d7; }
-    .severity.green { color: #11863d; background: #eaf9ef; }
-    .severity.white { color: #52697a; background: #f1f5f7; }
-    .status-text { color: #526d79; font-size: 17px; font-weight: 700; }
-    .status-text.called { color: #087f75; }
-    .nurse-assigned { display: inline-flex; align-items: center; justify-content: center; gap: 8px; max-width: 100%; padding: 7px 10px; border: 1px solid #b9ddd7; border-radius: 10px; background: #eef9f7; color: #176a62; text-align: left; }
-    .nurse-assigned strong { display: block; max-width: 150px; overflow: hidden; color: #174b47; font-size: 14px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-    .nurse-assigned small { display: block; margin-top: 2px; color: #6b818b; font-size: 11px; line-height: 1.1; }
-    .nurse-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: #0eaa91; box-shadow: 0 0 0 4px rgba(14,170,145,.12); }
-    .nurse-missing { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 9px; border: 1px solid #e7cf80; border-radius: 9px; background: #fff9df; color: #8a6500; font-size: 13px; font-weight: 700; }
-    .nurse-none { color: #9aabb3; font-size: 20px; }
-    .actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
-    .action-link, .delete-btn { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #cadbe0; border-radius: 7px; color: #34505d; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; }
-    .action-link.call { color: #fff; border-color: #087f75; background: #087f75; }
-    .action-link.adjust { color: #183b77; border-color: #9eb5dc; background: #eef4ff; }
-    .action-link:hover, .delete-btn:hover { filter: brightness(.96); }
-    .severity-select { min-height: 36px; max-width: 138px; padding: 0 7px; border: 1px solid #cadbe0; border-radius: 7px; color: #34505d; background: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-    .delete-form { display: inline-flex; margin: 0; }
-    .delete-btn { color: #b4232a; border-color: #efc7ca; background: #fff6f6; }
-    .empty { padding: 64px 20px !important; color: #6b818b; font-size: 20px !important; text-align: center; }
-    .queue-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; border-top: 1px solid #dce8eb; background: #f8fbfc; }
-    .page-size-form { display: flex; align-items: center; gap: 9px; color: #526d79; font-size: 15px; font-weight: 700; }
-    .page-size-select { min-height: 38px; padding: 0 34px 0 10px; border: 1px solid #b9cfd6; border-radius: 8px; color: #183042; background: #fff; font-weight: 700; cursor: pointer; }
-    .pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
-    .page-link, .page-current { display: inline-flex; min-width: 38px; min-height: 38px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid #c7d9df; border-radius: 8px; color: #294c5c; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
-    .page-link:hover { color: #fff; border-color: #087f75; background: #087f75; }
-    .page-current { color: #fff; border-color: #183b77; background: #183b77; }
-    .page-ellipsis { padding: 0 3px; color: #718792; font-weight: 700; }
-    .page-summary { color: #657d88; font-size: 14px; }
-    .flash-stack { display: grid; gap: 8px; margin-bottom: 14px; }
-    .flash { padding: 12px 15px; border: 1px solid #b9ddd7; border-radius: 10px; color: #176a62; background: #eef9f7; font-weight: 700; }
-    .flash.error { border-color: #efc7ca; color: #a62128; background: #fff3f3; }
-    .queue-dialog { width: min(520px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 16px; color: #183042; box-shadow: 0 24px 70px rgba(15,35,50,.28); }
-    .queue-dialog::backdrop { background: rgba(14,35,48,.55); backdrop-filter: blur(2px); }
-    .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; color: #fff; background: #183b77; }
-    .dialog-head strong { font-size: 21px; }
-    .dialog-close { border: 0; color: #fff; background: transparent; font-size: 25px; cursor: pointer; }
-    .dialog-body { display: grid; gap: 15px; padding: 20px; text-align: left; }
-    .dialog-note { margin: 0; padding: 11px 13px; border-radius: 9px; color: #526d79; background: #eef5f6; font-size: 14px; }
-    .field-label { display: grid; gap: 7px; color: #294c5c; font-weight: 700; }
-    .field-control { width: 100%; min-height: 43px; padding: 9px 11px; border: 1px solid #b9cfd6; border-radius: 8px; color: #183042; background: #fff; }
-    textarea.field-control { min-height: 88px; resize: vertical; }
-    .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; }
-    .dialog-cancel, .dialog-submit { min-height: 42px; padding: 0 16px; border: 1px solid #c7d9df; border-radius: 8px; font-weight: 700; cursor: pointer; }
-    .dialog-cancel { color: #526d79; background: #fff; }
-    .dialog-submit { border-color: #087f75; color: #fff; background: #087f75; }
-    @media (max-width: 980px) { .summary { grid-template-columns: repeat(3, 1fr); } .page-head { align-items: flex-start; flex-direction: column; } }
-    @media (max-width: 620px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .summary { grid-template-columns: repeat(2, 1fr); } .page-title { font-size: 30px; } .board-title { align-items: flex-start; flex-direction: column; } .queue-search { align-items: stretch; flex-wrap: wrap; } .queue-search__input { flex: 1 1 100%; } .queue-search__result { width: 100%; margin-left: 0; } .queue-controls { align-items: stretch; flex-direction: column; } .pagination { justify-content: flex-start; } }
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:#183042;background:#eef5f6;font-family:"Sarabun",sans-serif}button,select,input,textarea{font:inherit}
+    .page-shell{width:min(1480px,calc(100% - 40px));margin:0 auto;padding:26px 0 40px}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px}.page-title{margin:0;font-size:clamp(30px,3vw,46px)}.page-subtitle{margin:7px 0 0;color:#647c88;font-size:17px}.head-actions{display:flex;align-items:center;gap:12px}.display-button{display:inline-flex;min-height:44px;align-items:center;padding:0 16px;border-radius:9px;color:#fff;background:#183b77;font-weight:700;text-decoration:none}.live-status{color:#087f75;font-weight:700}.live-status:before{content:"";display:inline-block;width:9px;height:9px;margin-right:8px;border-radius:50%;background:#0eaa91}
+    .flash-stack{display:grid;gap:8px;margin-bottom:14px}.flash{padding:12px 15px;border:1px solid #b9ddd7;border-radius:10px;color:#176a62;background:#eef9f7;font-weight:700}.flash.error{border-color:#efc7ca;color:#a62128;background:#fff3f3}
+    .summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}.summary-item{min-height:76px;padding:12px 14px;border:1px solid #d4e2e6;border-radius:12px;background:#fff}.summary-label{color:#657d88;font-size:14px;font-weight:700}.summary-value{margin-top:3px;font-size:28px;font-weight:700}.summary-item.red{border-top:4px solid #df2b2f}.summary-item.pink{border-top:4px solid #d92378}.summary-item.yellow{border-top:4px solid #f2b900}.summary-item.green{border-top:4px solid #19a94f}.summary-item.white{border-top:4px solid #8798aa}
+    .board{overflow:hidden;border:1px solid #cbdde2;border-radius:14px;background:#fff;box-shadow:0 12px 32px rgba(43,80,92,.08)}.board-title{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;color:#fff;background:#183b77}.board-title strong{font-size:23px}.board-title span{color:rgba(255,255,255,.8)}.queue-search{display:flex;align-items:center;gap:9px;padding:13px 18px;border-bottom:1px solid #dce8eb;background:#f8fbfc}.queue-search__input{width:min(520px,100%);min-height:42px;padding:0 13px;border:1px solid #b9cfd6;border-radius:9px;background:#fff}.queue-search__button,.queue-search__clear{display:inline-flex;min-height:42px;align-items:center;padding:0 14px;border:1px solid #087f75;border-radius:9px;color:#fff;background:#087f75;font-weight:700;text-decoration:none}.queue-search__clear{border-color:#c7d9df;color:#526d79;background:#fff}.queue-search__result{margin-left:auto;color:#657d88;font-weight:700}
+    .table-scroll{overflow-x:auto}.queue-table{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed}.queue-table th{padding:13px 10px;color:#fff;background:#244d92;border-right:1px solid rgba(255,255,255,.2);font-size:16px}.queue-table td{padding:14px 10px;border-right:1px solid #dce8eb;border-bottom:1px solid #dce8eb;text-align:center;vertical-align:middle}.queue-table tbody tr:hover td{background:#f5fbfb}.queue-table tbody tr.expedited td{background:#fff9e9}.order-number{font-size:24px;font-weight:700}.queue-number{display:block;color:#183b77;font-size:27px;font-weight:700}.expedite-badge{display:inline-flex;margin-top:6px;padding:3px 8px;border-radius:999px;color:#8a5b00;background:#ffedb5;font-size:12px;font-weight:700}.patient-secondary{display:block;margin-top:5px;color:#627a86;font-size:14px}.wait-time{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}.severity{display:inline-flex;min-width:135px;min-height:39px;align-items:center;justify-content:center;padding:6px 10px;border:2px solid currentColor;border-radius:9px;font-weight:700}.severity.red{color:#c92127;background:#fff0f0}.severity.pink{color:#c91e69;background:#fff0f7}.severity.yellow{color:#9a7000;background:#fff8d7}.severity.green{color:#11863d;background:#eaf9ef}.severity.white{color:#52697a;background:#f1f5f7}.status-text{color:#526d79;font-weight:700}.status-text.called{color:#087f75}.room-badge{display:block;margin-top:4px;color:#183b77;font-size:13px;font-weight:700}
+    .nurse-assigned{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #b9ddd7;border-radius:10px;background:#eef9f7;color:#176a62;text-align:left}.nurse-assigned strong{display:block;max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.nurse-assigned small{display:block;color:#6b818b;font-size:10px}.nurse-dot{width:9px;height:9px;border-radius:50%;background:#0eaa91}.nurse-missing{display:inline-flex;padding:5px 9px;border:1px solid #e7cf80;border-radius:9px;background:#fff9df;color:#8a6500;font-size:12px;font-weight:700}.nurse-none{color:#9aabb3}
+    .actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px}.action-link,.delete-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;padding:0 11px;border:1px solid #cadbe0;border-radius:7px;color:#34505d;background:#fff;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer}.action-link.call{color:#fff;border-color:#087f75;background:#087f75}.action-link.adjust{color:#183b77;border-color:#9eb5dc;background:#eef4ff}.action-link.transfer{color:#755000;border-color:#e6c66e;background:#fff8df}.delete-btn{color:#b4232a;border-color:#efc7ca;background:#fff6f6}.empty{padding:60px!important;color:#6b818b;font-size:18px!important}
+    .queue-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-top:1px solid #dce8eb;background:#f8fbfc}.page-size-form{display:flex;align-items:center;gap:9px;color:#526d79;font-weight:700}.page-size-select{min-height:38px;padding:0 10px;border:1px solid #b9cfd6;border-radius:8px;background:#fff}.pagination{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.page-link,.page-current{display:inline-flex;min-width:38px;min-height:38px;align-items:center;justify-content:center;padding:0 10px;border:1px solid #c7d9df;border-radius:8px;color:#294c5c;background:#fff;font-weight:700;text-decoration:none}.page-current{color:#fff;border-color:#183b77;background:#183b77}.page-summary{color:#657d88;font-size:13px}
+    .queue-dialog{width:min(540px,calc(100% - 28px));padding:0;border:0;border-radius:16px;color:#183042;box-shadow:0 24px 70px rgba(15,35,50,.28)}.queue-dialog::backdrop{background:rgba(14,35,48,.55);backdrop-filter:blur(2px)}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;color:#fff;background:#183b77}.dialog-head strong{font-size:20px}.dialog-close{border:0;color:#fff;background:transparent;font-size:25px;cursor:pointer}.dialog-body{display:grid;gap:15px;padding:20px;text-align:left}.dialog-note{margin:0;padding:11px 13px;border-radius:9px;color:#526d79;background:#eef5f6;font-size:14px}.field-label{display:grid;gap:7px;color:#294c5c;font-weight:700}.field-control{width:100%;min-height:43px;padding:9px 11px;border:1px solid #b9cfd6;border-radius:8px;color:#183042;background:#fff}.field-control textarea,textarea.field-control{min-height:88px;resize:vertical}.dialog-actions{display:flex;justify-content:flex-end;gap:9px}.dialog-cancel,.dialog-submit{min-height:42px;padding:0 16px;border:1px solid #c7d9df;border-radius:8px;font-weight:700;cursor:pointer}.dialog-cancel{color:#526d79;background:#fff}.dialog-submit{border-color:#087f75;color:#fff;background:#087f75}
+    @media(max-width:980px){.summary{grid-template-columns:repeat(3,1fr)}.page-head{align-items:flex-start;flex-direction:column}}@media(max-width:620px){.page-shell{width:calc(100% - 20px)}.summary{grid-template-columns:repeat(2,1fr)}.queue-search,.queue-controls{align-items:stretch;flex-direction:column}.queue-search__result{margin-left:0}.pagination{justify-content:flex-start}}
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-board-20260903-nurse">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=queue-transfer-20260917">
 </head>
 <body>
   <main class="page-shell">
     <header class="page-head">
-      <div>
-        <h1 class="page-title">คิวรอตรวจ OPD</h1>
-        <p class="page-subtitle">เรียงตามระดับความเร่งด่วนและเวลาที่ยืนยันผลคัดกรอง</p>
-      </div>
+      <div><h1 class="page-title">คิวรอตรวจ OPD</h1><p class="page-subtitle">เรียงตามระดับความเร่งด่วนและเวลาที่ยืนยันผลคัดกรอง</p></div>
       {% include "includes/main_nav.html" %}
-      <div class="head-actions">
-        <a class="display-button" href="{% url 'queue_display' %}" target="_blank" rel="noopener">เปิดจอแสดงคิวผู้ป่วย</a>
-        <div class="live-status">อัปเดตเวลารออัตโนมัติ</div>
-      </div>
+      <div class="head-actions"><a class="display-button" href="{% url 'queue_display' %}" target="_blank" rel="noopener">เปิดจอแสดงคิวผู้ป่วย</a><div class="live-status">อัปเดตเวลารออัตโนมัติ</div></div>
     </header>
-
-    {% if messages %}
-      <div class="flash-stack" aria-live="polite">
-        {% for message in messages %}<div class="flash{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}
-      </div>
-    {% endif %}
-
+    {% if messages %}<div class="flash-stack" aria-live="polite">{% for message in messages %}<div class="flash{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
     <section class="summary" aria-label="สรุปจำนวนคิว">
       <div class="summary-item"><div class="summary-label">คิวทั้งหมด</div><div class="summary-value">{{ queue_total }}</div></div>
-      <div class="summary-item red"><div class="summary-label">สีแดง</div><div class="summary-value">{{ red_count }}</div></div>
-      <div class="summary-item pink"><div class="summary-label">สีชมพู</div><div class="summary-value">{{ pink_count }}</div></div>
-      <div class="summary-item yellow"><div class="summary-label">สีเหลือง</div><div class="summary-value">{{ yellow_count }}</div></div>
-      <div class="summary-item green"><div class="summary-label">สีเขียว</div><div class="summary-value">{{ green_count }}</div></div>
-      <div class="summary-item white"><div class="summary-label">สีขาว</div><div class="summary-value">{{ white_count }}</div></div>
+      <div class="summary-item red"><div class="summary-label">สีแดง</div><div class="summary-value">{{ red_count }}</div></div><div class="summary-item pink"><div class="summary-label">สีชมพู</div><div class="summary-value">{{ pink_count }}</div></div><div class="summary-item yellow"><div class="summary-label">สีเหลือง</div><div class="summary-value">{{ yellow_count }}</div></div><div class="summary-item green"><div class="summary-label">สีเขียว</div><div class="summary-value">{{ green_count }}</div></div><div class="summary-item white"><div class="summary-label">สีขาว</div><div class="summary-value">{{ white_count }}</div></div>
     </section>
-
     <section class="board">
-      <div class="board-title"><strong>รายการคิวพร้อมตรวจ</strong><span>ผู้ป่วยเร่งด่วนจะแสดงอยู่ด้านบนตามลำดับที่ระบบจัดไว้</span></div>
-      <form class="queue-search" method="get" role="search">
-        <input class="queue-search__input" type="search" name="q" value="{{ search_query }}" placeholder="ค้นหาชื่อ นามสกุล HN เลขบัตรประชาชน หรือเบอร์โทร" aria-label="ค้นหาผู้ป่วยในคิว">
-        <input type="hidden" name="page_size" value="{{ page_size }}">
-        <button class="queue-search__button" type="submit">ค้นหา</button>
-        {% if search_query %}<a class="queue-search__clear" href="?page_size={{ page_size }}">ล้างการค้นหา</a><span class="queue-search__result">พบ {{ queue_total }} คิว</span>{% endif %}
-      </form>
-      <div class="table-scroll">
-        <table class="queue-table">
-          <colgroup><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:16%"><col style="width:26%"></colgroup>
-          <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th>พยาบาลผู้ดูแล</th><th>การดำเนินการ</th></tr></thead>
-          <tbody>
-            {% for q in q_items %}
-              {% with v=q.visit %}
-              <tr{% if q.is_expedited %} class="expedited"{% endif %}>
-                <td><span class="order-number">{{ q_items.start_index|add:forloop.counter0 }}</span></td>
-                <td><span class="queue-number">{{ q.display_number }}</span>{% if q.is_expedited %}<span class="expedite-badge">ลัดคิวโดยเจ้าหน้าที่</span>{% endif %}<span class="patient-secondary">{{ v.patient.first_name }} {{ v.patient.last_name }}</span></td>
-                <td><span class="wait-time js-wait-time" data-start="{% if v.confirmed_at %}{{ v.confirmed_at|date:'c' }}{% else %}{{ v.registered_at|date:'c' }}{% endif %}" data-end="{% if v.called_at %}{{ v.called_at|date:'c' }}{% endif %}">--:--</span></td>
-                <td>
-                  {% if v.final_severity == "RED" %}<span class="severity red">สีแดง · วิกฤต</span>
-                  {% elif v.final_severity == "PINK" %}<span class="severity pink">สีชมพู · ฉุกเฉิน</span>
-                  {% elif v.final_severity == "YELLOW" %}<span class="severity yellow">สีเหลือง · เร่งด่วน</span>
-                  {% elif v.final_severity == "GREEN" %}<span class="severity green">สีเขียว · ไม่เร่งด่วน</span>
-                  {% elif v.final_severity == "WHITE" %}<span class="severity white">สีขาว · ทั่วไป</span>
-                  {% else %}<span class="severity white">ยังไม่ระบุ</span>{% endif %}
-                </td>
-                <td>{% if q.status == "CALLED" %}<span class="status-text called">เรียกแล้ว</span>{% else %}<span class="status-text">รอเรียก</span>{% endif %}</td>
-                <td>
-                  {% with care=v.nurse_care_assignments.all.0 %}
-                    {% if care and care.is_active %}
-                      <span class="nurse-assigned"><span class="nurse-dot"></span><span><strong>{{ care.nurse.get_full_name|default:care.nurse.username }}</strong><small>{{ care.nurse.username }}</small></span></span>
-                    {% elif v.final_severity == "YELLOW" %}
-                      <span class="nurse-missing">ยังไม่มอบหมาย</span>
-                    {% else %}
-                      <span class="nurse-none">—</span>
-                    {% endif %}
-                  {% endwith %}
-                </td>
-                <td>
-                  <div class="actions">
-                    <a class="action-link call" href="{% url 'call_visit' v.id %}">เรียกคิว</a>
-                    <button class="action-link adjust" type="button" onclick="document.getElementById('queue-adjust-{{ q.id }}').showModal()">จัดลำดับคิว</button>
-                    <a class="action-link" href="{% url 'nurse_triage_assessment' v.id %}">ประเมิน</a>
-                    <a class="action-link" href="{% url 'opd_visit_detail' v.id %}">ดูข้อมูล</a>
-                    <select class="severity-select" aria-label="เปลี่ยนระดับคิว {{ q.display_number }}" onchange="changeSeverity(this, {{ v.id }})">
-                      <option value="">เปลี่ยนระดับ…</option><option value="RED">สีแดง</option><option value="PINK">สีชมพู</option><option value="YELLOW">สีเหลือง</option><option value="GREEN">สีเขียว</option><option value="WHITE">สีขาว</option>
-                    </select>
-                    <form class="delete-form" method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการรอคิวใช่ไหม?');">{% csrf_token %}<button class="delete-btn" type="submit">ลบคิว</button></form>
-                  </div>
-                  <dialog class="queue-dialog" id="queue-adjust-{{ q.id }}">
-                    <form method="post" action="{% url 'adjust_queue' v.id %}">
-                      {% csrf_token %}
-                      <div class="dialog-head"><strong>จัดลำดับคิว {{ q.display_number }}</strong><button class="dialog-close" type="button" aria-label="ปิด" onclick="this.closest('dialog').close()">×</button></div>
-                      <div class="dialog-body">
-                        <p class="dialog-note">การลัดคิวไม่เปลี่ยนระดับความรุนแรงทางการแพทย์ ทุกการเปลี่ยนแปลงจะบันทึกชื่อผู้ดำเนินการ เวลา และเหตุผล</p>
-                        <label class="field-label">รูปแบบคิว
-                          <select class="field-control" name="queue_mode">
-                            <option value="normal"{% if not q.is_expedited %} selected{% endif %}>คิวปกติ</option>
-                            <option value="expedited"{% if q.is_expedited %} selected{% endif %}>ลัดคิวเป็นกรณีพิเศษ</option>
-                          </select>
-                        </label>
-                        <label class="field-label">เลขคิวที่ต้องการ
-                          <input class="field-control" name="queue_number" inputmode="numeric" value="{{ q.manual_sequence|default:'' }}" placeholder="เช่น 12 หรือ Q012 (เว้นว่างเพื่อใช้เลขอัตโนมัติ)">
-                        </label>
-                        <label class="field-label">เหตุผลในการเปลี่ยนแปลง
-                          <textarea class="field-control" name="reason" minlength="3" required placeholder="เช่น ผู้ป่วยสูงอายุเคลื่อนไหวลำบาก / แก้ไขเลขคิวที่ออกผิด"></textarea>
-                        </label>
-                        <div class="dialog-actions"><button class="dialog-cancel" type="button" onclick="this.closest('dialog').close()">ยกเลิก</button><button class="dialog-submit" type="submit">บันทึกและสร้าง Log</button></div>
-                      </div>
-                    </form>
-                  </dialog>
-                </td>
-              </tr>
-              {% endwith %}
-            {% empty %}
-              <tr><td class="empty" colspan="7">{% if search_query %}ไม่พบผู้ป่วยที่ตรงกับ “{{ search_query }}”{% else %}ยังไม่มีคิวรอตรวจ{% endif %}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="queue-controls">
-        <form class="page-size-form" method="get">
-          <input type="hidden" name="q" value="{{ search_query }}">
-          <label for="page-size">แสดงต่อหน้า</label>
-          <select id="page-size" class="page-size-select" name="page_size" onchange="this.form.submit()">
-            {% for size in page_size_choices %}<option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }} แถว</option>{% endfor %}
-          </select>
-          <span class="page-summary">แสดง {{ q_items.start_index }}–{{ q_items.end_index }} จาก {{ queue_total }} คิว</span>
-        </form>
-        {% if q_items.paginator.num_pages > 1 %}
-          <nav class="pagination" aria-label="เปลี่ยนหน้ารายการคิว">
-            {% if q_items.has_previous %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page=1&amp;page_size={{ page_size }}" aria-label="หน้าแรก">«</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.previous_page_number }}&amp;page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}
-            {% for page_number in pagination_items %}
-              {% if page_number %}
-                {% if page_number == q_items.number %}<span class="page-current" aria-current="page">{{ page_number }}</span>{% else %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ page_number }}&amp;page_size={{ page_size }}">{{ page_number }}</a>{% endif %}
-              {% else %}<span class="page-ellipsis">…</span>{% endif %}
-            {% endfor %}
-            {% if q_items.has_next %}<a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.next_page_number }}&amp;page_size={{ page_size }}">ถัดไป</a><a class="page-link" href="?q={{ search_query|urlencode }}&amp;page={{ q_items.paginator.num_pages }}&amp;page_size={{ page_size }}" aria-label="หน้าสุดท้าย">»</a>{% endif %}
-          </nav>
-        {% endif %}
-      </div>
+      <div class="board-title"><strong>รายการคิวพร้อมตรวจ</strong><span>หน้านี้ใช้สำหรับจัดลำดับ เรียกคิว กำหนดห้อง และย้ายผู้ป่วยเท่านั้น</span></div>
+      <form class="queue-search" method="get" role="search"><input class="queue-search__input" type="search" name="q" value="{{ search_query }}" placeholder="ค้นหาชื่อ นามสกุล HN เลขบัตรประชาชน หรือเบอร์โทร"><input type="hidden" name="page_size" value="{{ page_size }}"><button class="queue-search__button" type="submit">ค้นหา</button>{% if search_query %}<a class="queue-search__clear" href="?page_size={{ page_size }}">ล้างการค้นหา</a><span class="queue-search__result">พบ {{ queue_total }} คิว</span>{% endif %}</form>
+      <div class="table-scroll"><table class="queue-table"><colgroup><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:15%"><col style="width:11%"><col style="width:16%"><col style="width:25%"></colgroup><thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th>พยาบาลผู้ดูแล</th><th>การดำเนินการ</th></tr></thead><tbody>
+      {% for q in q_items %}{% with v=q.visit %}
+        <tr{% if q.is_expedited %} class="expedited"{% endif %}>
+          <td><span class="order-number">{{ q_items.start_index|add:forloop.counter0 }}</span></td>
+          <td><span class="queue-number">{{ q.display_number }}</span>{% if q.is_expedited %}<span class="expedite-badge">ลัดคิวโดยเจ้าหน้าที่</span>{% endif %}<span class="patient-secondary">{{ v.patient.first_name }} {{ v.patient.last_name }}</span></td>
+          <td><span class="wait-time js-wait-time" data-start="{% if v.confirmed_at %}{{ v.confirmed_at|date:'c' }}{% else %}{{ v.registered_at|date:'c' }}{% endif %}" data-end="{% if v.called_at %}{{ v.called_at|date:'c' }}{% endif %}">--:--</span></td>
+          <td>{% if v.final_severity == "RED" %}<span class="severity red">สีแดง · วิกฤต</span>{% elif v.final_severity == "PINK" %}<span class="severity pink">สีชมพู · ฉุกเฉิน</span>{% elif v.final_severity == "YELLOW" %}<span class="severity yellow">สีเหลือง · เร่งด่วน</span>{% elif v.final_severity == "GREEN" %}<span class="severity green">สีเขียว · ไม่เร่งด่วน</span>{% else %}<span class="severity white">สีขาว · ทั่วไป</span>{% endif %}</td>
+          <td>{% if q.status == "CALLED" %}<span class="status-text called">เรียกแล้ว</span><span class="room-badge">ห้อง {{ q.exam_room|default:"-" }}</span>{% else %}<span class="status-text">รอเรียก</span>{% endif %}</td>
+          <td>{% with care=v.nurse_care_assignments.all.0 %}{% if care and care.is_active %}<span class="nurse-assigned"><span class="nurse-dot"></span><span><strong>{{ care.nurse.get_full_name|default:care.nurse.username }}</strong><small>{{ care.nurse.username }}</small></span></span>{% elif v.final_severity == "YELLOW" %}<span class="nurse-missing">ยังไม่มอบหมาย</span>{% else %}<span class="nurse-none">—</span>{% endif %}{% endwith %}</td>
+          <td><div class="actions">
+            {% if q.status == "WAITING_QUEUE" %}<a class="action-link call" href="{% url 'call_visit' v.id %}">เรียกคิว</a>{% endif %}
+            <button class="action-link adjust" type="button" onclick="document.getElementById('queue-adjust-{{ q.id }}').showModal()">จัดลำดับคิว</button>
+            {% if q.status == "CALLED" and 'transfer_patient' in access_capabilities %}<button class="action-link transfer" type="button" onclick="document.getElementById('queue-transfer-{{ q.id }}').showModal()">ย้ายผู้ป่วย</button>{% endif %}
+            <form method="post" action="{% url 'cancel_queue' v.id %}" onsubmit="return confirm('ยืนยันลบคิวนี้ออกจากรายการใช่ไหม?');">{% csrf_token %}<button class="delete-btn" type="submit">ลบคิว</button></form>
+          </div>
+          <dialog class="queue-dialog" id="queue-adjust-{{ q.id }}"><form method="post" action="{% url 'adjust_queue' v.id %}">{% csrf_token %}<div class="dialog-head"><strong>จัดลำดับคิว {{ q.display_number }}</strong><button class="dialog-close" type="button" onclick="this.closest('dialog').close()">×</button></div><div class="dialog-body"><p class="dialog-note">การลัดคิวไม่เปลี่ยนระดับความรุนแรงทางการแพทย์ ทุกการเปลี่ยนแปลงจะบันทึกผู้ดำเนินการ เวลา และเหตุผล</p><label class="field-label">รูปแบบคิว<select class="field-control" name="queue_mode"><option value="normal"{% if not q.is_expedited %} selected{% endif %}>คิวปกติ</option><option value="expedited"{% if q.is_expedited %} selected{% endif %}>ลัดคิวเป็นกรณีพิเศษ</option></select></label><label class="field-label">เลขคิวที่ต้องการ<input class="field-control" name="queue_number" inputmode="numeric" value="{{ q.manual_sequence|default:'' }}" placeholder="เช่น 12 หรือ Q012"></label><label class="field-label">เหตุผลในการเปลี่ยนแปลง<textarea class="field-control" name="reason" minlength="3" required></textarea></label><div class="dialog-actions"><button class="dialog-cancel" type="button" onclick="this.closest('dialog').close()">ยกเลิก</button><button class="dialog-submit" type="submit">บันทึกและสร้าง Log</button></div></div></form></dialog>
+          {% if q.status == "CALLED" and 'transfer_patient' in access_capabilities %}<dialog class="queue-dialog" id="queue-transfer-{{ q.id }}"><form method="post" action="{% url 'transfer_patient' v.id %}">{% csrf_token %}<input type="hidden" name="next" value="queue"><div class="dialog-head"><strong>ย้ายผู้ป่วย {{ q.display_number }}</strong><button class="dialog-close" type="button" onclick="this.closest('dialog').close()">×</button></div><div class="dialog-body"><p class="dialog-note">ปัจจุบันอยู่ห้องตรวจ {{ q.exam_room|default:"-" }} สามารถย้ายไปห้องอื่น หรือส่งกลับไปรอเรียกคิวใหม่ได้ โดยต้องกรอกหมายเหตุทุกครั้ง</p><label class="field-label">ปลายทาง<select class="field-control" name="destination" required><option value="">เลือกปลายทาง…</option><option value="room_1">ห้องตรวจ 1</option><option value="room_2">ห้องตรวจ 2</option><option value="room_3">ห้องตรวจ 3</option><option value="waiting">กลับไปหน้ารอเรียกเข้าห้อง</option></select></label><label class="field-label">หมายเหตุ / เหตุผล<textarea class="field-control" name="reason" minlength="3" required placeholder="เช่น แพทย์ห้อง 1 ติดภารกิจ จึงย้ายไปห้อง 2"></textarea></label><div class="dialog-actions"><button class="dialog-cancel" type="button" onclick="this.closest('dialog').close()">ยกเลิก</button><button class="dialog-submit" type="submit">ยืนยันการย้าย</button></div></div></form></dialog>{% endif %}
+          </td>
+        </tr>
+      {% endwith %}{% empty %}<tr><td class="empty" colspan="7">{% if search_query %}ไม่พบผู้ป่วยที่ตรงกับ “{{ search_query }}”{% else %}ยังไม่มีคิวรอตรวจ{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>
+      <div class="queue-controls"><form class="page-size-form" method="get"><input type="hidden" name="q" value="{{ search_query }}"><label for="page-size">แสดงต่อหน้า</label><select id="page-size" class="page-size-select" name="page_size" onchange="this.form.submit()">{% for size in page_size_choices %}<option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }} แถว</option>{% endfor %}</select><span class="page-summary">แสดง {{ q_items.start_index }}–{{ q_items.end_index }} จาก {{ queue_total }} คิว</span></form>{% if q_items.paginator.num_pages > 1 %}<nav class="pagination">{% if q_items.has_previous %}<a class="page-link" href="?q={{ search_query|urlencode }}&page={{ q_items.previous_page_number }}&page_size={{ page_size }}">ก่อนหน้า</a>{% endif %}{% for page_number in pagination_items %}{% if page_number %}{% if page_number == q_items.number %}<span class="page-current">{{ page_number }}</span>{% else %}<a class="page-link" href="?q={{ search_query|urlencode }}&page={{ page_number }}&page_size={{ page_size }}">{{ page_number }}</a>{% endif %}{% else %}<span>…</span>{% endif %}{% endfor %}{% if q_items.has_next %}<a class="page-link" href="?q={{ search_query|urlencode }}&page={{ q_items.next_page_number }}&page_size={{ page_size }}">ถัดไป</a>{% endif %}</nav>{% endif %}</div>
     </section>
   </main>
-
-  <script>
-    function getCsrfToken() {
-      const meta = document.querySelector('meta[name="csrf-token"]');
-      if (meta?.content) return meta.content;
-      const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
-      return match ? decodeURIComponent(match[1]) : '';
-    }
-    function formatWaitDuration(totalMinutes) {
-      const days = Math.floor(totalMinutes / 1440);
-      const remainingMinutes = totalMinutes % 1440;
-      const hours = Math.floor(remainingMinutes / 60);
-      const minutes = remainingMinutes % 60;
-      const clockPart = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      return days > 0 ? `${days} วัน ${clockPart}` : clockPart;
-    }
-    function updateWaitTimes() {
-      const now = Date.now();
-      document.querySelectorAll('.js-wait-time').forEach((element) => {
-        const startedAt = Date.parse(element.dataset.start);
-        if (Number.isNaN(startedAt)) { element.textContent = '--:--'; return; }
-        const endedAt = element.dataset.end ? Date.parse(element.dataset.end) : now;
-        const totalMinutes = Math.max(0, Math.floor(((Number.isNaN(endedAt) ? now : endedAt) - startedAt) / 60000));
-        element.textContent = formatWaitDuration(totalMinutes);
-      });
-    }
-    async function setSeverity(visitId, severity) {
-      const response = await fetch(`/queues/api/update-severity/${visitId}/`, {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-        body: JSON.stringify({ severity })
-      });
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      location.reload();
-    }
-    async function changeSeverity(select, visitId) {
-      if (!select.value) return;
-      select.disabled = true;
-      try { await setSeverity(visitId, select.value); }
-      catch (error) { alert(`เปลี่ยนระดับไม่สำเร็จ: ${error.message}`); select.disabled = false; select.value = ''; }
-    }
-    updateWaitTimes();
-    window.setInterval(updateWaitTimes, 30000);
-  </script>
-</body>
-</html>
+<script>
+function formatWaitDuration(totalMinutes){const days=Math.floor(totalMinutes/1440),remaining=totalMinutes%1440,hours=Math.floor(remaining/60),minutes=remaining%60,clock=`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;return days>0?`${days} วัน ${clock}`:clock}
+function updateWaitTimes(){const now=Date.now();document.querySelectorAll('.js-wait-time').forEach(el=>{const start=Date.parse(el.dataset.start);if(Number.isNaN(start)){el.textContent='--:--';return}const end=el.dataset.end?Date.parse(el.dataset.end):now;el.textContent=formatWaitDuration(Math.max(0,Math.floor(((Number.isNaN(end)?now:end)-start)/60000)))})}
+updateWaitTimes();setInterval(updateWaitTimes,30000);
+</script>
+</body></html>
