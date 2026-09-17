@@ -3,6 +3,7 @@ from django.views.generic import RedirectView
 from . import views
 from . import personnel_views
 from . import triage_confirmation
+from . import transfer_views
 
 # ✅ FOLLOWUP monitor อยู่ที่ opd
 from opd import views as opd_views
@@ -25,6 +26,7 @@ urlpatterns = [
     path("triage/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.triage_visit), name="triage_visit"),
     path("call/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.call_visit), name="call_visit"),
     path("adjust/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.adjust_queue), name="adjust_queue"),
+    path("transfer/<int:visit_id>/", capability_required(Capability.TRANSFER_PATIENT)(transfer_views.transfer_patient), name="transfer_patient"),
     path("monitoring/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.send_to_monitoring), name="send_to_monitoring"),
     path("discharge/<int:visit_id>/", capability_required(Capability.END_MONITORING)(views.discharge_visit), name="discharge_visit"),
     path("cancel/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.cancel_queue), name="cancel_queue"),
