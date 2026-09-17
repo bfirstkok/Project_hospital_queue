@@ -1,5 +1,7 @@
+from django.contrib import messages
+from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout as auth_logout
+from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -43,6 +45,19 @@ def my_permissions(request):
     ]
     return render(request, "accounts/my_permissions.html", {"capability_rows": capability_rows})
 
+
+@login_required
+def account_settings(request):
+    """Allow a signed-in user to securely change their own password."""
+    form = PasswordChangeForm(user=request.user, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        messages.success(request, "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว")
+        return redirect("account_settings")
+    return render(request, "accounts/account_settings.html", {"form": form})
+
+
 @login_required
 def dashboard(request):
     now = timezone.now()
@@ -77,4 +92,3 @@ def custom_logout(request):
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     return response
-
