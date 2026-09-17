@@ -111,8 +111,27 @@ class RoleAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "พยาบาล")
         self.assertContains(response, "ยืนยันหรือแก้ผลคัดกรอง AI")
+        self.assertContains(response, "ตั้งค่าบัญชี")
         self.assertNotContains(response, "วัดและบันทึกสัญญาณชีพ")
         self.assertNotContains(response, "ตรวจรักษาและบันทึกผลแพทย์")
+
+    def test_account_settings_requires_login(self):
+        response = self.client.get(reverse("account_settings"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_user_can_change_own_password_and_remain_logged_in(self):
+        nurse = self.make_user("password-nurse", StaffProfile.Role.NURSE)
+        self.client.force_login(nurse)
+        response = self.client.post(reverse("account_settings"), {
+            "old_password": "test-password-123",
+            "new_password1": "New-safe-password-456!",
+            "new_password2": "New-safe-password-456!",
+        }, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว")
+        nurse.refresh_from_db()
+        self.assertTrue(nurse.check_password("New-safe-password-456!"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), nurse.pk)
 
     def test_operational_write_duties_do_not_overlap_between_roles(self):
         unique_owner = {
