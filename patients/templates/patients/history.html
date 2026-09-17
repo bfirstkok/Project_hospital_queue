@@ -31,7 +31,21 @@
     button, .btn { border: 0; border-radius: 8px; padding: 9px 12px; background: #20d6b5; color: #07131f; font-weight: 700; text-decoration: none; cursor: pointer; }
     .mini-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .mini-form .wide { grid-column: 1 / -1; }
+    .section-title { margin: 18px 0 10px; font-size: 17px; }
+    .accountability { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 14px; }
+    .operator-card { min-height: 102px; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: rgba(255,255,255,.035); }
+    .operator-label { color: #8ad8ff; font-size: 12px; font-weight: 700; }
+    .operator-name { margin-top: 7px; font-size: 15px; font-weight: 700; }
+    .operator-meta { margin-top: 4px; color: rgba(255,255,255,.55); font-size: 12px; line-height: 1.45; }
+    .legacy-note { color: #ffca63; }
+    .audit-timeline { position: relative; display: grid; gap: 0; margin: 2px 0 16px 7px; padding-left: 23px; border-left: 2px solid rgba(138,216,255,.24); }
+    .audit-entry { position: relative; padding: 3px 0 15px; }
+    .audit-entry::before { content: ""; position: absolute; top: 7px; left: -29px; width: 10px; height: 10px; border: 2px solid #0a0e1a; border-radius: 50%; background: #20d6b5; box-shadow: 0 0 0 2px rgba(32,214,181,.28); }
+    .audit-event { font-weight: 700; }
+    .audit-meta { margin-top: 3px; color: rgba(255,255,255,.55); font-size: 12px; }
+    .audit-description { margin-top: 4px; color: rgba(255,255,255,.78); font-size: 13px; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .top { flex-direction: column; } }
+    @media (max-width: 650px) { .accountability { grid-template-columns: 1fr; } }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
@@ -98,6 +112,51 @@
               คัดกรอง {{ visit.triaged_at|date:"Y-m-d H:i"|default:"-" }} |
               เรียกคิว {{ visit.called_at|date:"Y-m-d H:i"|default:"-" }} |
               สถานะ {{ visit.queue.status|default:"-" }}
+            </div>
+
+            <h3 class="section-title">ผู้รับผิดชอบในกระบวนการ</h3>
+            <div class="accountability">
+              <div class="operator-card">
+                <div class="operator-label">ผู้ตรวจและบันทึกสัญญาณชีพ</div>
+                {% if visit.vitals_operator_log %}
+                  <div class="operator-name">{{ visit.vitals_operator_log.actor_name }}</div>
+                  <div class="operator-meta">{{ visit.vitals_operator_log.actor_role }}<br>{{ visit.vitals_operator_log.created_at|date:"d/m/Y H:i" }}</div>
+                {% elif visit.vitals %}
+                  <div class="operator-name legacy-note">ไม่พบชื่อผู้บันทึกเดิม</div><div class="operator-meta">ข้อมูลถูกสร้างก่อนเปิดใช้ระบบ Audit Log</div>
+                {% else %}<div class="operator-name muted">ยังไม่มีการบันทึก</div>{% endif %}
+              </div>
+              <div class="operator-card">
+                <div class="operator-label">พยาบาลผู้คัดแยก</div>
+                {% if visit.triage_operator_log %}
+                  <div class="operator-name">{{ visit.triage_operator_log.actor_name }}</div>
+                  <div class="operator-meta">{{ visit.triage_operator_log.actor_role }}<br>{{ visit.triage_operator_log.created_at|date:"d/m/Y H:i" }}</div>
+                {% elif visit.triage_result.nurse_severity %}
+                  <div class="operator-name legacy-note">ไม่พบชื่อผู้ยืนยันเดิม</div><div class="operator-meta">ข้อมูลถูกสร้างก่อนเปิดใช้ระบบ Audit Log</div>
+                {% else %}<div class="operator-name muted">ยังไม่มีการคัดแยก</div>{% endif %}
+              </div>
+              <div class="operator-card">
+                <div class="operator-label">แพทย์ผู้ตรวจ</div>
+                {% if visit.opd_assessment.examiner %}
+                  <div class="operator-name">{{ visit.opd_assessment.examiner.get_full_name|default:visit.opd_assessment.examiner.username }}</div>
+                  <div class="operator-meta">แพทย์<br>{{ visit.opd_assessment.updated_at|date:"d/m/Y H:i" }}</div>
+                {% elif visit.opd_assessment %}
+                  <div class="operator-name legacy-note">ไม่พบชื่อแพทย์ผู้ตรวจเดิม</div>
+                {% else %}<div class="operator-name muted">ยังไม่มีผลตรวจแพทย์</div>{% endif %}
+              </div>
+            </div>
+
+            <h3 class="section-title">ประวัติการดำเนินการ (Audit Log)</h3>
+            <div class="audit-timeline">
+              {% for log in visit.workflow_timeline %}
+                <div class="audit-entry">
+                  <div class="audit-event">{{ log.get_event_type_display }}</div>
+                  <div class="audit-meta">{{ log.created_at|date:"d/m/Y H:i:s" }} · {{ log.actor_name }} · {{ log.actor_role }}</div>
+                  {% if log.description %}<div class="audit-description">{{ log.description }}</div>{% endif %}
+                </div>
+              {% empty %}
+                <div class="audit-entry"><div class="audit-event">ยังไม่มี Audit Log สำหรับ Visit นี้</div><div class="audit-meta">รายการเดิมก่อนเปิดใช้ระบบจะยังแสดงข้อมูลทางคลินิกได้ แต่ไม่สามารถระบุผู้ดำเนินการย้อนหลังโดยไม่มีหลักฐาน</div></div>
+              {% endfor %}
+              <div class="audit-entry"><div class="audit-event">ลงทะเบียนผู้ป่วย</div><div class="audit-meta">{{ visit.registered_at|date:"d/m/Y H:i:s" }}</div></div>
             </div>
 
             <table>

@@ -15,7 +15,7 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -57,6 +57,116 @@ class QueueDisplayNumberTests(TestCase):
         self.assertEqual(queues[0].display_number, "Q001")
         self.assertEqual(queues[1].display_number, "Q002")
         self.assertEqual(queues[2].display_number, "Q001")
+
+    def test_manual_number_overrides_automatic_display_number(self):
+        patient = Patient.objects.create(first_name="Manual", last_name="Queue")
+        queue = Queue.objects.create(
+            visit=Visit.objects.create(patient=patient),
+            manual_sequence=88,
+        )
+
+        self.assertEqual(queue.display_number, "Q088")
+
+
+class QueueAdjustmentAuditTests(TestCase):
+    def setUp(self):
+        self.operator = get_user_model().objects.create_user(
+            username="queue-operator",
+            password="secret",
+            first_name="เจ้าหน้าที่",
+            last_name="จัดคิว",
+        )
+        StaffProfile.objects.create(user=self.operator, role=StaffProfile.Role.QUEUE_OPERATOR)
+        self.client.force_login(self.operator)
+        self.patient = Patient.objects.create(
+            first_name="ผู้ป่วย", last_name="ทดสอบ", national_id="7000000000001",
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.GREEN,
+            confirmed_at=timezone.now(),
+        )
+        self.queue = Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.WAITING_QUEUE,
+            priority=4,
+        )
+
+    def test_operator_can_expedite_and_renumber_with_audited_reason(self):
+        response = self.client.post(
+            reverse("adjust_queue", args=[self.visit.id]),
+            {
+                "queue_mode": "expedited",
+                "queue_number": "Q077",
+                "reason": "ผู้ป่วยเคลื่อนไหวลำบาก",
+            },
+        )
+
+        self.assertRedirects(response, reverse("queue_list"))
+        self.queue.refresh_from_db()
+        self.assertTrue(self.queue.is_expedited)
+        self.assertEqual(self.queue.manual_sequence, 77)
+        self.assertEqual(self.queue.display_number, "Q077")
+        logs = VisitWorkflowLog.objects.filter(visit=self.visit)
+        self.assertEqual(logs.count(), 2)
+        self.assertTrue(logs.filter(event_type=VisitWorkflowLog.EventType.QUEUE_EXPEDITED).exists())
+        changed = logs.get(event_type=VisitWorkflowLog.EventType.QUEUE_NUMBER_CHANGED)
+        self.assertEqual(changed.actor, self.operator)
+        self.assertEqual(changed.actor_name, "เจ้าหน้าที่ จัดคิว")
+        self.assertEqual(changed.details["to"], "Q077")
+        self.assertIn("ผู้ป่วยเคลื่อนไหวลำบาก", changed.description)
+
+    def test_adjustment_requires_reason_and_rejects_duplicate_active_number(self):
+        no_reason = self.client.post(
+            reverse("adjust_queue", args=[self.visit.id]),
+            {"queue_mode": "expedited", "queue_number": "77", "reason": ""},
+        )
+        self.assertRedirects(no_reason, reverse("queue_list"))
+        self.queue.refresh_from_db()
+        self.assertFalse(self.queue.is_expedited)
+        self.assertIsNone(self.queue.manual_sequence)
+        self.assertFalse(VisitWorkflowLog.objects.filter(visit=self.visit).exists())
+
+        other_patient = Patient.objects.create(
+            first_name="อีกคน", last_name="หนึ่ง", national_id="7000000000002",
+        )
+        other_visit = Visit.objects.create(patient=other_patient, final_severity=Visit.Severity.GREEN)
+        Queue.objects.create(
+            visit=other_visit,
+            status=Queue.Status.WAITING_QUEUE,
+            priority=4,
+            manual_sequence=77,
+        )
+        duplicate = self.client.post(
+            reverse("adjust_queue", args=[self.visit.id]),
+            {"queue_mode": "normal", "queue_number": "77", "reason": "แก้ไขเลขคิว"},
+        )
+        self.assertRedirects(duplicate, reverse("queue_list"))
+        self.queue.refresh_from_db()
+        self.assertIsNone(self.queue.manual_sequence)
+
+    def test_expedited_queue_moves_first_only_inside_same_severity(self):
+        urgent_patient = Patient.objects.create(
+            first_name="เร่งด่วน", last_name="กว่า", national_id="7000000000003",
+        )
+        urgent_visit = Visit.objects.create(
+            patient=urgent_patient,
+            final_severity=Visit.Severity.YELLOW,
+            confirmed_at=timezone.now(),
+        )
+        Queue.objects.create(
+            visit=urgent_visit,
+            status=Queue.Status.WAITING_QUEUE,
+            priority=3,
+        )
+        self.queue.is_expedited = True
+        self.queue.save(update_fields=["is_expedited"])
+
+        response = self.client.get(reverse("queue_list"))
+
+        ordered = list(response.context["q_items"])
+        self.assertEqual(ordered[0].visit, urgent_visit)
+        self.assertEqual(ordered[1].visit, self.visit)
 
 
 class IotTelemetryAssignmentTests(TestCase):
@@ -803,6 +913,12 @@ class QueueWorkflowTests(TestCase):
         self.assertIsNone(visit.triage_result.nurse_severity)
         self.assertFalse(visit.triage_result.lifesaving_intervention)
         self.assertEqual(visit.triage_result.expected_resources, "1")
+        vitals_log = VisitWorkflowLog.objects.get(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.VITALS_RECORDED,
+        )
+        self.assertEqual(vitals_log.actor, self.user)
+        self.assertEqual(vitals_log.details["o2sat"], 98)
 
         confirmation_page = self.client.get(reverse("waiting_confirmation"))
         self.assertEqual(confirmation_page.status_code, 200)
@@ -833,6 +949,12 @@ class QueueWorkflowTests(TestCase):
         self.assertIsNotNone(visit.confirmed_at)
         self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
         self.assertEqual(visit.queue.priority, 3)
+        triage_log = VisitWorkflowLog.objects.get(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
+        )
+        self.assertEqual(triage_log.actor, self.user)
+        self.assertEqual(triage_log.details["severity"], "YELLOW")
 
         response = self.client.get(reverse("queue_list"))
         self.assertContains(response, "Demo Queue")

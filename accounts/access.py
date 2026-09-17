@@ -76,14 +76,14 @@ ROLE_DESCRIPTIONS = {
     StaffProfile.Role.NURSE_ASSISTANT: "วัดและบันทึกสัญญาณชีพภายใต้การกำกับของพยาบาลวิชาชีพ",
     StaffProfile.Role.EMERGENCY: "รับช่วงและดูแลรายการผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
     StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
-    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว กำหนดห้องตรวจ และจัดสถานะคิวบริการ",
+    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ และจัดสถานะคิวบริการ",
     StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
 }
 
 CAPABILITY_LABELS = {
     Capability.VIEW_DASHBOARD: "ดูแดชบอร์ดภาพรวม",
     Capability.VIEW_QUEUE: "ดูรายการคิว",
-    Capability.MANAGE_QUEUE: "เรียกคิวและเปลี่ยนสถานะบริการ",
+    Capability.MANAGE_QUEUE: "เรียกคิว ปรับลำดับ/เลขคิว และเปลี่ยนสถานะบริการ",
     Capability.VIEW_EMERGENCY: "รับช่วงรายการผู้ป่วยฉุกเฉิน",
     Capability.REGISTER_PATIENT: "ลงทะเบียนผู้ป่วย",
     Capability.VIEW_PATIENT: "ค้นหาและดูประวัติผู้ป่วย",

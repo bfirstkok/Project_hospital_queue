@@ -5,7 +5,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
@@ -24,7 +24,7 @@ import secrets
 from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
 from .security import rate_limited, rate_limited_by_identifier
-from queues.models import Visit, Queue, VitalSign
+from queues.models import Visit, Queue, VitalSign, VisitWorkflowLog
 
 
 ACTIVE_QUEUE_STATUSES = {
@@ -1000,13 +1000,30 @@ def patient_search(request):
 @login_required
 def patient_history(request, patient_id: int):
     patient = get_object_or_404(Patient, id=patient_id)
-    visits = (
+    visits = list(
         Visit.objects
         .filter(patient=patient)
         .select_related("queue", "triage_result", "opd_assessment", "vitals")
-        .prefetch_related("critical_alerts")
+        .prefetch_related(
+            "critical_alerts",
+            Prefetch(
+                "workflow_logs",
+                queryset=VisitWorkflowLog.objects.select_related("actor").order_by("-created_at", "-id"),
+            ),
+        )
         .order_by("-registered_at")
     )
+    for visit in visits:
+        logs = list(visit.workflow_logs.all())
+        visit.workflow_timeline = logs
+        visit.vitals_operator_log = next(
+            (log for log in logs if log.event_type == VisitWorkflowLog.EventType.VITALS_RECORDED),
+            None,
+        )
+        visit.triage_operator_log = next(
+            (log for log in logs if log.event_type == VisitWorkflowLog.EventType.TRIAGE_CONFIRMED),
+            None,
+        )
     appointments = patient.appointments.order_by("-date", "-time", "-created_at")
 
     return render(request, "patients/history.html", {

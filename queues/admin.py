@@ -11,6 +11,7 @@ from .models import (
     TelemetryLog,
     TriageResult,
     Visit,
+    VisitWorkflowLog,
     VitalSign,
 )
 
@@ -26,3 +27,22 @@ admin.site.register(StaffDuty)
 admin.site.register(StaffProfile)
 admin.site.register(NurseCareAssignment)
 admin.site.register(ShiftSchedule)
+
+@admin.register(VisitWorkflowLog)
+class VisitWorkflowLogAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "visit", "event_type", "actor_name", "actor_role")
+    list_filter = ("event_type", "actor_role")
+    search_fields = ("visit__patient__hn", "actor_name", "description")
+    readonly_fields = (
+        "visit", "event_type", "actor", "actor_name", "actor_role",
+        "description", "details", "created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -1,6 +1,7 @@
 ﻿import re
 import uuid
 from datetime import datetime, time, timedelta
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -69,6 +70,16 @@ class Queue(models.Model):
 
     priority = models.IntegerField(default=5)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)
+    manual_sequence = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text="เลขคิวที่เจ้าหน้าที่กำหนดเอง หากว่างจะใช้เลขอัตโนมัติ",
+    )
+    is_expedited = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="ลัดลำดับภายในระดับความเร่งด่วนเดิม โดยไม่เปลี่ยนผลคัดกรอง",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -100,6 +111,8 @@ class Queue(models.Model):
 
     @property
     def display_number(self):
+        if self.manual_sequence is not None:
+            return f"Q{self.manual_sequence:03d}"
         return f"Q{self.display_sequence:03d}"
 
 
@@ -150,6 +163,63 @@ class TriageResult(models.Model):
     lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     lng = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     location_updated_at = models.DateTimeField(blank=True, null=True)
+
+
+class VisitWorkflowLog(models.Model):
+    """Immutable accountability trail for actions performed during a visit."""
+
+    class EventType(models.TextChoices):
+        VITALS_RECORDED = "VITALS_RECORDED", "บันทึกสัญญาณชีพ"
+        TRIAGE_CONFIRMED = "TRIAGE_CONFIRMED", "ยืนยันผลคัดกรอง"
+        QUEUE_EXPEDITED = "QUEUE_EXPEDITED", "ลัดลำดับคิว"
+        QUEUE_RESTORED = "QUEUE_RESTORED", "คืนลำดับคิวปกติ"
+        QUEUE_NUMBER_CHANGED = "QUEUE_NUMBER_CHANGED", "เปลี่ยนเลขคิว"
+        QUEUE_CALLED = "QUEUE_CALLED", "เรียกเข้าห้องตรวจ"
+        DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
+
+    visit = models.ForeignKey(
+        Visit,
+        on_delete=models.CASCADE,
+        related_name="workflow_logs",
+    )
+    event_type = models.CharField(max_length=32, choices=EventType.choices, db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="visit_workflow_logs",
+    )
+    actor_name = models.CharField(max_length=180, blank=True, default="")
+    actor_role = models.CharField(max_length=120, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["visit", "-created_at"])]
+
+    @classmethod
+    def record(cls, *, visit, event_type, actor=None, description="", details=None):
+        actor_name = "ระบบ"
+        actor_role = "ระบบ"
+        if actor and getattr(actor, "is_authenticated", False):
+            actor_name = actor.get_full_name().strip() or actor.username
+            if actor.is_superuser:
+                actor_role = "ผู้ดูแลระบบสูงสุด"
+            else:
+                profile = getattr(actor, "hospital_staff_profile", None)
+                actor_role = profile.get_role_display() if profile else "บุคลากร"
+        return cls.objects.create(
+            visit=visit,
+            event_type=event_type,
+            actor=actor if actor and getattr(actor, "is_authenticated", False) else None,
+            actor_name=actor_name,
+            actor_role=actor_role,
+            description=description,
+            details=details or {},
+        )
 
 
 class Device(models.Model):

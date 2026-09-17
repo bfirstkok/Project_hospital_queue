@@ -24,6 +24,7 @@ urlpatterns = [
     path("return-to-vitals/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(views.return_to_waiting_vitals), name="return_to_waiting_vitals"),
     path("triage/<int:visit_id>/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.triage_visit), name="triage_visit"),
     path("call/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.call_visit), name="call_visit"),
+    path("adjust/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.adjust_queue), name="adjust_queue"),
     path("monitoring/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.send_to_monitoring), name="send_to_monitoring"),
     path("discharge/<int:visit_id>/", capability_required(Capability.END_MONITORING)(views.discharge_visit), name="discharge_visit"),
     path("cancel/<int:visit_id>/", capability_required(Capability.MANAGE_QUEUE)(views.cancel_queue), name="cancel_queue"),

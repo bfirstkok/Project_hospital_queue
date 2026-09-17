@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from queues.models import Queue, Visit, VitalSign
+from queues.models import Queue, Visit, VisitWorkflowLog, VitalSign
 from .models import Patient
 
 
@@ -283,3 +283,42 @@ class PublicPatientApiTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertFalse(response.json()["ok"])
+
+
+class PatientWorkflowHistoryTests(TestCase):
+    def test_history_displays_accountable_staff_and_audit_timeline(self):
+        staff = get_user_model().objects.create_superuser(
+            username="auditor",
+            password="test-password",
+            first_name="ผู้ตรวจ",
+            last_name="ระบบ",
+        )
+        patient = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="มีประวัติ",
+            national_id="7555555555555",
+        )
+        visit = Visit.objects.create(patient=patient)
+        Queue.objects.create(visit=visit, status=Queue.Status.WAITING_QUEUE)
+        VitalSign.objects.create(visit=visit, rr=18, pr=80, o2sat=98)
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.VITALS_RECORDED,
+            actor=staff,
+            description="ตรวจสัญญาณชีพครบถ้วน",
+        )
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
+            actor=staff,
+            description="ยืนยันผลคัดกรอง",
+        )
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("patient_history", args=[patient.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ผู้รับผิดชอบในกระบวนการ")
+        self.assertContains(response, "ประวัติการดำเนินการ (Audit Log)")
+        self.assertContains(response, "ผู้ตรวจ ระบบ")
+        self.assertContains(response, "ตรวจสัญญาณชีพครบถ้วน")

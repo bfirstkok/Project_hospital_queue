@@ -23,7 +23,7 @@ from django.apps import apps
 from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
-from .models import CriticalAlert, IoTVital, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult
+from .models import CriticalAlert, IoTVital, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
@@ -179,7 +179,7 @@ def queue_list(request):
         .select_related("visit", "visit__patient", "visit__triage_result")
         .prefetch_related("visit__nurse_care_assignments__nurse")
         .filter(status__in=QUEUE_READY_STATUSES)
-        .order_by("priority", "visit__confirmed_at", "created_at", "pk")
+        .order_by("priority", "-is_expedited", "visit__confirmed_at", "created_at", "pk")
     )
 
     search_query = request.GET.get("q", "").strip()
@@ -243,6 +243,87 @@ def queue_list(request):
     })
 
 
+@login_required
+@require_POST
+@transaction.atomic
+def adjust_queue(request, visit_id: int):
+    """Allow queue staff to expedite or renumber a queue with a required audit reason."""
+    queue_item = get_object_or_404(
+        Queue.objects.select_for_update().select_related("visit", "visit__patient"),
+        visit_id=visit_id,
+        status__in=QUEUE_READY_STATUSES,
+    )
+    reason = request.POST.get("reason", "").strip()
+    mode = request.POST.get("queue_mode", "normal")
+    requested_number = request.POST.get("queue_number", "").strip().upper()
+
+    if len(reason) < 3:
+        messages.error(request, "กรุณาระบุเหตุผลในการปรับคิวอย่างน้อย 3 ตัวอักษร")
+        return redirect("queue_list")
+    if mode not in {"normal", "expedited"}:
+        messages.error(request, "รูปแบบการจัดลำดับคิวไม่ถูกต้อง")
+        return redirect("queue_list")
+
+    if requested_number.startswith("Q"):
+        requested_number = requested_number[1:]
+    if requested_number:
+        if not requested_number.isdigit() or not 1 <= int(requested_number) <= 9999:
+            messages.error(request, "เลขคิวต้องเป็นตัวเลข 1–9999 เช่น 12 หรือ Q012")
+            return redirect("queue_list")
+        new_sequence = int(requested_number)
+        requested_display = f"Q{new_sequence:03d}"
+        has_duplicate = any(
+            other.display_number == requested_display
+            for other in Queue.objects.filter(status__in=QUEUE_READY_STATUSES).exclude(pk=queue_item.pk)
+        )
+        if has_duplicate:
+            messages.error(request, f"เลขคิว {requested_display} ถูกใช้งานอยู่ กรุณาเลือกเลขอื่น")
+            return redirect("queue_list")
+    else:
+        new_sequence = None
+
+    old_display = queue_item.display_number
+    old_expedited = queue_item.is_expedited
+    old_sequence = queue_item.manual_sequence
+    new_expedited = mode == "expedited"
+    changed_fields = []
+    if old_expedited != new_expedited:
+        queue_item.is_expedited = new_expedited
+        changed_fields.append("is_expedited")
+    if old_sequence != new_sequence:
+        queue_item.manual_sequence = new_sequence
+        changed_fields.append("manual_sequence")
+
+    if not changed_fields:
+        messages.info(request, "ไม่มีข้อมูลคิวที่เปลี่ยนแปลง")
+        return redirect("queue_list")
+
+    queue_item.save(update_fields=changed_fields)
+    if old_expedited != new_expedited:
+        VisitWorkflowLog.record(
+            visit=queue_item.visit,
+            event_type=(
+                VisitWorkflowLog.EventType.QUEUE_EXPEDITED
+                if new_expedited
+                else VisitWorkflowLog.EventType.QUEUE_RESTORED
+            ),
+            actor=request.user,
+            description=reason,
+            details={"from": old_expedited, "to": new_expedited},
+        )
+    if old_sequence != new_sequence:
+        VisitWorkflowLog.record(
+            visit=queue_item.visit,
+            event_type=VisitWorkflowLog.EventType.QUEUE_NUMBER_CHANGED,
+            actor=request.user,
+            description=f"{old_display} → {queue_item.display_number}: {reason}",
+            details={"from": old_display, "to": queue_item.display_number},
+        )
+
+    messages.success(request, f"ปรับคิว {old_display} เป็น {queue_item.display_number} และบันทึก Log แล้ว")
+    return redirect("queue_list")
+
+
 @require_GET
 def queue_display(request):
     """Privacy-safe waiting-room display; exposes queue numbers, never patient data."""
@@ -250,7 +331,7 @@ def queue_display(request):
         Queue.objects
         .select_related("visit")
         .filter(status__in=QUEUE_READY_STATUSES)
-        .order_by("priority", "visit__confirmed_at", "created_at")
+        .order_by("priority", "-is_expedited", "visit__confirmed_at", "created_at")
     )
     return render(request, "queues/queue_display.html", {"q_items": q_items})
 
@@ -404,6 +485,13 @@ def call_visit(request, visit_id: int):
 
         visit.called_at = timezone.now()
         visit.save(update_fields=["called_at"])
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.QUEUE_CALLED,
+            actor=request.user,
+            description=f"เรียกเข้าห้องตรวจ {room}",
+            details={"exam_room": int(room), "queue_number": q.display_number},
+        )
 
         return redirect("opd_list")
 
@@ -474,6 +562,21 @@ def nurse_triage_assessment(request, visit_id: int):
             vitals.urgent_symptoms = form.cleaned_data.get("urgent_symptoms") or []
             vitals.risk_flags = form.cleaned_data.get("risk_flags") or []
             vitals.save()
+            VisitWorkflowLog.record(
+                visit=visit,
+                event_type=VisitWorkflowLog.EventType.VITALS_RECORDED,
+                actor=request.user,
+                description="บันทึกข้อมูลสัญญาณชีพจากจุดวัดค่า",
+                details={
+                    "rr": vitals.rr,
+                    "pr": vitals.pr,
+                    "sys_bp": vitals.sys_bp,
+                    "dia_bp": vitals.dia_bp,
+                    "bt": vitals.bt,
+                    "o2sat": vitals.o2sat,
+                    "is_draft": is_draft,
+                },
+            )
             create_critical_alerts_for_visit(visit, vitals, source="triage")
 
             visit.note = form.cleaned_data.get("symptoms", "")
@@ -560,6 +663,13 @@ def triage_visit(request, visit_id: int):
     triage_result.nurse_severity = new_sev
     triage_result.nurse_note = nurse_note
     triage_result.save(update_fields=["nurse_severity", "nurse_note"])
+    VisitWorkflowLog.record(
+        visit=visit,
+        event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
+        actor=request.user,
+        description=nurse_note or f"ยืนยันผลคัดกรองระดับ {new_sev}",
+        details={"severity": new_sev, "ai_severity": triage_result.ai_severity},
+    )
 
     if new_sev == Visit.Severity.RED:
         messages.error(request, "RED: ช่วยเหลือทันที ส่งต่อฉุกเฉิน ไม่เข้าคิว OPD และไม่รอสวมนาฬิกา")
@@ -641,6 +751,13 @@ def update_severity_api(request, visit_id: int):
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
         triage_result.save(update_fields=["nurse_severity"])
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
+            actor=request.user,
+            description="ปรับระดับความเร่งด่วนจากหน้าจัดการคิว",
+            details={"severity": new_sev},
+        )
 
         return JsonResponse({
             "ok": True,

@@ -9,7 +9,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
-from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign
+from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign, VisitWorkflowLog
 from queues.triage import SEVERITY_LEVELS
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
@@ -308,6 +308,13 @@ def visit_assessment(request, visit_id: int):
             color, reasons = _compute_opd(assessment)
             assessment.opd_urgency = color
             assessment.save()
+            VisitWorkflowLog.record(
+                visit=visit,
+                event_type=VisitWorkflowLog.EventType.DOCTOR_ASSESSMENT,
+                actor=examiner,
+                description=assessment.diagnosis or "แพทย์บันทึกผลประเมินผู้ป่วย",
+                details={"opd_urgency": assessment.opd_urgency},
+            )
 
             # (ทางเลือก) ปรับสี final ตาม OPD auto
             if color in ["RED", "YELLOW"]:

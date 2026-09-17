@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from patients.models import Patient
-from queues.models import Queue, StaffProfile, Visit
+from queues.models import Queue, StaffProfile, Visit, VisitWorkflowLog
 
 from .models import VisitAssessment
 
@@ -82,3 +82,9 @@ class DoctorSelectionTests(TestCase):
         self.assertRedirects(response, reverse("opd_visit_detail", args=[self.visit.id]))
         assessment = VisitAssessment.objects.get(visit=self.visit)
         self.assertEqual(assessment.examiner, self.operator)
+        log = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.DOCTOR_ASSESSMENT,
+        )
+        self.assertEqual(log.actor, self.operator)
+        self.assertEqual(log.actor_name, "แพทย์ ผู้ใช้งาน")
