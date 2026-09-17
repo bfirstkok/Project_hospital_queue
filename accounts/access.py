@@ -10,6 +10,7 @@ class Capability:
     VIEW_DASHBOARD = "view_dashboard"
     VIEW_QUEUE = "view_queue"
     MANAGE_QUEUE = "manage_queue"
+    TRANSFER_PATIENT = "transfer_patient"
     VIEW_EMERGENCY = "view_emergency"
     REGISTER_PATIENT = "register_patient"
     VIEW_PATIENT = "view_patient"
@@ -31,6 +32,7 @@ class Capability:
 ROLE_CAPABILITIES = {
     StaffProfile.Role.DOCTOR: {
         Capability.DOCTOR_ASSESSMENT,
+        Capability.TRANSFER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
@@ -61,6 +63,7 @@ ROLE_CAPABILITIES = {
     StaffProfile.Role.QUEUE_OPERATOR: {
         Capability.VIEW_QUEUE,
         Capability.MANAGE_QUEUE,
+        Capability.TRANSFER_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
     StaffProfile.Role.BIOMEDICAL: {
@@ -71,12 +74,12 @@ ROLE_CAPABILITIES = {
 
 
 ROLE_DESCRIPTIONS = {
-    StaffProfile.Role.DOCTOR: "ตรวจรักษา บันทึกผลประเมิน และดูข้อมูลผู้ป่วยที่เกี่ยวข้อง",
+    StaffProfile.Role.DOCTOR: "ตรวจรักษา บันทึกผลประเมิน ย้ายผู้ป่วยระหว่างห้องตรวจเมื่อจำเป็น และดูข้อมูลผู้ป่วยที่เกี่ยวข้อง",
     StaffProfile.Role.NURSE: "คัดกรอง ยืนยันระดับความเร่งด่วน เฝ้าระวัง และตอบรับสัญญาณเตือน",
     StaffProfile.Role.NURSE_ASSISTANT: "วัดและบันทึกสัญญาณชีพภายใต้การกำกับของพยาบาลวิชาชีพ",
     StaffProfile.Role.EMERGENCY: "รับช่วงและดูแลรายการผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
     StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
-    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ และจัดสถานะคิวบริการ",
+    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ ย้ายผู้ป่วย และจัดสถานะคิวบริการ",
     StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
 }
 
@@ -84,6 +87,7 @@ CAPABILITY_LABELS = {
     Capability.VIEW_DASHBOARD: "ดูแดชบอร์ดภาพรวม",
     Capability.VIEW_QUEUE: "ดูรายการคิว",
     Capability.MANAGE_QUEUE: "เรียกคิว ปรับลำดับ/เลขคิว และเปลี่ยนสถานะบริการ",
+    Capability.TRANSFER_PATIENT: "ย้ายผู้ป่วยระหว่างห้องตรวจหรือส่งกลับไปรอเรียก",
     Capability.VIEW_EMERGENCY: "รับช่วงรายการผู้ป่วยฉุกเฉิน",
     Capability.REGISTER_PATIENT: "ลงทะเบียนผู้ป่วย",
     Capability.VIEW_PATIENT: "ค้นหาและดูประวัติผู้ป่วย",
