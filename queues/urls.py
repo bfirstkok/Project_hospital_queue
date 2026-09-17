@@ -2,6 +2,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 from . import views
 from . import personnel_views
+from . import shift_views
 from . import triage_confirmation
 from . import transfer_views
 
@@ -16,7 +17,7 @@ urlpatterns = [
     path("waiting-confirmation/", capability_required(Capability.CONFIRM_TRIAGE)(triage_confirmation.waiting_confirmation), name="waiting_confirmation"),
     path("emergency-transfers/", capability_required(Capability.VIEW_EMERGENCY)(views.emergency_transfers), name="emergency_transfers"),
     path("personnel/", capability_required(Capability.VIEW_PERSONNEL)(personnel_views.personnel_dashboard), name="personnel_dashboard"),
-    path("shifts/", capability_required(Capability.VIEW_SHIFT_SCHEDULE)(personnel_views.shift_schedule), name="shift_schedule"),
+    path("shifts/", capability_required(Capability.VIEW_SHIFT_SCHEDULE)(shift_views.shift_schedule), name="shift_schedule"),
     path("personnel/heartbeat/", personnel_views.staff_heartbeat, name="staff_heartbeat"),
     path("personnel/photo/<int:profile_id>/", personnel_views.staff_photo, name="staff_photo"),
 
