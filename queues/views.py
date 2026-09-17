@@ -339,13 +339,31 @@ def waiting_confirmation(request):
 
 @login_required
 def emergency_transfers(request):
-    q_items = (
+    queryset = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result", "visit__vitals")
         .filter(status=Queue.Status.EMERGENCY_TRANSFER)
-        .order_by("visit__confirmed_at", "created_at")
+        .order_by("priority", "visit__confirmed_at", "created_at")
     )
-    return render(request, "queues/emergency_transfers.html", {"q_items": q_items})
+    severity_counts = {
+        "red": queryset.filter(visit__final_severity=Visit.Severity.RED).count(),
+        "pink": queryset.filter(visit__final_severity=Visit.Severity.PINK).count(),
+    }
+    paginator = Paginator(queryset, 10)
+    page = paginator.get_page(request.GET.get("page"))
+    for queue_item in page.object_list:
+        triage_result = getattr(queue_item.visit, "triage_result", None)
+        queue_item.ai_reason_display = localize_ai_reason(
+            getattr(triage_result, "ai_reason", "")
+        )
+
+    return render(request, "queues/emergency_transfers.html", {
+        "q_items": page,
+        "page_obj": page,
+        "emergency_total": paginator.count,
+        "red_total": severity_counts["red"],
+        "pink_total": severity_counts["pink"],
+    })
 
 
 @login_required

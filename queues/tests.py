@@ -928,8 +928,10 @@ class ConfirmedTriageFlowTests(TestCase):
         self.assertIsNotNone(assignment.unpaired_at)
 
         page = self.client.get(reverse("emergency_transfers"))
-        self.assertContains(page, 'class="topbar"')
-        self.assertContains(page, "ผู้ป่วยระดับ 1–2 ที่ต้องรับช่วงในระบบฉุกเฉิน")
+        self.assertContains(page, 'class="emergency-hero"')
+        self.assertContains(page, "ศูนย์รับช่วงผู้ป่วยฉุกเฉิน")
+        self.assertContains(page, "ยืนยันโดยพยาบาล")
+        self.assertContains(page, "ดูประวัติผู้ป่วย")
         self.assertContains(page, 'class="main-nav"')
 
     def test_yellow_enters_observation_queue_and_can_pair_wearable(self):
