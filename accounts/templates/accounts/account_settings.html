@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ตั้งค่าบัญชี</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",sans-serif}.wrap{width:min(760px,calc(100% - 28px));margin:26px auto 60px}.hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:24px;border-radius:18px;background:#fff;border:1px solid #d7e4e7}.hero h1{margin:0;font-size:28px}.hero p{margin:6px 0 0;color:#506975;font-size:13px;font-weight:600}.back{padding:9px 12px;border:1px solid #cbdcdf;border-radius:9px;color:#365767;text-decoration:none;font-size:12px;font-weight:800;background:#f8fbfb}.card{margin-top:14px;padding:22px;border:1px solid #d8e5e8;border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(31,67,78,.05)}.account{display:flex;align-items:center;gap:12px;padding:13px;border-radius:12px;background:#f6fafb}.avatar{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#e2f3f0;color:#087f75;font-size:16px;font-weight:800}.account b{display:block;font-size:14px}.account small{display:block;margin-top:2px;color:#617783;font-size:11px}.section-title{margin:20px 0 5px;font-size:19px}.hint{margin:0 0 14px;color:#617783;font-size:12px;line-height:1.6}.messages{display:grid;gap:8px;margin:14px 0}.message{padding:10px 12px;border:1px solid #a9ddc7;border-radius:9px;background:#eaf8f1;color:#176846;font-size:12px;font-weight:700}.field{display:grid;gap:5px;margin-top:11px}.field label{color:#355565;font-size:12px;font-weight:800}.field input{width:100%;height:42px;padding:0 12px;border:1px solid #bfd0d5;border-radius:9px;background:#fff;color:#17324d;font:600 14px "Sarabun",sans-serif;outline:none}.field input:focus{border-color:#07877d;box-shadow:0 0 0 3px rgba(7,135,125,.09)}.help{margin-top:4px;color:#6b808a;font-size:10px;line-height:1.5}.errors{margin:4px 0 0;padding:8px 10px;border:1px solid #efb7bf;border-radius:8px;background:#fff2f4;color:#9d2334;font-size:11px;line-height:1.5}.errors ul{margin:0;padding-left:18px}.actions{display:flex;gap:8px;margin-top:18px}.btn{min-height:41px;padding:9px 15px;border:1px solid #bfd0d5;border-radius:9px;background:#fff;color:#355565;font:800 12px "Sarabun",sans-serif;text-decoration:none;cursor:pointer}.btn.primary{border-color:#087f75;background:#087f75;color:#fff}.security{margin-top:16px;padding:13px;border-radius:11px;background:#fff8e7;color:#765400;font-size:11px;line-height:1.6}@media(max-width:620px){.hero{flex-direction:column}.back{width:100%;text-align:center}.actions{flex-direction:column}.btn{width:100%}}
+  </style>
+</head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="wrap">
+  <section class="hero">
+    <div><h1>ตั้งค่าบัญชี</h1><p>จัดการความปลอดภัยของบัญชีที่กำลังใช้งาน</p></div>
+    <a class="back" href="{% url 'my_permissions' %}">← กลับหน้าบัญชี</a>
+  </section>
+
+  {% if messages %}<div class="messages">{% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="card">
+    <div class="account">
+      <span class="avatar">{{ request.user.get_full_name|default:request.user.username|slice:":1" }}</span>
+      <span><b>{{ request.user.get_full_name|default:request.user.username }}</b><small>ชื่อผู้ใช้: {{ request.user.username }} · {{ access_role_label }}</small></span>
+    </div>
+
+    <h2 class="section-title">เปลี่ยนรหัสผ่าน</h2>
+    <p class="hint">เพื่อความปลอดภัย ระบบจะให้กรอกรหัสผ่านปัจจุบันก่อน และรหัสผ่านใหม่ต้องผ่านเงื่อนไขความปลอดภัยของระบบ</p>
+
+    {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_old_password">รหัสผ่านปัจจุบัน</label>
+        {{ form.old_password }}
+        {% if form.old_password.errors %}<div class="errors">{{ form.old_password.errors }}</div>{% endif %}
+      </div>
+      <div class="field">
+        <label for="id_new_password1">รหัสผ่านใหม่</label>
+        {{ form.new_password1 }}
+        {% if form.new_password1.help_text %}<div class="help">{{ form.new_password1.help_text|safe }}</div>{% endif %}
+        {% if form.new_password1.errors %}<div class="errors">{{ form.new_password1.errors }}</div>{% endif %}
+      </div>
+      <div class="field">
+        <label for="id_new_password2">ยืนยันรหัสผ่านใหม่</label>
+        {{ form.new_password2 }}
+        {% if form.new_password2.errors %}<div class="errors">{{ form.new_password2.errors }}</div>{% endif %}
+      </div>
+      <div class="actions"><button class="btn primary" type="submit">บันทึกรหัสผ่านใหม่</button><a class="btn" href="{% url 'role_landing' %}">ยกเลิก</a></div>
+    </form>
+
+    <div class="security">หลังเปลี่ยนรหัสผ่านสำเร็จ บัญชีนี้จะยังคงเข้าสู่ระบบอยู่ในอุปกรณ์ปัจจุบัน ไม่ต้องล็อกอินใหม่ทันที</div>
+  </section>
+</main>
+</body>
+</html>
