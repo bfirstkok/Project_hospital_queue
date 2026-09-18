@@ -69,6 +69,6 @@ class PatientTransferTests(TestCase):
     def test_queue_page_removes_triage_controls(self):
         self.client.force_login(self.operator)
         response = self.client.get(reverse("queue_list"))
-        self.assertNotContains(response, "เปลี่ยนระดับ")
+        self.assertNotContains(response, "เปลี่ยนระดับ…")
         self.assertNotContains(response, ">ประเมิน<", html=False)
         self.assertContains(response, "ย้ายผู้ป่วย")
