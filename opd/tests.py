@@ -66,7 +66,7 @@ class DoctorWorkspaceTests(TestCase):
             user=self.doctor,
             shift_date=timezone.localdate(),
             start_time=time(0, 0),
-            end_time=time(23, 59),
+            end_time=time.max,
             status=ShiftSchedule.Status.SCHEDULED,
             note="ประจำห้องตรวจ 1",
             created_by=self.doctor,
