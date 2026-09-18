@@ -28,11 +28,14 @@
     .pain-row { display: grid; grid-template-columns: 1fr 52px; gap: 14px; align-items: center; }
     .pain-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
     .pain-btn {
-      width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer;
+      flex: 1;
+      min-width: 32px;
+      height: 42px; border-radius: 10px; border: 1px solid #ccdcdf;
+      background: #ffffff; color: #274755;
+      font-weight: 800; font-size: 15px; cursor: pointer;
       display: flex; align-items: center; justify-content: center; transition: all .15s ease;
     }
-    .pain-btn:hover { background: rgba(0,212,170,.18); border-color: rgba(0,212,170,.4); }
+    .pain-btn:hover { background: #e6f5f2; border-color: #087f75; color: #075f58; }
     .pain-btn.active { background: linear-gradient(135deg, #00d4aa, #0096ff); color: #06111f; border-color: transparent; }
     .pain-value { padding: 9px 12px; border-radius: 8px; background: rgba(0,212,170,.14); text-align: center; font-weight: 800; }
     .add-symptom-row { display: flex; gap: 8px; margin-top: 12px; }
@@ -142,7 +145,11 @@
     .assessment-page .checks { grid-template-columns: 1fr; gap: 8px; }
     .assessment-page .checks label { min-height: 42px; padding: 9px 11px; background: #fff !important; cursor: pointer; }
     .assessment-page .checks label:has(input:checked) { border-color: #55aaa2 !important; background: #e9f7f5 !important; }
-    .pain-help { display: flex; justify-content: space-between; margin-top: 7px; color: #607783; font-size: 12px; }
+    .pain-help {
+      display: flex; justify-content: space-between; 
+      margin-top: 7px; color: #607783; font-size: 12px;
+      padding-right: 66px;
+    }
     .details-label { display: block; margin-bottom: 7px; }
     .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 22px 22px; background: #f8fbfb; }
     .assessment-page .form-actions .draft { background: #fff !important; color: #405d6b !important; border: 1px solid #cddce1 !important; box-shadow: none !important; }
@@ -479,14 +486,32 @@
       painValue.textContent = current;
     }
 
-    // ===== เพิ่มอาการที่ต้องเฝ้าระวังเองหน้างาน =====
     const customInput = document.getElementById("customSymptomInput");
     const addSymptomBtn = document.getElementById("addSymptomBtn");
     const symptomChecks = document.getElementById("urgentSymptomChecks");
+    const STORAGE_KEY = `custom_urgent_symptoms_${window.location.pathname.split('/').filter(Boolean).pop()}`;
 
-    function addCustomSymptom() {
-      const text = (customInput.value || "").trim();
-      if (!text || !symptomChecks) return;
+    function getCustomSymptoms() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveCustomSymptoms(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    function renderCustomSymptomCheckbox(text, isChecked = true) {
+      if (!symptomChecks) return;
+      const escapedVal = CSS.escape ? CSS.escape(text) : text;
+      const existingInput = Array.from(symptomChecks.querySelectorAll('input[name="urgent_symptoms"]'))
+        .find(input => input.value === text);
+      if (existingInput) {
+        existingInput.checked = isChecked;
+        return;
+      }
 
       const label = document.createElement("label");
       label.className = "custom-symptom";
@@ -495,15 +520,46 @@
       checkbox.type = "checkbox";
       checkbox.name = "urgent_symptoms";
       checkbox.value = text;
-      checkbox.checked = true;
+      checkbox.checked = isChecked;
+
+      checkbox.addEventListener("change", () => {
+        const saved = getCustomSymptoms();
+        const found = saved.find(item => item.text === text);
+        if (found) {
+          found.checked = checkbox.checked;
+          saveCustomSymptoms(saved);
+        }
+      });
 
       label.appendChild(checkbox);
       label.appendChild(document.createTextNode(" " + text));
       symptomChecks.appendChild(label);
+    }
+
+    function loadSavedCustomSymptoms() {
+      const saved = getCustomSymptoms();
+      saved.forEach(item => {
+        renderCustomSymptomCheckbox(item.text, item.checked);
+      });
+    }
+
+    function addCustomSymptom() {
+      const text = (customInput.value || "").trim();
+      if (!text || !symptomChecks) return;
+
+      renderCustomSymptomCheckbox(text, true);
+
+      const saved = getCustomSymptoms();
+      if (!saved.some(item => item.text === text)) {
+        saved.push({ text: text, checked: true });
+        saveCustomSymptoms(saved);
+      }
 
       customInput.value = "";
       customInput.focus();
     }
+
+    loadSavedCustomSymptoms();
 
     if (addSymptomBtn && customInput) {
       addSymptomBtn.addEventListener("click", addCustomSymptom);
