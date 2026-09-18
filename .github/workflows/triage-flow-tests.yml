@@ -54,5 +54,5 @@ jobs:
         run: python manage.py check
       - name: Verify migrations
         run: python manage.py makemigrations --check --dry-run
-      - name: Run account, queue and patient tests
-        run: python manage.py test accounts queues patients
+      - name: Run account, queue, patient and OPD tests
+        run: python manage.py test accounts queues patients opd
