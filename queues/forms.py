@@ -13,7 +13,12 @@ def pairable_visit_query():
         )
         | Q(queue__status=Queue.Status.MONITORING)
     )
+class ExtensibleMultipleChoiceField(forms.MultipleChoiceField):
+    """เหมือน MultipleChoiceField ปกติ แต่ยอมรับค่าที่พิมพ์เพิ่มเองหน้างาน
+    (นอกเหนือจาก choices ที่ตั้งไว้ล่วงหน้า) โดยไม่ error"""
 
+    def valid_value(self, value):
+        return True
 
 class NurseTriageAssessmentForm(forms.Form):
     YES_NO_CHOICES = [
@@ -61,9 +66,9 @@ class NurseTriageAssessmentForm(forms.Form):
         max_value=10,
         required=False,
         initial=0,
-        widget=forms.NumberInput(attrs={"type": "range", "min": 0, "max": 10, "step": 1}),
+        widget=forms.HiddenInput(),
     )
-    urgent_symptoms = forms.MultipleChoiceField(
+    urgent_symptoms = ExtensibleMultipleChoiceField(
         label="อาการเร่งด่วน",
         choices=URGENT_SYMPTOM_CHOICES,
         required=False,
