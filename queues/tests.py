@@ -958,13 +958,13 @@ class QueueWorkflowTests(TestCase):
 
         response = self.client.get(reverse("queue_list"))
         self.assertContains(response, "Demo Queue")
-        self.assertContains(response, "YELLOW")
         self.assertContains(response, "เวลารอ")
         self.assertContains(response, "js-wait-time")
         self.assertContains(response, "formatWaitDuration")
         self.assertContains(response, "data-end=\"\"")
         self.assertContains(response, "สีเหลือง · เร่งด่วน")
-        self.assertContains(response, "เปลี่ยนระดับ…")
+        self.assertContains(response, "จัดลำดับคิว")
+        self.assertNotContains(response, "เปลี่ยนระดับ…")
         self.assertContains(response, "เปิดจอแสดงคิวผู้ป่วย")
         self.assertContains(response, reverse("queue_display"))
 
