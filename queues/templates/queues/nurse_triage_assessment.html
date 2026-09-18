@@ -26,8 +26,26 @@
     .checks li { display: contents; }
     .checks label { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); font-size: 13px; }
     .pain-row { display: grid; grid-template-columns: 1fr 52px; gap: 14px; align-items: center; }
-    input[type="range"] { width: 100%; accent-color: #00d4aa; }
+    .pain-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pain-btn {
+      width: 42px; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all .15s ease;
+    }
+    .pain-btn:hover { background: rgba(0,212,170,.18); border-color: rgba(0,212,170,.4); }
+    .pain-btn.active { background: linear-gradient(135deg, #00d4aa, #0096ff); color: #06111f; border-color: transparent; }
     .pain-value { padding: 9px 12px; border-radius: 8px; background: rgba(0,212,170,.14); text-align: center; font-weight: 800; }
+    .add-symptom-row { display: flex; gap: 8px; margin-top: 12px; }
+    .add-symptom-row input[type="text"] {
+      flex: 1; padding: 9px 11px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06); color: #fff;
+    }
+    .assessment-page .add-symptom-row input[type="text"] { background: #fff; color: #16241f; border-color: #cddce1; }
+    .add-symptom-btn {
+      border: 0; border-radius: 8px; padding: 0 16px; font-weight: 700; color: #06111f; cursor: pointer;
+      background: linear-gradient(135deg, #00d4aa, #0096ff);
+    }
+    .checks label.custom-symptom { border-style: dashed; }
     .btn { border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 700; color: #fff; cursor: pointer; }
     .primary { background: linear-gradient(135deg, #00d4aa, #0096ff); color: #06111f; }
     .draft { background: rgba(255,255,255,.12); }
@@ -230,9 +248,10 @@
           <div><h2>อาการและปัจจัยเสี่ยง</h2><p>เลือกเฉพาะข้อที่พบ สามารถเลือกได้มากกว่า 1 ข้อ</p></div>
         </div>
         <div class="choice-panel" style="margin-bottom:18px">
-        <h3>ระดับความปวด</h3>
+                <h3>ระดับความปวด</h3>
         <div class="pain-row">
           {{ form.pain_score }}
+          <div class="pain-buttons" id="painButtons"></div>
           <div class="pain-value" id="painValue">{{ form.pain_score.value|default:0 }}</div>
         </div>
         <div class="pain-help"><span>0 = ไม่ปวด</span><span>10 = ปวดมากที่สุด</span></div>
@@ -242,7 +261,11 @@
           <div class="choice-panel">
             <h3>อาการที่ต้องเฝ้าระวัง</h3>
             <p class="choice-help">หากไม่พบอาการเหล่านี้ ไม่ต้องเลือก</p>
-            <div class="checks">{{ form.urgent_symptoms }}</div>
+            <div class="checks" id="urgentSymptomChecks">{{ form.urgent_symptoms }}</div>
+            <div class="add-symptom-row">
+              <input type="text" id="customSymptomInput" placeholder="พิมพ์อาการที่ไม่มีในรายการ แล้วกด เพิ่ม">
+              <button type="button" class="add-symptom-btn" id="addSymptomBtn">+ เพิ่ม</button>
+            </div>
           </div>
           <div class="choice-panel">
             <h3>กลุ่มพิเศษ</h3>
@@ -433,10 +456,63 @@
 
     const pain = document.getElementById("id_pain_score");
     const painValue = document.getElementById("painValue");
-    if (pain && painValue) {
+    const painButtons = document.getElementById("painButtons");
+    if (pain && painValue && painButtons) {
       if (!pain.value) pain.value = 0;
-      painValue.textContent = pain.value;
-      pain.addEventListener("input", () => painValue.textContent = pain.value);
+      const current = parseInt(pain.value, 10) || 0;
+
+      for (let i = 0; i <= 10; i++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pain-btn" + (i === current ? " active" : "");
+        btn.textContent = i;
+        btn.dataset.value = i;
+        btn.addEventListener("click", () => {
+          pain.value = i;
+          painValue.textContent = i;
+          painButtons.querySelectorAll(".pain-btn").forEach((b) => {
+            b.classList.toggle("active", Number(b.dataset.value) === i);
+          });
+        });
+        painButtons.appendChild(btn);
+      }
+      painValue.textContent = current;
+    }
+
+    // ===== เพิ่มอาการที่ต้องเฝ้าระวังเองหน้างาน =====
+    const customInput = document.getElementById("customSymptomInput");
+    const addSymptomBtn = document.getElementById("addSymptomBtn");
+    const symptomChecks = document.getElementById("urgentSymptomChecks");
+
+    function addCustomSymptom() {
+      const text = (customInput.value || "").trim();
+      if (!text || !symptomChecks) return;
+
+      const label = document.createElement("label");
+      label.className = "custom-symptom";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.name = "urgent_symptoms";
+      checkbox.value = text;
+      checkbox.checked = true;
+
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(" " + text));
+      symptomChecks.appendChild(label);
+
+      customInput.value = "";
+      customInput.focus();
+    }
+
+    if (addSymptomBtn && customInput) {
+      addSymptomBtn.addEventListener("click", addCustomSymptom);
+      customInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addCustomSymptom();
+        }
+      });
     }
   </script>
 </body>
