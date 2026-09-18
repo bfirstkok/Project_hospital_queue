@@ -1,6 +1,7 @@
 from datetime import timedelta
 import random
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.shortcuts import render, get_object_or_404, redirect
@@ -10,6 +11,7 @@ from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
 from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign, VisitWorkflowLog
+from queues.room_assignment import active_doctor_room_assignment
 from queues.triage import SEVERITY_LEVELS
 from .models import VisitAssessment
 from .forms import VisitAssessmentForm
@@ -27,6 +29,14 @@ def _doctor_queryset():
 
 
 def _selected_examiner(request, visit_id):
+    profile = getattr(request.user, "hospital_staff_profile", None)
+    if (
+        not request.user.is_superuser
+        and profile
+        and profile.role == StaffProfile.Role.DOCTOR
+    ):
+        return request.user
+
     if request.session.get("opd_examiner_visit_id") != visit_id:
         return None
     doctor_id = request.session.get("opd_examiner_id")
@@ -161,9 +171,14 @@ def _opd_queue_payload(q_items):
 # -----------------------------
 @login_required
 def opd_list(request):
-    selected_room = request.session.get("opd_exam_room")
-    if selected_room not in EXAM_ROOMS:
-        return redirect("opd_room_select")
+    room_assignment = active_doctor_room_assignment(request.user)
+    if room_assignment:
+        selected_room = room_assignment.room
+        request.session["opd_exam_room"] = selected_room
+    else:
+        selected_room = request.session.get("opd_exam_room")
+        if selected_room not in EXAM_ROOMS:
+            return redirect("opd_room_select")
 
     q_items = _opd_queue_queryset(selected_room)
     
@@ -183,19 +198,27 @@ def opd_list(request):
         "white_count": severity_counts["WHITE"],
         "selected_room": selected_room,
         "rooms": EXAM_ROOMS,
+        "room_locked": bool(room_assignment),
+        "room_assignment": room_assignment,
     })
 
 
 @login_required
 def opd_list_api(request):
-    selected_room = request.session.get("opd_exam_room")
-    if selected_room not in EXAM_ROOMS:
-        return JsonResponse({"ok": False, "error": "no_exam_room"}, status=400)
+    room_assignment = active_doctor_room_assignment(request.user)
+    if room_assignment:
+        selected_room = room_assignment.room
+        request.session["opd_exam_room"] = selected_room
+    else:
+        selected_room = request.session.get("opd_exam_room")
+        if selected_room not in EXAM_ROOMS:
+            return JsonResponse({"ok": False, "error": "no_exam_room"}, status=400)
 
     payload = _opd_queue_payload(_opd_queue_queryset(selected_room))
     payload.update({
         "ok": True,
         "selected_room": selected_room,
+        "room_locked": bool(room_assignment),
         "server_time": timezone.now().isoformat(),
     })
     return JsonResponse(payload)
@@ -203,6 +226,11 @@ def opd_list_api(request):
 
 @login_required
 def opd_room_select(request):
+    room_assignment = active_doctor_room_assignment(request.user)
+    if room_assignment:
+        request.session["opd_exam_room"] = room_assignment.room
+        return redirect("opd_list")
+
     if request.method == "POST":
         room = request.POST.get("exam_room")
         if room in {"1", "2", "3"}:
@@ -231,6 +259,24 @@ def select_examiner(request, visit_id: int):
     q = getattr(visit, "queue", None)
     if not q or q.status != Queue.Status.CALLED:
         return redirect("opd_list")
+
+    room_assignment = active_doctor_room_assignment(request.user)
+    if room_assignment and q.exam_room != room_assignment.room:
+        messages.error(
+            request,
+            f"บัญชีนี้ประจำห้องตรวจ {room_assignment.room} ในช่วงเวลานี้ จึงไม่สามารถเปิดเคสของห้อง {q.exam_room or '-'} ได้",
+        )
+        return redirect("opd_list")
+
+    profile = getattr(request.user, "hospital_staff_profile", None)
+    if (
+        not request.user.is_superuser
+        and profile
+        and profile.role == StaffProfile.Role.DOCTOR
+    ):
+        request.session["opd_examiner_id"] = request.user.id
+        request.session["opd_examiner_visit_id"] = visit.id
+        return redirect("visit_assessment", visit_id=visit.id)
 
     doctors = list(
         _doctor_queryset()
@@ -290,6 +336,14 @@ def visit_assessment(request, visit_id: int):
 
     q = getattr(visit, "queue", None)
     if not q or q.status != "CALLED":
+        return redirect("opd_list")
+
+    room_assignment = active_doctor_room_assignment(request.user)
+    if room_assignment and q.exam_room != room_assignment.room:
+        messages.error(
+            request,
+            f"บัญชีนี้ถูกล็อกไว้ที่ห้องตรวจ {room_assignment.room} ตามตารางเวรปัจจุบัน",
+        )
         return redirect("opd_list")
 
     examiner = _selected_examiner(request, visit.id)
@@ -368,9 +422,18 @@ def visit_assessment(request, visit_id: int):
 @login_required
 def opd_visit_detail(request, visit_id: int):
     visit = get_object_or_404(
-        Visit.objects.select_related("patient", "vitals", "triage_result"),
+        Visit.objects.select_related("patient", "vitals", "triage_result", "queue"),
         pk=visit_id,
     )
+    room_assignment = active_doctor_room_assignment(request.user)
+    q = getattr(visit, "queue", None)
+    if room_assignment and q and q.exam_room != room_assignment.room:
+        messages.error(
+            request,
+            f"บัญชีนี้ถูกล็อกไว้ที่ห้องตรวจ {room_assignment.room} ตามตารางเวรปัจจุบัน",
+        )
+        return redirect("opd_list")
+
     logs = TelemetryLog.objects.filter(visit=visit).select_related("device").order_by("-ts")[:50]
 
     # ดึงข้อมูล assessment ถ้ามี
