@@ -15,7 +15,7 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, IoTVital, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -287,17 +287,17 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertTrue(payload["success"])
         self.assertEqual(payload["visit_id"], self.visit.id)
 
-        vital = IoTVital.objects.get()
-        self.assertEqual(vital.patient_db_id, self.patient.id)
-        self.assertEqual(vital.patient_identifier, self.patient.hn)
-        self.assertIsNone(vital.blood_pressure_sys)
-        self.assertIsNone(vital.blood_pressure_dia)
-
         log = TelemetryLog.objects.get()
         self.assertEqual(log.visit, self.visit)
         self.assertEqual(log.device, self.device)
+        self.assertEqual(log.bpm, 92)
+        self.assertEqual(log.o2sat, 98)
+        self.assertEqual(log.bt, 37.1)
+        self.assertEqual(log.rr, 18)
         self.assertIsNone(log.sys_bp)
         self.assertIsNone(log.dia_bp)
+        self.assertEqual(payload["id"], log.id)
+        self.assertEqual(payload["telemetry_log_id"], log.id)
 
         vitals = VitalSign.objects.get(visit=self.visit)
         self.assertIsNone(vitals.sys_bp)
@@ -312,7 +312,6 @@ class IotTelemetryAssignmentTests(TestCase):
         })
 
         self.assertEqual(response.status_code, 409)
-        self.assertEqual(IoTVital.objects.count(), 0)
         self.assertEqual(TelemetryLog.objects.count(), 0)
 
     def test_post_opd_monitoring_patient_can_send_wearable_telemetry(self):
