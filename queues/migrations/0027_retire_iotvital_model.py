@@ -9,10 +9,20 @@ class Migration(migrations.Migration):
     operations = [
         migrations.SeparateDatabaseAndState(
             # IoTVital duplicated active wearable readings already stored in
-            # TelemetryLog. Remove it from Django's active model state now, but
-            # keep the legacy physical table temporarily so production history
-            # can be backed up/verified before a later destructive cleanup.
-            database_operations=[],
+            # TelemetryLog. Retire it from the active schema without destroying
+            # historical rows: the old table is renamed as a legacy archive.
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        "ALTER TABLE queues_iotvital "
+                        "RENAME TO queues_iotvital_legacy_archive"
+                    ),
+                    reverse_sql=(
+                        "ALTER TABLE queues_iotvital_legacy_archive "
+                        "RENAME TO queues_iotvital"
+                    ),
+                ),
+            ],
             state_operations=[
                 migrations.DeleteModel(
                     name="IoTVital",
