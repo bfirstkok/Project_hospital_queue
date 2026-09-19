@@ -30,6 +30,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="accountstatuslog",
-            index=models.Index(fields=["user", "-created_at"], name="accounts_ac_user_id_839258_idx"),
+            index=models.Index(fields=["user", "-created_at"], name="acct_status_user_created_idx"),
         ),
     ]
