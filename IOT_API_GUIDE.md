@@ -67,7 +67,7 @@ Body ตัวอย่าง:
 }
 ```
 
-หมายเหตุ: `patient_id` ต้องตรงกับผู้ป่วยที่มีอยู่ในระบบ โดยระบบจะค้นจาก `HN`, `national_id`, หรือ internal patient id
+หมายเหตุ: `patient_id` เป็น optional field สำหรับตรวจซ้ำกับ active device pairing เท่านั้น หากส่งมา ระบบจะค้นจาก `HN`, `national_id`, หรือ internal patient id และต้องตรงกับผู้ป่วยของ Visit ที่อุปกรณ์ถูกผูกอยู่
 
 ## Responses
 
@@ -140,11 +140,13 @@ curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
 
 ## Sync Behavior
 
-- ถ้า `device_id` และ `X-API-Key` ถูกต้อง และ device active ระบบจะตรวจ `patient_id`
-- ถ้าไม่พบ `patient_id` ระบบตอบ `404 Patient not found` และไม่บันทึก `TelemetryLog`
-- ถ้าพบ `patient_id` ระบบบันทึก `TelemetryLog`
-- ถ้าผู้ป่วยมี visit ล่าสุดที่ยังไม่จบ ระบบ sync ค่าเข้า `VitalSign` ของ visit นั้น และเรียก AI/guardrail evaluation ต่อ
-- ถ้าผู้ป่วยไม่มี visit ที่ยังไม่จบ ระบบจะไม่รับข้อมูลหากอุปกรณ์ไม่ได้ผูกกับ Visit ที่อนุญาตให้เฝ้าระวัง
+- ระบบยึด active `DeviceAssignment` เป็นแหล่งจริงในการหา `Visit` และผู้ป่วยของอุปกรณ์
+- ถ้า `device_id` หรือ `X-API-Key` ไม่ถูกต้อง หรือ device ไม่ active ระบบจะปฏิเสธ request
+- ถ้า device ยังไม่ได้ผูกกับ Visit ระบบตอบ `409 Device is not paired to an active visit` และไม่บันทึก `TelemetryLog`
+- ระบบรับ wearable data เฉพาะ Visit ที่อยู่ในสถานะ monitoring ที่อนุญาต
+- เมื่อรับข้อมูลสำเร็จ ระบบสร้าง `TelemetryLog` หนึ่งรายการ แล้ว sync ค่าล่าสุดเข้า `VitalSign`
+- หากส่ง `patient_id` มาด้วย ระบบใช้เพื่อตรวจความสอดคล้องกับ active pairing; ถ้าไม่พบผู้ป่วยตอบ `404` และถ้าเป็นผู้ป่วยคนละคนตอบ `409`
+- หลัง sync `VitalSign` ระบบตรวจ Critical Alert และเรียก AI/guardrail evaluation ตาม workflow ปัจจุบัน
 
 ## Device-only payload update
 
