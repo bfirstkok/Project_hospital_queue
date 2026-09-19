@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 from accounts.access import Capability, has_capability
+from accounts.models import AccountStatusLog
 
 from .care_workload import (
     MAX_PATIENTS_PER_NURSE,
@@ -333,7 +334,67 @@ def personnel_dashboard(request):
             )
         action = request.POST.get("action", "")
 
-        if action == "set_attendance":
+        if action == "set_account_status":
+            staff_user = get_object_or_404(
+                user_model.objects.select_related("hospital_staff_profile"),
+                pk=request.POST.get("user_id"),
+                hospital_staff_profile__isnull=False,
+            )
+            if staff_user.is_superuser:
+                messages.error(request, "ไม่อนุญาตให้ระงับหรือเปิดใช้งานบัญชีผู้ดูแลระบบสูงสุดจากหน้านี้")
+                return redirect("personnel_dashboard")
+            if staff_user.pk == request.user.pk:
+                messages.error(request, "ไม่สามารถเปลี่ยนสถานะบัญชีของตนเองจากหน้านี้ได้")
+                return redirect("personnel_dashboard")
+
+            reason = request.POST.get("reason", "").strip()
+            if len(reason) < 3:
+                messages.error(request, "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษรเพื่อเก็บ Audit Trail")
+                return redirect("personnel_dashboard")
+
+            new_is_active = request.POST.get("is_active") == "1"
+            if staff_user.is_active == new_is_active:
+                messages.warning(request, "บัญชีอยู่ในสถานะที่เลือกอยู่แล้ว")
+                return redirect("personnel_dashboard")
+
+            if not new_is_active:
+                StaffDuty.objects.filter(user=staff_user, duty_date=today).update(
+                    is_present=False,
+                    is_available=False,
+                    checked_out_at=now,
+                    last_seen_at=now,
+                )
+                profile = getattr(staff_user, "hospital_staff_profile", None)
+                if profile and profile.role == StaffProfile.Role.NURSE:
+                    result = handover_nurse_cases(from_nurse=staff_user, assigned_by=request.user)
+                    if result.moved or result.unassigned:
+                        messages.warning(
+                            request,
+                            _handover_message(staff_user.get_full_name() or staff_user.username, result),
+                        )
+
+            staff_user.is_active = new_is_active
+            staff_user.save(update_fields=["is_active"])
+            AccountStatusLog.objects.create(
+                user=staff_user,
+                action=(
+                    AccountStatusLog.Action.ACTIVATE
+                    if new_is_active
+                    else AccountStatusLog.Action.SUSPEND
+                ),
+                reason=reason,
+                actor=request.user,
+            )
+            messages.success(
+                request,
+                (
+                    f"เปิดใช้งานบัญชี {staff_user.get_full_name() or staff_user.username} แล้ว"
+                    if new_is_active
+                    else f"ระงับบัญชี {staff_user.get_full_name() or staff_user.username} แล้ว"
+                ),
+            )
+
+        elif action == "set_attendance":
             staff_user = get_object_or_404(user_model, pk=request.POST.get("user_id"), is_active=True)
             is_present = request.POST.get("is_present") == "1"
             duty, _ = StaffDuty.objects.get_or_create(
@@ -529,10 +590,19 @@ def personnel_dashboard(request):
 
     users = list(
         user_model.objects
-        .filter(is_active=True, hospital_staff_profile__isnull=False)
+        .filter(hospital_staff_profile__isnull=False)
         .select_related("hospital_staff_profile")
-        .order_by("first_name", "username")
+        .order_by("-is_active", "first_name", "username")
     )
+
+    latest_account_status = {}
+    for status_log in (
+        AccountStatusLog.objects
+        .filter(user__in=users)
+        .select_related("actor")
+        .order_by("-created_at", "-id")
+    ):
+        latest_account_status.setdefault(status_log.user_id, status_log)
 
     duties = {
         duty.user_id: duty
@@ -550,6 +620,8 @@ def personnel_dashboard(request):
             "user": staff_user,
             "name": staff_user.get_full_name() or staff_user.username,
             "is_system_admin": staff_user.is_superuser,
+            "is_account_active": staff_user.is_active,
+            "latest_account_status": latest_account_status.get(staff_user.id),
             "role_label": (
                 "ผู้ดูแลระบบสูงสุด"
                 if staff_user.is_superuser
