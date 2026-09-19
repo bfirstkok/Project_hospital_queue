@@ -28,7 +28,7 @@ class AccountStatusLog(models.Model):
     class Meta:
         ordering = ["-created_at", "-id"]
         indexes = [
-            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["user", "-created_at"], name="acct_status_user_created_idx"),
         ]
 
     def __str__(self):
