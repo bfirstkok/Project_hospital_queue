@@ -295,7 +295,7 @@ class StaffProfile(models.Model):
 
     user = models.OneToOneField(
         "auth.User",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="hospital_staff_profile",
     )
     role = models.CharField(max_length=24, choices=Role.choices, default=Role.STAFF)
