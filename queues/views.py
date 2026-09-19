@@ -23,7 +23,7 @@ from django.apps import apps
 from ai_triage.services import apply_ai_triage, localize_ai_reason
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
-from .models import CriticalAlert, IoTVital, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
+from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
@@ -1016,17 +1016,6 @@ def iot_vitals(request):
     device.last_seen = timezone.now()
     device.save(update_fields=["last_seen"])
 
-    vital = IoTVital.objects.create(
-        device_identifier=device_id,
-        patient_identifier=patient_identifier,
-        device_db_id=device.id,
-        patient_db_id=patient.id,
-        heart_rate=heart_rate,
-        spo2=spo2,
-        temperature=temperature,
-        respiratory_rate=respiratory_rate,
-    )
-
     telemetry_log = TelemetryLog.objects.create(
         visit=visit,
         device=device,
@@ -1049,7 +1038,9 @@ def iot_vitals(request):
     return JsonResponse({
         "success": True,
         "message": "Vital signs received successfully",
-        "id": vital.id,
+        # Keep "id" as a compatibility alias for existing device clients.
+        # The canonical persisted wearable record is now TelemetryLog.
+        "id": telemetry_log.id,
         "telemetry_log_id": telemetry_log.id,
         "visit_id": visit.id,
         "patient_id": patient_identifier,
