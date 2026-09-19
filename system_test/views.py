@@ -22,7 +22,6 @@ from patients.models import Patient
 from queues.models import (
     Device,
     DeviceAssignment,
-    IoTVital,
     Queue,
     TelemetryLog,
     TriageResult,
@@ -302,16 +301,6 @@ def _create_telemetry(run, mode):
     values = presets.get(mode, presets["normal"])
     now = timezone.now()
     TelemetryLog.objects.create(visit=run.visit, device=run.device, ts=now, **values)
-    IoTVital.objects.create(
-        device_identifier=run.device.device_id,
-        patient_identifier=run.patient.hn,
-        device_db_id=run.device_id,
-        patient_db_id=run.patient_id,
-        heart_rate=values["bpm"],
-        spo2=values["o2sat"],
-        temperature=values["bt"],
-        respiratory_rate=values["rr"],
-    )
     vitals, _ = VitalSign.objects.get_or_create(visit=run.visit)
     vitals.pr = values["bpm"]
     vitals.o2sat = values["o2sat"]
