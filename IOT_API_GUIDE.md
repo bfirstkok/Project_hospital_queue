@@ -141,17 +141,26 @@ curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
 ## Sync Behavior
 
 - ถ้า `device_id` และ `X-API-Key` ถูกต้อง และ device active ระบบจะตรวจ `patient_id`
-- ถ้าไม่พบ `patient_id` ระบบตอบ `404 Patient not found` และไม่บันทึก `IoTVital`
-- ถ้าพบ `patient_id` ระบบบันทึก `IoTVital`
+- ถ้าไม่พบ `patient_id` ระบบตอบ `404 Patient not found` และไม่บันทึก `TelemetryLog`
+- ถ้าพบ `patient_id` ระบบบันทึก `TelemetryLog`
 - ถ้าผู้ป่วยมี visit ล่าสุดที่ยังไม่จบ ระบบ sync ค่าเข้า `VitalSign` ของ visit นั้น และเรียก AI/guardrail evaluation ต่อ
-- ถ้าผู้ป่วยไม่มี visit ที่ยังไม่จบ ระบบยังบันทึก `IoTVital` ไว้ แต่ไม่ sync เข้า `VitalSign`
+- ถ้าผู้ป่วยไม่มี visit ที่ยังไม่จบ ระบบจะไม่รับข้อมูลหากอุปกรณ์ไม่ได้ผูกกับ Visit ที่อนุญาตให้เฝ้าระวัง
 
 ## Device-only payload update
 
 ตอนนี้ทีม IoT ไม่จำเป็นต้องส่ง `patient_id` แล้ว ให้ส่งแค่ `device_id` พร้อม `X-API-Key` ของอุปกรณ์นั้น ระบบจะใช้ active pairing ในหน้า Device Management เพื่อหา Visit/Patient เอง
 
 - ถ้า device ยังไม่ได้ผูกกับ Visit ระบบตอบ `409 Device is not paired to an active visit` และไม่บันทึกข้อมูล
-- ถ้า device ผูกอยู่ ระบบบันทึก `IoTVital`, `TelemetryLog` และ sync เข้า `VitalSign` ของ Visit ที่ผูกกับ device นั้น
+- ถ้า device ผูกอยู่ ระบบบันทึก `TelemetryLog` และ sync เข้า `VitalSign` ของ Visit ที่ผูกกับ device นั้น
 - ถ้ายังส่ง `patient_id` มาด้วย ระบบจะใช้เป็นตัวตรวจซ้ำ ถ้าไม่ตรงกับ pairing จะตอบ `409 Posted patient_id does not match active device assignment`
 
 ระบบรับค่าจากอุปกรณ์เฉพาะชีพจร, SpO2, อุณหภูมิ และอัตราการหายใจ ไม่รับค่าความดันโลหิตจาก IoT; ค่าความดันให้พยาบาลวัดและบันทึกในหน้าประเมินสุขภาพ
+
+
+## Data persistence
+
+- `TelemetryLog` เป็นแหล่งข้อมูลหลักสำหรับประวัติค่าจาก wearable แบบ time-series และผูกกับ `Visit` และ `Device` ด้วย Foreign Key
+- `VitalSign` เก็บค่าหลัก/ค่าล่าสุดของ Visit เพื่อใช้กับ workflow การคัดกรอง
+- ตาราง `IoTVital` เดิมถูกถอดออกจาก active Django model เพื่อเลี่ยงการเก็บข้อมูลชุดเดียวกันซ้ำสองตาราง
+- migration ระยะแรกยังไม่ลบ physical table เดิมใน production เพื่อให้สามารถสำรองและตรวจสอบข้อมูลย้อนหลังได้ก่อนการลบแบบถาวร
+- response field `id` ของ `/api/iot/vitals/` ยังคงอยู่เพื่อ compatibility แต่มีค่าเดียวกับ `telemetry_log_id`
