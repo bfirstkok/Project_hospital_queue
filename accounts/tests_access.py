@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from queues.models import StaffProfile
 from .access import Capability, capabilities_for
+from .models import AccountStatusLog
 
 
 class RoleAccessTests(TestCase):
@@ -103,6 +104,74 @@ class RoleAccessTests(TestCase):
             "is_present": "1",
         })
         self.assertEqual(response.status_code, 403)
+
+    def test_superuser_can_suspend_and_reactivate_staff_with_audit_history(self):
+        admin = self.make_user("account-admin", StaffProfile.Role.STAFF, superuser=True)
+        target = self.make_user("suspend-target", StaffProfile.Role.NURSE)
+        self.client.force_login(admin)
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_account_status",
+            "user_id": target.pk,
+            "is_active": "0",
+            "reason": "พักการใช้งานระหว่างตรวจสอบบัญชี",
+        })
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        target.refresh_from_db()
+        self.assertFalse(target.is_active)
+
+        suspend_log = AccountStatusLog.objects.get(user=target)
+        self.assertEqual(suspend_log.action, AccountStatusLog.Action.SUSPEND)
+        self.assertEqual(suspend_log.actor, admin)
+        self.assertEqual(suspend_log.reason, "พักการใช้งานระหว่างตรวจสอบบัญชี")
+
+        page = self.client.get(reverse("personnel_dashboard"))
+        self.assertContains(page, "suspend-target")
+        self.assertContains(page, "ระงับบัญชี")
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_account_status",
+            "user_id": target.pk,
+            "is_active": "1",
+            "reason": "ตรวจสอบแล้วสามารถกลับมาใช้งานได้",
+        })
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        target.refresh_from_db()
+        self.assertTrue(target.is_active)
+        self.assertEqual(
+            list(
+                AccountStatusLog.objects.filter(user=target)
+                .order_by("created_at", "id")
+                .values_list("action", flat=True)
+            ),
+            [AccountStatusLog.Action.SUSPEND, AccountStatusLog.Action.ACTIVATE],
+        )
+
+    def test_account_status_change_requires_reason_and_protects_superuser(self):
+        admin = self.make_user("status-admin", StaffProfile.Role.STAFF, superuser=True)
+        target = self.make_user("reason-target", StaffProfile.Role.STAFF)
+        self.client.force_login(admin)
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_account_status",
+            "user_id": target.pk,
+            "is_active": "0",
+            "reason": "",
+        })
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        target.refresh_from_db()
+        self.assertTrue(target.is_active)
+        self.assertFalse(AccountStatusLog.objects.filter(user=target).exists())
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_account_status",
+            "user_id": admin.pk,
+            "is_active": "0",
+            "reason": "ไม่ควรทำได้",
+        })
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        admin.refresh_from_db()
+        self.assertTrue(admin.is_active)
 
     def test_account_can_review_its_own_role_and_duties(self):
         nurse = self.make_user("nurse-rights", StaffProfile.Role.NURSE)
