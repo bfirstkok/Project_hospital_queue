@@ -78,12 +78,9 @@ class Patient(models.Model):
     height_cm = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
+    # ความดันโลหิตล่าสุดที่เก็บในข้อมูลผู้ป่วย (ถ้ามี)
     bp_sys = models.PositiveIntegerField(null=True, blank=True)  # ตัวบน
     bp_dia = models.PositiveIntegerField(null=True, blank=True)  # ตัวล่าง
-
-    # ✅ ความดัน
-    bp_sys = models.PositiveIntegerField(null=True, blank=True)
-    bp_dia = models.PositiveIntegerField(null=True, blank=True)
 
     emergency_name = models.CharField(max_length=120, blank=True, default="")
     emergency_relationship = models.CharField(
