@@ -454,32 +454,6 @@ class TelemetryLog(models.Model):
         ]
 
 
-class IoTVital(models.Model):
-    device_identifier = models.CharField(max_length=50)
-    patient_identifier = models.CharField(max_length=50)
-    device_db_id = models.BigIntegerField(null=True, blank=True, db_column="device_id")
-    patient_db_id = models.BigIntegerField(null=True, blank=True, db_column="patient_id")
-
-    heart_rate = models.IntegerField()
-    spo2 = models.IntegerField()
-    temperature = models.FloatField()
-    respiratory_rate = models.IntegerField(null=True, blank=True)
-    blood_pressure_sys = models.IntegerField(null=True, blank=True)
-    blood_pressure_dia = models.IntegerField(null=True, blank=True)
-
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["device_identifier", "created_at"], name="queues_iotv_device__e34e63_idx"),
-            models.Index(fields=["patient_identifier", "created_at"], name="queues_iotv_patient_d84c96_idx"),
-            models.Index(fields=["patient_db_id", "created_at"], name="queues_iotv_patient_53d99b_idx"),
-        ]
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.patient_identifier} {self.device_identifier} {self.created_at:%Y-%m-%d %H:%M:%S}"
-
 
 class CriticalAlert(models.Model):
     class Status(models.TextChoices):
