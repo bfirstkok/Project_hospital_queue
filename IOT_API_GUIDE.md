@@ -164,5 +164,5 @@ curl -X POST http://172.24.155.96:8000/api/iot/vitals/ \
 - `TelemetryLog` เป็นแหล่งข้อมูลหลักสำหรับประวัติค่าจาก wearable แบบ time-series และผูกกับ `Visit` และ `Device` ด้วย Foreign Key
 - `VitalSign` เก็บค่าหลัก/ค่าล่าสุดของ Visit เพื่อใช้กับ workflow การคัดกรอง
 - ตาราง `IoTVital` เดิมถูกถอดออกจาก active Django model เพื่อเลี่ยงการเก็บข้อมูลชุดเดียวกันซ้ำสองตาราง
-- migration ระยะแรกยังไม่ลบ physical table เดิมใน production เพื่อให้สามารถสำรองและตรวจสอบข้อมูลย้อนหลังได้ก่อนการลบแบบถาวร
+- migration จะเก็บข้อมูลเดิมไว้โดยเปลี่ยนชื่อตารางเป็น `queues_iotvital_legacy_archive` เพื่อแยกออกจาก active schema โดยไม่ Hard Delete ประวัติเดิม
 - response field `id` ของ `/api/iot/vitals/` ยังคงอยู่เพื่อ compatibility แต่มีค่าเดียวกับ `telemetry_log_id`
