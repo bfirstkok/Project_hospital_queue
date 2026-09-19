@@ -4,7 +4,6 @@ from .models import (
     CriticalAlert,
     Device,
     DeviceAssignment,
-    IoTVital,
     NurseCareAssignment,
     Queue,
     ShiftSchedule,
@@ -225,23 +224,6 @@ class TelemetryLogAdmin(ReadOnlyAdmin):
     )
     date_hierarchy = "ts"
 
-
-@admin.register(IoTVital)
-class IoTVitalAdmin(ReadOnlyAdmin):
-    list_display = (
-        "created_at",
-        "patient_identifier",
-        "device_identifier",
-        "heart_rate",
-        "spo2",
-        "temperature",
-        "respiratory_rate",
-        "blood_pressure_sys",
-        "blood_pressure_dia",
-    )
-    list_filter = ("created_at",)
-    search_fields = ("patient_identifier", "device_identifier")
-    date_hierarchy = "created_at"
 
 
 @admin.register(CriticalAlert)
