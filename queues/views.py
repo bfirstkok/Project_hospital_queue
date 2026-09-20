@@ -1511,7 +1511,7 @@ def update_alert_workflow(request, alert_id: int):
 @require_GET
 def my_critical_alerts(request):
     """Return unresolved wearable alerts assigned to the signed-in nurse."""
-    alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
+    alerts = CriticalAlert.objects.filter(status__in=ALERT_ACTIVE_STATUSES)
     if not is_effective_superuser(request.user):
         alerts = alerts.filter(
             visit__nurse_care_assignments__nurse=request.user,
@@ -1534,6 +1534,12 @@ def my_critical_alerts(request):
                 "message": alert.message,
                 "value": alert.value,
                 "threshold": alert.threshold,
+                "status": alert.status,
+                "status_label": {
+                    CriticalAlert.Status.NEW: "แจ้งเตือนใหม่",
+                    CriticalAlert.Status.ACKNOWLEDGED: "รับทราบแล้ว · กำลังไปตรวจ",
+                    CriticalAlert.Status.IN_REVIEW: "กำลังตรวจผู้ป่วย",
+                }.get(alert.status, alert.status),
                 "created_at": alert.created_at.isoformat(),
             }
             for alert in alerts
