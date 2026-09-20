@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from patients.models import Patient
-from queues.models import Queue, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, Queue, TelemetryLog, Visit, VitalSign
 
 from .models import TestScenarioRun
 
@@ -30,6 +30,58 @@ class SystemTestConsoleTests(TestCase):
         self.assertEqual((after.sys_bp, after.dia_bp), original_bp)
         self.assertGreaterEqual(after.pr, 130)
         self.assertLessEqual(after.o2sat, 89)
+
+    def test_sensor_simulator_uses_existing_pairing_without_creating_patient(self):
+        patient = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="สำหรับ Sensor",
+            national_id="1234567890555",
+        )
+        visit = Visit.objects.create(
+            patient=patient,
+            final_severity=Visit.Severity.YELLOW,
+            note="existing monitored visit",
+        )
+        Queue.objects.create(
+            visit=visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+        VitalSign.objects.create(visit=visit, sys_bp=118, dia_bp=76)
+        device = Device.objects.create(
+            device_id="SENSOR-SIM-001",
+            api_key="sensor-test-key",
+            is_active=True,
+        )
+        assignment = DeviceAssignment.objects.create(
+            device=device,
+            visit=visit,
+            is_active=True,
+        )
+        patient_count_before = Patient.objects.count()
+
+        response = self.client.post(
+            reverse("system_test:send_sensor_packet"),
+            {"assignment_id": assignment.id, "mode": "critical"},
+        )
+
+        self.assertRedirects(response, reverse("system_test:index"))
+        self.assertEqual(Patient.objects.count(), patient_count_before)
+        self.assertEqual(TelemetryLog.objects.filter(visit=visit, device=device).count(), 1)
+
+        vitals = VitalSign.objects.get(visit=visit)
+        self.assertEqual(vitals.pr, 138)
+        self.assertEqual(vitals.o2sat, 87)
+        self.assertEqual(float(vitals.bt), 39.4)
+        self.assertEqual(vitals.rr, 36)
+        self.assertEqual((vitals.sys_bp, vitals.dia_bp), (118, 76))
+        self.assertTrue(
+            CriticalAlert.objects.filter(
+                visit=visit,
+                source="iot_vitals",
+                status=CriticalAlert.Status.NEW,
+            ).exists()
+        )
 
     def test_delete_removes_only_selected_synthetic_patient(self):
         real_patient = Patient.objects.create(first_name="ผู้ป่วย", last_name="จริง", national_id="1234567890123")
