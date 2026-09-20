@@ -2,7 +2,7 @@
 
 <style>
   #yellow-nurse-modal {
-    width: min(660px, calc(100vw - 28px));
+    width: min(880px, calc(100vw - 28px));
     max-height: min(780px, calc(100vh - 32px));
     padding: 0 !important;
     border: 1px solid #d8c56a !important;
@@ -47,7 +47,7 @@
     font-size: 12px;
     font-weight: 700;
   }
-  .yellow-nurse-list { display: grid; gap: 8px; max-height: 390px; overflow: auto; padding-right: 3px; }
+  .yellow-assignment-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(250px,.65fr); gap:14px; align-items:start; }\n  .yellow-section-title { margin:0 0 7px; color:#334f5d; font-size:12px; font-weight:900; }\n  .yellow-nurse-list { display: grid; gap: 8px; max-height: 350px; overflow: auto; padding-right: 3px; }
   .yellow-nurse-choice {
     display: grid !important;
     grid-template-columns: 22px minmax(0, 1fr) auto;
@@ -106,6 +106,13 @@
   .nurse-load strong { display: block; color: #173242; font-size: 15px; line-height: 1.05; }
   .nurse-load.full { background: #fff0f0; color: #a62929; }
   .nurse-load.full strong { color: #b42323; }
+  .yellow-device-list { display:grid; gap:8px; max-height:350px; overflow:auto; padding-right:3px; }
+  .yellow-device-choice { display:grid; grid-template-columns:22px minmax(0,1fr); gap:9px; align-items:center; min-height:58px; padding:9px 11px; border:1px solid #d9e3e6; border-radius:10px; background:#fff; color:#173242; cursor:pointer; }
+  .yellow-device-choice:has(input:checked) { border-color:#159688; background:#effaf8; box-shadow:0 0 0 2px rgba(21,150,136,.12); }
+  .yellow-device-choice input[type="radio"] { width:18px!important; height:18px!important; min-height:18px!important; margin:0!important; accent-color:#0f8d81; }
+  .yellow-device-copy strong { display:block; font-size:14px; }
+  .yellow-device-copy span { display:block; margin-top:3px; color:#6b7d86; font-size:11px; }
+  .yellow-device-note { margin-bottom:8px; padding:8px 10px; border:1px solid #cfe4e1; border-radius:8px; background:#f5fbfa; color:#45636f; font-size:11px; line-height:1.45; }
   .yellow-nurse-empty {
     padding: 18px;
     border: 1px dashed #d8c56a;
@@ -134,13 +141,13 @@
     color: #422006 !important;
   }
   .yellow-nurse-confirm:disabled { opacity: .5; cursor: not-allowed; }
-</style>
+  @media (max-width:760px){.yellow-assignment-grid{grid-template-columns:1fr}.yellow-nurse-list,.yellow-device-list{max-height:240px}}\n</style>
 
 <dialog id="yellow-nurse-modal" aria-labelledby="yellow-nurse-title">
   <div class="yellow-nurse-head">
     <div>
-      <h2 id="yellow-nurse-title">พยาบาลผู้รับผิดชอบ</h2>
-      <p>ระบบเลือกพยาบาลที่มีผู้ป่วยในความดูแลน้อยที่สุดให้อัตโนมัติ และจำกัดไม่เกิน {{ max_patients_per_nurse }} คนต่อพยาบาล</p>
+      <h2 id="yellow-nurse-title">มอบหมายผู้ดูแลและอุปกรณ์เฝ้าระวัง</h2>
+      <p>ยืนยันผู้ป่วยสีเหลืองในขั้นตอนเดียว: เลือกพยาบาลผู้รับผิดชอบและอุปกรณ์ที่จะนำไปใส่ให้ผู้ป่วย</p>
     </div>
     <button class="yellow-nurse-cancel" type="button" data-yellow-close>ปิด</button>
   </div>
@@ -149,39 +156,59 @@
     {% if has_assignable_nurse %}
       <div class="yellow-auto-note">✓ ระบบเลือกคนที่ว่างที่สุดไว้ให้แล้ว สามารถเปลี่ยนพยาบาลได้ก่อนกดยืนยัน</div>
     {% endif %}
-    <div class="yellow-nurse-list">
-      {% for row in nurse_rows %}
-        {% with nurse=row.user %}
-          <label class="yellow-nurse-choice {% if not row.has_capacity %}full{% endif %}">
-            <input
-              type="radio"
-              name="yellow_nurse_picker"
-              value="{{ nurse.id }}"
-              data-recommended="{% if row.recommended %}1{% else %}0{% endif %}"
-              {% if row.recommended %}checked{% endif %}
-              {% if not row.has_capacity %}disabled{% endif %}
-            >
-            <span class="yellow-nurse-copy">
-              <strong>
-                {{ nurse.get_full_name|default:nurse.username }}
-                {% if row.recommended %}<span class="auto-badge">เลือกอัตโนมัติ</span>{% endif %}
-              </strong>
-              <span>{{ nurse.username }} · ขึ้นเวรวันนี้ · {% if row.has_capacity %}พร้อมรับผู้ป่วย{% else %}เต็มแล้ว{% endif %}</span>
-            </span>
-            <span class="nurse-load {% if not row.has_capacity %}full{% endif %}">
-              <strong>{{ row.patient_count }}/{{ max_patients_per_nurse }}</strong>
-              {% if row.has_capacity %}เหลือ {{ row.remaining_capacity }} คน{% else %}เต็ม{% endif %}
-            </span>
-          </label>
-        {% endwith %}
-      {% empty %}
-        <div class="yellow-nurse-empty">ยังไม่มีพยาบาลที่ขึ้นเวรและเปิดสถานะพร้อมรับผู้ป่วย กรุณาไปตั้งสถานะที่หน้าบุคลากรก่อน</div>
-      {% endfor %}
+    <div class="yellow-assignment-grid">
+      <section>
+        <div class="yellow-section-title">1 · เลือกพยาบาลผู้รับผิดชอบ</div>
+        <div class="yellow-nurse-list">
+          {% for row in nurse_rows %}
+            {% with nurse=row.user %}
+              <label class="yellow-nurse-choice {% if not row.has_capacity %}full{% endif %}">
+                <input
+                  type="radio"
+                  name="yellow_nurse_picker"
+                  value="{{ nurse.id }}"
+                  data-recommended="{% if row.recommended %}1{% else %}0{% endif %}"
+                  {% if row.recommended %}checked{% endif %}
+                  {% if not row.has_capacity %}disabled{% endif %}
+                >
+                <span class="yellow-nurse-copy">
+                  <strong>
+                    {{ nurse.get_full_name|default:nurse.username }}
+                    {% if row.recommended %}<span class="auto-badge">เลือกอัตโนมัติ</span>{% endif %}
+                  </strong>
+                  <span>{{ nurse.username }} · ขึ้นเวรวันนี้ · {% if row.has_capacity %}พร้อมรับผู้ป่วย{% else %}เต็มแล้ว{% endif %}</span>
+                </span>
+                <span class="nurse-load {% if not row.has_capacity %}full{% endif %}">
+                  <strong>{{ row.patient_count }}/{{ max_patients_per_nurse }}</strong>
+                  {% if row.has_capacity %}เหลือ {{ row.remaining_capacity }} คน{% else %}เต็ม{% endif %}
+                </span>
+              </label>
+            {% endwith %}
+          {% empty %}
+            <div class="yellow-nurse-empty">ยังไม่มีพยาบาลที่ขึ้นเวรและเปิดสถานะพร้อมรับผู้ป่วย กรุณาไปตั้งสถานะที่หน้าบุคลากรก่อน</div>
+          {% endfor %}
+        </div>
+      </section>
+      <section>
+        <div class="yellow-section-title">2 · เลือกอุปกรณ์เฝ้าระวัง</div>
+        <div class="yellow-device-note">เลือกอุปกรณ์ที่กำลังจะนำไปใส่ให้ผู้ป่วยรายนี้ เพื่อให้การ Pair ตรงกับอุปกรณ์จริงที่หน้างาน</div>
+        <div class="yellow-device-list">
+          {% for device in available_devices %}
+            <label class="yellow-device-choice">
+              <input type="radio" name="yellow_device_picker" value="{{ device.id }}">
+              <span class="yellow-device-copy"><strong>{{ device.device_id }}</strong><span>ว่าง · พร้อมผูกกับ Visit นี้{% if device.last_seen %} · ติดต่อระบบล่าสุด {{ device.last_seen|date:"H:i" }}{% endif %}</span></span>
+            </label>
+          {% empty %}
+            <div class="yellow-nurse-empty">ไม่มีอุปกรณ์ว่าง กรุณาคืน/ยกเลิกการผูกอุปกรณ์จากเคสก่อนหน้า หรือเปิดอุปกรณ์ที่พร้อมใช้งาน</div>
+          {% endfor %}
+        </div>
+      </section>
     </div>
-    <div class="yellow-nurse-error" id="yellow-nurse-error" hidden>ไม่มีพยาบาลว่าง กรุณาเลือกพยาบาลที่ยังดูแลไม่ครบ {{ max_patients_per_nurse }} คน</div>
+    <div class="yellow-nurse-error" id="yellow-nurse-error" hidden>กรุณาเลือกพยาบาลที่ยังรับผู้ป่วยได้</div>
+    <div class="yellow-nurse-error" id="yellow-device-error" hidden>กรุณาเลือกอุปกรณ์ที่จะนำไปใส่ให้ผู้ป่วย</div>
     <div class="yellow-nurse-actions">
       <button class="yellow-nurse-cancel" type="button" data-yellow-close>ยกเลิก</button>
-      <button class="yellow-nurse-confirm" id="yellow-nurse-confirm" type="button" {% if not has_assignable_nurse %}disabled{% endif %}>ยืนยันพยาบาลและสีเหลือง</button>
+      <button class="yellow-nurse-confirm" id="yellow-nurse-confirm" type="button" {% if not has_assignable_nurse or not has_available_device %}disabled{% endif %}>ยืนยันพยาบาล + อุปกรณ์ + สีเหลือง</button>
     </div>
   </div>
 </dialog>
@@ -190,8 +217,7 @@
 (() => {
   const modal = document.getElementById("yellow-nurse-modal");
   const confirmButton = document.getElementById("yellow-nurse-confirm");
-  const errorBox = document.getElementById("yellow-nurse-error");
-  const patientContext = document.getElementById("yellow-patient-context");
+  const errorBox = document.getElementById("yellow-nurse-error");\n  const deviceErrorBox = document.getElementById("yellow-device-error");\n  const patientContext = document.getElementById("yellow-patient-context");
   if (!modal || !confirmButton) return;
 
   let pendingForm = null;
@@ -216,13 +242,15 @@
     if (target) target.checked = true;
   }
 
+  function clearDeviceSelection() {
+    modal.querySelectorAll("input[name='yellow_device_picker']").forEach((radio) => { radio.checked = false; });
+  }
+
   function closePicker() {
     modal.close();
     pendingForm = null;
     pendingSubmitter = null;
-    if (errorBox) errorBox.hidden = true;
-  }
-
+    if (errorBox) errorBox.hidden = true;\n    if (deviceErrorBox) deviceErrorBox.hidden = true;\n  }\n
   document.querySelectorAll("[data-yellow-close]").forEach((button) => {
     button.addEventListener("click", closePicker);
   });
@@ -234,6 +262,12 @@
   document.querySelectorAll("input[name='yellow_nurse_picker']").forEach((radio) => {
     radio.addEventListener("change", () => {
       if (errorBox) errorBox.hidden = true;
+    });
+  });
+
+  document.querySelectorAll("input[name='yellow_device_picker']").forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (deviceErrorBox) deviceErrorBox.hidden = true;
     });
   });
 
@@ -250,21 +284,24 @@
       pendingForm = form;
       pendingSubmitter = submitter;
 
-      selectRecommendedNurse();
-      const card = form.closest(".confirmation-card");
+      selectRecommendedNurse();\n      clearDeviceSelection();\n      const card = form.closest(".confirmation-card");
       const patientName = card?.querySelector(".patient-name")?.textContent?.trim() || "ผู้ป่วย";
       const queueNumber = card?.querySelector(".queue-chip")?.textContent?.trim() || "";
       if (patientContext) patientContext.textContent = `${queueNumber ? queueNumber + " · " : ""}${patientName} · ผลยืนยันสีเหลือง`;
-      if (errorBox) errorBox.hidden = true;
-      modal.showModal();
+      if (errorBox) errorBox.hidden = true;\n      if (deviceErrorBox) deviceErrorBox.hidden = true;\n      modal.showModal();
     }, true);
   });
 
   confirmButton.addEventListener("click", () => {
     if (!pendingForm || !pendingSubmitter) return;
     const selectedNurse = modal.querySelector("input[name='yellow_nurse_picker']:checked:not(:disabled)");
+    const selectedDevice = modal.querySelector("input[name='yellow_device_picker']:checked");
     if (!selectedNurse) {
       if (errorBox) errorBox.hidden = false;
+      return;
+    }
+    if (!selectedDevice) {
+      if (deviceErrorBox) deviceErrorBox.hidden = false;
       return;
     }
 
@@ -276,6 +313,15 @@
       pendingForm.appendChild(hiddenNurse);
     }
     hiddenNurse.value = selectedNurse.value;
+
+    let hiddenDevice = pendingForm.querySelector("input[name='device_id']");
+    if (!hiddenDevice) {
+      hiddenDevice = document.createElement("input");
+      hiddenDevice.type = "hidden";
+      hiddenDevice.name = "device_id";
+      pendingForm.appendChild(hiddenDevice);
+    }
+    hiddenDevice.value = selectedDevice.value;
     pendingForm.dataset.yellowNurseReady = "1";
 
     const formToSubmit = pendingForm;
