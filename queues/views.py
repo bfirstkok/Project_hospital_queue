@@ -30,7 +30,6 @@ from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 QUEUE_VISIBLE_STATUSES = [
     Queue.Status.WAITING_QUEUE,
     Queue.Status.OBSERVATION_MONITORING,
-    Queue.Status.REASSESSMENT_REQUIRED,
     Queue.Status.CALLED,
 ]
 QUEUE_ORDERABLE_STATUSES = [
@@ -43,6 +42,11 @@ QUEUE_CALLABLE_STATUSES = [
     Queue.Status.OBSERVATION_MONITORING,
 ]
 REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
+ALERT_ACTIVE_STATUSES = [
+    CriticalAlert.Status.NEW,
+    CriticalAlert.Status.ACKNOWLEDGED,
+    CriticalAlert.Status.IN_REVIEW,
+]
 
 
 def mask_api_key(api_key):
@@ -156,7 +160,7 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
         exists = CriticalAlert.objects.filter(
             visit=visit,
             alert_type=alert_type,
-            status=CriticalAlert.Status.NEW,
+            status__in=ALERT_ACTIVE_STATUSES,
         ).exists()
         if exists:
             continue
@@ -183,17 +187,6 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
                 "source": alert.source,
             },
         )
-
-    q = getattr(visit, "queue", None)
-    if (
-        created
-        and source.startswith("iot")
-        and visit.final_severity == Visit.Severity.YELLOW
-        and q
-        and q.status == Queue.Status.OBSERVATION_MONITORING
-    ):
-        q.status = Queue.Status.REASSESSMENT_REQUIRED
-        q.save(update_fields=["status"])
 
     return created
 
@@ -753,7 +746,6 @@ def cancel_queue(request, visit_id: int):
         Queue.Status.WAITING_CONFIRMATION,
         Queue.Status.WAITING_QUEUE,
         Queue.Status.OBSERVATION_MONITORING,
-        Queue.Status.REASSESSMENT_REQUIRED,
     }:
         unpair_active_wearable(visit)
         q.status = Queue.Status.CANCELLED
@@ -858,7 +850,6 @@ def iot_telemetry(request):
         and visit.final_severity == Visit.Severity.YELLOW
         and q.status in {
             Queue.Status.OBSERVATION_MONITORING,
-            Queue.Status.REASSESSMENT_REQUIRED,
             Queue.Status.CALLED,
         }
     )
@@ -1032,7 +1023,6 @@ def iot_vitals(request):
         and visit.final_severity == Visit.Severity.YELLOW
         and q.status in {
             Queue.Status.OBSERVATION_MONITORING,
-            Queue.Status.REASSESSMENT_REQUIRED,
             Queue.Status.CALLED,
         }
     )
@@ -1235,7 +1225,7 @@ def device_management(request):
             assignment.unpaired_at = timezone.now()
             assignment.save(update_fields=["is_active", "unpaired_at"])
             q = getattr(assignment.visit, "queue", None)
-            if q and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
+            if q and q.status == Queue.Status.OBSERVATION_MONITORING:
                 q.status = Queue.Status.WAITING_QUEUE
                 q.save(update_fields=["status"])
             messages.success(request, f"ยกเลิกการผูก {assignment.device.device_id} แล้ว")
@@ -1323,7 +1313,7 @@ def monitor_latest_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
-        .filter(status__in=[Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED])
+        .filter(status=Queue.Status.OBSERVATION_MONITORING)
         .annotate(
             last_log_ts=Subquery(latest_log.values("ts")[:1]),
             last_device_id=Subquery(latest_log.values("device__device_id")[:1]),
@@ -1349,7 +1339,7 @@ def monitor_latest_api(request):
             "name": f"{visit.patient.first_name} {visit.patient.last_name}",
             "severity": visit.final_severity,
             "queue_status": q.status,
-            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
+            "alert_active": CriticalAlert.objects.filter(visit=visit, status__in=ALERT_ACTIVE_STATUSES).exists(),
             "ai": _get_ai_severity(visit),
             "device_id": q.last_device_id,
             "online": online,
@@ -1361,7 +1351,7 @@ def monitor_latest_api(request):
             "responsible_nurse": nurse_by_visit.get(visit.id),
             "critical_alerts": list(
                 CriticalAlert.objects
-                .filter(visit=visit, status=CriticalAlert.Status.NEW)
+                .filter(visit=visit, status__in=ALERT_ACTIVE_STATUSES)
                 .values("id", "alert_type", "message", "value", "threshold")
             ),
 
@@ -1379,13 +1369,7 @@ def acknowledge_alert(request, alert_id: int):
         CriticalAlert.objects.select_for_update().select_related("visit"),
         id=alert_id,
     )
-
-    queue_status = (
-        Queue.objects
-        .filter(visit_id=alert.visit_id)
-        .values_list("status", flat=True)
-        .first()
-    )
+    queue_status = Queue.objects.filter(visit_id=alert.visit_id).values_list("status", flat=True).first()
 
     if not is_effective_superuser(request.user):
         is_responsible_nurse = NurseCareAssignment.objects.filter(
@@ -1394,20 +1378,19 @@ def acknowledge_alert(request, alert_id: int):
             is_active=True,
         ).exists()
         if not is_responsible_nurse:
-            return JsonResponse({
-                "ok": False,
-                "message": "Only the responsible nurse can acknowledge this alert",
-            }, status=403)
+            return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
 
-    if alert.status == CriticalAlert.Status.ACKNOWLEDGED:
-        return JsonResponse({
-            "ok": True,
-            "alert_id": alert.id,
-            "visit_id": alert.visit_id,
-            "status": alert.status,
-            "queue_status": queue_status,
-            "already_acknowledged": True,
-        })
+    if alert.status != CriticalAlert.Status.NEW:
+        if alert.status in ALERT_ACTIVE_STATUSES:
+            return JsonResponse({
+                "ok": True,
+                "alert_id": alert.id,
+                "visit_id": str(alert.visit_id),
+                "status": alert.status,
+                "queue_status": queue_status,
+                "already_acknowledged": True,
+            })
+        return JsonResponse({"ok": False, "message": "This alert is already closed"}, status=409)
 
     alert.status = CriticalAlert.Status.ACKNOWLEDGED
     alert.acknowledged_at = timezone.now()
@@ -1418,7 +1401,7 @@ def acknowledge_alert(request, alert_id: int):
         visit=alert.visit,
         event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
         actor=request.user,
-        description=f"รับทราบสัญญาณเตือน: {alert.message}",
+        description=f"รับทราบสัญญาณเตือนและกำลังไปตรวจผู้ป่วย: {alert.message}",
         details={
             "alert_id": alert.id,
             "alert_type": alert.alert_type,
@@ -1431,10 +1414,96 @@ def acknowledge_alert(request, alert_id: int):
     return JsonResponse({
         "ok": True,
         "alert_id": alert.id,
-        "visit_id": alert.visit_id,
+        "visit_id": str(alert.visit_id),
         "status": alert.status,
         "queue_status": queue_status,
         "already_acknowledged": False,
+    })
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def update_alert_workflow(request, alert_id: int):
+    """Advance a wearable alert after acknowledgement without re-running triage."""
+    alert = get_object_or_404(
+        CriticalAlert.objects.select_for_update().select_related("visit"),
+        id=alert_id,
+    )
+    if not is_effective_superuser(request.user):
+        is_responsible_nurse = NurseCareAssignment.objects.filter(
+            visit=alert.visit,
+            nurse=request.user,
+            is_active=True,
+        ).exists()
+        if not is_responsible_nurse:
+            return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+
+    action = (request.POST.get("action") or "").strip().lower()
+    note = (request.POST.get("note") or "").strip()
+    now = timezone.now()
+
+    if action == "start_review":
+        if alert.status != CriticalAlert.Status.ACKNOWLEDGED:
+            return JsonResponse({"ok": False, "message": "Alert must be acknowledged before clinical review"}, status=409)
+        alert.status = CriticalAlert.Status.IN_REVIEW
+        alert.review_started_at = now
+        alert.review_started_by = request.user
+        alert.save(update_fields=["status", "review_started_at", "review_started_by"])
+        event_type = VisitWorkflowLog.EventType.CRITICAL_ALERT_REVIEW_STARTED
+        description = note or "เริ่มตรวจอาการและวัดซ้ำที่ข้างเตียงเพื่อยืนยันสัญญาณเตือน"
+
+    elif action in {"resolve", "false_alarm", "escalate"}:
+        if alert.status not in {CriticalAlert.Status.ACKNOWLEDGED, CriticalAlert.Status.IN_REVIEW}:
+            return JsonResponse({"ok": False, "message": "Alert is not in a reviewable state"}, status=409)
+
+        if action == "resolve":
+            alert.status = CriticalAlert.Status.RESOLVED
+            alert.closed_at = now
+            alert.closed_by = request.user
+            alert.resolution_note = note or "ตรวจแล้ว อาการคงที่/ค่ากลับสู่เกณฑ์ เฝ้าระวังต่อ"
+            alert.save(update_fields=["status", "closed_at", "closed_by", "resolution_note"])
+            event_type = VisitWorkflowLog.EventType.CRITICAL_ALERT_RESOLVED
+            description = alert.resolution_note
+        elif action == "false_alarm":
+            alert.status = CriticalAlert.Status.FALSE_ALARM
+            alert.closed_at = now
+            alert.closed_by = request.user
+            alert.resolution_note = note or "ตรวจยืนยันแล้วเป็น false alarm / artefact จาก Sensor"
+            alert.save(update_fields=["status", "closed_at", "closed_by", "resolution_note"])
+            event_type = VisitWorkflowLog.EventType.CRITICAL_ALERT_FALSE_ALARM
+            description = alert.resolution_note
+        else:
+            alert.status = CriticalAlert.Status.ESCALATED
+            alert.escalated_at = now
+            alert.escalated_by = request.user
+            alert.resolution_note = note or "แจ้งแพทย์/ยกระดับการดูแลตาม protocol"
+            alert.save(update_fields=["status", "escalated_at", "escalated_by", "resolution_note"])
+            event_type = VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED
+            description = alert.resolution_note
+    else:
+        return JsonResponse({"ok": False, "message": "Invalid alert workflow action"}, status=400)
+
+    queue_status = Queue.objects.filter(visit_id=alert.visit_id).values_list("status", flat=True).first()
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=event_type,
+        actor=request.user,
+        description=description,
+        details={
+            "alert_id": alert.id,
+            "alert_type": alert.alert_type,
+            "status": alert.status,
+            "queue_status": queue_status,
+            "note": note,
+        },
+    )
+    return JsonResponse({
+        "ok": True,
+        "alert_id": alert.id,
+        "visit_id": str(alert.visit_id),
+        "status": alert.status,
+        "queue_status": queue_status,
     })
 
 
@@ -1483,7 +1552,7 @@ def monitor_summary_api(request):
     q_items = (
         Queue.objects
         .select_related("visit", "visit__patient")
-        .filter(status__in=[Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED])
+        .filter(status=Queue.Status.OBSERVATION_MONITORING)
         .order_by("priority", "visit__confirmed_at", "created_at")[:200]
     )
 
@@ -1514,7 +1583,7 @@ def monitor_summary_api(request):
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "queue_status": q.status,
-            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
+            "alert_active": CriticalAlert.objects.filter(visit=v, status__in=ALERT_ACTIVE_STATUSES).exists(),
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
             "online": online,
             "device_id": v.last_device_id,
