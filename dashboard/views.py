@@ -459,7 +459,7 @@ def live_summary_api(request):
     called = Queue.objects.filter(status=Queue.Status.CALLED)
     alerts = (
         CriticalAlert.objects
-        .filter(status=CriticalAlert.Status.NEW)
+        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
         .select_related("visit", "visit__patient", "visit__queue")
         .order_by("-created_at")[:10]
     )
