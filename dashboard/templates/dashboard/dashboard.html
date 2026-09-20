@@ -57,10 +57,10 @@
 
     <section class="panel alert-panel" aria-labelledby="urgent-alert-title">
       <div class="panel-header">
-        <div class="alert-heading"><span class="alert-heading-icon" aria-hidden="true">!</span><div><h2 id="urgent-alert-title">การแจ้งเตือนจาก Sensor</h2><p>ตรวจสอบผู้ป่วยก่อน แล้วจึงรับทราบการแจ้งเตือนเมื่อเจ้าหน้าที่เห็นข้อมูลแล้ว</p></div></div>
+        <div class="alert-heading"><span class="alert-heading-icon" aria-hidden="true">!</span><div><h2 id="urgent-alert-title">การแจ้งเตือนจาก Sensor</h2><p>รับทราบ → ตรวจผู้ป่วยจริง → กลับไปเฝ้าระวัง หรือยกระดับการดูแล</p></div></div>
         <div class="alert-total"><span id="alertHeaderCount">{{ new_alert_total }}</span> รายการ</div>
       </div>
-      <div class="alert-flow" aria-label="ขั้นตอนจัดการการแจ้งเตือน"><span><b>1</b>ตรวจสอบผู้ป่วย</span><i>→</i><span><b>2</b>รับทราบการแจ้งเตือน</span><small>รับทราบ = ปิดการแจ้งเตือนเท่านั้น ผู้ป่วยยังคงอยู่ในขั้นตอนเฝ้าระวัง/ประเมินซ้ำตามสถานะ</small></div>
+      <div class="alert-flow" aria-label="ขั้นตอนจัดการการแจ้งเตือน"><span><b>1</b>รับทราบและไปตรวจ</span><i>→</i><span><b>2</b>ตรวจอาการ/วัดซ้ำที่เตียง</span><i>→</i><span><b>3</b>เฝ้าระวังต่อหรือยกระดับ</span><small>Sensor เป็นตัวแจ้งเตือน การตัดสินใจทางคลินิกเป็นของบุคลากร</small></div>
       <div class="alert-notice" id="alertNotice" role="status" aria-live="polite" hidden></div>
       <div class="alerts" id="alertList" aria-live="polite"><div class="empty">กำลังโหลดการแจ้งเตือน...</div></div>
     </section>
@@ -119,15 +119,35 @@
         const card=button?.closest(".alert");
         if(card)card.classList.add("acknowledged");
         if(button)button.textContent="รับทราบแล้ว";
-        const stillWaiting=data.queue_status==="REASSESSMENT_REQUIRED";
-        showAlertNotice(stillWaiting
-          ?"รับทราบการแจ้งเตือนแล้ว · ผู้ป่วยยังอยู่ในสถานะ “ต้องประเมินซ้ำ” จนกว่าจะได้รับการประเมิน"
-          :"รับทราบการแจ้งเตือนแล้ว · ปิดเฉพาะรายการแจ้งเตือน โดยไม่เปลี่ยนสถานะการรักษาของผู้ป่วย");
+        showAlertNotice("รับทราบแล้ว · กำลังไปตรวจผู้ป่วยจริงเพื่อยืนยันค่าจาก Sensor");
         await loadAlerts();
       }catch(e){
-        if(button){button.disabled=false;button.textContent="2 · รับทราบการแจ้งเตือน"}
+        if(button){button.disabled=false;button.textContent="รับทราบและไปตรวจผู้ป่วย"}
         showAlertNotice(e.message||"ไม่สามารถรับทราบการแจ้งเตือนได้",true);
         console.error(e);
+      }
+    }
+    async function alertAction(id,action,button){
+      const labels={review:"เริ่มตรวจผู้ป่วย",resolve:"กลับไปเฝ้าระวัง",escalate:"แจ้งแพทย์/ยกระดับ", "false-alarm":"False alarm"};
+      if(button){button.disabled=true;button.textContent="กำลังบันทึก..."}
+      try{
+        const res=await fetch(`/queues/api/alerts/${id}/${action}/`,{
+          method:"POST",credentials:"same-origin",
+          headers:{"X-CSRFToken":csrf(),"X-Requested-With":"XMLHttpRequest"},
+        });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok||!data.ok)throw new Error(data.message||`บันทึกไม่สำเร็จ (HTTP ${res.status})`);
+        const messages={
+          review:"เริ่มตรวจผู้ป่วยแล้ว · กรุณาตรวจอาการและวัดซ้ำเพื่อยืนยันค่า Sensor",
+          resolve:"ปิด Alert แล้ว · ผู้ป่วยกลับเข้าสู่การเฝ้าระวังต่อเนื่อง",
+          escalate:"ยกระดับการดูแลแล้ว · บันทึกผู้ดำเนินการและเวลาไว้ใน Audit log",
+          "false-alarm":"ปิด Alert เป็น false alarm / artefact แล้ว",
+        };
+        showAlertNotice(messages[action]||"บันทึกแล้ว");
+        await loadAlerts();
+      }catch(e){
+        if(button){button.disabled=false;button.textContent=labels[action]||"ดำเนินการ"}
+        showAlertNotice(e.message||"ไม่สามารถบันทึกได้",true);
       }
     }
     async function loadAlerts(){
@@ -142,8 +162,19 @@
           const measured=a.value!==null&&a.value!==undefined?`<span>ค่าที่พบ ${esc(a.value)}</span>`:"";
           const threshold=a.threshold?`<span>เกณฑ์ ${esc(a.threshold)}</span>`:"";
           const time=alertTime(a.created_at);
-          const state=a.requires_reassessment?'<span class="alert-state">ต้องประเมินซ้ำ</span>':"";
-          return `<article class="alert" data-alert-card="${a.id}"><i aria-hidden="true"></i><div class="alert-content"><div class="alert-top"><div><b class="alert-name">${esc(a.patient)}</b><span class="alert-kind">${esc(alertTypeLabel(a.type))}</span>${state}</div><span class="alert-kind">${esc(a.queue_number||("Visit #"+a.visit_id))}</span></div><span class="alert-message">${esc(a.message)}</span><div class="alert-meta">${measured}${threshold}${time?`<span>แจ้งเตือน ${esc(time)} น.</span>`:""}</div><div class="alert-actions"><a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">1 · ตรวจสอบผู้ป่วย</a><button class="ack" type="button" data-ack-alert="${a.id}">2 · รับทราบการแจ้งเตือน</button></div></div></article>`;
+          const stateLabel={NEW:"รอรับทราบ",ACKNOWLEDGED:"รับทราบแล้ว · กำลังไปตรวจ",IN_REVIEW:"กำลังตรวจผู้ป่วย",ESCALATED:"ยกระดับการดูแลแล้ว"}[a.status]||a.status;
+          const state=`<span class="alert-state">${esc(stateLabel)}</span>`;
+          let actions="";
+          if(a.status==="NEW"){
+            actions=`<a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">ดูข้อมูลผู้ป่วย</a><button class="ack" type="button" data-ack-alert="${a.id}">รับทราบและไปตรวจผู้ป่วย</button>`;
+          }else if(a.status==="ACKNOWLEDGED"){
+            actions=`<a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">ดูข้อมูลผู้ป่วย</a><button class="ack" type="button" data-alert-action="review" data-alert-id="${a.id}">เริ่มตรวจผู้ป่วย</button>`;
+          }else if(a.status==="IN_REVIEW"){
+            actions=`<button class="alert-open" type="button" data-alert-action="false-alarm" data-alert-id="${a.id}">False alarm</button><button class="alert-open" type="button" data-alert-action="resolve" data-alert-id="${a.id}">กลับไปเฝ้าระวัง</button><button class="ack" type="button" data-alert-action="escalate" data-alert-id="${a.id}">แจ้งแพทย์/ยกระดับ</button>`;
+          }else if(a.status==="ESCALATED"){
+            actions=`<a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">ดูข้อมูลผู้ป่วย</a><button class="ack" type="button" data-alert-action="resolve" data-alert-id="${a.id}">ปิดหลังจัดการ / เฝ้าระวังต่อ</button>`;
+          }
+          return `<article class="alert" data-alert-card="${a.id}"><i aria-hidden="true"></i><div class="alert-content"><div class="alert-top"><div><b class="alert-name">${esc(a.patient)}</b><span class="alert-kind">${esc(alertTypeLabel(a.type))}</span>${state}</div><span class="alert-kind">${esc(a.queue_number||("Visit #"+a.visit_id))}</span></div><span class="alert-message">${esc(a.message)}</span><div class="alert-meta">${measured}${threshold}${time?`<span>แจ้งเตือน ${esc(time)} น.</span>`:""}</div><div class="alert-actions">${actions}</div></div></article>`;
         }).join(""):'<div class="alert-empty"><i>✓</i><span>ไม่มีการแจ้งเตือนจาก Sensor ที่รอรับทราบ</span></div>';
       }catch(e){
         showAlertNotice(e.message||"ไม่สามารถโหลดการแจ้งเตือนได้",true);
@@ -151,9 +182,10 @@
       }
     }
     alertList.addEventListener("click",event=>{
-      const button=event.target.closest("[data-ack-alert]");
-      if(!button)return;
-      ackAlert(button.dataset.ackAlert,button);
+      const ackButton=event.target.closest("[data-ack-alert]");
+      if(ackButton){ackAlert(ackButton.dataset.ackAlert,ackButton);return}
+      const actionButton=event.target.closest("[data-alert-action]");
+      if(actionButton)alertAction(actionButton.dataset.alertId,actionButton.dataset.alertAction,actionButton);
     });
     loadSummary();loadAlerts();setInterval(loadSummary,10000);setInterval(loadAlerts,10000);
   </script>
