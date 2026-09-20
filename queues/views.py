@@ -156,7 +156,7 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
         exists = CriticalAlert.objects.filter(
             visit=visit,
             alert_type=alert_type,
-            status=CriticalAlert.Status.NEW,
+            status__in=CriticalAlert.ACTIVE_STATUSES,
         ).exists()
         if exists:
             continue
@@ -184,17 +184,8 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
             },
         )
 
-    q = getattr(visit, "queue", None)
-    if (
-        created
-        and source.startswith("iot")
-        and visit.final_severity == Visit.Severity.YELLOW
-        and q
-        and q.status == Queue.Status.OBSERVATION_MONITORING
-    ):
-        q.status = Queue.Status.REASSESSMENT_REQUIRED
-        q.save(update_fields=["status"])
-
+    # Sensor alerts are handled by the alert workflow. Do not send the patient
+    # back through triage/reassessment automatically; a clinician decides the next step.
     return created
 
 
@@ -1349,7 +1340,10 @@ def monitor_latest_api(request):
             "name": f"{visit.patient.first_name} {visit.patient.last_name}",
             "severity": visit.final_severity,
             "queue_status": q.status,
-            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
+            "has_active_alert": CriticalAlert.objects.filter(
+                visit=visit,
+                status__in=CriticalAlert.ACTIVE_STATUSES,
+            ).exists(),
             "ai": _get_ai_severity(visit),
             "device_id": q.last_device_id,
             "online": online,
@@ -1361,8 +1355,8 @@ def monitor_latest_api(request):
             "responsible_nurse": nurse_by_visit.get(visit.id),
             "critical_alerts": list(
                 CriticalAlert.objects
-                .filter(visit=visit, status=CriticalAlert.Status.NEW)
-                .values("id", "alert_type", "message", "value", "threshold")
+                .filter(visit=visit, status__in=CriticalAlert.ACTIVE_STATUSES)
+                .values("id", "alert_type", "message", "value", "threshold", "status")
             ),
 
             "registered_at": visit.registered_at.isoformat() if visit.registered_at else None,
@@ -1379,13 +1373,7 @@ def acknowledge_alert(request, alert_id: int):
         CriticalAlert.objects.select_for_update().select_related("visit"),
         id=alert_id,
     )
-
-    queue_status = (
-        Queue.objects
-        .filter(visit_id=alert.visit_id)
-        .values_list("status", flat=True)
-        .first()
-    )
+    queue_status = Queue.objects.filter(visit_id=alert.visit_id).values_list("status", flat=True).first()
 
     if not is_effective_superuser(request.user):
         is_responsible_nurse = NurseCareAssignment.objects.filter(
@@ -1394,12 +1382,9 @@ def acknowledge_alert(request, alert_id: int):
             is_active=True,
         ).exists()
         if not is_responsible_nurse:
-            return JsonResponse({
-                "ok": False,
-                "message": "Only the responsible nurse can acknowledge this alert",
-            }, status=403)
+            return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
 
-    if alert.status == CriticalAlert.Status.ACKNOWLEDGED:
+    if alert.status != CriticalAlert.Status.NEW:
         return JsonResponse({
             "ok": True,
             "alert_id": alert.id,
@@ -1418,7 +1403,7 @@ def acknowledge_alert(request, alert_id: int):
         visit=alert.visit,
         event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
         actor=request.user,
-        description=f"รับทราบสัญญาณเตือน: {alert.message}",
+        description=f"รับทราบสัญญาณเตือนและกำลังไปตรวจผู้ป่วย: {alert.message}",
         details={
             "alert_id": alert.id,
             "alert_type": alert.alert_type,
@@ -1438,11 +1423,137 @@ def acknowledge_alert(request, alert_id: int):
     })
 
 
+def _alert_manage_allowed(user, alert):
+    if is_effective_superuser(user):
+        return True
+    return NurseCareAssignment.objects.filter(
+        visit=alert.visit,
+        nurse=user,
+        is_active=True,
+    ).exists()
+
+
+def _alert_action_response(alert):
+    queue_status = Queue.objects.filter(visit_id=alert.visit_id).values_list("status", flat=True).first()
+    return JsonResponse({
+        "ok": True,
+        "alert_id": alert.id,
+        "visit_id": alert.visit_id,
+        "status": alert.status,
+        "queue_status": queue_status,
+    })
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def start_alert_review(request, alert_id: int):
+    alert = get_object_or_404(CriticalAlert.objects.select_for_update().select_related("visit"), id=alert_id)
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+    if alert.status == CriticalAlert.Status.NEW:
+        return JsonResponse({"ok": False, "message": "Please acknowledge the alert first"}, status=409)
+    if alert.status in {CriticalAlert.Status.RESOLVED, CriticalAlert.Status.FALSE_ALARM}:
+        return JsonResponse({"ok": False, "message": "This alert is already closed"}, status=409)
+    if alert.status == CriticalAlert.Status.IN_REVIEW:
+        return _alert_action_response(alert)
+
+    alert.status = CriticalAlert.Status.IN_REVIEW
+    alert.save(update_fields=["status"])
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_REVIEW_STARTED,
+        actor=request.user,
+        description=f"เริ่มตรวจผู้ป่วยที่เตียงจากสัญญาณเตือน: {alert.message}",
+        details={"alert_id": alert.id, "alert_type": alert.alert_type, "source": alert.source},
+    )
+    return _alert_action_response(alert)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def resolve_alert(request, alert_id: int):
+    alert = get_object_or_404(CriticalAlert.objects.select_for_update().select_related("visit"), id=alert_id)
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+    if alert.status == CriticalAlert.Status.NEW:
+        return JsonResponse({"ok": False, "message": "Please acknowledge the alert first"}, status=409)
+    if alert.status == CriticalAlert.Status.RESOLVED:
+        return _alert_action_response(alert)
+
+    alert.status = CriticalAlert.Status.RESOLVED
+    alert.save(update_fields=["status"])
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_RESOLVED,
+        actor=request.user,
+        description=f"ตรวจแล้วและกลับไปเฝ้าระวังต่อ: {alert.message}",
+        details={"alert_id": alert.id, "alert_type": alert.alert_type, "source": alert.source},
+    )
+    return _alert_action_response(alert)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def false_alarm_alert(request, alert_id: int):
+    alert = get_object_or_404(CriticalAlert.objects.select_for_update().select_related("visit"), id=alert_id)
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+    if alert.status == CriticalAlert.Status.NEW:
+        return JsonResponse({"ok": False, "message": "Please acknowledge the alert first"}, status=409)
+    if alert.status == CriticalAlert.Status.FALSE_ALARM:
+        return _alert_action_response(alert)
+
+    alert.status = CriticalAlert.Status.FALSE_ALARM
+    alert.save(update_fields=["status"])
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_FALSE_ALARM,
+        actor=request.user,
+        description=f"ยืนยันว่าเป็น false alarm / artefact: {alert.message}",
+        details={"alert_id": alert.id, "alert_type": alert.alert_type, "source": alert.source},
+    )
+    return _alert_action_response(alert)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def escalate_alert(request, alert_id: int):
+    alert = get_object_or_404(CriticalAlert.objects.select_for_update().select_related("visit"), id=alert_id)
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+    if alert.status == CriticalAlert.Status.NEW:
+        return JsonResponse({"ok": False, "message": "Please acknowledge the alert first"}, status=409)
+    if alert.status in {CriticalAlert.Status.RESOLVED, CriticalAlert.Status.FALSE_ALARM}:
+        return JsonResponse({"ok": False, "message": "This alert is already closed"}, status=409)
+    if alert.status == CriticalAlert.Status.ESCALATED:
+        return _alert_action_response(alert)
+
+    alert.status = CriticalAlert.Status.ESCALATED
+    alert.save(update_fields=["status"])
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+        actor=request.user,
+        description=f"พยาบาลยกระดับการดูแล/แจ้งแพทย์จากสัญญาณเตือน: {alert.message}",
+        details={
+            "alert_id": alert.id,
+            "alert_type": alert.alert_type,
+            "source": alert.source,
+            "note": request.POST.get("note", "").strip(),
+        },
+    )
+    return _alert_action_response(alert)
+
+
 @login_required
 @require_GET
 def my_critical_alerts(request):
     """Return unresolved wearable alerts assigned to the signed-in nurse."""
-    alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
+    alerts = CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES)
     if not is_effective_superuser(request.user):
         alerts = alerts.filter(
             visit__nurse_care_assignments__nurse=request.user,
@@ -1465,6 +1576,7 @@ def my_critical_alerts(request):
                 "message": alert.message,
                 "value": alert.value,
                 "threshold": alert.threshold,
+                "status": alert.status,
                 "created_at": alert.created_at.isoformat(),
             }
             for alert in alerts
@@ -1514,7 +1626,10 @@ def monitor_summary_api(request):
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
             "queue_status": q.status,
-            "requires_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
+            "has_active_alert": CriticalAlert.objects.filter(
+                visit=v,
+                status__in=CriticalAlert.ACTIVE_STATUSES,
+            ).exists(),
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
             "online": online,
             "device_id": v.last_device_id,

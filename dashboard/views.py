@@ -25,7 +25,7 @@ STATUS_LABELS = {
     "CALLED": "เรียกแล้ว",
     "MONITORING": "กำลังเฝ้าระวัง",
     "OBSERVATION_MONITORING": "เฝ้าระวังระหว่างรอ",
-    "REASSESSMENT_REQUIRED": "ต้องประเมินซ้ำ",
+    "REASSESSMENT_REQUIRED": "ตรวจอาการทางคลินิก (สถานะเดิม)",
     "EMERGENCY_TRANSFER": "ส่งต่อฉุกเฉิน",
     "IN_ROOM": "อยู่ในห้องตรวจ",
     "OPD_DONE": "ตรวจเสร็จ",
@@ -77,7 +77,7 @@ def dashboard_view(request):
         .filter(queue__in=active, final_severity__in=SEVERITY_LEVELS)
         .order_by("queue__priority", "registered_at")
     )
-    alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
+    alerts = CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES)
     severity_totals = {
         severity: active.filter(visit__final_severity=severity).count()
         for severity in SEVERITY_LEVELS
@@ -459,7 +459,7 @@ def live_summary_api(request):
     called = Queue.objects.filter(status=Queue.Status.CALLED)
     alerts = (
         CriticalAlert.objects
-        .filter(status=CriticalAlert.Status.NEW)
+        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
         .select_related("visit", "visit__patient", "visit__queue")
         .order_by("-created_at")[:10]
     )
@@ -474,7 +474,7 @@ def live_summary_api(request):
             ).exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"]).count()
             for severity in SEVERITY_LEVELS
         },
-        "new_alert_total": CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW).count(),
+        "new_alert_total": CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES).count(),
         "alerts": [
             {
                 "id": alert.id,
@@ -482,7 +482,7 @@ def live_summary_api(request):
                 "patient": f"{alert.visit.patient.first_name} {alert.visit.patient.last_name}",
                 "queue_number": alert.visit.queue.display_number,
                 "queue_status": alert.visit.queue.status,
-                "requires_reassessment": alert.visit.queue.status == Queue.Status.REASSESSMENT_REQUIRED,
+                "status": alert.status,
                 "type": alert.alert_type,
                 "message": alert.message,
                 "value": alert.value,

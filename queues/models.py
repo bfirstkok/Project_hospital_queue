@@ -181,6 +181,10 @@ class VisitWorkflowLog(models.Model):
         NURSE_ASSIGNMENT_ENDED = "NURSE_ASSIGNMENT_ENDED", "สิ้นสุดการมอบหมายพยาบาล"
         CRITICAL_ALERT_CREATED = "CRITICAL_ALERT_CREATED", "สร้างสัญญาณเตือนวิกฤต"
         CRITICAL_ALERT_ACKNOWLEDGED = "CRITICAL_ALERT_ACKNOWLEDGED", "รับทราบสัญญาณเตือนวิกฤต"
+        CRITICAL_ALERT_REVIEW_STARTED = "CRITICAL_ALERT_REVIEW_STARTED", "เริ่มตรวจผู้ป่วยจากสัญญาณเตือน"
+        CRITICAL_ALERT_ESCALATED = "CRITICAL_ALERT_ESCALATED", "ยกระดับการดูแลจากสัญญาณเตือน"
+        CRITICAL_ALERT_RESOLVED = "CRITICAL_ALERT_RESOLVED", "ปิดสัญญาณเตือนและกลับไปเฝ้าระวัง"
+        CRITICAL_ALERT_FALSE_ALARM = "CRITICAL_ALERT_FALSE_ALARM", "ปิดสัญญาณเตือนเป็น false alarm"
         DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
 
     visit = models.ForeignKey(
@@ -465,6 +469,17 @@ class CriticalAlert(models.Model):
     class Status(models.TextChoices):
         NEW = "NEW", "New"
         ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+        IN_REVIEW = "IN_REVIEW", "Clinical review"
+        ESCALATED = "ESCALATED", "Escalated"
+        RESOLVED = "RESOLVED", "Resolved"
+        FALSE_ALARM = "FALSE_ALARM", "False alarm"
+
+    ACTIVE_STATUSES = (
+        Status.NEW,
+        Status.ACKNOWLEDGED,
+        Status.IN_REVIEW,
+        Status.ESCALATED,
+    )
 
     class AlertType(models.TextChoices):
         LOW_O2 = "LOW_O2", "Low SpO2"
