@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit
+from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit, VisitWorkflowLog
 
 
 MAX_PATIENTS_PER_NURSE = 4
@@ -194,12 +194,34 @@ def is_visit_assignable(visit: Visit, *, allow_pre_monitoring=False) -> bool:
     return False
 
 
-def end_assignment_for_visit(visit: Visit, *, when=None) -> int:
+def end_assignment_for_visit(visit: Visit, *, when=None, actor=None, reason="") -> int:
     when = when or timezone.now()
-    return NurseCareAssignment.objects.filter(visit=visit, is_active=True).update(
-        is_active=False,
-        ended_at=when,
-    )
+    with transaction.atomic():
+        assignments = list(
+            NurseCareAssignment.objects
+            .select_for_update()
+            .select_related("nurse")
+            .filter(visit=visit, is_active=True)
+        )
+        if not assignments:
+            return 0
+
+        for assignment in assignments:
+            assignment.is_active = False
+            assignment.ended_at = when
+            assignment.save(update_fields=["is_active", "ended_at"])
+            VisitWorkflowLog.record(
+                visit=visit,
+                event_type=VisitWorkflowLog.EventType.NURSE_ASSIGNMENT_ENDED,
+                actor=actor,
+                description=reason or "สิ้นสุดการมอบหมายพยาบาลผู้รับผิดชอบ",
+                details={
+                    "assignment_id": assignment.id,
+                    "nurse_id": assignment.nurse_id,
+                    "nurse_username": assignment.nurse.username,
+                },
+            )
+        return len(assignments)
 
 
 def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None, allow_pre_monitoring=False):
@@ -223,6 +245,7 @@ def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None, allow_pre_mo
                 raise ValueError("nurse_full")
             raise ValueError("nurse_unavailable")
 
+        previous_nurse = current.nurse if current else None
         if current:
             current.is_active = False
             current.ended_at = timezone.now()
@@ -232,6 +255,30 @@ def assign_visit_to_nurse(*, visit: Visit, nurse, assigned_by=None, allow_pre_mo
             nurse=nurse,
             visit=visit,
             assigned_by=assigned_by,
+        )
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=(
+                VisitWorkflowLog.EventType.NURSE_REASSIGNED
+                if previous_nurse
+                else VisitWorkflowLog.EventType.NURSE_ASSIGNED
+            ),
+            actor=assigned_by,
+            description=(
+                f"เปลี่ยนพยาบาลผู้รับผิดชอบจาก "
+                f"{previous_nurse.get_full_name() or previous_nurse.username} "
+                f"เป็น {nurse.get_full_name() or nurse.username}"
+                if previous_nurse
+                else f"มอบหมายพยาบาลผู้รับผิดชอบ: {nurse.get_full_name() or nurse.username}"
+            ),
+            details={
+                "assignment_id": assignment.id,
+                "nurse_id": nurse.id,
+                "nurse_username": nurse.username,
+                "previous_nurse_id": previous_nurse.id if previous_nurse else None,
+                "previous_nurse_username": previous_nurse.username if previous_nurse else None,
+                "assigned_by_id": getattr(assigned_by, "id", None),
+            },
         )
         return assignment, active_count + 1
 
@@ -281,7 +328,11 @@ def handover_nurse_cases(*, from_nurse, assigned_by=None, target_nurse=None, rel
             result.moved += 1
         except ValueError:
             if release_unassigned:
-                end_assignment_for_visit(visit)
+                end_assignment_for_visit(
+                    visit,
+                    actor=assigned_by,
+                    reason="ส่งต่อเวรไม่สำเร็จและไม่มีพยาบาลผู้รับช่วง",
+                )
                 result.unassigned += 1
             else:
                 result.skipped += 1
