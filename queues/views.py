@@ -28,6 +28,21 @@ from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, De
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
 QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
+QUEUE_VISIBLE_STATUSES = [
+    Queue.Status.WAITING_QUEUE,
+    Queue.Status.OBSERVATION_MONITORING,
+    Queue.Status.REASSESSMENT_REQUIRED,
+    Queue.Status.CALLED,
+]
+QUEUE_ORDERABLE_STATUSES = [
+    Queue.Status.WAITING_QUEUE,
+    Queue.Status.OBSERVATION_MONITORING,
+    Queue.Status.CALLED,
+]
+QUEUE_CALLABLE_STATUSES = [
+    Queue.Status.WAITING_QUEUE,
+    Queue.Status.OBSERVATION_MONITORING,
+]
 REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
 
 
@@ -193,7 +208,7 @@ def queue_list(request):
         Queue.objects
         .select_related("visit", "visit__patient", "visit__triage_result")
         .prefetch_related("visit__nurse_care_assignments__nurse")
-        .filter(status__in=QUEUE_READY_STATUSES)
+        .filter(status__in=QUEUE_VISIBLE_STATUSES)
         .order_by("priority", "-is_expedited", "visit__confirmed_at", "created_at", "pk")
     )
 
@@ -266,7 +281,7 @@ def adjust_queue(request, visit_id: int):
     queue_item = get_object_or_404(
         Queue.objects.select_for_update().select_related("visit", "visit__patient"),
         visit_id=visit_id,
-        status__in=QUEUE_READY_STATUSES,
+        status__in=QUEUE_ORDERABLE_STATUSES,
     )
     reason = request.POST.get("reason", "").strip()
     mode = request.POST.get("queue_mode", "normal")
@@ -289,7 +304,7 @@ def adjust_queue(request, visit_id: int):
         requested_display = f"Q{new_sequence:03d}"
         has_duplicate = any(
             other.display_number == requested_display
-            for other in Queue.objects.filter(status__in=QUEUE_READY_STATUSES).exclude(pk=queue_item.pk)
+            for other in Queue.objects.filter(status__in=QUEUE_VISIBLE_STATUSES).exclude(pk=queue_item.pk)
         )
         if has_duplicate:
             messages.error(request, f"เลขคิว {requested_display} ถูกใช้งานอยู่ กรุณาเลือกเลขอื่น")
@@ -345,7 +360,7 @@ def queue_display(request):
     q_items = (
         Queue.objects
         .select_related("visit")
-        .filter(status__in=QUEUE_READY_STATUSES)
+        .filter(status__in=QUEUE_VISIBLE_STATUSES)
         .order_by("priority", "-is_expedited", "visit__confirmed_at", "created_at")
     )
     return render(request, "queues/queue_display.html", {"q_items": q_items})
@@ -493,8 +508,10 @@ def call_visit(request, visit_id: int):
                 "error": "กรุณาเลือกห้องตรวจ",
             })
 
-        if q.status == Queue.Status.WAITING_QUEUE:
-            q.status = Queue.Status.CALLED
+        if q.status not in QUEUE_CALLABLE_STATUSES:
+            return redirect("queue_list")
+
+        q.status = Queue.Status.CALLED
         q.exam_room = int(room)
         q.save(update_fields=["status", "exam_room"])
 
@@ -510,7 +527,7 @@ def call_visit(request, visit_id: int):
 
         return redirect("opd_list")
 
-    if q and q.status == Queue.Status.WAITING_QUEUE:
+    if q and q.status in QUEUE_CALLABLE_STATUSES:
         return render(request, "queues/select_exam_room.html", {
             "visit": visit,
             "queue": q,
@@ -734,7 +751,10 @@ def cancel_queue(request, visit_id: int):
         Queue.Status.WAITING_VITALS,
         Queue.Status.WAITING_CONFIRMATION,
         Queue.Status.WAITING_QUEUE,
+        Queue.Status.OBSERVATION_MONITORING,
+        Queue.Status.REASSESSMENT_REQUIRED,
     }:
+        unpair_active_wearable(visit)
         q.status = Queue.Status.CANCELLED
         q.save(update_fields=["status"])
     return redirect("queue_list")
@@ -835,7 +855,11 @@ def iot_telemetry(request):
     observation_allowed = bool(
         q
         and visit.final_severity == Visit.Severity.YELLOW
-        and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+        and q.status in {
+            Queue.Status.OBSERVATION_MONITORING,
+            Queue.Status.REASSESSMENT_REQUIRED,
+            Queue.Status.CALLED,
+        }
     )
     inpatient_allowed = bool(q and q.status == Queue.Status.MONITORING)
     if not (observation_allowed or inpatient_allowed):
@@ -1005,7 +1029,11 @@ def iot_vitals(request):
     observation_allowed = bool(
         q
         and visit.final_severity == Visit.Severity.YELLOW
-        and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}
+        and q.status in {
+            Queue.Status.OBSERVATION_MONITORING,
+            Queue.Status.REASSESSMENT_REQUIRED,
+            Queue.Status.CALLED,
+        }
     )
     inpatient_allowed = bool(q and q.status == Queue.Status.MONITORING)
     if not (observation_allowed or inpatient_allowed):
