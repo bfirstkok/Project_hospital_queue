@@ -44,7 +44,30 @@ def role_landing(request):
     return redirect("my_permissions")
 
 
-@login_required\n@require_POST\ndef switch_test_role(request):\n    """Let a real superuser temporarily simulate one staff role in this session."""\n    if not request.user.is_superuser:\n        return HttpResponseForbidden("Superuser only")\n\n    role = request.POST.get("role", "").strip()\n    if role in {"", "ADMIN"}:\n        request.session.pop(SIMULATED_ROLE_SESSION_KEY, None)\n        request.user._simulated_hospital_role = None\n        messages.success(request, "กลับสู่สิทธิ์ผู้ดูแลระบบสูงสุดแล้ว")\n    elif role in StaffProfile.Role.values:\n        request.session[SIMULATED_ROLE_SESSION_KEY] = role\n        request.user._simulated_hospital_role = role\n        label = dict(StaffProfile.Role.choices).get(role, role)\n        messages.success(request, f"กำลังทดสอบระบบในบทบาท {label}")\n    else:\n        messages.error(request, "บทบาทที่เลือกไม่ถูกต้อง")\n\n    return redirect("role_landing")\n\n\n@login_required
+@login_required
+@require_POST
+def switch_test_role(request):
+    """Let a real superuser temporarily simulate one staff role in this session."""
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Superuser only")
+
+    role = request.POST.get("role", "").strip()
+    if role in {"", "ADMIN"}:
+        request.session.pop(SIMULATED_ROLE_SESSION_KEY, None)
+        request.user._simulated_hospital_role = None
+        messages.success(request, "กลับสู่สิทธิ์ผู้ดูแลระบบสูงสุดแล้ว")
+    elif role in StaffProfile.Role.values:
+        request.session[SIMULATED_ROLE_SESSION_KEY] = role
+        request.user._simulated_hospital_role = role
+        label = dict(StaffProfile.Role.choices).get(role, role)
+        messages.success(request, f"กำลังทดสอบระบบในบทบาท {label}")
+    else:
+        messages.error(request, "บทบาทที่เลือกไม่ถูกต้อง")
+
+    return redirect("role_landing")
+
+
+@login_required
 def my_permissions(request):
     """Explain the signed-in account's actual duties in plain language."""
     capability_values = capabilities_for(request.user)
