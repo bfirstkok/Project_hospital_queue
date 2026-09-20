@@ -1376,7 +1376,7 @@ def monitor_latest_api(request):
 @transaction.atomic
 def acknowledge_alert(request, alert_id: int):
     alert = get_object_or_404(
-        CriticalAlert.objects.select_for_update().select_related("visit"),
+        CriticalAlert.objects.select_for_update().select_related("visit", "visit__queue"),
         id=alert_id,
     )
 
@@ -1396,7 +1396,9 @@ def acknowledge_alert(request, alert_id: int):
         return JsonResponse({
             "ok": True,
             "alert_id": alert.id,
+            "visit_id": alert.visit_id,
             "status": alert.status,
+            "queue_status": getattr(alert.visit.queue, "status", None),
             "already_acknowledged": True,
         })
 
@@ -1419,7 +1421,14 @@ def acknowledge_alert(request, alert_id: int):
             "source": alert.source,
         },
     )
-    return JsonResponse({"ok": True, "alert_id": alert.id, "status": alert.status})
+    return JsonResponse({
+        "ok": True,
+        "alert_id": alert.id,
+        "visit_id": alert.visit_id,
+        "status": alert.status,
+        "queue_status": getattr(alert.visit.queue, "status", None),
+        "already_acknowledged": False,
+    })
 
 
 @login_required
