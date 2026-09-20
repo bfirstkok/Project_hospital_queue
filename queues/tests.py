@@ -1341,6 +1341,18 @@ class ConfirmedTriageFlowTests(TestCase):
             status=CriticalAlert.Status.ACKNOWLEDGED,
         )
 
+        direct_escalation = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "escalate", "note": "แจ้งแพทย์ตาม protocol"},
+        )
+        self.assertEqual(direct_escalation.status_code, 409)
+
+        review = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "start_review"},
+        )
+        self.assertEqual(review.status_code, 200)
+
         response = self.client.post(
             reverse("update_alert_workflow", args=[alert.id]),
             {"action": "escalate", "note": "แจ้งแพทย์ตาม protocol"},
