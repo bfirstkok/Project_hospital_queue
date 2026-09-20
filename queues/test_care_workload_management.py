@@ -11,7 +11,7 @@ from .care_workload import (
     auto_assign_visit,
     nurse_workload_rows,
 )
-from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit, VisitWorkflowLog
+from .models import CriticalAlert, NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit, VisitWorkflowLog
 
 
 class NurseWorkloadManagementTests(TestCase):
@@ -297,12 +297,20 @@ class NurseWorkloadManagementTests(TestCase):
         visit.queue.refresh_from_db()
         self.assertEqual(visit.queue.status, Queue.Status.DISCHARGED)
 
-    def test_reassessment_case_shows_responsible_nurse_alert_on_personnel_page(self):
-        visit = self.make_visit(status=Queue.Status.REASSESSMENT_REQUIRED)
+    def test_active_alert_case_shows_responsible_nurse_on_personnel_page(self):
+        visit = self.make_visit(status=Queue.Status.OBSERVATION_MONITORING)
         self.assign_direct(self.nurse_a, visit)
+        CriticalAlert.objects.create(
+            visit=visit,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำกว่า 95%",
+            value=92,
+            threshold="< 95",
+            source="iot_vitals",
+        )
 
-        response = self.client.get(reverse("personnel_dashboard"), {"filter": "reassessment"})
+        response = self.client.get(reverse("personnel_dashboard"), {"filter": "alert"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "ต้องประเมินซ้ำทันที")
+        self.assertContains(response, "มี Active Alert กำลังรอดำเนินการ")
         self.assertContains(response, self.nurse_a.get_full_name())
