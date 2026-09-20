@@ -1,0 +1,175 @@
+erDiagram
+    AUTH_USER ||--o| STAFF_PROFILE : has
+    AUTH_USER ||--o{ STAFF_DUTY : attends
+    AUTH_USER ||--o{ SHIFT_SCHEDULE : scheduled
+    AUTH_USER ||--o{ ACCOUNT_STATUS_LOG : status_history
+    AUTH_USER ||--o{ VISIT_WORKFLOW_LOG : acts
+    AUTH_USER ||--o{ NURSE_CARE_ASSIGNMENT : nurse
+    AUTH_USER ||--o{ CRITICAL_ALERT : acknowledges
+    AUTH_USER ||--o{ VISIT_ASSESSMENT : examines
+
+    PATIENT ||--o{ VISIT : receives
+    PATIENT ||--o{ APPOINTMENT : has
+    PATIENT ||--o{ PATIENT_ACCESS_TOKEN : owns
+    PATIENT ||--o| PATIENT_PIN : authenticates
+
+    VISIT ||--o| VITAL_SIGN : current_vitals
+    VISIT ||--o| TRIAGE_RESULT : triage
+    VISIT ||--o| QUEUE : queue_state
+    VISIT ||--o| VISIT_ASSESSMENT : opd_assessment
+    VISIT ||--o{ VISIT_WORKFLOW_LOG : audit
+    VISIT ||--o{ NURSE_CARE_ASSIGNMENT : care_history
+    VISIT ||--o{ DEVICE_ASSIGNMENT : device_history
+    VISIT ||--o{ TELEMETRY_LOG : telemetry
+    VISIT ||--o{ CRITICAL_ALERT : alerts
+
+    DEVICE ||--o{ DEVICE_ASSIGNMENT : pairing_history
+    DEVICE ||--o{ TELEMETRY_LOG : produces
+
+    PATIENT {
+      bigint id PK
+      varchar hn UK
+      varchar national_id UK
+      varchar first_name
+      varchar last_name
+    }
+    VISIT {
+      bigint id PK
+      bigint patient_id FK
+      uuid tracking_token UK
+      varchar final_severity
+      datetime registered_at
+    }
+    VITAL_SIGN {
+      bigint id PK
+      bigint visit_id FK_UK
+      int rr
+      int pr
+      int sys_bp
+      int dia_bp
+      float bt
+      int o2sat
+    }
+    TRIAGE_RESULT {
+      bigint id PK
+      bigint visit_id FK_UK
+      varchar ai_severity
+      varchar nurse_severity
+      float confidence
+    }
+    QUEUE {
+      bigint id PK
+      bigint visit_id FK_UK
+      varchar status
+      int priority
+      int exam_room
+    }
+    VISIT_ASSESSMENT {
+      bigint id PK
+      bigint visit_id FK_UK
+      bigint examiner_id FK
+      text diagnosis
+      text treatment
+      varchar opd_urgency
+    }
+    NURSE_CARE_ASSIGNMENT {
+      bigint id PK
+      bigint visit_id FK
+      bigint nurse_id FK
+      bigint assigned_by_id FK
+      bool is_active
+      datetime assigned_at
+      datetime ended_at
+    }
+    DEVICE {
+      bigint id PK
+      varchar device_id UK
+      varchar api_key
+      bool is_active
+      datetime last_seen
+    }
+    DEVICE_ASSIGNMENT {
+      bigint id PK
+      bigint device_id FK
+      bigint visit_id FK
+      bool is_active
+      datetime paired_at
+      datetime unpaired_at
+    }
+    TELEMETRY_LOG {
+      bigint id PK
+      bigint visit_id FK
+      bigint device_id FK
+      datetime ts
+      int bpm
+      int o2sat
+      float bt
+      int rr
+    }
+    CRITICAL_ALERT {
+      bigint id PK
+      bigint visit_id FK
+      varchar alert_type
+      varchar status
+      bigint acknowledged_by_id FK
+      datetime acknowledged_at
+    }
+    VISIT_WORKFLOW_LOG {
+      bigint id PK
+      bigint visit_id FK
+      bigint actor_id FK
+      varchar event_type
+      varchar actor_name
+      varchar actor_role
+      json details
+      datetime created_at
+    }
+    STAFF_PROFILE {
+      bigint id PK
+      bigint user_id FK_UK
+      varchar role
+      varchar photo
+    }
+    STAFF_DUTY {
+      bigint id PK
+      bigint user_id FK
+      date duty_date
+      bool is_present
+      bool is_available
+    }
+    SHIFT_SCHEDULE {
+      bigint id PK
+      bigint user_id FK
+      bigint created_by_id FK
+      date shift_date
+      time start_time
+      time end_time
+      varchar status
+    }
+    ACCOUNT_STATUS_LOG {
+      bigint id PK
+      bigint user_id FK
+      bigint actor_id FK
+      varchar action
+      text reason
+      datetime created_at
+    }
+    APPOINTMENT {
+      bigint id PK
+      bigint patient_id FK
+      date date
+      time time
+      varchar status
+    }
+    PATIENT_ACCESS_TOKEN {
+      bigint id PK
+      bigint patient_id FK
+      varchar token_hash UK
+      datetime expires_at
+    }
+    PATIENT_PIN {
+      bigint id PK
+      bigint patient_id FK_UK
+      varchar pin_hash
+      int failed_attempts
+    }
