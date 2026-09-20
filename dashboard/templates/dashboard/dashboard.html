@@ -159,7 +159,7 @@
         return open+`<button class="ack" type="button" data-alert-action="start_review" data-alert-id="${a.id}">เริ่มตรวจผู้ป่วย</button>`;
       }
       if(a.status==="IN_REVIEW"){
-        return `<button class="ack resolve" type="button" data-alert-action="resolve" data-alert-id="${a.id}">กลับไปเฝ้าระวัง</button><button class="ack false-alarm" type="button" data-alert-action="false_alarm" data-alert-id="${a.id}">False alarm</button><button class="ack escalate" type="button" data-alert-action="escalate" data-alert-id="${a.id}">แจ้งแพทย์ / ยกระดับ</button>`;
+        return open+`<button class="ack resolve" type="button" data-alert-action="resolve" data-alert-id="${a.id}">กลับไปเฝ้าระวัง</button><button class="ack false-alarm" type="button" data-alert-action="false_alarm" data-alert-id="${a.id}">False alarm</button><button class="ack escalate" type="button" data-alert-action="escalate" data-alert-id="${a.id}">แจ้งแพทย์ / ยกระดับ</button>`;
       }
       return open;
     }
