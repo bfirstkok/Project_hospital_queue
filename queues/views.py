@@ -21,6 +21,7 @@ from django.apps import apps
 
 
 from ai_triage.services import apply_ai_triage, localize_ai_reason
+from accounts.access import is_effective_superuser
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
 from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
@@ -1350,7 +1351,7 @@ def acknowledge_alert(request, alert_id: int):
         id=alert_id,
     )
 
-    if not request.user.is_superuser:
+    if not is_effective_superuser(request.user):
         is_responsible_nurse = NurseCareAssignment.objects.filter(
             visit=alert.visit,
             nurse=request.user,
@@ -1397,7 +1398,7 @@ def acknowledge_alert(request, alert_id: int):
 def my_critical_alerts(request):
     """Return unresolved wearable alerts assigned to the signed-in nurse."""
     alerts = CriticalAlert.objects.filter(status=CriticalAlert.Status.NEW)
-    if not request.user.is_superuser:
+    if not is_effective_superuser(request.user):
         alerts = alerts.filter(
             visit__nurse_care_assignments__nurse=request.user,
             visit__nurse_care_assignments__is_active=True,
