@@ -7,6 +7,7 @@ app_name = "system_test"
 urlpatterns = [
     path("", views.index, name="index"),
     path("patient/create-random/", views.create_random_registered_patient, name="create_random_registered_patient"),
+    path("sensor/send/", views.send_sensor_packet, name="send_sensor_packet"),
     path("scenario/create/", views.create_scenario, name="create_scenario"),
     path("scenario/<int:run_id>/telemetry/", views.push_telemetry, name="push_telemetry"),
     path("scenario/<int:run_id>/delete/", views.delete_scenario, name="delete_scenario"),
