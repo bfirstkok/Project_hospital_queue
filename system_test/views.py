@@ -110,7 +110,6 @@ def index(request):
                 visit__final_severity=Visit.Severity.YELLOW,
                 visit__queue__status__in=[
                     Queue.Status.OBSERVATION_MONITORING,
-                    Queue.Status.REASSESSMENT_REQUIRED,
                 ],
             ),
             is_active=True,
