@@ -216,19 +216,3 @@ class Appointment(models.Model):
     def __str__(self):
         t = self.time.strftime("%H:%M") if self.time else "-"
         return f"Appointment {self.date} {t} {self.status} - Patient#{self.patient_id}"
-
-
-class Assessment(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="assessments")
-    detail = models.TextField()
-    assessed_at = models.DateTimeField(auto_now_add=True)
-    assessor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name="assessments_made",
-    )
-
-    def __str__(self):
-        who = getattr(self.assessor, "username", None) or "unknown"
-        return f"Assessment {self.assessed_at:%Y-%m-%d %H:%M} by {who} - Patient#{self.patient_id}"
