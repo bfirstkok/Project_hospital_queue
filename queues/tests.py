@@ -796,7 +796,7 @@ class QueueWorkflowTests(TestCase):
             reverse("call_visit", args=[visit.id]),
             {"exam_room": "1"},
         )
-        self.assertRedirects(called, reverse("opd_list"))
+        self.assertRedirects(called, reverse("queue_list"))
         queue.refresh_from_db()
         self.assertEqual(queue.status, Queue.Status.CALLED)
         self.assertEqual(queue.exam_room, 1)
