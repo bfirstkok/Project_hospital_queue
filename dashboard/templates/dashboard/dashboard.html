@@ -57,10 +57,10 @@
 
     <section class="panel alert-panel" aria-labelledby="urgent-alert-title">
       <div class="panel-header">
-        <div class="alert-heading"><span class="alert-heading-icon" aria-hidden="true">!</span><div><h2 id="urgent-alert-title">การแจ้งเตือนจาก Sensor</h2><p>ตรวจสอบผู้ป่วยก่อน แล้วจึงรับทราบการแจ้งเตือนเมื่อเจ้าหน้าที่เห็นข้อมูลแล้ว</p></div></div>
+        <div class="alert-heading"><span class="alert-heading-icon" aria-hidden="true">!</span><div><h2 id="urgent-alert-title">การแจ้งเตือนจาก Sensor</h2><p>รับทราบว่าเห็น Alert แล้ว ไปตรวจผู้ป่วยจริง และยืนยันค่าที่ข้างเตียงก่อนตัดสินใจดำเนินการต่อ</p></div></div>
         <div class="alert-total"><span id="alertHeaderCount">{{ new_alert_total }}</span> รายการ</div>
       </div>
-      <div class="alert-flow" aria-label="ขั้นตอนจัดการการแจ้งเตือน"><span><b>1</b>ตรวจสอบผู้ป่วย</span><i>→</i><span><b>2</b>รับทราบการแจ้งเตือน</span><small>รับทราบ = ปิดการแจ้งเตือนเท่านั้น ผู้ป่วยยังคงอยู่ในขั้นตอนเฝ้าระวัง/ประเมินซ้ำตามสถานะ</small></div>
+      <div class="alert-flow" aria-label="ขั้นตอนจัดการการแจ้งเตือน"><span><b>1</b>Sensor แจ้งเตือน</span><i>→</i><span><b>2</b>รับทราบและไปตรวจ</span><i>→</i><span><b>3</b>Clinical Review</span><i>→</i><span><b>4</b>เฝ้าระวังต่อหรือยกระดับ</span><small>รับทราบไม่ได้แปลว่าปิด Alert และระบบไม่เปลี่ยนระดับคัดกรองอัตโนมัติ</small></div>
       <div class="alert-notice" id="alertNotice" role="status" aria-live="polite" hidden></div>
       <div class="alerts" id="alertList" aria-live="polite"><div class="empty">กำลังโหลดการแจ้งเตือน...</div></div>
     </section>
