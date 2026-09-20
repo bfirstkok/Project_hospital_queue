@@ -35,7 +35,6 @@ ACTIVE_QUEUE_STATUSES = {
     Queue.Status.CALLED,
     Queue.Status.MONITORING,
     Queue.Status.OBSERVATION_MONITORING,
-    Queue.Status.REASSESSMENT_REQUIRED,
     Queue.Status.EMERGENCY_TRANSFER,
     Queue.Status.FOLLOWUP,
 }
@@ -59,7 +58,6 @@ PUBLIC_STATUS = {
     Queue.Status.CALLED: ("กรุณาเข้าห้องตรวจ", "ถึงคิวของคุณแล้ว กรุณาเข้าห้องตรวจ"),
     Queue.Status.MONITORING: ("ติดตามอาการหลังตรวจ", "อยู่ระหว่างการติดตามอาการตามแผนการรักษา"),
     Queue.Status.OBSERVATION_MONITORING: ("กำลังเฝ้าระวัง", "กำลังติดตามสัญญาณชีพด้วยอุปกรณ์"),
-    Queue.Status.REASSESSMENT_REQUIRED: ("รอพยาบาลประเมินซ้ำ", "อุปกรณ์พบค่าที่ต้องตรวจสอบ กรุณารอพยาบาล"),
     Queue.Status.EMERGENCY_TRANSFER: ("ส่งต่อฉุกเฉิน", "กรุณาปฏิบัติตามคำแนะนำของบุคลากรทันที"),
     Queue.Status.OPD_DONE: ("เสร็จสิ้นการรับบริการ", "การตรวจ OPD เสร็จสิ้นแล้ว"),
     Queue.Status.FOLLOWUP: ("นัดติดตามอาการ", "กรุณาตรวจสอบวันนัดกับเจ้าหน้าที่"),
