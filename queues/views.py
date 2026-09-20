@@ -145,7 +145,7 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
         ).exists()
         if exists:
             continue
-        created.append(CriticalAlert.objects.create(
+        alert = CriticalAlert.objects.create(
             visit=visit,
             alert_type=alert_type,
             severity=Visit.Severity.PINK,
@@ -153,7 +153,21 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
             value=value,
             threshold=threshold,
             source=source,
-        ))
+        )
+        created.append(alert)
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_CREATED,
+            description=f"สร้างสัญญาณเตือน: {message}",
+            details={
+                "alert_id": alert.id,
+                "alert_type": alert.alert_type,
+                "severity": alert.severity,
+                "value": alert.value,
+                "threshold": alert.threshold,
+                "source": alert.source,
+            },
+        )
 
     q = getattr(visit, "queue", None)
     if (
@@ -1329,12 +1343,52 @@ def monitor_latest_api(request):
 
 @login_required
 @require_POST
+@transaction.atomic
 def acknowledge_alert(request, alert_id: int):
-    alert = get_object_or_404(CriticalAlert, id=alert_id)
+    alert = get_object_or_404(
+        CriticalAlert.objects.select_for_update().select_related("visit"),
+        id=alert_id,
+    )
+
+    if not request.user.is_superuser:
+        is_responsible_nurse = NurseCareAssignment.objects.filter(
+            visit=alert.visit,
+            nurse=request.user,
+            is_active=True,
+        ).exists()
+        if not is_responsible_nurse:
+            return JsonResponse({
+                "ok": False,
+                "message": "Only the responsible nurse can acknowledge this alert",
+            }, status=403)
+
+    if alert.status == CriticalAlert.Status.ACKNOWLEDGED:
+        return JsonResponse({
+            "ok": True,
+            "alert_id": alert.id,
+            "status": alert.status,
+            "already_acknowledged": True,
+        })
+
     alert.status = CriticalAlert.Status.ACKNOWLEDGED
     alert.acknowledged_at = timezone.now()
     alert.acknowledged_by = request.user
     alert.save(update_fields=["status", "acknowledged_at", "acknowledged_by"])
+
+    VisitWorkflowLog.record(
+        visit=alert.visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
+        actor=request.user,
+        description=f"รับทราบสัญญาณเตือน: {alert.message}",
+        details={
+            "alert_id": alert.id,
+            "alert_type": alert.alert_type,
+            "severity": alert.severity,
+            "value": alert.value,
+            "threshold": alert.threshold,
+            "source": alert.source,
+        },
+    )
     return JsonResponse({"ok": True, "alert_id": alert.id, "status": alert.status})
 
 
