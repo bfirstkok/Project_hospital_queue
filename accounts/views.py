@@ -3,18 +3,27 @@ from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render, redirect
+from django.http import HttpResponseForbidden
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
 
-from queues.models import Queue
-from .access import CAPABILITY_LABELS, Capability, capabilities_for, has_capability
+from queues.models import Queue, StaffProfile
+from .access import (
+    CAPABILITY_LABELS,
+    Capability,
+    SIMULATED_ROLE_SESSION_KEY,
+    capabilities_for,
+    has_capability,
+    is_effective_superuser,
+)
 
 
 @login_required
 def role_landing(request):
-    """Send each account to the first page that matches its actual duty."""
-    if request.user.is_superuser:
+    """Send each account to the first page that matches its effective duty."""
+    if is_effective_superuser(request.user):
         return redirect("system_test:index")
     if has_capability(request.user, Capability.DOCTOR_ASSESSMENT):
         return redirect("opd_room_select")
@@ -35,7 +44,7 @@ def role_landing(request):
     return redirect("my_permissions")
 
 
-@login_required
+@login_required\n@require_POST\ndef switch_test_role(request):\n    """Let a real superuser temporarily simulate one staff role in this session."""\n    if not request.user.is_superuser:\n        return HttpResponseForbidden("Superuser only")\n\n    role = request.POST.get("role", "").strip()\n    if role in {"", "ADMIN"}:\n        request.session.pop(SIMULATED_ROLE_SESSION_KEY, None)\n        request.user._simulated_hospital_role = None\n        messages.success(request, "กลับสู่สิทธิ์ผู้ดูแลระบบสูงสุดแล้ว")\n    elif role in StaffProfile.Role.values:\n        request.session[SIMULATED_ROLE_SESSION_KEY] = role\n        request.user._simulated_hospital_role = role\n        label = dict(StaffProfile.Role.choices).get(role, role)\n        messages.success(request, f"กำลังทดสอบระบบในบทบาท {label}")\n    else:\n        messages.error(request, "บทบาทที่เลือกไม่ถูกต้อง")\n\n    return redirect("role_landing")\n\n\n@login_required
 def my_permissions(request):
     """Explain the signed-in account's actual duties in plain language."""
     capability_values = capabilities_for(request.user)
