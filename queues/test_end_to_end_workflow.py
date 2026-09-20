@@ -176,6 +176,7 @@ class FullPatientWorkflowReportTests(TestCase):
             {
                 "severity": Visit.Severity.YELLOW,
                 "yellow_assignment_required": "1",
+                "device_id": str(self.device.id),
                 "nurse_note": "ยืนยันสีเหลืองสำหรับการทดสอบระบบอัตโนมัติ",
                 "risk_flags_present": "0",
             },
@@ -192,37 +193,31 @@ class FullPatientWorkflowReportTests(TestCase):
         ).count()
         self._check(
             "3. ยืนยันสีเหลือง",
-            "WAITING_QUEUE + auto assign พยาบาล 1/4",
+            "OBSERVATION_MONITORING + auto assign พยาบาล + ผูกอุปกรณ์",
             (
                 f"HTTP {confirmation_response.status_code}, {visit.queue.status}, "
                 f"nurse={care_assignment.nurse.username if care_assignment else '-'}, load={active_load}/4"
             ),
             confirmation_response.status_code == 302
             and visit.final_severity == Visit.Severity.YELLOW
-            and visit.queue.status == Queue.Status.WAITING_QUEUE
+            and visit.queue.status == Queue.Status.OBSERVATION_MONITORING
             and care_assignment is not None
+            and DeviceAssignment.objects.filter(visit=visit, device=self.device, is_active=True).exists()
             and care_assignment.nurse_id == self.nurse.id
             and active_load == 1,
         )
 
-        # 4) Pair a wearable using the device-management endpoint.
-        pairing_response = self.client.post(reverse("device_management"), {
-            "action": "pair_device",
-            "device": str(self.device.id),
-            "visit": str(visit.id),
-        })
-        visit.queue.refresh_from_db()
+        # 4) Device pairing is part of the YELLOW confirmation handoff.
         device_assignment = DeviceAssignment.objects.filter(
             visit=visit,
             device=self.device,
             is_active=True,
         ).first()
         self._check(
-            "4. จับคู่อุปกรณ์",
-            "อุปกรณ์ active + OBSERVATION_MONITORING",
-            f"HTTP {pairing_response.status_code}, {visit.queue.status}, paired={bool(device_assignment)}",
-            pairing_response.status_code == 302
-            and device_assignment is not None
+            "4. ตรวจการจับคู่อุปกรณ์",
+            "เลือกอุปกรณ์พร้อมพยาบาลในขั้นยืนยันสีเหลือง",
+            f"{visit.queue.status}, paired={bool(device_assignment)}",
+            device_assignment is not None
             and visit.queue.status == Queue.Status.OBSERVATION_MONITORING,
         )
 
