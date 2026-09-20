@@ -105,13 +105,16 @@ def index(request):
         DeviceAssignment.objects
         .select_related("device", "visit", "visit__patient", "visit__queue")
         .filter(
+            Q(visit__queue__status=Queue.Status.MONITORING)
+            | Q(
+                visit__final_severity=Visit.Severity.YELLOW,
+                visit__queue__status__in=[
+                    Queue.Status.OBSERVATION_MONITORING,
+                    Queue.Status.REASSESSMENT_REQUIRED,
+                ],
+            ),
             is_active=True,
             device__is_active=True,
-            visit__queue__status__in=[
-                Queue.Status.OBSERVATION_MONITORING,
-                Queue.Status.REASSESSMENT_REQUIRED,
-                Queue.Status.MONITORING,
-            ],
         )
         .order_by("device__device_id")
     )
