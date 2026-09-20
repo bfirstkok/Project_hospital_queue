@@ -11,7 +11,7 @@ from .care_workload import (
     auto_assign_visit,
     nurse_workload_rows,
 )
-from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit
+from .models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, Visit, VisitWorkflowLog
 
 
 class NurseWorkloadManagementTests(TestCase):
@@ -86,6 +86,56 @@ class NurseWorkloadManagementTests(TestCase):
 
         self.assertEqual(assignment.nurse, self.nurse_c)
         self.assertEqual(count, 1)
+
+    def test_assignment_and_reassignment_write_accountability_logs(self):
+        visit = self.make_visit()
+
+        first, _ = assign_visit_to_nurse(
+            visit=visit,
+            nurse=self.nurse_a,
+            assigned_by=self.manager,
+        )
+        assigned_log = VisitWorkflowLog.objects.get(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.NURSE_ASSIGNED,
+        )
+        self.assertEqual(assigned_log.actor, self.manager)
+        self.assertEqual(assigned_log.details["assignment_id"], first.id)
+        self.assertEqual(assigned_log.details["nurse_id"], self.nurse_a.id)
+        self.assertEqual(assigned_log.details["assigned_by_id"], self.manager.id)
+
+        second, _ = assign_visit_to_nurse(
+            visit=visit,
+            nurse=self.nurse_b,
+            assigned_by=self.manager,
+        )
+        reassigned_log = VisitWorkflowLog.objects.get(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.NURSE_REASSIGNED,
+        )
+        self.assertEqual(reassigned_log.actor, self.manager)
+        self.assertEqual(reassigned_log.details["assignment_id"], second.id)
+        self.assertEqual(reassigned_log.details["previous_nurse_id"], self.nurse_a.id)
+        self.assertEqual(reassigned_log.details["nurse_id"], self.nurse_b.id)
+
+    def test_terminal_state_closes_assignment_and_writes_system_audit_log(self):
+        visit = self.make_visit()
+        assign_visit_to_nurse(
+            visit=visit,
+            nurse=self.nurse_a,
+            assigned_by=self.manager,
+        )
+
+        visit.queue.status = Queue.Status.OPD_DONE
+        visit.queue.save(update_fields=["status"])
+
+        ended_log = VisitWorkflowLog.objects.get(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.NURSE_ASSIGNMENT_ENDED,
+        )
+        self.assertIsNone(ended_log.actor)
+        self.assertEqual(ended_log.actor_name, "ระบบ")
+        self.assertEqual(ended_log.details["nurse_id"], self.nurse_a.id)
 
     def test_manual_assignment_refuses_fifth_patient(self):
         for _ in range(MAX_PATIENTS_PER_NURSE):
