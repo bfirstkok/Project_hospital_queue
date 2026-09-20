@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Q
 from django.forms import modelform_factory
+from django.test import RequestFactory
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch, reverse
@@ -28,7 +29,7 @@ from queues.models import (
     Visit,
     VitalSign,
 )
-from queues.views import create_critical_alerts_for_visit
+from queues.views import create_critical_alerts_for_visit, iot_vitals
 
 from .models import TestScenarioRun
 
@@ -100,6 +101,20 @@ def _safe_value(field_name, value):
 @require_GET
 def index(request):
     runs = TestScenarioRun.objects.select_related("patient", "visit", "device", "created_by")[:20]
+    sensor_assignments = list(
+        DeviceAssignment.objects
+        .select_related("device", "visit", "visit__patient", "visit__queue")
+        .filter(
+            is_active=True,
+            device__is_active=True,
+            visit__queue__status__in=[
+                Queue.Status.OBSERVATION_MONITORING,
+                Queue.Status.REASSESSMENT_REQUIRED,
+                Queue.Status.MONITORING,
+            ],
+        )
+        .order_by("device__device_id")
+    )
     role_rows = []
     role_labels = dict(StaffProfile.Role.choices)
     for role, capabilities in ROLE_CAPABILITIES.items():
@@ -113,7 +128,7 @@ def index(request):
         "runs": runs,
         "models": _model_catalog(),
         "role_rows": role_rows,
-        "scenario_choices": TestScenarioRun.Scenario.choices,
+        "sensor_assignments": sensor_assignments,
     })
 
 
@@ -239,6 +254,61 @@ def create_random_registered_patient(request):
         request,
         f"เพิ่มผู้ป่วยสุ่ม {patient.first_name} {patient.last_name} · {queue.display_number} "
         f"· อาการ: {symptom} (TEST #{run.id})",
+    )
+    return redirect("system_test:index")
+
+
+@superuser_required
+@require_POST
+def send_sensor_packet(request):
+    """Simulate one physical sensor packet through the real /api/iot/vitals/ handler."""
+    assignment = get_object_or_404(
+        DeviceAssignment.objects.select_related("device", "visit", "visit__patient", "visit__queue"),
+        pk=request.POST.get("assignment_id"),
+        is_active=True,
+        device__is_active=True,
+    )
+    mode = request.POST.get("mode", "normal")
+    presets = {
+        "normal": {"heart_rate": 82, "spo2": 98, "temperature": 36.8, "respiratory_rate": 18},
+        "warning": {"heart_rate": 112, "spo2": 94, "temperature": 38.2, "respiratory_rate": 27},
+        "critical": {"heart_rate": 138, "spo2": 87, "temperature": 39.4, "respiratory_rate": 36},
+    }
+    values = presets.get(mode)
+    if values is None:
+        messages.error(request, "รูปแบบค่าจำลองไม่ถูกต้อง")
+        return redirect("system_test:index")
+
+    payload = {
+        "device_id": assignment.device.device_id,
+        "patient_id": assignment.visit.patient.hn or str(assignment.visit.patient_id),
+        **values,
+    }
+    sensor_request = RequestFactory().post(
+        "/api/iot/vitals/",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_X_API_KEY=assignment.device.api_key,
+    )
+    response = iot_vitals(sensor_request)
+    try:
+        result = json.loads(response.content.decode("utf-8"))
+    except (TypeError, ValueError, UnicodeDecodeError):
+        result = {}
+
+    if response.status_code != 200:
+        messages.error(
+            request,
+            f"Sensor simulator ส่งไม่สำเร็จ (HTTP {response.status_code}): "
+            f"{result.get('message') or result.get('error') or 'unknown error'}",
+        )
+        return redirect("system_test:index")
+
+    messages.success(
+        request,
+        f"Sensor simulator → {assignment.device.device_id} / Visit#{assignment.visit_id}: "
+        f"HR {values['heart_rate']}, SpO₂ {values['spo2']}, "
+        f"BT {values['temperature']}, RR {values['respiratory_rate']}",
     )
     return redirect("system_test:index")
 
