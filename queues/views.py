@@ -1458,8 +1458,11 @@ def update_alert_workflow(request, alert_id: int):
         description = note or "เริ่มตรวจอาการและวัดซ้ำที่ข้างเตียงเพื่อยืนยันสัญญาณเตือน"
 
     elif action in {"resolve", "false_alarm", "escalate"}:
-        if alert.status not in {CriticalAlert.Status.ACKNOWLEDGED, CriticalAlert.Status.IN_REVIEW}:
-            return JsonResponse({"ok": False, "message": "Alert is not in a reviewable state"}, status=409)
+        if alert.status != CriticalAlert.Status.IN_REVIEW:
+            return JsonResponse({
+                "ok": False,
+                "message": "Bedside clinical review must be started before recording an outcome",
+            }, status=409)
 
         if action == "resolve":
             alert.status = CriticalAlert.Status.RESOLVED
