@@ -15,7 +15,7 @@ from .care_workload import (
     nurse_workload_rows,
 )
 from .forms import NurseTriageAssessmentForm
-from .models import Queue, Visit
+from .models import Device, DeviceAssignment, Queue, Visit
 
 
 @login_required
@@ -47,6 +47,13 @@ def waiting_confirmation(request):
         nurse_rows.append(row)
 
     recommended_row = next((row for row in nurse_rows if row["recommended"]), None)
+    available_devices = list(
+        Device.objects
+        .filter(is_active=True)
+        .exclude(assignments__is_active=True)
+        .order_by("device_id")
+        .distinct()
+    )
     return render(request, "queues/waiting_confirmation_with_nurse.html", {
         "q_items": q_items,
         "risk_flag_choices": NurseTriageAssessmentForm.RISK_FLAG_CHOICES,
@@ -54,6 +61,8 @@ def waiting_confirmation(request):
         "recommended_nurse_id": recommended_row["user"].id if recommended_row else None,
         "has_assignable_nurse": recommended_row is not None,
         "max_patients_per_nurse": MAX_PATIENTS_PER_NURSE,
+        "available_devices": available_devices,
+        "has_available_device": bool(available_devices),
     })
 
 
@@ -71,7 +80,34 @@ def triage_visit(request, visit_id: int):
         return legacy_views.triage_visit(request, visit_id)
 
     requested_nurse_id = request.POST.get("nurse_id") or None
+    requested_device_id = request.POST.get("device_id") or None
     requested_nurse = None
+
+    # The real YELLOW confirmation UI treats nurse + monitoring device as one
+    # atomic handoff. Legacy/internal callers do not send yellow_assignment_required.
+    if not requested_device_id or not str(requested_device_id).isdigit():
+        messages.error(request, "กรุณาเลือกอุปกรณ์เฝ้าระวังสำหรับผู้ป่วยสีเหลือง")
+        return redirect("waiting_confirmation")
+
+    visit_lock = get_object_or_404(
+        Visit.objects.select_for_update().select_related("queue"),
+        id=visit_id,
+    )
+    requested_device = (
+        Device.objects.select_for_update()
+        .filter(pk=requested_device_id, is_active=True)
+        .first()
+    )
+    if requested_device is None:
+        messages.error(request, "ไม่พบอุปกรณ์ที่เลือกหรืออุปกรณ์ถูกปิดใช้งาน กรุณาเลือกใหม่")
+        return redirect("waiting_confirmation")
+    if DeviceAssignment.objects.filter(device=requested_device, is_active=True).exists():
+        messages.error(request, f"อุปกรณ์ {requested_device.device_id} ถูกผูกกับผู้ป่วยอื่นแล้ว กรุณาเลือกอุปกรณ์ใหม่")
+        return redirect("waiting_confirmation")
+    if DeviceAssignment.objects.filter(visit=visit_lock, is_active=True).exists():
+        messages.error(request, "ผู้ป่วยรายนี้มีอุปกรณ์ที่กำลังใช้งานอยู่แล้ว")
+        return redirect("waiting_confirmation")
+
     if requested_nurse_id:
         if not str(requested_nurse_id).isdigit():
             messages.error(request, "ข้อมูลพยาบาลที่เลือกไม่ถูกต้อง")
@@ -121,10 +157,20 @@ def triage_visit(request, visit_id: int):
         messages.error(request, message)
         return redirect("waiting_confirmation")
 
+    DeviceAssignment.objects.create(
+        device=requested_device,
+        visit=visit,
+        is_active=True,
+    )
+    if queue_item.status != Queue.Status.OBSERVATION_MONITORING:
+        queue_item.status = Queue.Status.OBSERVATION_MONITORING
+        queue_item.save(update_fields=["status"])
+
     nurse = assignment.nurse
     messages.success(
         request,
-        f"มอบหมาย {nurse.get_full_name() or nurse.username} เป็นพยาบาลผู้รับผิดชอบแล้ว "
-        f"(ดูแล {patient_count}/{MAX_PATIENTS_PER_NURSE} คน)",
+        f"ยืนยันสีเหลืองแล้ว · {nurse.get_full_name() or nurse.username} รับผิดชอบ "
+        f"(ดูแล {patient_count}/{MAX_PATIENTS_PER_NURSE} คน) · "
+        f"ผูกอุปกรณ์ {requested_device.device_id} และเริ่มเฝ้าระวังแล้ว",
     )
     return response
