@@ -35,8 +35,9 @@ class DashboardPresentationTests(TestCase):
         self.assertContains(response, 'id="urgent-alert-title"')
         self.assertContains(response, "รายการแจ้งเตือนเร่งด่วน")
         self.assertContains(response, "การแจ้งเตือนจาก Sensor")
-        self.assertContains(response, "1</b>ตรวจสอบผู้ป่วย")
-        self.assertContains(response, "รับทราบ = ปิดการแจ้งเตือนเท่านั้น")
+        self.assertContains(response, "1</b>Sensor แจ้งเตือน")
+        self.assertContains(response, "Clinical Review")
+        self.assertContains(response, "รับทราบไม่ได้แปลว่าปิด Alert")
         self.assertContains(response, 'id="alertNotice"')
         self.assertNotContains(response, 'id="criticalBell"')
         self.assertContains(response, 'aria-live="polite"')
@@ -46,7 +47,7 @@ class DashboardPresentationTests(TestCase):
         self.assertContains(response, "ยืนยันตามอาการและสัญญาณชีพ")
         self.assertContains(response, "document.body.prepend(nav)")
 
-    def test_dashboard_alert_acknowledgement_updates_live_summary_and_keeps_reassessment_state(self):
+    def test_dashboard_alert_workflow_keeps_queue_in_monitoring_until_alert_is_closed(self):
         patient = Patient.objects.create(
             first_name="แจ้งเตือน",
             last_name="ทดสอบ",
@@ -58,7 +59,7 @@ class DashboardPresentationTests(TestCase):
         )
         queue = Queue.objects.create(
             visit=visit,
-            status=Queue.Status.REASSESSMENT_REQUIRED,
+            status=Queue.Status.OBSERVATION_MONITORING,
             priority=3,
         )
         alert = CriticalAlert.objects.create(
@@ -75,26 +76,52 @@ class DashboardPresentationTests(TestCase):
         payload = before.json()
         self.assertEqual(payload["new_alert_total"], 1)
         self.assertEqual(payload["alerts"][0]["queue_number"], queue.display_number)
-        self.assertEqual(payload["alerts"][0]["queue_status"], Queue.Status.REASSESSMENT_REQUIRED)
-        self.assertTrue(payload["alerts"][0]["requires_reassessment"])
+        self.assertEqual(payload["alerts"][0]["queue_status"], Queue.Status.OBSERVATION_MONITORING)
+        self.assertEqual(payload["alerts"][0]["status"], CriticalAlert.Status.NEW)
 
         acknowledged = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
         self.assertEqual(acknowledged.status_code, 200)
         self.assertTrue(acknowledged.json()["ok"])
         self.assertEqual(
             acknowledged.json()["queue_status"],
-            Queue.Status.REASSESSMENT_REQUIRED,
+            Queue.Status.OBSERVATION_MONITORING,
         )
 
         alert.refresh_from_db()
         queue.refresh_from_db()
         self.assertEqual(alert.status, CriticalAlert.Status.ACKNOWLEDGED)
-        self.assertEqual(queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+        self.assertEqual(queue.status, Queue.Status.OBSERVATION_MONITORING)
 
-        after = self.client.get(reverse("dashboard:live_summary_api"))
-        self.assertEqual(after.status_code, 200)
-        self.assertEqual(after.json()["new_alert_total"], 0)
-        self.assertEqual(after.json()["alerts"], [])
+        after_ack = self.client.get(reverse("dashboard:live_summary_api"))
+        self.assertEqual(after_ack.status_code, 200)
+        self.assertEqual(after_ack.json()["new_alert_total"], 1)
+        self.assertEqual(
+            after_ack.json()["alerts"][0]["status"],
+            CriticalAlert.Status.ACKNOWLEDGED,
+        )
+
+        review = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "start_review"},
+        )
+        self.assertEqual(review.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.IN_REVIEW)
+
+        resolved = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "resolve"},
+        )
+        self.assertEqual(resolved.status_code, 200)
+        alert.refresh_from_db()
+        queue.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.RESOLVED)
+        self.assertEqual(queue.status, Queue.Status.OBSERVATION_MONITORING)
+
+        after_close = self.client.get(reverse("dashboard:live_summary_api"))
+        self.assertEqual(after_close.status_code, 200)
+        self.assertEqual(after_close.json()["new_alert_total"], 0)
+        self.assertEqual(after_close.json()["alerts"], [])
 
     def test_waiting_time_report_uses_report_hero_and_exports(self):
         response = self.client.get(reverse("dashboard:waiting_time_report"))
