@@ -74,11 +74,9 @@ def transfer_patient(request, visit_id: int):
         messages.error(request, "กรุณาเลือกห้องตรวจปลายทางหรือส่งกลับไปรอเรียกคิว")
         return go_back()
 
-    # Reuse the queue workflow event so the action remains visible in the existing timeline
-    # without changing historical database schema. Details clearly mark this as a transfer.
     VisitWorkflowLog.record(
         visit=visit,
-        event_type=VisitWorkflowLog.EventType.QUEUE_CALLED,
+        event_type=VisitWorkflowLog.EventType.QUEUE_TRANSFERRED,
         actor=request.user,
         description=description,
         details=details,
