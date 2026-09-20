@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from patients.models import Patient
-from queues.models import NurseCareAssignment, Queue, StaffDuty, StaffProfile, TriageResult, Visit
+from queues.models import Device, DeviceAssignment, NurseCareAssignment, Queue, StaffDuty, StaffProfile, TriageResult, Visit
 
 
 class YellowNurseAssignmentTests(TestCase):
@@ -36,6 +36,11 @@ class YellowNurseAssignmentTests(TestCase):
             first_name="ผู้ป่วย",
             last_name="ทดสอบสีเหลือง",
             national_id="5555555555555",
+        )
+        self.device = Device.objects.create(
+            device_id="YELLOW-DEVICE-001",
+            api_key="yellow-device-secret",
+            is_active=True,
         )
 
     def make_waiting_visit(self):
@@ -72,6 +77,7 @@ class YellowNurseAssignmentTests(TestCase):
         payload = {
             "severity": Visit.Severity.YELLOW,
             "yellow_assignment_required": "1",
+            "device_id": str(self.device.id),
         }
         payload.update(extra)
         return payload
@@ -82,8 +88,11 @@ class YellowNurseAssignmentTests(TestCase):
         response = self.client.get(reverse("waiting_confirmation"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "มอบหมายผู้ดูแลและอุปกรณ์เฝ้าระวัง")
         self.assertContains(response, "พยาบาลผู้รับผิดชอบ")
         self.assertContains(response, "พิมพ์ใจ พยาบาล")
+        self.assertContains(response, "เลือกอุปกรณ์เฝ้าระวัง")
+        self.assertContains(response, self.device.device_id)
         self.assertContains(response, "เลือกอัตโนมัติ")
         self.assertContains(response, "0/4")
         self.assertContains(response, "เหลือ 4 คน")
@@ -103,7 +112,12 @@ class YellowNurseAssignmentTests(TestCase):
         assignment = NurseCareAssignment.objects.get(visit=visit, is_active=True)
         self.assertEqual(assignment.nurse, self.nurse)
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
-        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+        self.assertTrue(DeviceAssignment.objects.filter(
+            visit=visit,
+            device=self.device,
+            is_active=True,
+        ).exists())
 
     def test_yellow_confirmation_assigns_selected_available_nurse(self):
         visit = self.make_waiting_visit()
@@ -122,6 +136,59 @@ class YellowNurseAssignmentTests(TestCase):
         assignment = NurseCareAssignment.objects.get(visit=visit, is_active=True)
         self.assertEqual(assignment.nurse, self.nurse)
         self.assertEqual(assignment.assigned_by, self.coordinator)
+
+    def test_yellow_confirmation_requires_monitoring_device(self):
+        visit = self.make_waiting_visit()
+
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            {
+                "severity": Visit.Severity.YELLOW,
+                "yellow_assignment_required": "1",
+                "nurse_id": str(self.nurse.id),
+            },
+        )
+
+        self.assertRedirects(response, reverse("waiting_confirmation"))
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_CONFIRMATION)
+        self.assertFalse(NurseCareAssignment.objects.filter(visit=visit, is_active=True).exists())
+        self.assertFalse(DeviceAssignment.objects.filter(visit=visit, is_active=True).exists())
+
+    def test_device_already_in_use_cannot_be_selected(self):
+        occupied_patient = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="ใช้อุปกรณ์อยู่",
+            national_id="5555555555556",
+        )
+        occupied_visit = Visit.objects.create(
+            patient=occupied_patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=occupied_visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+        )
+        DeviceAssignment.objects.create(
+            device=self.device,
+            visit=occupied_visit,
+            is_active=True,
+        )
+        visit = self.make_waiting_visit()
+
+        response = self.client.post(
+            reverse("triage_visit", args=[visit.id]),
+            self.yellow_payload(nurse_id=str(self.nurse.id)),
+        )
+
+        self.assertRedirects(response, reverse("waiting_confirmation"))
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertIsNone(visit.final_severity)
+        self.assertEqual(visit.queue.status, Queue.Status.WAITING_CONFIRMATION)
+        self.assertFalse(NurseCareAssignment.objects.filter(visit=visit, is_active=True).exists())
 
     def test_auto_assignment_chooses_least_loaded_nurse(self):
         user_model = get_user_model()
