@@ -28,6 +28,7 @@ class PatientTransferTests(TestCase):
         self.queue.refresh_from_db()
         self.assertEqual(self.queue.exam_room, 2)
         log = VisitWorkflowLog.objects.filter(visit=self.visit).latest("created_at")
+        self.assertEqual(log.event_type, VisitWorkflowLog.EventType.QUEUE_TRANSFERRED)
         self.assertEqual(log.actor, self.operator)
         self.assertEqual(log.details["action"], "room_transfer")
         self.assertEqual(log.details["from_room"], 1)
