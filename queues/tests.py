@@ -894,7 +894,7 @@ class QueueWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="waiting-vitals-page"')
-        self.assertContains(response, "padding-left:244px")
+        self.assertContains(response, "padding-left:256px")
         self.assertContains(response, 'class="main-nav"')
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")
