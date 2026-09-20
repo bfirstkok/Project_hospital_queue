@@ -460,7 +460,7 @@ def live_summary_api(request):
     alerts = (
         CriticalAlert.objects
         .filter(status=CriticalAlert.Status.NEW)
-        .select_related("visit", "visit__patient")
+        .select_related("visit", "visit__patient", "visit__queue")
         .order_by("-created_at")[:10]
     )
     return JsonResponse({
@@ -480,6 +480,9 @@ def live_summary_api(request):
                 "id": alert.id,
                 "visit_id": alert.visit_id,
                 "patient": f"{alert.visit.patient.first_name} {alert.visit.patient.last_name}",
+                "queue_number": alert.visit.queue.display_number,
+                "queue_status": alert.visit.queue.status,
+                "requires_reassessment": alert.visit.queue.status == Queue.Status.REASSESSMENT_REQUIRED,
                 "type": alert.alert_type,
                 "message": alert.message,
                 "value": alert.value,
