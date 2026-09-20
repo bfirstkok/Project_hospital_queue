@@ -47,6 +47,10 @@ ALERT_ACTIVE_STATUSES = [
     CriticalAlert.Status.ACKNOWLEDGED,
     CriticalAlert.Status.IN_REVIEW,
 ]
+ALERT_UNRESOLVED_STATUSES = [
+    *ALERT_ACTIVE_STATUSES,
+    CriticalAlert.Status.ESCALATED,
+]
 
 
 def mask_api_key(api_key):
@@ -160,7 +164,7 @@ def create_critical_alerts_for_visit(visit, vitals, source="vitals"):
         exists = CriticalAlert.objects.filter(
             visit=visit,
             alert_type=alert_type,
-            status__in=ALERT_ACTIVE_STATUSES,
+            status__in=ALERT_UNRESOLVED_STATUSES,
         ).exists()
         if exists:
             continue
