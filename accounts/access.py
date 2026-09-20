@@ -107,9 +107,32 @@ CAPABILITY_LABELS = {
 }
 
 
+SIMULATED_ROLE_SESSION_KEY = "admin_simulated_role"
+
+
+def simulated_role_for(user):
+    """Return a validated role temporarily assumed by a superuser for testing."""
+    if not getattr(user, "is_authenticated", False) or not getattr(user, "is_superuser", False):
+        return None
+    role = getattr(user, "_simulated_hospital_role", None)
+    return role if role in StaffProfile.Role.values else None
+
+
+def is_effective_superuser(user):
+    """True only when the real superuser is not currently simulating a staff role."""
+    return bool(
+        getattr(user, "is_authenticated", False)
+        and getattr(user, "is_superuser", False)
+        and not simulated_role_for(user)
+    )
+
+
 def user_role(user):
     if not getattr(user, "is_authenticated", False):
         return None
+    simulated_role = simulated_role_for(user)
+    if simulated_role:
+        return simulated_role
     if user.is_superuser:
         return "ADMIN"
     profile = getattr(user, "hospital_staff_profile", None)
@@ -119,7 +142,7 @@ def user_role(user):
 def capabilities_for(user):
     if not getattr(user, "is_authenticated", False):
         return set()
-    if user.is_superuser:
+    if is_effective_superuser(user):
         return {
             value
             for name, value in vars(Capability).items()
@@ -160,7 +183,7 @@ def superuser_required(view_func):
     def wrapped(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        if not request.user.is_superuser:
+        if not is_effective_superuser(request.user):
             return render(
                 request,
                 "403.html",
