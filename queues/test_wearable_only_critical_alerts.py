@@ -68,7 +68,7 @@ class WearableOnlyCriticalAlertTests(TestCase):
             CriticalAlert.objects.filter(
                 visit=self.visit,
                 source="triage",
-                status=CriticalAlert.Status.ACKNOWLEDGED,
+                status=CriticalAlert.Status.RESOLVED,
             ).exists()
         )
 
@@ -126,6 +126,55 @@ class WearableOnlyCriticalAlertTests(TestCase):
                 details__alert_id=alert.id,
             ).count(),
             1,
+        )
+
+    def test_wearable_alert_uses_clinical_review_flow_without_retriage(self):
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=128,
+            o2sat=92,
+            bt=37.0,
+            rr=20,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(
+            self.visit.queue.status,
+            Queue.Status.OBSERVATION_MONITORING,
+        )
+
+        self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        response = self.client.post(reverse("start_alert_review", args=[alert.id]))
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.IN_REVIEW)
+
+        response = self.client.post(reverse("escalate_alert", args=[alert.id]))
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.ESCALATED)
+        self.assertTrue(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+                actor=self.nurse,
+                details__alert_id=alert.id,
+            ).exists()
+        )
+
+        response = self.client.post(reverse("resolve_alert", args=[alert.id]))
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.RESOLVED)
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(
+            self.visit.queue.status,
+            Queue.Status.OBSERVATION_MONITORING,
         )
 
     def test_nurse_cannot_acknowledge_alert_owned_by_another_nurse(self):
@@ -209,5 +258,5 @@ class WearableOnlyCriticalAlertTests(TestCase):
 
         plain.refresh_from_db()
         wearable.refresh_from_db()
-        self.assertEqual(plain.status, CriticalAlert.Status.ACKNOWLEDGED)
+        self.assertEqual(plain.status, CriticalAlert.Status.RESOLVED)
         self.assertEqual(wearable.status, CriticalAlert.Status.NEW)
