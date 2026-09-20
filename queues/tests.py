@@ -1250,7 +1250,7 @@ class ConfirmedTriageFlowTests(TestCase):
             ["elderly_80", "pregnant"],
         )
 
-    def test_abnormal_yellow_wearable_data_requires_nurse_reassessment(self):
+    def test_abnormal_yellow_wearable_data_creates_alert_without_retriage(self):
         visit = self.make_visit(status=Queue.Status.OBSERVATION_MONITORING, severity=Visit.Severity.YELLOW)
         DeviceAssignment.objects.create(device=self.device, visit=visit)
 
@@ -1274,7 +1274,7 @@ class ConfirmedTriageFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         visit.queue.refresh_from_db()
-        self.assertEqual(visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
         self.assertTrue(CriticalAlert.objects.filter(visit=visit, status=CriticalAlert.Status.NEW).exists())
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
 
@@ -1396,7 +1396,7 @@ class DutyAndResponsibleNurseAlertTests(TestCase):
             },
         )
         self.visit.queue.refresh_from_db()
-        self.assertEqual(self.visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+        self.assertEqual(self.visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
 
 
 class ShiftScheduleTests(TestCase):
