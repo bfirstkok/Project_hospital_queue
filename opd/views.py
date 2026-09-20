@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 
 from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign, VisitWorkflowLog
+from accounts.access import is_effective_superuser, user_role
 from queues.room_assignment import active_doctor_room_assignment
 from queues.triage import SEVERITY_LEVELS
 from .models import VisitAssessment
@@ -29,12 +30,7 @@ def _doctor_queryset():
 
 
 def _selected_examiner(request, visit_id):
-    profile = getattr(request.user, "hospital_staff_profile", None)
-    if (
-        not request.user.is_superuser
-        and profile
-        and profile.role == StaffProfile.Role.DOCTOR
-    ):
+    if user_role(request.user) == StaffProfile.Role.DOCTOR:
         return request.user
 
     if request.session.get("opd_examiner_visit_id") != visit_id:
@@ -43,7 +39,7 @@ def _selected_examiner(request, visit_id):
     if not doctor_id:
         return None
     examiner = _doctor_queryset().filter(pk=doctor_id).first()
-    if examiner and not request.user.is_superuser and examiner.pk != request.user.pk:
+    if examiner and not is_effective_superuser(request.user) and examiner.pk != request.user.pk:
         return None
     return examiner
 
@@ -268,19 +264,14 @@ def select_examiner(request, visit_id: int):
         )
         return redirect("opd_list")
 
-    profile = getattr(request.user, "hospital_staff_profile", None)
-    if (
-        not request.user.is_superuser
-        and profile
-        and profile.role == StaffProfile.Role.DOCTOR
-    ):
+    if user_role(request.user) == StaffProfile.Role.DOCTOR:
         request.session["opd_examiner_id"] = request.user.id
         request.session["opd_examiner_visit_id"] = visit.id
         return redirect("visit_assessment", visit_id=visit.id)
 
     doctors = list(
         _doctor_queryset()
-        if request.user.is_superuser
+        if is_effective_superuser(request.user)
         else _doctor_queryset().filter(pk=request.user.pk)
     )
     duties = {
@@ -298,7 +289,7 @@ def select_examiner(request, visit_id: int):
             if doctor_id.isdigit()
             else None
         )
-        if doctor and not request.user.is_superuser and doctor.pk != request.user.pk:
+        if doctor and not is_effective_superuser(request.user) and doctor.pk != request.user.pk:
             doctor = None
         if doctor is None:
             error = "กรุณาเลือกแพทย์ผู้ตรวจก่อนเข้าประเมิน"
