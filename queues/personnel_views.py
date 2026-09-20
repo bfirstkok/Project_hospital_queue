@@ -22,12 +22,11 @@ from .care_workload import (
     handover_nurse_cases,
     nurse_workload_rows,
 )
-from .models import DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, Visit
+from .models import CriticalAlert, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, Visit
 
 
 CARE_QUEUE_STATUSES = {
     Queue.Status.OBSERVATION_MONITORING,
-    Queue.Status.REASSESSMENT_REQUIRED,
     Queue.Status.MONITORING,
 }
 
@@ -77,8 +76,7 @@ def _care_visits():
                     Queue.Status.WAITING_QUEUE,
                     Queue.Status.CALLED,
                     Queue.Status.OBSERVATION_MONITORING,
-                    Queue.Status.REASSESSMENT_REQUIRED,
-                ],
+                                ],
             )
             | Q(queue__status=Queue.Status.MONITORING)
             | Q(nurse_care_assignments__is_active=True)
@@ -668,6 +666,14 @@ def personnel_dashboard(request):
     for visit in _care_visits():
         q = visit.queue
         care_assignment = active_care.get(visit.id)
+        has_active_alert = CriticalAlert.objects.filter(
+            visit=visit,
+            status__in=[
+                CriticalAlert.Status.NEW,
+                CriticalAlert.Status.ACKNOWLEDGED,
+                CriticalAlert.Status.IN_REVIEW,
+            ],
+        ).exists()
         patient_rows.append({
             "visit": visit,
             "patient": visit.patient,
@@ -677,11 +683,11 @@ def personnel_dashboard(request):
             "care_type": (
                 "ติดตามหลังตรวจ"
                 if q.status == Queue.Status.MONITORING
-                else "ต้องประเมินซ้ำ"
-                if q.status == Queue.Status.REASSESSMENT_REQUIRED
+                else "กำลังจัดการ Alert"
+                if has_active_alert
                 else "เฝ้าระวังสีเหลือง"
             ),
-            "needs_reassessment": q.status == Queue.Status.REASSESSMENT_REQUIRED,
+            "has_active_alert": has_active_alert,
         })
 
     # The personnel page doubles as a nurse workspace. A regular nurse sees
@@ -699,7 +705,7 @@ def personnel_dashboard(request):
     full_nurse_count = sum(row["is_present"] and row["patient_count"] >= MAX_PATIENTS_PER_NURSE for row in nurse_rows)
     on_duty_nurse_count = sum(row["is_present"] for row in nurse_rows)
     unassigned_count = sum(not row["care_assignment"] for row in patient_rows)
-    reassessment_count = sum(row["needs_reassessment"] for row in patient_rows)
+    alert_count = sum(row["has_active_alert"] for row in patient_rows)
 
     active_filter = request.GET.get("filter", "all")
 
@@ -718,7 +724,7 @@ def personnel_dashboard(request):
         "full_nurse_count": full_nurse_count,
         "on_duty_nurse_count": on_duty_nurse_count,
         "unassigned_count": unassigned_count,
-        "reassessment_count": reassessment_count,
+        "alert_count": alert_count,
         "assigned_count": sum(bool(row["care_assignment"]) for row in patient_rows),
         "active_filter": active_filter,
         "focus_visit_id": request.GET.get("visit", ""),
