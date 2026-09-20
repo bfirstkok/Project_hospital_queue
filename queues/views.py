@@ -524,7 +524,9 @@ def call_visit(request, visit_id: int):
             details={"exam_room": int(room), "queue_number": q.display_number},
         )
 
-        return redirect("opd_list")
+        # Queue operators own the call action but may not have doctor/OPD
+        # permissions. Keep them in the queue workflow after a successful call.
+        return redirect("queue_list")
 
     if q and q.status in QUEUE_CALLABLE_STATUSES:
         return render(request, "queues/select_exam_room.html", {
@@ -533,7 +535,7 @@ def call_visit(request, visit_id: int):
             "rooms": [1, 2, 3],
         })
 
-    return redirect("opd_list")
+    return redirect("queue_list")
 
 
 @login_required
