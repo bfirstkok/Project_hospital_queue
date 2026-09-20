@@ -10,6 +10,7 @@ from queues.models import (
     Queue,
     StaffProfile,
     Visit,
+    VisitWorkflowLog,
     VitalSign,
 )
 
@@ -74,6 +75,92 @@ class WearableOnlyCriticalAlertTests(TestCase):
         response = self.client.get(reverse("my_critical_alerts"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 0)
+
+    def test_wearable_alert_acknowledgement_records_actor_and_workflow_log(self):
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=128,
+            o2sat=92,
+            bt=37.0,
+            rr=20,
+        )
+        created = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )
+        alert = created[0]
+
+        created_log = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_CREATED,
+            details__alert_id=alert.id,
+        )
+        self.assertIsNone(created_log.actor)
+        self.assertEqual(created_log.actor_name, "ระบบ")
+        self.assertEqual(created_log.details["source"], "iot_vitals")
+
+        response = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(response.status_code, 200)
+
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.ACKNOWLEDGED)
+        self.assertEqual(alert.acknowledged_by, self.nurse)
+        self.assertIsNotNone(alert.acknowledged_at)
+
+        acknowledged_log = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
+            details__alert_id=alert.id,
+        )
+        self.assertEqual(acknowledged_log.actor, self.nurse)
+        self.assertEqual(acknowledged_log.details["alert_type"], alert.alert_type)
+
+        second_response = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(second_response.status_code, 200)
+        self.assertTrue(second_response.json()["already_acknowledged"])
+        self.assertEqual(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
+                details__alert_id=alert.id,
+            ).count(),
+            1,
+        )
+
+    def test_nurse_cannot_acknowledge_alert_owned_by_another_nurse(self):
+        other_nurse = get_user_model().objects.create_user(
+            username="other-alert-nurse",
+            password="secret",
+        )
+        StaffProfile.objects.create(user=other_nurse, role=StaffProfile.Role.NURSE)
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=130,
+            o2sat=98,
+            bt=37.0,
+            rr=20,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        self.client.force_login(other_nurse)
+        response = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+
+        self.assertEqual(response.status_code, 403)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.NEW)
+        self.assertIsNone(alert.acknowledged_by)
+        self.assertFalse(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ACKNOWLEDGED,
+                details__alert_id=alert.id,
+            ).exists()
+        )
 
     def test_wearable_critical_values_remain_new_and_are_shown(self):
         vitals = VitalSign.objects.create(
