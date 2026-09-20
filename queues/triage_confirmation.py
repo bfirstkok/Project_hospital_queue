@@ -89,9 +89,16 @@ def triage_visit(request, visit_id: int):
         messages.error(request, "กรุณาเลือกอุปกรณ์เฝ้าระวังสำหรับผู้ป่วยสีเหลือง")
         return redirect("waiting_confirmation")
 
+    # Lock the Visit row directly. Do not join the reverse OneToOne queue here:
+    # PostgreSQL rejects SELECT ... FOR UPDATE on the nullable side of the
+    # outer join that select_related("queue") generates.
     visit_lock = get_object_or_404(
-        Visit.objects.select_for_update().select_related("queue"),
+        Visit.objects.select_for_update(),
         id=visit_id,
+    )
+    queue_lock = get_object_or_404(
+        Queue.objects.select_for_update(),
+        visit=visit_lock,
     )
     requested_device = (
         Device.objects.select_for_update()
@@ -120,8 +127,9 @@ def triage_visit(request, visit_id: int):
     # Run the existing triage validation/routing first, but keep it inside this
     # outer transaction so a capacity race can roll the whole confirmation back.
     response = legacy_views.triage_visit(request, visit_id)
-    visit = get_object_or_404(Visit.objects.select_related("patient", "queue"), id=visit_id)
-    queue_item = getattr(visit, "queue", None)
+    visit = get_object_or_404(Visit.objects.select_related("patient"), id=visit_id)
+    queue_item = queue_lock
+    queue_item.refresh_from_db()
     triage_completed = (
         visit.final_severity == Visit.Severity.YELLOW
         and visit.confirmed_at is not None
