@@ -7,4 +7,5 @@ urlpatterns = [
     path("landing/", views.role_landing, name="role_landing"),
     path("permissions/", views.my_permissions, name="my_permissions"),
     path("settings/", views.account_settings, name="account_settings"),
+    path("simulate-role/", views.switch_test_role, name="switch_test_role"),
 ]
