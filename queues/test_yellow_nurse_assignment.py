@@ -96,7 +96,7 @@ class YellowNurseAssignmentTests(TestCase):
         self.assertContains(response, "เลือกอัตโนมัติ")
         self.assertContains(response, "0/4")
         self.assertContains(response, "เหลือ 4 คน")
-        self.assertContains(response, "ยืนยันพยาบาลและสีเหลือง")
+        self.assertContains(response, "ยืนยันพยาบาล + อุปกรณ์ + สีเหลือง")
 
     def test_yellow_confirmation_auto_assigns_when_nurse_id_is_omitted(self):
         visit = self.make_waiting_visit()
@@ -132,7 +132,12 @@ class YellowNurseAssignmentTests(TestCase):
         visit.queue.refresh_from_db()
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
         self.assertIsNotNone(visit.confirmed_at)
-        self.assertEqual(visit.queue.status, Queue.Status.WAITING_QUEUE)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+        self.assertTrue(DeviceAssignment.objects.filter(
+            visit=visit,
+            device=self.device,
+            is_active=True,
+        ).exists())
         assignment = NurseCareAssignment.objects.get(visit=visit, is_active=True)
         self.assertEqual(assignment.nurse, self.nurse)
         self.assertEqual(assignment.assigned_by, self.coordinator)
