@@ -338,7 +338,6 @@ def personnel_dashboard(request):
             staff_user = get_object_or_404(
                 user_model.objects.select_related("hospital_staff_profile"),
                 pk=request.POST.get("user_id"),
-                hospital_staff_profile__isnull=False,
             )
             if staff_user.is_superuser:
                 messages.error(request, "ไม่อนุญาตให้ระงับหรือเปิดใช้งานบัญชีผู้ดูแลระบบสูงสุดจากหน้านี้")
