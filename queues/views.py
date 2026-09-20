@@ -27,7 +27,6 @@ from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm
 from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 
-QUEUE_READY_STATUSES = [Queue.Status.WAITING_QUEUE, Queue.Status.CALLED]
 QUEUE_VISIBLE_STATUSES = [
     Queue.Status.WAITING_QUEUE,
     Queue.Status.OBSERVATION_MONITORING,
