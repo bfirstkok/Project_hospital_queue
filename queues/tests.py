@@ -743,6 +743,93 @@ class QueueWorkflowTests(TestCase):
         self.assertEqual(vitals.dia_bp, 76)
         self.assertIsNone(vitals.rr)
 
+    def test_paired_yellow_patient_stays_in_queue_and_can_be_called(self):
+        patient = Patient.objects.create(
+            first_name="Wearable",
+            last_name="Queue",
+            national_id="1234567890777",
+        )
+        visit = Visit.objects.create(
+            patient=patient,
+            final_severity=Visit.Severity.YELLOW,
+            confirmed_at=timezone.now(),
+        )
+        queue = Queue.objects.create(
+            visit=visit,
+            status=Queue.Status.WAITING_QUEUE,
+            priority=3,
+        )
+        device = Device.objects.create(
+            device_id="QUEUE-WATCH-001",
+            api_key="queue-watch-secret",
+            is_active=True,
+        )
+
+        pair_response = self.client.post(reverse("device_management"), {
+            "action": "pair_device",
+            "device": device.id,
+            "visit": visit.id,
+        })
+        self.assertRedirects(pair_response, reverse("device_management"))
+
+        queue.refresh_from_db()
+        self.assertEqual(queue.status, Queue.Status.OBSERVATION_MONITORING)
+        self.assertTrue(
+            DeviceAssignment.objects.filter(
+                visit=visit,
+                device=device,
+                is_active=True,
+            ).exists()
+        )
+
+        queue_page = self.client.get(reverse("queue_list"))
+        self.assertEqual(queue_page.status_code, 200)
+        self.assertContains(queue_page, "Wearable Queue")
+        self.assertContains(queue_page, "เฝ้าระวังระหว่างรอ")
+        self.assertContains(queue_page, "ผูกอุปกรณ์แล้ว · ยังอยู่ในคิว OPD")
+        self.assertContains(queue_page, reverse("call_visit", args=[visit.id]))
+
+        select_room = self.client.get(reverse("call_visit", args=[visit.id]))
+        self.assertEqual(select_room.status_code, 200)
+
+        called = self.client.post(
+            reverse("call_visit", args=[visit.id]),
+            {"exam_room": "1"},
+        )
+        self.assertRedirects(called, reverse("opd_list"))
+        queue.refresh_from_db()
+        self.assertEqual(queue.status, Queue.Status.CALLED)
+        self.assertEqual(queue.exam_room, 1)
+        self.assertTrue(
+            DeviceAssignment.objects.filter(
+                visit=visit,
+                device=device,
+                is_active=True,
+            ).exists()
+        )
+
+        iot_response = self.client.post(
+            "/api/iot/vitals/",
+            data=json.dumps({
+                "device_id": device.device_id,
+                "heart_rate": 88,
+                "spo2": 98,
+                "temperature": 36.8,
+                "respiratory_rate": 18,
+            }),
+            content_type="application/json",
+            HTTP_X_API_KEY=device.api_key,
+        )
+        self.assertEqual(iot_response.status_code, 200)
+        self.assertTrue(
+            TelemetryLog.objects.filter(
+                visit=visit,
+                device=device,
+                bpm=88,
+                o2sat=98,
+            ).exists()
+        )
+
     def test_queue_list_is_paginated_and_supports_allowed_page_sizes(self):
         confirmed_at = timezone.now()
         for index in range(100):
