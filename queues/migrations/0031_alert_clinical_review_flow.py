@@ -10,6 +10,23 @@ def move_legacy_reassessment_to_monitoring(apps, schema_editor):
     )
 
 
+def resolve_legacy_non_wearable_alerts(apps, schema_editor):
+    CriticalAlert = apps.get_model("queues", "CriticalAlert")
+    alerts = CriticalAlert.objects.filter(
+        source__in=["triage", "system_test"],
+        status="ACKNOWLEDGED",
+    )
+    for alert in alerts.iterator():
+        alert.status = "RESOLVED"
+        alert.closed_at = alert.acknowledged_at or alert.created_at
+        alert.resolution_note = (
+            "Non-wearable alert recorded during direct clinical assessment"
+        )
+        alert.save(
+            update_fields=["status", "closed_at", "resolution_note"]
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -112,6 +129,10 @@ class Migration(migrations.Migration):
             model_name="criticalalert",
             name="resolution_note",
             field=models.CharField(blank=True, default="", max_length=255),
+        ),
+        migrations.RunPython(
+            resolve_legacy_non_wearable_alerts,
+            migrations.RunPython.noop,
         ),
         migrations.AlterField(
             model_name="visitworkflowlog",
