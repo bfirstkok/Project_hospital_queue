@@ -184,6 +184,43 @@ class RoleAccessTests(TestCase):
         self.assertNotContains(response, "วัดและบันทึกสัญญาณชีพ")
         self.assertNotContains(response, "ตรวจรักษาและบันทึกผลแพทย์")
 
+    def test_superuser_can_simulate_staff_role_and_restore_admin(self):
+        admin = self.make_user("role-sim-admin", StaffProfile.Role.STAFF, superuser=True)
+        self.client.force_login(admin)
+
+        response = self.client.post(
+            reverse("switch_test_role"),
+            {"role": StaffProfile.Role.NURSE},
+        )
+        self.assertEqual(response.status_code, 302)
+
+        permissions = self.client.get(reverse("my_permissions"))
+        self.assertEqual(permissions.status_code, 200)
+        self.assertContains(permissions, "โหมดทดสอบ: พยาบาลวิชาชีพ")
+        self.assertContains(permissions, "ยืนยันหรือแก้ผลคัดกรอง AI")
+        self.assertNotContains(permissions, "วัดและบันทึกสัญญาณชีพ")
+
+        self.assertEqual(self.client.get(reverse("waiting_confirmation")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("waiting_vitals")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("system_test:index")).status_code, 403)
+
+        response = self.client.post(reverse("switch_test_role"), {"role": "ADMIN"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.client.get(reverse("system_test:index")).status_code, 200)
+
+    def test_regular_user_cannot_use_role_simulation_switcher(self):
+        nurse = self.make_user("role-sim-nurse", StaffProfile.Role.NURSE)
+        self.client.force_login(nurse)
+
+        response = self.client.post(
+            reverse("switch_test_role"),
+            {"role": StaffProfile.Role.DOCTOR},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.get(reverse("opd_room_select")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("waiting_confirmation")).status_code, 200)
+
     def test_account_settings_requires_login(self):
         response = self.client.get(reverse("account_settings"))
         self.assertEqual(response.status_code, 302)
