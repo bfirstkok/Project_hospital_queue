@@ -325,7 +325,9 @@ Snapshot ของสัญญาณชีพหลัก/ค่าล่าส�
 | is_expedited | boolean | INDEX | ลัดลำดับภายใน severity เดิม |
 | created_at | datetime | NOT NULL | เวลาสร้างคิว |
 
-สถานะหลัก: WAITING_VITALS, WAITING_CONFIRMATION, WAITING_QUEUE, CALLED, OBSERVATION_MONITORING, REASSESSMENT_REQUIRED, MONITORING, EMERGENCY_TRANSFER, OPD_DONE, FOLLOWUP, DISCHARGED, CANCELLED
+สถานะหลัก: WAITING_VITALS, WAITING_CONFIRMATION, WAITING_QUEUE, CALLED, OBSERVATION_MONITORING, MONITORING, EMERGENCY_TRANSFER, OPD_DONE, FOLLOWUP, DISCHARGED, CANCELLED
+
+> Critical Alert แยกสถานะออกจาก Queue โดยผู้ป่วย YELLOW ยังคงเป็น OBSERVATION_MONITORING ระหว่างที่ Alert กำลังถูกตรวจสอบ
 
 ## 3.6 opd_visitassessment — VisitAssessment
 
@@ -426,10 +428,21 @@ Canonical time-series ของ wearable/IoT
 | value | float | NULL | ค่าที่ทำให้ Trigger |
 | threshold | varchar(50) | NOT NULL | Threshold |
 | source | varchar(32) | NOT NULL | แหล่งข้อมูล |
-| status | varchar(16) | NOT NULL | NEW/ACKNOWLEDGED |
+| status | varchar(16) | NOT NULL | NEW / ACKNOWLEDGED / IN_REVIEW / ESCALATED / RESOLVED / FALSE_ALARM |
 | created_at | datetime | NOT NULL | เวลาสร้าง |
 | acknowledged_at | datetime | NULL | เวลารับทราบ |
 | acknowledged_by_id | bigint | FK auth_user, NULL | ผู้รับทราบ |
+| review_started_at | datetime | NULL | เวลาเริ่ม Clinical Review ที่ข้างเตียง |
+| review_started_by_id | bigint | FK auth_user, NULL | ผู้เริ่มตรวจผู้ป่วย |
+| escalated_at | datetime | NULL | เวลายกระดับการดูแล |
+| escalated_by_id | bigint | FK auth_user, NULL | ผู้ตัดสินใจยกระดับ |
+| closed_at | datetime | NULL | เวลาปิด Alert เมื่อ RESOLVED/FALSE_ALARM |
+| closed_by_id | bigint | FK auth_user, NULL | ผู้ปิด Alert |
+| resolution_note | varchar(255) | NOT NULL | ผลการตรวจ/เหตุผลการปิดหรือยกระดับ |
+
+Alert lifecycle: **NEW → ACKNOWLEDGED → IN_REVIEW → RESOLVED / FALSE_ALARM / ESCALATED**
+
+`ACKNOWLEDGED` หมายถึงพยาบาลเห็น Alert และกำลังไปตรวจ ไม่ใช่การปิด Alert และการยกระดับการดูแลเป็นการตัดสินใจของบุคลากรตาม protocol ไม่ใช่การเปลี่ยน severity อัตโนมัติจาก threshold
 
 ## 3.11 queues_nursecareassignment — NurseCareAssignment
 
@@ -461,7 +474,7 @@ Audit Trail หลักของ workflow ผู้ป่วย
 | details | JSON | NOT NULL | metadata ของ Event |
 | created_at | datetime | INDEX | เวลาเกิดเหตุการณ์ |
 
-Event ปัจจุบัน: VITALS_RECORDED, TRIAGE_CONFIRMED, QUEUE_EXPEDITED, QUEUE_RESTORED, QUEUE_NUMBER_CHANGED, QUEUE_CALLED, QUEUE_TRANSFERRED, NURSE_ASSIGNED, NURSE_REASSIGNED, NURSE_ASSIGNMENT_ENDED, CRITICAL_ALERT_CREATED, CRITICAL_ALERT_ACKNOWLEDGED, DOCTOR_ASSESSMENT
+Event ปัจจุบัน: VITALS_RECORDED, TRIAGE_CONFIRMED, QUEUE_EXPEDITED, QUEUE_RESTORED, QUEUE_NUMBER_CHANGED, QUEUE_CALLED, QUEUE_TRANSFERRED, NURSE_ASSIGNED, NURSE_REASSIGNED, NURSE_ASSIGNMENT_ENDED, CRITICAL_ALERT_CREATED, CRITICAL_ALERT_ACKNOWLEDGED, CRITICAL_ALERT_REVIEW_STARTED, CRITICAL_ALERT_ESCALATED, CRITICAL_ALERT_RESOLVED, CRITICAL_ALERT_FALSE_ALARM, DOCTOR_ASSESSMENT
 
 ## 3.13 queues_staffprofile — StaffProfile
 

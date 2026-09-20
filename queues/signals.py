@@ -35,10 +35,12 @@ def suppress_non_wearable_critical_alert(sender, instance, created, **kwargs):
     if source not in {"triage", "system_test"}:
         return
 
+    now = timezone.now()
     CriticalAlert.objects.filter(
         pk=instance.pk,
         status=CriticalAlert.Status.NEW,
     ).update(
-        status=CriticalAlert.Status.ACKNOWLEDGED,
-        acknowledged_at=timezone.now(),
+        status=CriticalAlert.Status.RESOLVED,
+        closed_at=now,
+        resolution_note="Non-wearable alert recorded during direct clinical assessment",
     )

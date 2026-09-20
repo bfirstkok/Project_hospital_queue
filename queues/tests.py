@@ -1250,8 +1250,11 @@ class ConfirmedTriageFlowTests(TestCase):
             ["elderly_80", "pregnant"],
         )
 
-    def test_abnormal_yellow_wearable_data_requires_nurse_reassessment(self):
-        visit = self.make_visit(status=Queue.Status.OBSERVATION_MONITORING, severity=Visit.Severity.YELLOW)
+    def test_abnormal_yellow_wearable_data_creates_alert_without_changing_queue(self):
+        visit = self.make_visit(
+            status=Queue.Status.OBSERVATION_MONITORING,
+            severity=Visit.Severity.YELLOW,
+        )
         DeviceAssignment.objects.create(device=self.device, visit=visit)
 
         response = self.client.post(
@@ -1274,18 +1277,102 @@ class ConfirmedTriageFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         visit.queue.refresh_from_db()
-        self.assertEqual(visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
-        self.assertTrue(CriticalAlert.objects.filter(visit=visit, status=CriticalAlert.Status.NEW).exists())
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+        self.assertTrue(
+            CriticalAlert.objects.filter(
+                visit=visit,
+                status=CriticalAlert.Status.NEW,
+            ).exists()
+        )
         self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
 
-    def test_reassessment_can_return_yellow_patient_to_monitoring(self):
-        visit = self.make_visit(status=Queue.Status.REASSESSMENT_REQUIRED, severity=Visit.Severity.YELLOW)
-        DeviceAssignment.objects.create(device=self.device, visit=visit)
+    def test_alert_can_move_from_acknowledged_to_review_and_resolved_without_retriage(self):
+        visit = self.make_visit(
+            status=Queue.Status.OBSERVATION_MONITORING,
+            severity=Visit.Severity.YELLOW,
+        )
+        alert = CriticalAlert.objects.create(
+            visit=visit,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำกว่า 95%",
+            value=92,
+            threshold="< 95",
+            source="iot_vitals",
+        )
 
-        self.confirm(visit, Visit.Severity.YELLOW)
+        acknowledged = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(acknowledged.status_code, 200)
 
+        review = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "start_review"},
+        )
+        self.assertEqual(review.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.IN_REVIEW)
+        self.assertIsNotNone(alert.review_started_at)
+
+        resolved = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "resolve", "note": "วัดซ้ำแล้ว SpO2 ปกติ เฝ้าระวังต่อ"},
+        )
+        self.assertEqual(resolved.status_code, 200)
+        alert.refresh_from_db()
         visit.queue.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.RESOLVED)
+        self.assertEqual(
+            alert.resolution_note,
+            "วัดซ้ำแล้ว SpO2 ปกติ เฝ้าระวังต่อ",
+        )
         self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+
+    def test_alert_escalation_is_audited_without_automatic_triage_change(self):
+        visit = self.make_visit(
+            status=Queue.Status.OBSERVATION_MONITORING,
+            severity=Visit.Severity.YELLOW,
+        )
+        alert = CriticalAlert.objects.create(
+            visit=visit,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
+            message="ชีพจรสูงตั้งแต่ 120 ครั้ง/นาที",
+            value=130,
+            threshold=">= 120",
+            source="iot_vitals",
+            status=CriticalAlert.Status.ACKNOWLEDGED,
+        )
+
+        direct_escalation = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "escalate", "note": "แจ้งแพทย์ตาม protocol"},
+        )
+        self.assertEqual(direct_escalation.status_code, 409)
+
+        review = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "start_review"},
+        )
+        self.assertEqual(review.status_code, 200)
+
+        response = self.client.post(
+            reverse("update_alert_workflow", args=[alert.id]),
+            {"action": "escalate", "note": "แจ้งแพทย์ตาม protocol"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        visit.refresh_from_db()
+        visit.queue.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.ESCALATED)
+        self.assertIsNotNone(alert.escalated_at)
+        self.assertEqual(visit.final_severity, Visit.Severity.YELLOW)
+        self.assertEqual(visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
+        self.assertTrue(
+            VisitWorkflowLog.objects.filter(
+                visit=visit,
+                event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+                details__alert_id=alert.id,
+            ).exists()
+        )
 
 
 class ConfirmedTriageExportTests(TestCase):
@@ -1396,7 +1483,7 @@ class DutyAndResponsibleNurseAlertTests(TestCase):
             },
         )
         self.visit.queue.refresh_from_db()
-        self.assertEqual(self.visit.queue.status, Queue.Status.REASSESSMENT_REQUIRED)
+        self.assertEqual(self.visit.queue.status, Queue.Status.OBSERVATION_MONITORING)
 
 
 class ShiftScheduleTests(TestCase):

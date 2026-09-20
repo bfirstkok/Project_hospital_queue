@@ -58,7 +58,6 @@ class Queue(models.Model):
         CALLED = "CALLED", "Called"
         MONITORING = "MONITORING", "Post-OPD monitoring"
         OBSERVATION_MONITORING = "OBSERVATION_MONITORING", "Observation monitoring"
-        REASSESSMENT_REQUIRED = "REASSESSMENT_REQUIRED", "Reassessment required"
         EMERGENCY_TRANSFER = "EMERGENCY_TRANSFER", "Emergency transfer"
         OPD_DONE = "OPD_DONE", "OPD Done"
         FOLLOWUP = "FOLLOWUP", "Follow-up"
@@ -181,6 +180,10 @@ class VisitWorkflowLog(models.Model):
         NURSE_ASSIGNMENT_ENDED = "NURSE_ASSIGNMENT_ENDED", "สิ้นสุดการมอบหมายพยาบาล"
         CRITICAL_ALERT_CREATED = "CRITICAL_ALERT_CREATED", "สร้างสัญญาณเตือนวิกฤต"
         CRITICAL_ALERT_ACKNOWLEDGED = "CRITICAL_ALERT_ACKNOWLEDGED", "รับทราบสัญญาณเตือนวิกฤต"
+        CRITICAL_ALERT_REVIEW_STARTED = "CRITICAL_ALERT_REVIEW_STARTED", "เริ่มตรวจผู้ป่วยจากสัญญาณเตือน"
+        CRITICAL_ALERT_ESCALATED = "CRITICAL_ALERT_ESCALATED", "ยกระดับสัญญาณเตือน"
+        CRITICAL_ALERT_RESOLVED = "CRITICAL_ALERT_RESOLVED", "จัดการสัญญาณเตือนแล้ว"
+        CRITICAL_ALERT_FALSE_ALARM = "CRITICAL_ALERT_FALSE_ALARM", "ยืนยันสัญญาณเตือนผิดพลาด"
         DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
 
     visit = models.ForeignKey(
@@ -465,6 +468,10 @@ class CriticalAlert(models.Model):
     class Status(models.TextChoices):
         NEW = "NEW", "New"
         ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+        IN_REVIEW = "IN_REVIEW", "In clinical review"
+        ESCALATED = "ESCALATED", "Escalated"
+        RESOLVED = "RESOLVED", "Resolved"
+        FALSE_ALARM = "FALSE_ALARM", "False alarm"
 
     class AlertType(models.TextChoices):
         LOW_O2 = "LOW_O2", "Low SpO2"
@@ -491,6 +498,31 @@ class CriticalAlert(models.Model):
         blank=True,
         related_name="acknowledged_critical_alerts",
     )
+    review_started_at = models.DateTimeField(null=True, blank=True)
+    review_started_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_critical_alerts",
+    )
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    escalated_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="escalated_critical_alerts",
+    )
+    closed_at = models.DateTimeField(null=True, blank=True)
+    closed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="closed_critical_alerts",
+    )
+    resolution_note = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         indexes = [

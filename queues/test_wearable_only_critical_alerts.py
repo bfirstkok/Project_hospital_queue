@@ -68,7 +68,7 @@ class WearableOnlyCriticalAlertTests(TestCase):
             CriticalAlert.objects.filter(
                 visit=self.visit,
                 source="triage",
-                status=CriticalAlert.Status.ACKNOWLEDGED,
+                status=CriticalAlert.Status.RESOLVED,
             ).exists()
         )
 
@@ -209,5 +209,6 @@ class WearableOnlyCriticalAlertTests(TestCase):
 
         plain.refresh_from_db()
         wearable.refresh_from_db()
-        self.assertEqual(plain.status, CriticalAlert.Status.ACKNOWLEDGED)
+        self.assertEqual(plain.status, CriticalAlert.Status.RESOLVED)
+        self.assertIsNotNone(plain.closed_at)
         self.assertEqual(wearable.status, CriticalAlert.Status.NEW)

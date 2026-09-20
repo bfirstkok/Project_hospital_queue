@@ -127,7 +127,7 @@ def device_management(request):
                 ended_at=assignment.unpaired_at,
             )
             q = getattr(assignment.visit, "queue", None)
-            if q and q.status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
+            if q and q.status in {Queue.Status.OBSERVATION_MONITORING}:
                 q.status = Queue.Status.WAITING_QUEUE
                 q.save(update_fields=["status"])
             messages.success(request, f"ยกเลิกการผูก {assignment.device.device_id} แล้ว")

@@ -30,7 +30,7 @@ The project connects two parts of the patient journey. **Online** covers the web
 | The system stores patient, visit, symptom, and queue information. | Staff measure HR, SpO2, blood pressure, temperature, respiratory rate, and other clinical information. |
 | AI analyzes the available symptoms and vital signs and produces a preliminary severity recommendation. | A nurse reviews the real patient condition together with the AI recommendation and confirms or overrides the result. |
 | The dashboard shows queue order, latest vital signs, device status, and alerts. | YELLOW patients may wear a monitoring device while waiting. RED/PINK patients do not wait for device assignment. |
-| The system receives wearable telemetry and raises an alert when abnormal data or a fall event is detected. | A nurse reassesses the patient after an alert. The alert is not an automatic clinical diagnosis. |
+| The system receives wearable telemetry and raises an alert when abnormal data or a fall event is detected. | The responsible nurse acknowledges the alert, performs bedside verification, then resolves, marks false alarm, or escalates it. The alert is not an automatic clinical diagnosis. |
 | Patients can check their current queue status through the patient portal. | A doctor calls the patient, records the examination, and completes the visit. |
 
 Information moves between the two sides as follows:
@@ -39,7 +39,7 @@ Information moves between the two sides as follows:
 Online registration -> On-site identity and queue verification
 On-site vital signs -> API / database -> AI recommendation
 AI recommendation -> Nurse review and final confirmation
-YELLOW wearable data -> Dashboard -> Alert -> Nurse reassessment
+YELLOW wearable data -> Dashboard -> Alert -> Acknowledge -> Bedside clinical review -> Monitor / escalate
 Queue status -> Patient portal and staff dashboard
 ```
 
@@ -70,11 +70,11 @@ Reference used for the five-level workflow: [MOPH ED Triage, Department of Medic
    - YELLOW opens one handoff step where the confirming nurse selects the responsible nurse and a currently free monitoring device. The system creates both assignments atomically and moves the visit to `OBSERVATION_MONITORING`.
    - GREEN and WHITE move to the normal `WAITING_QUEUE` and do not receive a wearable.
 7. A YELLOW visit remains visible in the OPD queue while it is being monitored; staff can still call it into an exam room when appropriate. The existing `MONITORING` state remains reserved for post-OPD monitoring.
-8. Abnormal wearable data creates an alert and moves the visit to `REASSESSMENT_REQUIRED`; it does not automatically diagnose or change the nurse-confirmed severity.
-9. A nurse reassesses the patient and confirms one of the five levels again.
+8. Abnormal wearable data creates a `CriticalAlert` while the YELLOW visit remains in `OBSERVATION_MONITORING`; the alert does not automatically diagnose, retriage, or change the nurse-confirmed severity.
+9. The responsible nurse acknowledges the alert, performs bedside verification (clinical check and repeat measurement), then records one outcome: `RESOLVED`, `FALSE_ALARM`, or `ESCALATED`. Escalation follows the hospital protocol and remains a human decision.
 10. Staff calls eligible waiting/observation patients and selects OPD exam room 1, 2, or 3.
 11. OPD staff complete the room assessment, including OPD urgency and follow-up information.
-12. Dashboard provides monitoring, alerts, AI evaluation, and waiting-time reports.
+12. Dashboard provides monitoring, active alert workflow, AI evaluation, and waiting-time reports.
 
 ## Demo Flow
 
@@ -92,8 +92,7 @@ The demo data includes five-level triage cases plus a nurse override example whe
 WAITING_VITALS          Patient registered, waiting for vital signs
 WAITING_CONFIRMATION    AI triage completed, waiting for nurse confirmation
 WAITING_QUEUE           Nurse-confirmed YELLOW/GREEN/WHITE visit ready for the next service step
-OBSERVATION_MONITORING  YELLOW observation visit with an active wearable
-REASSESSMENT_REQUIRED   Wearable alert detected; nurse must reassess
+OBSERVATION_MONITORING  YELLOW observation visit with an active wearable; active alerts are tracked separately
 EMERGENCY_TRANSFER      RED/PINK visit sent to emergency care; not in the OPD queue
 CALLED                  Sent to an OPD exam room
 MONITORING              Active post-OPD monitoring case
@@ -102,6 +101,21 @@ FOLLOWUP              Follow-up required
 DISCHARGED            Monitoring case discharged
 CANCELLED             Queue cancelled before completion
 ```
+
+## Critical Alert States
+
+Critical alerts are intentionally separate from queue states:
+
+```text
+NEW           Sensor has raised a new alert
+ACKNOWLEDGED  Responsible nurse has seen it and is going to check the patient
+IN_REVIEW     Bedside clinical verification / repeat measurement is in progress
+ESCALATED     Nurse has escalated to doctor/emergency workflow according to protocol
+RESOLVED      Alert handled; patient continues monitoring
+FALSE_ALARM   Sensor artefact or false alarm confirmed by bedside verification
+```
+
+Acknowledging an alert does **not** close it. Thresholds trigger attention, while clinical routing remains a staff decision according to the hospital's approved protocol.
 
 ## Severity Logic
 

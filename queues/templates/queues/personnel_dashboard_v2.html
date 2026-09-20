@@ -54,7 +54,7 @@
     <a class="stat {% if active_filter == 'ready' %}active{% endif %}" href="?view=staff&filter=ready"><b>{{ ready_nurse_count }}</b><span>ว่างรับเคส</span></a>
     <a class="stat {% if active_filter == 'full' %}active{% endif %}" href="?view=staff&filter=full"><b>{{ full_nurse_count }}</b><span>เต็ม {{ max_patients_per_nurse }}/{{ max_patients_per_nurse }}</span></a>
     {% if can_manage_personnel %}<a class="stat {% if active_filter == 'unassigned' %}active{% endif %}" href="?view=patients&filter=unassigned"><b>{{ unassigned_count }}</b><span>ผู้ป่วยยังไม่มีผู้ดูแล</span></a>{% endif %}
-    <a class="stat {% if active_filter == 'reassessment' %}active{% endif %}" href="?view=patients&filter=reassessment"><b>{{ reassessment_count }}</b><span>ต้องประเมินซ้ำ{% if personal_assignments_only %}ของฉัน{% endif %}</span></a>
+    <a class="stat {% if active_filter == 'alert' %}active{% endif %}" href="?view=patients&filter=alert"><b>{{ alert_count }}</b><span>มี Active Alert{% if personal_assignments_only %}ของฉัน{% endif %}</span></a>
     <a class="stat" href="?view=patients&filter=all"><b>{{ assigned_count }}</b><span>{% if personal_assignments_only %}ผู้ป่วยที่ฉันดูแล{% else %}เคสที่มีผู้รับผิดชอบ{% endif %}</span></a>
   </section>
 
@@ -131,9 +131,9 @@
       <div id="patient-filter-note" class="patient-filter-note"></div>
       <div class="patient-grid">
         {% for row in patient_rows %}
-        <article id="patient-{{ row.visit.id }}" class="patient-card {% if focus_visit_id == row.visit.id|stringformat:'s' %}focus{% endif %}" data-unassigned="{% if row.care_assignment %}0{% else %}1{% endif %}" data-reassessment="{% if row.needs_reassessment %}1{% else %}0{% endif %}">
+        <article id="patient-{{ row.visit.id }}" class="patient-card {% if focus_visit_id == row.visit.id|stringformat:'s' %}focus{% endif %}" data-unassigned="{% if row.care_assignment %}0{% else %}1{% endif %}" data-alert="{% if row.has_active_alert %}1{% else %}0{% endif %}">
           <div class="patient-head"><div><div class="queue">{{ row.queue.display_number }}</div><div class="patient-name">{{ row.patient.first_name }} {{ row.patient.last_name }}</div><div class="hint">Visit {{ row.visit.id }} · {{ row.queue.get_status_display }}</div></div><span class="care-type">{{ row.care_type }}</span></div>
-          {% if row.needs_reassessment %}<div class="reassess">⚠ ต้องประเมินซ้ำทันที{% if row.care_assignment %} · แจ้ง {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}{% endif %}</div>{% endif %}
+          {% if row.has_active_alert %}<div class="reassess">⚠ มี Active Alert กำลังรอดำเนินการ{% if row.care_assignment %} · ผู้รับผิดชอบ {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}{% endif %}</div>{% endif %}
           <div class="device">อุปกรณ์: <b>{% if row.device %}{{ row.device.device_id }}{% else %}ยังไม่ผูกอุปกรณ์{% endif %}</b></div>
           <div class="owner">
             {% if row.care_assignment %}<strong>พยาบาลผู้ดูแล: {{ row.care_assignment.nurse.get_full_name|default:row.care_assignment.nurse.username }}</strong><small>{{ row.care_assignment.nurse.username }} · เริ่ม {{ row.care_assignment.assigned_at|date:"d/m H:i" }}</small>{% else %}<strong style="color:#a36f00">ยังไม่มีพยาบาลผู้ดูแล</strong>{% endif %}
@@ -150,7 +150,7 @@
 (() => {
   const params = new URLSearchParams(window.location.search);
   const activeFilter = '{{ active_filter|escapejs }}';
-  const requestedView = params.get('view') || ((activeFilter === 'unassigned' || activeFilter === 'reassessment') ? 'patients' : 'staff');
+  const requestedView = params.get('view') || ((activeFilter === 'unassigned' || activeFilter === 'alert') ? 'patients' : 'staff');
   const validViews = new Set(['staff','handover','patients']);
   let activeView = validViews.has(requestedView) ? requestedView : 'staff';
   let role = 'ALL';
@@ -222,15 +222,15 @@
 
   const patientCards = Array.from(document.querySelectorAll('.patient-card'));
   const note = document.getElementById('patient-filter-note');
-  if(activeFilter==='unassigned'||activeFilter==='reassessment'){
+  if(activeFilter==='unassigned'||activeFilter==='alert'){
     let visible=0;
     patientCards.forEach(card=>{
-      const show=activeFilter==='unassigned' ? card.dataset.unassigned==='1' : card.dataset.reassessment==='1';
+      const show=activeFilter==='unassigned' ? card.dataset.unassigned==='1' : card.dataset.alert==='1';
       card.style.display=show?'':'none';
       if(show) visible+=1;
     });
     if(note){
-      note.textContent=activeFilter==='unassigned' ? `กำลังแสดงเฉพาะผู้ป่วยที่ยังไม่มีผู้ดูแล (${visible} เคส)` : `กำลังแสดงเฉพาะผู้ป่วยที่ต้องประเมินซ้ำ (${visible} เคส)`;
+      note.textContent=activeFilter==='unassigned' ? `กำลังแสดงเฉพาะผู้ป่วยที่ยังไม่มีผู้ดูแล (${visible} เคส)` : `กำลังแสดงเฉพาะผู้ป่วยที่มี Active Alert (${visible} เคส)`;
       note.classList.add('show');
     }
   }
