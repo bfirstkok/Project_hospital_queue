@@ -175,6 +175,8 @@ class VisitWorkflowLog(models.Model):
         QUEUE_RESTORED = "QUEUE_RESTORED", "คืนลำดับคิวปกติ"
         QUEUE_NUMBER_CHANGED = "QUEUE_NUMBER_CHANGED", "เปลี่ยนเลขคิว"
         QUEUE_CALLED = "QUEUE_CALLED", "เรียกเข้าห้องตรวจ"
+        CRITICAL_ALERT_CREATED = "CRITICAL_ALERT_CREATED", "สร้างสัญญาณเตือนวิกฤต"
+        CRITICAL_ALERT_ACKNOWLEDGED = "CRITICAL_ALERT_ACKNOWLEDGED", "รับทราบสัญญาณเตือนวิกฤต"
         DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
 
     visit = models.ForeignKey(
