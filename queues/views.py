@@ -1376,8 +1376,15 @@ def monitor_latest_api(request):
 @transaction.atomic
 def acknowledge_alert(request, alert_id: int):
     alert = get_object_or_404(
-        CriticalAlert.objects.select_for_update().select_related("visit", "visit__queue"),
+        CriticalAlert.objects.select_for_update().select_related("visit"),
         id=alert_id,
+    )
+
+    queue_status = (
+        Queue.objects
+        .filter(visit_id=alert.visit_id)
+        .values_list("status", flat=True)
+        .first()
     )
 
     if not is_effective_superuser(request.user):
@@ -1398,7 +1405,7 @@ def acknowledge_alert(request, alert_id: int):
             "alert_id": alert.id,
             "visit_id": alert.visit_id,
             "status": alert.status,
-            "queue_status": getattr(alert.visit.queue, "status", None),
+            "queue_status": queue_status,
             "already_acknowledged": True,
         })
 
@@ -1426,7 +1433,7 @@ def acknowledge_alert(request, alert_id: int):
         "alert_id": alert.id,
         "visit_id": alert.visit_id,
         "status": alert.status,
-        "queue_status": getattr(alert.visit.queue, "status", None),
+        "queue_status": queue_status,
         "already_acknowledged": False,
     })
 
