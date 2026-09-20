@@ -125,7 +125,7 @@
           :"รับทราบการแจ้งเตือนแล้ว · ปิดเฉพาะรายการแจ้งเตือน โดยไม่เปลี่ยนสถานะการรักษาของผู้ป่วย");
         await loadAlerts();
       }catch(e){
-        if(button){button.disabled=false;button.textContent="2 · รับทราบแล้ว"}
+        if(button){button.disabled=false;button.textContent="2 · รับทราบการแจ้งเตือน"}
         showAlertNotice(e.message||"ไม่สามารถรับทราบการแจ้งเตือนได้",true);
         console.error(e);
       }
@@ -143,7 +143,7 @@
           const threshold=a.threshold?`<span>เกณฑ์ ${esc(a.threshold)}</span>`:"";
           const time=alertTime(a.created_at);
           const state=a.requires_reassessment?'<span class="alert-state">ต้องประเมินซ้ำ</span>':"";
-          return `<article class="alert" data-alert-card="${a.id}"><i aria-hidden="true"></i><div class="alert-content"><div class="alert-top"><div><b class="alert-name">${esc(a.patient)}</b><span class="alert-kind">${esc(alertTypeLabel(a.type))}</span>${state}</div><span class="alert-kind">${esc(a.queue_number||("Visit #"+a.visit_id))}</span></div><span class="alert-message">${esc(a.message)}</span><div class="alert-meta">${measured}${threshold}${time?`<span>แจ้งเตือน ${esc(time)} น.</span>`:""}</div><div class="alert-actions"><a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">1 · ตรวจสอบผู้ป่วย</a><button class="ack" type="button" data-ack-alert="${a.id}">2 · รับทราบแล้ว</button></div></div></article>`;
+          return `<article class="alert" data-alert-card="${a.id}"><i aria-hidden="true"></i><div class="alert-content"><div class="alert-top"><div><b class="alert-name">${esc(a.patient)}</b><span class="alert-kind">${esc(alertTypeLabel(a.type))}</span>${state}</div><span class="alert-kind">${esc(a.queue_number||("Visit #"+a.visit_id))}</span></div><span class="alert-message">${esc(a.message)}</span><div class="alert-meta">${measured}${threshold}${time?`<span>แจ้งเตือน ${esc(time)} น.</span>`:""}</div><div class="alert-actions"><a class="alert-open" href="/queues/monitor/visit/${a.visit_id}/">1 · ตรวจสอบผู้ป่วย</a><button class="ack" type="button" data-ack-alert="${a.id}">2 · รับทราบการแจ้งเตือน</button></div></div></article>`;
         }).join(""):'<div class="alert-empty"><i>✓</i><span>ไม่มีการแจ้งเตือนจาก Sensor ที่รอรับทราบ</span></div>';
       }catch(e){
         showAlertNotice(e.message||"ไม่สามารถโหลดการแจ้งเตือนได้",true);
