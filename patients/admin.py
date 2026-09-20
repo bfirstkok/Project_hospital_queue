@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import (
     Appointment,
-    Assessment,
     OtpChallenge,
     Patient,
     PatientAccessToken,
@@ -56,23 +55,6 @@ class AppointmentAdmin(admin.ModelAdmin):
     )
     date_hierarchy = "date"
 
-
-@admin.register(Assessment)
-class AssessmentAdmin(admin.ModelAdmin):
-    list_display = ("id", "patient", "assessor", "assessed_at")
-    list_filter = ("assessed_at",)
-    search_fields = (
-        "patient__hn",
-        "patient__national_id",
-        "patient__first_name",
-        "patient__last_name",
-        "detail",
-        "assessor__username",
-        "assessor__first_name",
-        "assessor__last_name",
-    )
-    readonly_fields = ("assessed_at",)
-    date_hierarchy = "assessed_at"
 
 
 @admin.register(PatientAccessToken)
