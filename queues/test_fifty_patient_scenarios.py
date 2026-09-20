@@ -232,8 +232,15 @@ class FiftyPatientVariedSymptomWorkflowTests(TestCase):
                     "risk_flags_present": "1" if scenario["risk_flags"] else "0",
                     "risk_flags": scenario["risk_flags"],
                 }
+                selected_device = None
                 if actual_severity == Visit.Severity.YELLOW:
+                    selected_device = Device.objects.create(
+                        device_id=f"FIFTY-WATCH-{index:02d}",
+                        api_key=f"fifty-key-{index:02d}",
+                        is_active=True,
+                    )
                     confirm_payload["yellow_assignment_required"] = "1"
+                    confirm_payload["device_id"] = str(selected_device.id)
                 confirmation_response = self.client.post(
                     reverse("triage_visit", args=[visit.id]),
                     confirm_payload,
@@ -244,26 +251,18 @@ class FiftyPatientVariedSymptomWorkflowTests(TestCase):
 
                 if actual_severity == Visit.Severity.YELLOW:
                     assignment = NurseCareAssignment.objects.filter(visit=visit, is_active=True).select_related("nurse").first()
-                    assignment_ok = assignment is not None
-                    if assignment_ok:
-                        device = Device.objects.create(
-                            device_id=f"FIFTY-WATCH-{index:02d}",
-                            api_key=f"fifty-key-{index:02d}",
+                    assignment_ok = (
+                        assignment is not None
+                        and selected_device is not None
+                        and DeviceAssignment.objects.filter(
+                            visit=visit,
+                            device=selected_device,
                             is_active=True,
-                        )
-                        pair_response = self.client.post(reverse("device_management"), {
-                            "action": "pair_device",
-                            "device": str(device.id),
-                            "visit": str(visit.id),
-                        })
-                        visit.queue.refresh_from_db()
-                        assignment_ok = (
-                            pair_response.status_code == 302
-                            and DeviceAssignment.objects.filter(visit=visit, device=device, is_active=True).exists()
-                            and visit.queue.status == Queue.Status.OBSERVATION_MONITORING
-                        )
-                        if assignment_ok:
-                            self.yellow_visits.append(visit.id)
+                        ).exists()
+                        and visit.queue.status == Queue.Status.OBSERVATION_MONITORING
+                    )
+                    if assignment_ok:
+                        self.yellow_visits.append(visit.id)
                 final_status = visit.queue.status
 
             expected_route = None
