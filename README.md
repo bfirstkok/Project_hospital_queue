@@ -67,12 +67,12 @@ Reference used for the five-level workflow: [MOPH ED Triage, Department of Medic
 6. The nurse-confirmed severity controls the next route:
    - RED moves to `EMERGENCY_TRANSFER` for immediate life-saving response.
    - PINK moves to `EMERGENCY_TRANSFER` for rapid emergency assessment.
-   - YELLOW moves to the urgent/observation queue and is the only group eligible for wearable pairing.
+   - YELLOW opens one handoff step where the confirming nurse selects the responsible nurse and a currently free monitoring device. The system creates both assignments atomically and moves the visit to `OBSERVATION_MONITORING`.
    - GREEN and WHITE move to the normal `WAITING_QUEUE` and do not receive a wearable.
-7. Pairing a wearable to a YELLOW visit moves it to `OBSERVATION_MONITORING`; the existing `MONITORING` state remains reserved for post-OPD monitoring.
+7. A YELLOW visit remains visible in the OPD queue while it is being monitored; staff can still call it into an exam room when appropriate. The existing `MONITORING` state remains reserved for post-OPD monitoring.
 8. Abnormal wearable data creates an alert and moves the visit to `REASSESSMENT_REQUIRED`; it does not automatically diagnose or change the nurse-confirmed severity.
 9. A nurse reassesses the patient and confirms one of the five levels again.
-10. Staff calls eligible waiting patients and selects OPD exam room 1, 2, or 3.
+10. Staff calls eligible waiting/observation patients and selects OPD exam room 1, 2, or 3.
 11. OPD staff complete the room assessment, including OPD urgency and follow-up information.
 12. Dashboard provides monitoring, alerts, AI evaluation, and waiting-time reports.
 
