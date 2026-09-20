@@ -533,7 +533,11 @@ def personnel_dashboard(request):
                 pk=request.POST.get("assignment_id"),
                 is_active=True,
             )
-            end_assignment_for_visit(care_assignment.visit)
+            end_assignment_for_visit(
+                care_assignment.visit,
+                actor=request.user,
+                reason="ผู้ดูแลเวรยุติการมอบหมายผู้ป่วย",
+            )
             messages.success(request, "ยุติการมอบหมายผู้ป่วยแล้ว")
 
         elif action == "handover_nurse":
