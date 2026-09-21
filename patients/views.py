@@ -398,28 +398,85 @@ def public_register(request):
         return _cors_json(request, {})
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
-    if int(request.META.get("CONTENT_LENGTH") or 0) > 16384:
-        return _cors_json(request, {"ok": False, "error": "ข้อมูลมีขนาดใหญ่เกินไป"}, status=413)
 
     if rate_limited(request, "patient-register", limit=30, window_seconds=300):
         return _cors_json(request, {"ok": False, "error": "ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่"}, status=429)
 
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return _cors_json(request, {"ok": False, "error": "รูปแบบข้อมูลไม่ถูกต้อง"}, status=400)
-
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     if payload.get("website"):
         return _cors_json(request, {"ok": True}, status=202)
 
-    form = PublicPatientRegistrationForm(payload)
+    username = str(payload.get("username") or "").strip() or None
+    password = str(payload.get("password") or "")
+    email = _normalize_email(payload.get("email")) or None
+    temp_token = str(payload.get("temp_token") or payload.get("google_temp_token") or "").strip()
+    google_claims = None
+
+    field_errors = {}
+    if username and not USERNAME_PATTERN.fullmatch(username):
+        field_errors["username"] = ["ชื่อผู้ใช้ต้องยาว 3-50 ตัว และใช้ได้เฉพาะ a-z, A-Z, 0-9, จุด, ขีดกลาง หรือขีดล่าง"]
+    if password:
+        password_error = _validate_portal_password(password)
+        if password_error:
+            field_errors["password"] = [password_error]
+    elif username:
+        field_errors["password"] = ["กรุณาระบุรหัสผ่านสำหรับบัญชีนี้"]
+
+    if temp_token:
+        try:
+            google_claims = signing.loads(
+                temp_token,
+                salt=GOOGLE_LINK_SALT,
+                max_age=int(getattr(settings, "GOOGLE_LINK_TOKEN_MAX_AGE", 600)),
+            )
+        except signing.BadSignature:
+            field_errors["temp_token"] = ["ข้อมูลเชื่อมบัญชี Google ไม่ถูกต้องหรือหมดอายุ"]
+        if google_claims and google_claims.get("email"):
+            email = _normalize_email(google_claims["email"])
+
+    form_payload = dict(payload)
+    if email is not None:
+        form_payload["email"] = email
+    form = PublicPatientRegistrationForm(form_payload)
     if not form.is_valid():
-        errors = {field: [str(message) for message in messages] for field, messages in form.errors.items()}
-        return _cors_json(request, {"ok": False, "errors": errors}, status=400)
+        for field, messages_ in form.errors.items():
+            field_errors.setdefault(field, []).extend(str(message) for message in messages_)
+    if field_errors:
+        return _cors_json(request, {"ok": False, "error": "กรุณาตรวจสอบข้อมูลที่กรอก", "errors": field_errors}, status=400)
+
+    national_id = form.cleaned_data["national_id"]
+    existing = Patient.objects.filter(national_id=national_id).first()
+
+    if username:
+        username_owner = Patient.objects.filter(username__iexact=username).exclude(pk=getattr(existing, "pk", None)).first()
+        if username_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว", "errors": {"username": ["ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"]}},
+                status=409,
+            )
+    if email:
+        email_owner = Patient.objects.filter(email__iexact=email).exclude(pk=getattr(existing, "pk", None)).first()
+        if email_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว", "errors": {"email": ["อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว"]}},
+                status=409,
+            )
+
+    contacts, contacts_error = _validate_emergency_contacts(payload.get("emergency_contacts"))
+    if contacts_error:
+        return _cors_json(
+            request,
+            {"ok": False, "error": contacts_error, "errors": {"emergency_contacts": [contacts_error]}},
+            status=400,
+        )
 
     with transaction.atomic():
         patient, created = Patient.objects.select_for_update().get_or_create(
-            national_id=form.cleaned_data["national_id"],
+            national_id=national_id,
             defaults={key: value for key, value in form.cleaned_data.items() if key != "consent"},
         )
         active_visit = (
@@ -441,11 +498,34 @@ def public_register(request):
 
         if not created:
             for field, value in form.cleaned_data.items():
-                if field != "consent":
-                    if field == "birth_date" and "birth_date" not in payload:
-                        continue
-                    setattr(patient, field, value)
-            patient.save()
+                if field == "consent":
+                    continue
+                if field == "birth_date" and "birth_date" not in payload:
+                    continue
+                setattr(patient, field, value)
+
+        patient.email = email
+        if username:
+            patient.username = username
+        if password:
+            patient.password_hash = make_password(password)
+        if contacts is not None:
+            patient.emergency_contacts = contacts
+            first_contact = contacts[0] if contacts else {}
+            patient.emergency_name = first_contact.get("name", "")
+            patient.emergency_relationship = first_contact.get("relationship", "")
+            patient.emergency_phone = first_contact.get("phone", "")
+        elif patient.emergency_name or patient.emergency_phone:
+            patient.emergency_contacts = [{
+                "id": "primary",
+                "name": patient.emergency_name,
+                "relationship": patient.emergency_relationship,
+                "phone": patient.emergency_phone,
+            }]
+        if google_claims:
+            patient.google_id = str(google_claims.get("sub") or "") or None
+            patient.email_verified = bool(google_claims.get("email_verified", True))
+        patient.save()
 
         visit = Visit.objects.create(patient=patient, note=patient.note)
         VitalSign.objects.create(visit=visit)
@@ -459,7 +539,10 @@ def public_register(request):
         "token_type": "Bearer",
         "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
         "expires_at": expires_at.isoformat(),
+        "patient_id": patient.pk,
+        "hn": patient.hn,
         "status_url": f"/api/patient/queue/{visit.tracking_token}/",
+        "message": "ลงทะเบียนและรับบัตรคิวสำเร็จ",
         **_serialize_queue(visit.queue),
     }, status=201)
 
