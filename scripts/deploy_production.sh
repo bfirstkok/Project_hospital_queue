@@ -4,6 +4,7 @@ set -Eeuo pipefail
 readonly APP_DIR="${HOSPITAL_APP_DIR:-/opt/hospital}"
 readonly BRANCH="${HOSPITAL_BRANCH:-main}"
 readonly BASE_URL="${HOSPITAL_BASE_URL:-https://hospital.bfirstkok.me}"
+readonly PATIENT_DIST_DIR="${HOSPITAL_PATIENT_DIST_DIR:-/opt/hospital-patient/dist}"
 
 log() {
     printf '[deploy] %s\n' "$*"
@@ -26,6 +27,9 @@ git pull --ff-only origin "$BRANCH"
 log "Building a temporary image, collecting static assets, and running application tests"
 docker compose run --rm --build web /bin/sh -c \
     "python manage.py collectstatic --noinput && python manage.py check && python manage.py test accounts queues patients opd --verbosity 1"
+
+log "Checking patient portal static export"
+[[ -f "$PATIENT_DIST_DIR/index.html" ]] || fail "patient portal build missing: $PATIENT_DIST_DIR/index.html (run npm ci && npm run build in /opt/hospital-patient)"
 
 log "Building and starting the production services"
 docker compose up -d --build
@@ -53,10 +57,13 @@ me_code="$(curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_c
     "$BASE_URL/api/patient/me/")"
 queue_code="$(curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' \
     "$BASE_URL/api/patient/queue/")"
+patient_portal_code="$(curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' \
+    "$BASE_URL/patient/")"
 
 [[ "$login_code" == 400 ]] || fail "empty login returned HTTP $login_code (expected 400)"
 [[ "$me_code" == 401 ]] || fail "unauthenticated me returned HTTP $me_code (expected 401)"
 [[ "$queue_code" == 401 ]] || fail "unauthenticated queue returned HTTP $queue_code (expected 401)"
+[[ "$patient_portal_code" == 200 ]] || fail "patient portal returned HTTP $patient_portal_code (expected 200)"
 
 docker compose ps
 log "Deployment and smoke tests completed successfully"
