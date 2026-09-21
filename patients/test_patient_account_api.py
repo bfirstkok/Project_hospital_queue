@@ -224,6 +224,26 @@ class PatientAccountApiTests(TestCase):
         self.assertTrue(response.json()["ok"])
         self.assertEqual(len(mail.outbox), 0)
 
+
+    def test_unknown_patient_api_path_still_returns_json_envelope(self):
+        response = self.client.get("/api/patient/not-a-real-endpoint/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertFalse(response.json()["ok"])
+        self.assertTrue(response.json()["error"])
+
+    def test_token_version_mismatch_revokes_existing_token(self):
+        patient = self.create_account()
+        token = self.login(patient.username).json()["access_token"]
+        patient.token_version += 1
+        patient.save(update_fields=["token_version", "updated_at"])
+
+        response = self.client.get(
+            reverse("public_patient_me"),
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+        self.assertEqual(response.status_code, 401)
+
     @patch("patients.views.google_id_token.verify_oauth2_token")
     def test_google_auth_auto_links_verified_email_and_issues_token(self, verify_token):
         patient = self.create_account()
