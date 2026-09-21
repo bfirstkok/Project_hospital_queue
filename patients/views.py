@@ -365,24 +365,54 @@ def public_register(request):
         return _cors_json(request, {})
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
-    if int(request.META.get("CONTENT_LENGTH") or 0) > 16384:
-        return _cors_json(request, {"ok": False, "error": "ข้อมูลมีขนาดใหญ่เกินไป"}, status=413)
 
-    if rate_limited(request, "patient-register", limit=30, window_seconds=300):
-        return _cors_json(request, {"ok": False, "error": "ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่"}, status=429)
-
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return _cors_json(request, {"ok": False, "error": "รูปแบบข้อมูลไม่ถูกต้อง"}, status=400)
-
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     if payload.get("website"):
         return _cors_json(request, {"ok": True}, status=202)
+    if rate_limited(
+        request,
+        "patient-register",
+        limit=int(getattr(settings, "PATIENT_AUTH_RATE_LIMIT", 5)),
+        window_seconds=int(getattr(settings, "PATIENT_AUTH_RATE_WINDOW", 60)),
+    ):
+        return _cors_json(request, {"ok": False, "error": "ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่"}, status=429)
+
+    username = str(payload.get("username") or "").strip() or None
+    password = str(payload.get("password") or "")
+    email = _normalize_email(payload.get("email")) or None
+    emergency_contacts = payload.get("emergency_contacts")
+    account_errors = {}
+
+    if username and not re.fullmatch(r"[A-Za-z0-9_.-]{3,50}", username):
+        account_errors["username"] = ["ชื่อผู้ใช้ต้องยาว 3-50 ตัว และใช้ตัวอักษร ตัวเลข . _ - เท่านั้น"]
+    if username and Patient.objects.filter(username__iexact=username).exists():
+        account_errors["username"] = ["ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"]
+    if email and Patient.objects.filter(email__iexact=email).exists():
+        existing_email_owner = Patient.objects.filter(email__iexact=email).first()
+        national_id = str(payload.get("national_id") or "").strip()
+        if not existing_email_owner or existing_email_owner.national_id != national_id:
+            account_errors["email"] = ["อีเมลนี้ถูกใช้งานแล้ว"]
+    if password:
+        password_errors = _validate_new_password(password)
+        if password_errors:
+            account_errors["password"] = password_errors
+    if emergency_contacts is not None and not isinstance(emergency_contacts, list):
+        account_errors["emergency_contacts"] = ["รูปแบบผู้ติดต่อฉุกเฉินไม่ถูกต้อง"]
 
     form = PublicPatientRegistrationForm(payload)
     if not form.is_valid():
-        errors = {field: [str(message) for message in messages] for field, messages in form.errors.items()}
-        return _cors_json(request, {"ok": False, "errors": errors}, status=400)
+        account_errors.update({
+            field: [str(message) for message in messages]
+            for field, messages in form.errors.items()
+        })
+    if account_errors:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "กรุณาตรวจสอบข้อมูลที่กรอก", "errors": account_errors},
+            status=400,
+        )
 
     with transaction.atomic():
         patient, created = Patient.objects.select_for_update().get_or_create(
@@ -406,29 +436,50 @@ def public_register(request):
                 status=409,
             )
 
-        if not created:
-            for field, value in form.cleaned_data.items():
-                if field != "consent":
-                    if field == "birth_date" and "birth_date" not in payload:
-                        continue
-                    setattr(patient, field, value)
-            patient.save()
+        for field, value in form.cleaned_data.items():
+            if field == "consent":
+                continue
+            if field == "birth_date" and "birth_date" not in payload and not created:
+                continue
+            setattr(patient, field, value)
+
+        if email is not None:
+            patient.email = email
+        if username and not patient.username:
+            patient.username = username
+        if password and not patient.password_hash:
+            patient.password_hash = make_password(password)
+        if emergency_contacts is not None:
+            patient.emergency_contacts = emergency_contacts
+            if emergency_contacts:
+                primary = emergency_contacts[0] or {}
+                patient.emergency_name = str(primary.get("name") or patient.emergency_name or "")[:120]
+                patient.emergency_relationship = str(primary.get("relationship") or patient.emergency_relationship or "")[:20]
+                patient.emergency_phone = normalize_thai_phone(primary.get("phone") or patient.emergency_phone)
+        patient.save()
 
         visit = Visit.objects.create(patient=patient, note=patient.note)
         VitalSign.objects.create(visit=visit)
         Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
 
     access_token, expires_at = _issue_patient_token(patient)
-    return _cors_json(request, {
-        "ok": True,
-        "tracking_token": str(visit.tracking_token),
-        "access_token": access_token,
-        "token_type": "Bearer",
-        "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
-        "expires_at": expires_at.isoformat(),
-        "status_url": f"/api/patient/queue/{visit.tracking_token}/",
-        **_serialize_queue(visit.queue),
-    }, status=201)
+    return _cors_json(
+        request,
+        {
+            "ok": True,
+            "tracking_token": str(visit.tracking_token),
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
+            "expires_at": expires_at.isoformat(),
+            "patient_id": patient.pk,
+            "hn": patient.hn,
+            "status_url": f"/api/patient/queue/{visit.tracking_token}/",
+            "message": "ลงทะเบียนและรับบัตรคิวสำเร็จ",
+            **_serialize_queue(visit.queue),
+        },
+        status=201,
+    )
 
 
 @csrf_exempt
@@ -464,39 +515,75 @@ def patient_login(request):
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
-    if rate_limited(request, "patient-login", limit=10, window_seconds=300):
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+
+    identifier = str(payload.get("identifier") or payload.get("national_id") or "").strip()
+    password = str(payload.get("password") or "")
+    if rate_limited_by_identifier(
+        request,
+        "patient-login",
+        identifier or "missing",
+        limit=int(getattr(settings, "PATIENT_AUTH_RATE_LIMIT", 5)),
+        window_seconds=int(getattr(settings, "PATIENT_AUTH_RATE_WINDOW", 60)),
+    ):
         return _cors_json(
             request,
             {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"},
             status=429,
         )
-    payload, error, error_status = _json_body(request)
-    if error:
-        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
-    national_id = str(payload.get("national_id") or "").strip()
-    if not re.fullmatch(r"[0-9]{13}", national_id):
-        return _cors_json(
-            request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
-            status=400,
-        )
 
-    patient = Patient.objects.filter(national_id=national_id).first()
-    if not patient:
-        return _cors_json(
-            request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
-            status=401,
-        )
+    patient = None
+    if password:
+        patient = _find_patient_by_identifier(identifier)
+        if (
+            not patient
+            or not patient.is_active
+            or not patient.password_hash
+            or not check_password(password, patient.password_hash)
+        ):
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
+    else:
+        # Legacy compatibility: national_id-only login remains available for the
+        # existing patient portal while account/password migration is rolling out.
+        national_id = str(payload.get("national_id") or "").strip()
+        if not re.fullmatch(r"[0-9]{13}", national_id):
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
+        patient = Patient.objects.filter(national_id=national_id, is_active=True).first()
+        if not patient:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
 
     access_token, expires_at = _issue_patient_token(patient)
-    return _cors_json(request, {
-        "ok": True,
-        "access_token": access_token,
-        "token_type": "Bearer",
-        "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
-        "expires_at": expires_at.isoformat(),
-    })
+    return _cors_json(
+        request,
+        {
+            "ok": True,
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
+            "expires_at": expires_at.isoformat(),
+            "profile": {
+                "first_name": patient.first_name,
+                "last_name": patient.last_name,
+                "national_id": patient.national_id,
+                "hn": patient.hn,
+            },
+            "message": "เข้าสู่ระบบสำเร็จ",
+        },
+    )
 
 
 @csrf_exempt
