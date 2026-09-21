@@ -1482,7 +1482,7 @@ def patient_me(request):
 
     response_payload = {
         "ok": True,
-        "profile": _patient_profile_payload(patient),
+        "profile": _patient_profile_payload(patient, mask_national_id=False),
         "active_queue": _serialize_queue(active_queue) if active_queue else None,
         "visits": [_serialize_visit(visit) for visit in visits],
         "appointments": appointments,
