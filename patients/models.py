@@ -136,6 +136,16 @@ class Patient(models.Model):
         breakdown = self.age_breakdown
         if breakdown:
             self.age = breakdown[0]
+        raw_phone = "".join(
+            character
+            for character in str(self.phone or "")
+            if character.isdigit() or character == "+"
+        )
+        if raw_phone.startswith("+66"):
+            raw_phone = "0" + raw_phone[3:]
+        elif raw_phone.startswith("66") and len(raw_phone) == 11:
+            raw_phone = "0" + raw_phone[2:]
+        self.phone_normalized = raw_phone
         # ถ้ายังไม่มี HN → สุ่ม 6 หลักให้เอง และกันซ้ำ
         if not self.hn:
             for _ in range(50):
