@@ -586,6 +586,102 @@ def patient_login(request):
     )
 
 
+
+@csrf_exempt
+def patient_google_auth(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    credential = str(payload.get("credential") or "").strip()
+    if not credential:
+        return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูล Google Sign-In"}, status=400)
+    client_id = getattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "")
+    if not client_id:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "ระบบ Google Sign-In ยังไม่ได้ตั้งค่า"},
+            status=503,
+        )
+    if rate_limited(
+        request,
+        "patient-google-auth",
+        limit=int(getattr(settings, "PATIENT_AUTH_RATE_LIMIT", 5)),
+        window_seconds=int(getattr(settings, "PATIENT_AUTH_RATE_WINDOW", 60)),
+    ):
+        return _cors_json(request, {"ok": False, "error": "ลองเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"}, status=429)
+
+    try:
+        claims = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            client_id,
+        )
+    except Exception:
+        security_logger.warning("patient_google_token_rejected")
+        return _cors_json(request, {"ok": False, "error": "ไม่สามารถยืนยันบัญชี Google ได้"}, status=401)
+
+    google_sub = str(claims.get("sub") or "").strip()
+    email = _normalize_email(claims.get("email"))
+    email_verified = claims.get("email_verified") is True
+    if not google_sub or not email or not email_verified:
+        return _cors_json(request, {"ok": False, "error": "บัญชี Google ต้องมีอีเมลที่ยืนยันแล้ว"}, status=401)
+
+    with transaction.atomic():
+        patient = Patient.objects.select_for_update().filter(google_id=google_sub).first()
+        if not patient:
+            patient = Patient.objects.select_for_update().filter(email__iexact=email).first()
+            if patient:
+                patient.google_id = google_sub
+                patient.email_verified = True
+                patient.save(update_fields=["google_id", "email_verified", "updated_at"])
+
+        if patient:
+            if not patient.is_active:
+                return _cors_json(request, {"ok": False, "error": "บัญชีนี้ถูกระงับการใช้งาน"}, status=403)
+            access_token, expires_at = _issue_patient_token(patient)
+            return _cors_json(
+                request,
+                {
+                    "ok": True,
+                    "access_token": access_token,
+                    "token_type": "Bearer",
+                    "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
+                    "expires_at": expires_at.isoformat(),
+                    "profile": _profile_payload(patient),
+                    "message": "เข้าสู่ระบบด้วย Google สำเร็จ",
+                },
+            )
+
+    suggested_name = str(claims.get("name") or "").strip().split()
+    temp_token = signing.dumps(
+        {
+            "sub": google_sub,
+            "email": email,
+            "first_name": str(claims.get("given_name") or (suggested_name[0] if suggested_name else "")),
+            "last_name": str(claims.get("family_name") or (" ".join(suggested_name[1:]) if len(suggested_name) > 1 else "")),
+        },
+        salt="patient-google-link",
+        compress=True,
+    )
+    return _cors_json(
+        request,
+        {
+            "ok": True,
+            "is_new_user": True,
+            "temp_token": temp_token,
+            "suggested_profile": {
+                "email": email,
+                "first_name": str(claims.get("given_name") or (suggested_name[0] if suggested_name else "")),
+                "last_name": str(claims.get("family_name") or (" ".join(suggested_name[1:]) if len(suggested_name) > 1 else "")),
+            },
+        },
+    )
+
 @csrf_exempt
 def patient_pin_setup(request):
     if request.method == "OPTIONS":
@@ -913,6 +1009,223 @@ def patient_pin_reset_confirm(request):
         {"ok": True, "access_token": access_token, "message": "ตั้งรหัส PIN ใหม่สำเร็จ"},
     )
 
+
+
+@csrf_exempt
+def patient_password_reset_request(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    identifier = str(payload.get("identifier") or "").strip()
+    channel = str(payload.get("channel") or "email").strip().lower()
+    if channel not in {"email", "sms"}:
+        return _cors_json(request, {"ok": False, "error": "ช่องทางรับรหัสไม่ถูกต้อง"}, status=400)
+    if channel == "sms":
+        return _cors_json(
+            request,
+            {"ok": False, "error": "ยังไม่เปิดให้บริการรับรหัสทาง SMS กรุณาใช้อีเมล"},
+            status=400,
+        )
+
+    if rate_limited_by_identifier(
+        request,
+        "patient-password-reset",
+        identifier or "missing",
+        limit=5,
+        window_seconds=3600,
+    ):
+        return _cors_json(request, {"ok": False, "error": "ขอรหัสถี่เกินไป กรุณารอสักครู่"}, status=429)
+
+    generic = {
+        "ok": True,
+        "message": "ส่งรหัส OTP เรียบร้อยแล้ว หากมีบัญชีในระบบ",
+        "cooldown_seconds": 60,
+        "expires_in_seconds": int(getattr(settings, "OTP_TTL_SECONDS", 300)),
+        "masked_target": None,
+    }
+    patient = _find_patient_by_identifier(identifier)
+    if not patient or not patient.email or not patient.is_active:
+        return _cors_json(request, generic)
+
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    now = timezone.now()
+    with transaction.atomic():
+        Patient.objects.select_for_update().only("pk").get(pk=patient.pk)
+        OtpChallenge.objects.filter(
+            national_id=patient.national_id,
+            channel=OtpChallenge.Channel.EMAIL,
+            purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+            consumed_at__isnull=True,
+        ).update(consumed_at=now)
+        challenge = OtpChallenge.objects.create(
+            national_id=patient.national_id,
+            channel=OtpChallenge.Channel.EMAIL,
+            purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+            code_hash=make_password(otp),
+            expires_at=now + timedelta(seconds=int(getattr(settings, "OTP_TTL_SECONDS", 300))),
+        )
+
+    try:
+        send_mail(
+            "รหัสยืนยัน (OTP) สำหรับเปลี่ยนรหัสผ่าน - โรงพยาบาล",
+            (
+                f"รหัสยืนยันของคุณคือ  {otp}\n"
+                "รหัสนี้ใช้ได้ภายใน 5 นาที และใช้ได้ครั้งเดียว\n"
+                "หากคุณไม่ได้เป็นผู้ขอ กรุณาละเว้นอีเมลฉบับนี้"
+            ),
+            settings.DEFAULT_FROM_EMAIL,
+            [patient.email],
+            fail_silently=False,
+        )
+        generic["masked_target"] = _mask_email(patient.email)
+    except Exception:
+        OtpChallenge.objects.filter(pk=challenge.pk).update(consumed_at=timezone.now())
+        security_logger.exception("patient_password_reset_email_delivery_failed")
+    return _cors_json(request, generic)
+
+
+@csrf_exempt
+def patient_password_reset_verify_otp(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    identifier = str(payload.get("identifier") or "").strip()
+    otp = str(payload.get("otp") or "").strip()
+    patient = _find_patient_by_identifier(identifier)
+    if not patient:
+        return _cors_json(request, {"ok": False, "error": "รหัส OTP ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                national_id=patient.national_id,
+                purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+                consumed_at__isnull=True,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not challenge or challenge.expires_at <= timezone.now():
+            return _cors_json(request, {"ok": False, "error": "รหัส OTP หมดอายุ กรุณาขอใหม่"}, status=400)
+
+        max_attempts = int(getattr(settings, "OTP_MAX_ATTEMPTS", 5))
+        if challenge.attempts >= max_attempts:
+            return _cors_json(request, {"ok": False, "error": "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่"}, status=400)
+        if not re.fullmatch(r"[0-9]{6}", otp) or not check_password(otp, challenge.code_hash):
+            challenge.attempts += 1
+            challenge.save(update_fields=["attempts"])
+            return _cors_json(
+                request,
+                {
+                    "ok": False,
+                    "error": (
+                        "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่"
+                        if challenge.attempts >= max_attempts
+                        else "รหัส OTP ไม่ถูกต้อง"
+                    ),
+                },
+                status=400,
+            )
+
+        reset_token = secrets.token_hex(32)
+        challenge.consumed_at = timezone.now()
+        challenge.reset_token_hash = _token_digest(reset_token)
+        challenge.reset_token_expires_at = timezone.now() + timedelta(
+            seconds=int(getattr(settings, "PASSWORD_RESET_TOKEN_TTL_SECONDS", 900))
+        )
+        challenge.save(
+            update_fields=["consumed_at", "reset_token_hash", "reset_token_expires_at"]
+        )
+
+    return _cors_json(
+        request,
+        {
+            "ok": True,
+            "reset_token": reset_token,
+            "message": "รหัส OTP ถูกต้อง กรุณาตั้งรหัสผ่านใหม่",
+        },
+    )
+
+
+@csrf_exempt
+def patient_password_reset_confirm(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    reset_token = str(payload.get("reset_token") or "").strip()
+    new_password = str(payload.get("new_password") or "")
+    confirm_password = str(payload.get("confirm_password") or new_password)
+    if not reset_token:
+        return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+    if new_password != confirm_password:
+        return _cors_json(request, {"ok": False, "error": "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน"}, status=400)
+    password_errors = _validate_new_password(new_password)
+    if password_errors:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "รหัสผ่านไม่ผ่านเงื่อนไข", "errors": {"new_password": password_errors}},
+            status=400,
+        )
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+                reset_token_hash=_token_digest(reset_token),
+            )
+            .first()
+        )
+        if (
+            not challenge
+            or not challenge.reset_token_expires_at
+            or challenge.reset_token_expires_at <= timezone.now()
+        ):
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+        patient = Patient.objects.select_for_update().filter(national_id=challenge.national_id).first()
+        if not patient:
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+        patient.password_hash = make_password(new_password)
+        patient.token_version += 1
+        patient.save(update_fields=["password_hash", "token_version", "updated_at"])
+        PatientAccessToken.objects.filter(patient=patient).delete()
+        challenge.reset_token_hash = None
+        challenge.reset_token_expires_at = None
+        challenge.save(update_fields=["reset_token_hash", "reset_token_expires_at"])
+
+    if patient.email:
+        try:
+            send_mail(
+                "แจ้งเตือนการเปลี่ยนรหัสผ่าน - โรงพยาบาล",
+                "รหัสผ่านสำหรับบัญชีผู้ป่วยของคุณถูกเปลี่ยนแล้ว หากไม่ใช่คุณ กรุณาติดต่อโรงพยาบาลทันที",
+                settings.DEFAULT_FROM_EMAIL,
+                [patient.email],
+                fail_silently=False,
+            )
+        except Exception:
+            security_logger.exception("patient_password_change_notification_failed")
+    return _cors_json(
+        request,
+        {"ok": True, "message": "เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบใหม่"},
+    )
 
 @csrf_exempt
 def patient_me(request):
