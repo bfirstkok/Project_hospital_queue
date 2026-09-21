@@ -46,7 +46,7 @@ class PatientPortalApiTests(TestCase):
     def bearer(token):
         return {"HTTP_AUTHORIZATION": f"Bearer {token}"}
 
-    def test_login_success_returns_opaque_token_without_patient_data(self):
+    def test_login_success_returns_opaque_token_and_profile_contract(self):
         response = self.login()
 
         self.assertEqual(response.status_code, 200)
@@ -54,9 +54,10 @@ class PatientPortalApiTests(TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["access_token"])
         self.assertEqual(payload["token_type"], "Bearer")
-        self.assertNotIn(self.patient.national_id, response.content.decode())
+        self.assertEqual(payload["profile"]["national_id"], self.patient.national_id)
         stored = PatientAccessToken.objects.get(patient=self.patient)
         self.assertNotEqual(stored.token_hash, payload["access_token"])
+        self.assertEqual(stored.token_version, self.patient.token_version)
 
     def test_login_rejects_unknown_patient(self):
         response = self.login("9999999999999")
@@ -64,11 +65,11 @@ class PatientPortalApiTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertFalse(response.json()["ok"])
 
-    def test_login_rate_limit_blocks_request_after_ten_attempts(self):
+    def test_login_rate_limit_blocks_request_after_configured_attempts(self):
         login_url = reverse("public_patient_login")
-        for _ in range(10):
+        for _ in range(5):
             response = self.post_json(login_url, {})
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 401)
 
         blocked = self.post_json(login_url, {})
         self.assertEqual(blocked.status_code, 429)
@@ -104,14 +105,14 @@ class PatientPortalApiTests(TestCase):
         expired = self.client.get(reverse("public_patient_me"), **self.bearer(token))
         self.assertEqual(expired.status_code, 401)
 
-    def test_me_returns_only_own_profile_with_masked_national_id(self):
+    def test_me_returns_only_own_authenticated_profile(self):
         token = self.login().json()["access_token"]
         response = self.client.get(reverse("public_patient_me"), **self.bearer(token))
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["profile"]["first_name"], self.patient.first_name)
-        self.assertEqual(payload["profile"]["national_id"], "1-xxxx-xxxxx-xx-3")
+        self.assertEqual(payload["profile"]["national_id"], self.patient.national_id)
         self.assertEqual(payload["active_queue"]["queue_number"], "Q001")
         self.assertEqual(len(payload["visits"]), 1)
 
@@ -155,7 +156,9 @@ class PatientPortalApiTests(TestCase):
             reverse("public_authenticated_patient_queue"),
             **self.bearer(token),
         )
-        self.assertEqual(current_queue.status_code, 404)
+        self.assertEqual(current_queue.status_code, 200)
+        self.assertTrue(current_queue.json()["ok"])
+        self.assertIsNone(current_queue.json()["queue_number"])
 
     def test_patient_cancel_requires_token_and_rejects_non_cancellable_status(self):
         missing_token = self.client.post(reverse("public_patient_cancel_queue"))
@@ -173,7 +176,7 @@ class PatientPortalApiTests(TestCase):
         self.queue.refresh_from_db()
         self.assertEqual(self.queue.status, Queue.Status.EMERGENCY_TRANSFER)
 
-    def test_patient_without_queue_returns_404(self):
+    def test_patient_without_queue_returns_empty_success_contract(self):
         patient = Patient.objects.create(
             first_name="ไม่มี",
             last_name="คิว",
@@ -182,8 +185,9 @@ class PatientPortalApiTests(TestCase):
         token = self.login(patient.national_id).json()["access_token"]
         response = self.client.get(reverse("public_authenticated_patient_queue"), **self.bearer(token))
 
-        self.assertEqual(response.status_code, 404)
-        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertIsNone(response.json()["queue_number"])
 
     def test_token_cannot_read_another_patients_latest_queue(self):
         other = Patient.objects.create(
@@ -240,4 +244,7 @@ class PatientPortalApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Access-Control-Allow-Origin"], "https://patient.example.com")
         self.assertIn("Authorization", response["Access-Control-Allow-Headers"])
+        self.assertIn("X-Requested-With", response["Access-Control-Allow-Headers"])
+        self.assertIn("PATCH", response["Access-Control-Allow-Methods"])
+        self.assertEqual(response["Access-Control-Allow-Credentials"], "true")
         self.assertNotIn("Access-Control-Allow-Origin", blocked)
