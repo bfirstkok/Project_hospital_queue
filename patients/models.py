@@ -49,7 +49,7 @@ class Patient(models.Model):
 
     phone = models.CharField(max_length=20, blank=True, default="")
     phone_normalized = models.CharField(max_length=20, blank=True, default="", db_index=True)
-    email = models.EmailField(blank=True, null=True)
+    email = models.EmailField(blank=True, null=True, db_index=True)
 
     # Patient portal identity/authentication. These fields live on Patient so
     # existing hospital records and the patient-facing account stay linked 1:1.
