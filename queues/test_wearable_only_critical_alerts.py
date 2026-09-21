@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from patients.models import Patient
@@ -75,6 +75,40 @@ class WearableOnlyCriticalAlertTests(TestCase):
         response = self.client.get(reverse("my_critical_alerts"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 0)
+
+    def test_global_alert_page_sets_csrf_cookie_and_allows_real_csrf_checked_post(self):
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=90,
+            o2sat=92,
+            bt=37.0,
+            rr=20,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.nurse)
+        page = csrf_client.get(reverse("monitor_dashboard"))
+
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("csrftoken", csrf_client.cookies)
+        self.assertContains(page, 'id="globalCsrfToken"')
+
+        token = csrf_client.cookies["csrftoken"].value
+        response = csrf_client.post(
+            reverse("acknowledge_alert", args=[alert.id]),
+            HTTP_X_CSRFTOKEN=token,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.ACKNOWLEDGED)
 
     def test_wearable_alert_acknowledgement_records_actor_and_workflow_log(self):
         vitals = VitalSign.objects.create(
