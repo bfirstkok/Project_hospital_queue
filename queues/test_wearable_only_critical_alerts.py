@@ -76,6 +76,31 @@ class WearableOnlyCriticalAlertTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 0)
 
+    def test_my_alerts_returns_django_reversed_action_urls(self):
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=90,
+            o2sat=92,
+            bt=37.0,
+            rr=20,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        response = self.client.get(reverse("my_critical_alerts"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["alerts"][0]
+        self.assertEqual(payload["id"], alert.id)
+        self.assertEqual(payload["actions"]["ack"], reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(payload["actions"]["review"], reverse("start_alert_review", args=[alert.id]))
+        self.assertEqual(payload["actions"]["resolve"], reverse("resolve_alert", args=[alert.id]))
+        self.assertEqual(payload["actions"]["false_alarm"], reverse("false_alarm_alert", args=[alert.id]))
+        self.assertEqual(payload["actions"]["escalate"], reverse("escalate_alert", args=[alert.id]))
+
     def test_global_alert_page_sets_csrf_cookie_and_allows_real_csrf_checked_post(self):
         vitals = VitalSign.objects.create(
             visit=self.visit,
