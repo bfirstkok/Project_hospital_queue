@@ -1,6 +1,6 @@
 # ER Diagram และ Data Dictionary ฉบับ Final
 
-เอกสารนี้อ้างอิงโครงสร้างโมเดลที่ใช้งานจริงหลังการปรับฐานข้อมูลและ Audit Trail ถึง migration `queues.0030` และ `patients.0010`
+เอกสารนี้อ้างอิงโครงสร้างโมเดลที่ใช้งานจริงหลังการปรับฐานข้อมูล, Audit Trail และ PostgreSQL native ENUM ถึง migration `queues.0032`, `patients.0012` และ `opd.0008`
 
 > หลักการออกแบบหลัก: **Patient = บุคคล**, **Visit = การมารับบริการแต่ละครั้ง** และข้อมูลการรักษา/คัดกรอง/คิว/IoT/ผลตรวจต้องอ้างอิง Visit เพื่อไม่ให้ข้อมูลคนละ encounter ปะปนกัน
 
@@ -46,7 +46,7 @@ erDiagram
       bigint id PK
       bigint patient_id FK
       uuid tracking_token UK
-      varchar final_severity
+      triage_severity_enum final_severity
       datetime registered_at
     }
     VITAL_SIGN {
@@ -62,14 +62,14 @@ erDiagram
     TRIAGE_RESULT {
       bigint id PK
       bigint visit_id FK_UK
-      varchar ai_severity
-      varchar nurse_severity
+      triage_severity_enum ai_severity
+      triage_severity_enum nurse_severity
       float confidence
     }
     QUEUE {
       bigint id PK
       bigint visit_id FK_UK
-      varchar status
+      queue_status_enum status
       int priority
       int exam_room
     }
@@ -79,7 +79,7 @@ erDiagram
       bigint examiner_id FK
       text diagnosis
       text treatment
-      varchar opd_urgency
+      opd_urgency_enum opd_urgency
     }
     NURSE_CARE_ASSIGNMENT {
       bigint id PK
@@ -119,7 +119,7 @@ erDiagram
       bigint id PK
       bigint visit_id FK
       varchar alert_type
-      varchar status
+      critical_alert_status_enum status
       bigint acknowledged_by_id FK
       datetime acknowledged_at
     }
@@ -153,7 +153,7 @@ erDiagram
       date shift_date
       time start_time
       time end_time
-      varchar status
+      shift_schedule_status_enum status
     }
     ACCOUNT_STATUS_LOG {
       bigint id PK
@@ -168,7 +168,7 @@ erDiagram
       bigint patient_id FK
       date date
       time time
-      varchar status
+      appointment_status_enum status
     }
     PATIENT_ACCESS_TOKEN {
       bigint id PK
@@ -206,6 +206,21 @@ erDiagram
 | User → AccountStatusLog | 1:N | ประวัติ Suspend/Activate |
 
 ---
+
+# 2.1 PostgreSQL Native ENUM ที่บังคับใช้ในฐานข้อมูล
+
+ฟิลด์ workflow ที่มีค่าจำกัดและค่อนข้างคงที่ถูกเปลี่ยนจาก VARCHAR เป็น PostgreSQL native ENUM เพื่อป้องกันค่าพิมพ์ผิดจาก SQL โดยตรง และยังใช้ Django TextChoices เป็นชุดค่าฝั่ง application
+
+| ENUM type | ใช้กับ Field | ค่าที่อนุญาต |
+|---|---|---|
+| appointment_status_enum | patients_appointment.status | SCHEDULED, ATTENDED, MISSED, CANCELLED |
+| triage_severity_enum | queues_visit.final_severity, queues_triageresult.ai_severity, queues_triageresult.nurse_severity, queues_criticalalert.severity | RED, PINK, YELLOW, GREEN, WHITE |
+| queue_status_enum | queues_queue.status | WAITING_VITALS, WAITING_CONFIRMATION, WAITING_QUEUE, WAITING, CALLED, MONITORING, OBSERVATION_MONITORING, REASSESSMENT_REQUIRED, EMERGENCY_TRANSFER, OPD_DONE, FOLLOWUP, DISCHARGED, CANCELLED |
+| critical_alert_status_enum | queues_criticalalert.status | NEW, ACKNOWLEDGED, IN_REVIEW, ESCALATED, RESOLVED, FALSE_ALARM |
+| shift_schedule_status_enum | queues_shiftschedule.status | SCHEDULED, LEAVE, CANCELLED |
+| opd_urgency_enum | opd_visitassessment.opd_urgency | RED, YELLOW, NORMAL |
+
+> หมายเหตุ: SQLite ที่ใช้ทดสอบในเครื่องจะ fallback เป็น VARCHAR เพื่อให้ test suite ทำงานได้เหมือนเดิม ส่วน production PostgreSQL จะใช้ ENUM จริง
 
 # 3. Data Dictionary
 
@@ -260,7 +275,7 @@ erDiagram
 | triaged_at | datetime | NULL | เวลาประเมินคัดกรอง |
 | confirmed_at | datetime | NULL | เวลาพยาบาลยืนยันผล |
 | called_at | datetime | NULL | เวลาเรียกเข้าห้องตรวจ |
-| final_severity | varchar(10) | NULL | RED/PINK/YELLOW/GREEN/WHITE |
+| final_severity | triage_severity_enum | NULL | RED/PINK/YELLOW/GREEN/WHITE |
 | note | text | NULL | อาการ/หมายเหตุของ Visit |
 | lat | decimal(9,6) | NULL | Latitude |
 | lng | decimal(9,6) | NULL | Longitude |
@@ -293,8 +308,8 @@ Snapshot ของสัญญาณชีพหลัก/ค่าล่าส�
 |---|---|---|---|
 | id | BigAutoField | PK | รหัสผลคัดกรอง |
 | visit_id | bigint | FK + UNIQUE | Visit |
-| ai_severity | varchar(10) | NULL | ระดับที่ AI แนะนำ |
-| nurse_severity | varchar(10) | NULL | ระดับที่พยาบาลยืนยัน |
+| ai_severity | triage_severity_enum | NULL | ระดับที่ AI แนะนำ |
+| nurse_severity | triage_severity_enum | NULL | ระดับที่พยาบาลยืนยัน |
 | model_name | varchar(50) | NULL | ชื่อโมเดล |
 | confidence | float | NULL | Confidence |
 | ai_reason | text | NOT NULL | เหตุผลของ AI/Rule |
@@ -318,7 +333,7 @@ Snapshot ของสัญญาณชีพหลัก/ค่าล่าส�
 |---|---|---|---|
 | id | BigAutoField | PK | รหัสคิว |
 | visit_id | bigint | FK + UNIQUE | Visit |
-| status | varchar(32) | NOT NULL | สถานะ workflow |
+| status | queue_status_enum | NOT NULL | สถานะ workflow |
 | priority | int | NOT NULL | Priority |
 | exam_room | positive small int | NULL | ห้องตรวจ |
 | manual_sequence | positive int | NULL | เลขคิวที่กำหนดเอง |
@@ -366,7 +381,7 @@ Snapshot ของสัญญาณชีพหลัก/ค่าล่าส�
 | next_appointment_at | datetime | NULL | วันนัด |
 | next_appointment_note | varchar(255) | NOT NULL | หมายเหตุนัด |
 | followup_visit_id | bigint | FK Visit, NULL | Visit ที่สร้างเป็น follow-up |
-| opd_urgency | varchar(10) | NOT NULL | RED/YELLOW/NORMAL |
+| opd_urgency | opd_urgency_enum | NOT NULL | RED/YELLOW/NORMAL |
 | opd_reason | text | NOT NULL | เหตุผล urgency |
 
 ## 3.7 queues_device — Device
@@ -421,12 +436,12 @@ Canonical time-series ของ wearable/IoT
 | id | BigAutoField | PK | Alert ID |
 | visit_id | bigint | FK Visit | Visit |
 | alert_type | varchar(24) | NOT NULL | LOW_O2, LOW_BP, HIGH_RR, HIGH_HEART_RATE, LOW_HEART_RATE, HIGH_TEMPERATURE |
-| severity | varchar(10) | NOT NULL | Severity ของ Alert |
+| severity | triage_severity_enum | NOT NULL | Severity ของ Alert |
 | message | varchar(255) | NOT NULL | ข้อความ |
 | value | float | NULL | ค่าที่ทำให้ Trigger |
 | threshold | varchar(50) | NOT NULL | Threshold |
 | source | varchar(32) | NOT NULL | แหล่งข้อมูล |
-| status | varchar(16) | NOT NULL | NEW/ACKNOWLEDGED |
+| status | critical_alert_status_enum | NOT NULL | NEW/ACKNOWLEDGED/IN_REVIEW/ESCALATED/RESOLVED/FALSE_ALARM |
 | created_at | datetime | NOT NULL | เวลาสร้าง |
 | acknowledged_at | datetime | NULL | เวลารับทราบ |
 | acknowledged_by_id | bigint | FK auth_user, NULL | ผู้รับทราบ |
@@ -500,7 +515,7 @@ Constraint: user + duty_date ต้องไม่ซ้ำ
 | shift_date | date | NOT NULL | วันที่เวร |
 | start_time | time | NOT NULL | เริ่ม |
 | end_time | time | NOT NULL | สิ้นสุด |
-| status | varchar(16) | NOT NULL | SCHEDULED/LEAVE/CANCELLED |
+| status | shift_schedule_status_enum | NOT NULL | SCHEDULED/LEAVE/CANCELLED |
 | note | varchar(200) | NOT NULL | หมายเหตุ/ห้องตรวจ |
 | created_by_id | bigint | FK auth_user, NULL | ผู้จัดเวร |
 | created_at | datetime | NOT NULL | เวลาสร้าง |
@@ -529,7 +544,7 @@ Constraint: user + shift_date + start_time ต้องไม่ซ้ำ
 | patient_id | bigint | FK Patient | ผู้ป่วย |
 | date | date | NOT NULL | วันที่นัด |
 | time | time | NULL | เวลา |
-| status | varchar(16) | NOT NULL | SCHEDULED/ATTENDED/MISSED/CANCELLED |
+| status | appointment_status_enum | NOT NULL | SCHEDULED/ATTENDED/MISSED/CANCELLED |
 | note | varchar(255) | NOT NULL | หมายเหตุ |
 | attended_at | datetime | NULL | เวลามาตามนัด |
 | created_at | datetime | NOT NULL | เวลาสร้าง |
