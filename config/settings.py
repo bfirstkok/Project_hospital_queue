@@ -94,12 +94,14 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+_DEFAULT_PATIENT_APP_ORIGINS = (
+    "http://localhost:5500,http://127.0.0.1:5500,https://hospital.bfirstkok.me"
+    if DEBUG
+    else "https://hospital.bfirstkok.me"
+)
 PATIENT_APP_ORIGINS = {
     origin.strip().rstrip("/")
-    for origin in os.getenv(
-        "PATIENT_APP_ORIGINS",
-        "http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io,https://hospital.bfirstkok.me",
-    ).split(",")
+    for origin in os.getenv("PATIENT_APP_ORIGINS", _DEFAULT_PATIENT_APP_ORIGINS).split(",")
     if origin.strip()
 }
 PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", str(60 * 60 * 12)))
