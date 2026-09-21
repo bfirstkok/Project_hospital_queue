@@ -2,14 +2,16 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.db.models import Prefetch, Q
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
+from django.core import signing
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -21,7 +23,10 @@ import logging
 import re
 import secrets
 
-from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+
+from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm, normalize_thai_phone
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
 from .security import rate_limited, rate_limited_by_identifier
 from queues.models import Visit, Queue, VitalSign, VisitWorkflowLog
@@ -69,14 +74,17 @@ PUBLIC_STATUS = {
 
 
 def _cors_json(request, payload, status=200):
+    if "ok" not in payload:
+        payload = {"ok": status < 400, **payload}
     response = JsonResponse(payload, status=status)
-    origin = request.headers.get("Origin", "")
+    origin = request.headers.get("Origin", "").rstrip("/")
     if origin and origin in settings.PATIENT_APP_ORIGINS:
         response["Access-Control-Allow-Origin"] = origin
+        response["Access-Control-Allow-Credentials"] = "true"
         from django.utils.cache import patch_vary_headers
         patch_vary_headers(response, ["Origin"])
-    response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response["Access-Control-Allow-Methods"] = "GET, POST, PATCH, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
     response["Access-Control-Max-Age"] = "86400"
     return response
 
@@ -109,6 +117,7 @@ def _issue_patient_token(patient):
         patient=patient,
         token_hash=_token_digest(raw_token),
         expires_at=expires_at,
+        token_version=patient.token_version,
     )
     return raw_token, expires_at
 
@@ -125,11 +134,95 @@ def _authenticated_patient(request):
         .first()
     )
     now = timezone.now()
-    if not access_token or access_token.expires_at <= now:
+    if (
+        not access_token
+        or access_token.expires_at <= now
+        or not access_token.patient.is_active
+        or access_token.token_version != access_token.patient.token_version
+    ):
         return None
     if not access_token.last_used_at or access_token.last_used_at < now - timedelta(minutes=5):
         PatientAccessToken.objects.filter(pk=access_token.pk).update(last_used_at=now)
     return access_token.patient
+
+
+
+def _normalize_email(value):
+    return str(value or "").strip().lower()
+
+
+def _find_patient_by_identifier(identifier):
+    value = str(identifier or "").strip()
+    if not value:
+        return None
+    query = Q(national_id=value)
+    if "@" in value:
+        query |= Q(email__iexact=value)
+    else:
+        query |= Q(username__iexact=value)
+    return Patient.objects.filter(query).first()
+
+
+def _validate_new_password(password, patient=None):
+    try:
+        validate_password(password)
+    except ValidationError as exc:
+        return [str(message) for message in exc.messages]
+    return []
+
+
+def _mask_email(value):
+    email = _normalize_email(value)
+    if "@" not in email:
+        return None
+    local, domain = email.split("@", 1)
+    visible = local[:2] if len(local) > 1 else local[:1]
+    return f"{visible}{'•' * max(4, len(local) - len(visible))}@{domain}"
+
+
+def _profile_payload(patient):
+    contacts = patient.emergency_contacts
+    if not contacts and (patient.emergency_name or patient.emergency_phone):
+        contacts = [{
+            "id": "primary",
+            "name": patient.emergency_name,
+            "relationship": patient.emergency_relationship,
+            "phone": patient.emergency_phone,
+        }]
+    return {
+        "username": patient.username,
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "national_id": patient.national_id,
+        "hn": patient.hn,
+        "phone": patient.phone,
+        "email": patient.email,
+        "gender": patient.gender,
+        "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
+        "age": patient.age_years,
+        "blood_type": patient.blood_type,
+        "height_cm": patient.height_cm,
+        "weight_kg": patient.weight_kg,
+        "address": patient.address,
+        "province": patient.province,
+        "district": patient.district,
+        "subdistrict": patient.subdistrict,
+        "postal_code": patient.postal_code,
+        "chronic_diseases": patient.chronic_diseases,
+        "allergies": patient.allergies,
+        "medications": patient.medications,
+        "emergency_name": patient.emergency_name,
+        "emergency_relationship": patient.emergency_relationship,
+        "emergency_phone": patient.emergency_phone,
+        "emergency_contacts": contacts or [],
+        "email_verified": patient.email_verified,
+    }
+
+
+def _invalidate_patient_tokens(patient):
+    patient.token_version += 1
+    patient.save(update_fields=["token_version", "updated_at"])
+    PatientAccessToken.objects.filter(patient=patient).delete()
 
 
 def _pin_is_locked(pin_state, now=None):
