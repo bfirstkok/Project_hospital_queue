@@ -1,4 +1,5 @@
 from django.db import migrations, models
+import django.utils.timezone
 
 
 class Migration(migrations.Migration):
@@ -46,7 +47,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="updated_at",
-            field=models.DateTimeField(auto_now=True),
+            field=models.DateTimeField(auto_now=True, default=django.utils.timezone.now),
+            preserve_default=False,
+        ),
+        migrations.AlterField(
+            model_name="patient",
+            name="email",
+            field=models.EmailField(blank=True, db_index=True, max_length=254, null=True),
         ),
         migrations.AddField(
             model_name="patientaccesstoken",
