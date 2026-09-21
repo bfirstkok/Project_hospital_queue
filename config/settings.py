@@ -94,15 +94,22 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+_DEFAULT_PATIENT_APP_ORIGINS = (
+    "http://localhost:5500,http://127.0.0.1:5500,https://hospital.bfirstkok.me"
+    if DEBUG
+    else "https://hospital.bfirstkok.me"
+)
 PATIENT_APP_ORIGINS = {
     origin.strip().rstrip("/")
-    for origin in os.getenv(
-        "PATIENT_APP_ORIGINS",
-        "http://localhost:5500,http://127.0.0.1:5500,https://bfirstkok.github.io,https://hospital.bfirstkok.me",
-    ).split(",")
+    for origin in os.getenv("PATIENT_APP_ORIGINS", _DEFAULT_PATIENT_APP_ORIGINS).split(",")
     if origin.strip()
 }
 PATIENT_TOKEN_MAX_AGE = int(os.getenv("PATIENT_TOKEN_MAX_AGE", str(60 * 60 * 12)))
+PATIENT_LOGIN_RATE_LIMIT = int(os.getenv("PATIENT_LOGIN_RATE_LIMIT", "5"))
+PATIENT_LOGIN_RATE_WINDOW = int(os.getenv("PATIENT_LOGIN_RATE_WINDOW", "60"))
+PASSWORD_RESET_TOKEN_TTL_SECONDS = int(os.getenv("PASSWORD_RESET_TOKEN_TTL_SECONDS", "900"))
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_LINK_TOKEN_MAX_AGE = int(os.getenv("GOOGLE_LINK_TOKEN_MAX_AGE", "600"))
 OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "300"))
 OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
 OTP_REQUEST_RATE = os.getenv("OTP_REQUEST_RATE", "3/15m")

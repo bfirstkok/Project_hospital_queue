@@ -227,10 +227,9 @@ class PublicPatientApiTests(TestCase):
         login_response = self.post_login()
 
         self.assertEqual(login_response.status_code, 200)
-        self.assertEqual(
-            login_response["Access-Control-Allow-Headers"],
-            "Content-Type, Authorization",
-        )
+        self.assertIn("Content-Type", login_response["Access-Control-Allow-Headers"])
+        self.assertIn("Authorization", login_response["Access-Control-Allow-Headers"])
+        self.assertIn("X-Requested-With", login_response["Access-Control-Allow-Headers"])
         token = login_response.json()["access_token"]
         headers = {
             "HTTP_AUTHORIZATION": f"Bearer {token}",
@@ -243,7 +242,7 @@ class PublicPatientApiTests(TestCase):
         self.assertEqual(me_response.status_code, 200)
         self.assertEqual(queue_response.status_code, 200)
         self.assertEqual(me_response.json()["profile"]["hn"], Patient.objects.get().hn)
-        self.assertEqual(me_response.json()["profile"]["national_id"], "1-xxxx-xxxxx-xx-3")
+        self.assertEqual(me_response.json()["profile"]["national_id"], Patient.objects.get().national_id)
         self.assertEqual(queue_response.json()["status"], Queue.Status.WAITING_VITALS)
 
     def test_registration_accepts_birth_date_and_profile_returns_full_age(self):

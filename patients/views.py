@@ -2,14 +2,18 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core import signing
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import validate_email
 from django.core.mail import send_mail
 from django.db.models import Prefetch, Q
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -42,6 +46,8 @@ ACTIVE_QUEUE_STATUSES = {
 
 security_logger = logging.getLogger("security.audit")
 PIN_PATTERN = re.compile(r"[0-9]{6}")
+USERNAME_PATTERN = re.compile(r"[A-Za-z0-9._-]{3,50}")
+GOOGLE_LINK_SALT = "patient-google-link-v1"
 
 PATIENT_CANCELLABLE_QUEUE_STATUSES = {
     Queue.Status.WAITING_VITALS,
@@ -69,14 +75,21 @@ PUBLIC_STATUS = {
 
 
 def _cors_json(request, payload, status=200):
+    payload = dict(payload)
+    if status >= 400:
+        payload.setdefault("ok", False)
+        payload.setdefault("error", "ไม่สามารถดำเนินการตามคำขอได้")
+    else:
+        payload.setdefault("ok", True)
     response = JsonResponse(payload, status=status)
     origin = request.headers.get("Origin", "")
     if origin and origin in settings.PATIENT_APP_ORIGINS:
         response["Access-Control-Allow-Origin"] = origin
         from django.utils.cache import patch_vary_headers
         patch_vary_headers(response, ["Origin"])
-    response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response["Access-Control-Allow-Methods"] = "GET, POST, PATCH, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    response["Access-Control-Allow-Credentials"] = "true"
     response["Access-Control-Max-Age"] = "86400"
     return response
 
@@ -108,6 +121,7 @@ def _issue_patient_token(patient):
     PatientAccessToken.objects.create(
         patient=patient,
         token_hash=_token_digest(raw_token),
+        token_version=patient.token_version,
         expires_at=expires_at,
     )
     return raw_token, expires_at
@@ -125,7 +139,12 @@ def _authenticated_patient(request):
         .first()
     )
     now = timezone.now()
-    if not access_token or access_token.expires_at <= now:
+    if (
+        not access_token
+        or access_token.expires_at <= now
+        or not access_token.patient.is_active
+        or access_token.token_version != access_token.patient.token_version
+    ):
         return None
     if not access_token.last_used_at or access_token.last_used_at < now - timedelta(minutes=5):
         PatientAccessToken.objects.filter(pk=access_token.pk).update(last_used_at=now)
@@ -188,6 +207,165 @@ def _masked_national_id(national_id):
     if len(value) != 13:
         return ""
     return f"{value[0]}-xxxx-xxxxx-xx-{value[-1]}"
+
+
+def _normalize_email(value):
+    return str(value or "").strip().lower()
+
+
+def _normalize_phone(value):
+    phone = "".join(ch for ch in str(value or "") if ch.isdigit() or ch == "+")
+    if phone.startswith("+66"):
+        phone = "0" + phone[3:]
+    elif phone.startswith("66") and len(phone) == 11:
+        phone = "0" + phone[2:]
+    return phone
+
+
+def _mask_email(value):
+    email = _normalize_email(value)
+    if not email or "@" not in email:
+        return None
+    local, domain = email.split("@", 1)
+    visible = local[:2] if len(local) >= 2 else local[:1]
+    hidden_count = max(4, len(local) - len(visible))
+    return f"{visible}{'•' * hidden_count}@{domain}"
+
+
+def _mask_phone(value):
+    phone = _normalize_phone(value)
+    if len(phone) < 4:
+        return None
+    return f"{phone[:3]}{'•' * max(4, len(phone) - 5)}{phone[-2:]}"
+
+
+def _verify_google_credential(credential):
+    """Verify a Google ID token and return its claims.
+
+    Imported lazily so the rest of the patient API stays usable even when
+    Google Sign-In is not configured.
+    """
+    client_id = str(getattr(settings, "GOOGLE_CLIENT_ID", "") or "").strip()
+    if not client_id:
+        raise RuntimeError("google_not_configured")
+    from google.auth.transport import requests as google_requests
+    from google.oauth2 import id_token
+
+    claims = id_token.verify_oauth2_token(
+        credential,
+        google_requests.Request(),
+        client_id,
+    )
+    if claims.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise ValueError("invalid_issuer")
+    return claims
+
+
+def _lookup_patient_by_identifier(identifier):
+    value = str(identifier or "").strip()
+    if not value:
+        return None
+
+    by_national_id = Patient.objects.filter(national_id=value).first()
+    if by_national_id:
+        return by_national_id
+
+    if "@" in value:
+        matches = Patient.objects.filter(email__iexact=value)
+        return matches.first() if matches.count() == 1 else None
+
+    matches = Patient.objects.filter(username__iexact=value)
+    if matches.count() == 1:
+        return matches.first()
+
+    normalized_phone = _normalize_phone(value)
+    if normalized_phone:
+        matches = Patient.objects.filter(
+            Q(phone_normalized=normalized_phone) | Q(phone=normalized_phone)
+        ).distinct()
+        if matches.count() == 1:
+            return matches.first()
+    return None
+
+
+def _validate_portal_password(password):
+    value = str(password or "")
+    if len(value) < 8 or len(value) > 128:
+        return "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร"
+    try:
+        validate_password(value)
+    except ValidationError:
+        return "รหัสผ่านยังไม่ปลอดภัยเพียงพอ กรุณาใช้รหัสผ่านที่คาดเดาได้ยากขึ้น"
+    return None
+
+
+def _patient_profile_payload(patient, *, mask_national_id=True):
+    contacts = patient.emergency_contacts or []
+    if not contacts and (patient.emergency_name or patient.emergency_phone):
+        contacts = [{
+            "id": "primary",
+            "name": patient.emergency_name,
+            "relationship": patient.emergency_relationship,
+            "phone": patient.emergency_phone,
+        }]
+    return {
+        "username": patient.username,
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "national_id": _masked_national_id(patient.national_id) if mask_national_id else patient.national_id,
+        "hn": patient.hn,
+        "phone": patient.phone,
+        "email": patient.email,
+        "gender": patient.gender,
+        "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
+        "age": patient.age_years,
+        "age_display": patient.age_display,
+        "blood_type": patient.blood_type,
+        "height_cm": float(patient.height_cm) if patient.height_cm is not None else None,
+        "weight_kg": float(patient.weight_kg) if patient.weight_kg is not None else None,
+        "address": patient.address,
+        "province": patient.province,
+        "district": patient.district,
+        "subdistrict": patient.subdistrict,
+        "postal_code": patient.postal_code,
+        "chronic_diseases": patient.chronic_diseases,
+        "allergies": patient.allergies,
+        "medications": patient.medications,
+        "emergency_name": patient.emergency_name,
+        "emergency_relationship": patient.emergency_relationship,
+        "emergency_phone": patient.emergency_phone,
+        "emergency_contacts": contacts,
+        "email_verified": patient.email_verified,
+    }
+
+
+def _revoke_patient_tokens(patient):
+    patient.token_version += 1
+    patient.save(update_fields=["token_version", "updated_at"])
+    PatientAccessToken.objects.filter(patient=patient).delete()
+
+
+def _validate_emergency_contacts(value):
+    if value is None:
+        return None, None
+    if not isinstance(value, list):
+        return None, "emergency_contacts ต้องเป็นรายการ"
+    cleaned = []
+    for index, contact in enumerate(value):
+        if not isinstance(contact, dict):
+            return None, f"ข้อมูลผู้ติดต่อฉุกเฉินลำดับที่ {index + 1} ไม่ถูกต้อง"
+        name = str(contact.get("name") or "").strip()
+        phone = _normalize_phone(contact.get("phone"))
+        relationship = str(contact.get("relationship") or "").strip().upper()
+        if not name or not phone:
+            return None, f"กรุณาระบุชื่อและเบอร์โทรผู้ติดต่อฉุกเฉินลำดับที่ {index + 1}"
+        cleaned.append({
+            "id": str(contact.get("id") or f"em_{index + 1}"),
+            "name": name[:120],
+            "relationship": relationship[:20],
+            "phone": phone[:20],
+        })
+    return cleaned, None
 
 
 def _serialize_queue(queue):
@@ -272,28 +450,99 @@ def public_register(request):
         return _cors_json(request, {})
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
-    if int(request.META.get("CONTENT_LENGTH") or 0) > 16384:
-        return _cors_json(request, {"ok": False, "error": "ข้อมูลมีขนาดใหญ่เกินไป"}, status=413)
 
     if rate_limited(request, "patient-register", limit=30, window_seconds=300):
         return _cors_json(request, {"ok": False, "error": "ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่"}, status=429)
 
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return _cors_json(request, {"ok": False, "error": "รูปแบบข้อมูลไม่ถูกต้อง"}, status=400)
-
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     if payload.get("website"):
         return _cors_json(request, {"ok": True}, status=202)
 
-    form = PublicPatientRegistrationForm(payload)
+    username = str(payload.get("username") or "").strip() or None
+    password = str(payload.get("password") or "")
+    email = _normalize_email(payload.get("email")) or None
+    temp_token = str(payload.get("temp_token") or payload.get("google_temp_token") or "").strip()
+    google_claims = None
+
+    field_errors = {}
+    if username and not USERNAME_PATTERN.fullmatch(username):
+        field_errors["username"] = ["ชื่อผู้ใช้ต้องยาว 3-50 ตัว และใช้ได้เฉพาะ a-z, A-Z, 0-9, จุด, ขีดกลาง หรือขีดล่าง"]
+    if password:
+        password_error = _validate_portal_password(password)
+        if password_error:
+            field_errors["password"] = [password_error]
+    elif username:
+        field_errors["password"] = ["กรุณาระบุรหัสผ่านสำหรับบัญชีนี้"]
+
+    if temp_token:
+        try:
+            google_claims = signing.loads(
+                temp_token,
+                salt=GOOGLE_LINK_SALT,
+                max_age=int(getattr(settings, "GOOGLE_LINK_TOKEN_MAX_AGE", 600)),
+            )
+        except signing.BadSignature:
+            field_errors["temp_token"] = ["ข้อมูลเชื่อมบัญชี Google ไม่ถูกต้องหรือหมดอายุ"]
+        if google_claims and google_claims.get("email"):
+            email = _normalize_email(google_claims["email"])
+
+    if (username or password or temp_token) and not email:
+        field_errors["email"] = ["กรุณาระบุอีเมลสำหรับบัญชีผู้ป่วย"]
+
+    form_payload = dict(payload)
+    if email is not None:
+        form_payload["email"] = email
+    form = PublicPatientRegistrationForm(form_payload)
     if not form.is_valid():
-        errors = {field: [str(message) for message in messages] for field, messages in form.errors.items()}
-        return _cors_json(request, {"ok": False, "errors": errors}, status=400)
+        for field, messages_ in form.errors.items():
+            field_errors.setdefault(field, []).extend(str(message) for message in messages_)
+    if field_errors:
+        return _cors_json(request, {"ok": False, "error": "กรุณาตรวจสอบข้อมูลที่กรอก", "errors": field_errors}, status=400)
+
+    national_id = form.cleaned_data["national_id"]
+    existing = Patient.objects.filter(national_id=national_id).first()
+
+    if username:
+        username_owner = Patient.objects.filter(username__iexact=username).exclude(pk=getattr(existing, "pk", None)).first()
+        if username_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว", "errors": {"username": ["ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"]}},
+                status=409,
+            )
+    if email:
+        email_owner = Patient.objects.filter(email__iexact=email).exclude(pk=getattr(existing, "pk", None)).first()
+        if email_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว", "errors": {"email": ["อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว"]}},
+                status=409,
+            )
+
+    if google_claims and google_claims.get("sub"):
+        google_owner = Patient.objects.filter(
+            google_id=str(google_claims["sub"])
+        ).exclude(pk=getattr(existing, "pk", None)).first()
+        if google_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "บัญชี Google นี้เชื่อมกับผู้ป่วยรายอื่นแล้ว"},
+                status=409,
+            )
+
+    contacts, contacts_error = _validate_emergency_contacts(payload.get("emergency_contacts"))
+    if contacts_error:
+        return _cors_json(
+            request,
+            {"ok": False, "error": contacts_error, "errors": {"emergency_contacts": [contacts_error]}},
+            status=400,
+        )
 
     with transaction.atomic():
         patient, created = Patient.objects.select_for_update().get_or_create(
-            national_id=form.cleaned_data["national_id"],
+            national_id=national_id,
             defaults={key: value for key, value in form.cleaned_data.items() if key != "consent"},
         )
         active_visit = (
@@ -315,11 +564,34 @@ def public_register(request):
 
         if not created:
             for field, value in form.cleaned_data.items():
-                if field != "consent":
-                    if field == "birth_date" and "birth_date" not in payload:
-                        continue
-                    setattr(patient, field, value)
-            patient.save()
+                if field == "consent":
+                    continue
+                if field == "birth_date" and "birth_date" not in payload:
+                    continue
+                setattr(patient, field, value)
+
+        patient.email = email
+        if username:
+            patient.username = username
+        if password:
+            patient.password_hash = make_password(password)
+        if contacts is not None:
+            patient.emergency_contacts = contacts
+            first_contact = contacts[0] if contacts else {}
+            patient.emergency_name = first_contact.get("name", "")
+            patient.emergency_relationship = first_contact.get("relationship", "")
+            patient.emergency_phone = first_contact.get("phone", "")
+        elif patient.emergency_name or patient.emergency_phone:
+            patient.emergency_contacts = [{
+                "id": "primary",
+                "name": patient.emergency_name,
+                "relationship": patient.emergency_relationship,
+                "phone": patient.emergency_phone,
+            }]
+        if google_claims:
+            patient.google_id = str(google_claims.get("sub") or "") or None
+            patient.email_verified = bool(google_claims.get("email_verified", True))
+        patient.save()
 
         visit = Visit.objects.create(patient=patient, note=patient.note)
         VitalSign.objects.create(visit=visit)
@@ -333,7 +605,10 @@ def public_register(request):
         "token_type": "Bearer",
         "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
         "expires_at": expires_at.isoformat(),
+        "patient_id": patient.pk,
+        "hn": patient.hn,
         "status_url": f"/api/patient/queue/{visit.tracking_token}/",
+        "message": "ลงทะเบียนและรับบัตรคิวสำเร็จ",
         **_serialize_queue(visit.queue),
     }, status=201)
 
@@ -371,30 +646,58 @@ def patient_login(request):
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
-    if rate_limited(request, "patient-login", limit=10, window_seconds=300):
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+
+    identifier = str(payload.get("identifier") or payload.get("national_id") or "").strip()
+    password = payload.get("password")
+    has_password = password is not None and str(password) != ""
+
+    if rate_limited_by_identifier(
+        request,
+        "patient-login",
+        identifier.lower() or "missing",
+        limit=int(getattr(settings, "PATIENT_LOGIN_RATE_LIMIT", 5)),
+        window_seconds=int(getattr(settings, "PATIENT_LOGIN_RATE_WINDOW", 60)),
+    ):
         return _cors_json(
             request,
             {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"},
             status=429,
         )
-    payload, error, error_status = _json_body(request)
-    if error:
-        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
-    national_id = str(payload.get("national_id") or "").strip()
-    if not re.fullmatch(r"[0-9]{13}", national_id):
-        return _cors_json(
-            request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
-            status=400,
-        )
 
-    patient = Patient.objects.filter(national_id=national_id).first()
-    if not patient:
+    if not identifier:
+        return _cors_json(request, {"ok": False, "error": "กรุณาระบุข้อมูลเข้าสู่ระบบ"}, status=400)
+
+    patient = _lookup_patient_by_identifier(identifier)
+    if not patient or not patient.is_active:
         return _cors_json(
             request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
+            {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
             status=401,
         )
+
+    if has_password:
+        # Google-only / legacy records can have no password. Never accept a
+        # password login when there is no server-side password hash.
+        if not patient.password_hash or not check_password(str(password), patient.password_hash):
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
+    else:
+        # Backward compatibility for the existing patient portal: legacy
+        # national-ID-only login remains available only when the caller
+        # explicitly supplies national_id and it is a valid 13-digit value.
+        national_id = str(payload.get("national_id") or "").strip()
+        if not re.fullmatch(r"[0-9]{13}", national_id) or national_id != patient.national_id:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
 
     access_token, expires_at = _issue_patient_token(patient)
     return _cors_json(request, {
@@ -403,7 +706,320 @@ def patient_login(request):
         "token_type": "Bearer",
         "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
         "expires_at": expires_at.isoformat(),
+        "profile": _patient_profile_payload(patient, mask_national_id=False),
+        "message": "เข้าสู่ระบบสำเร็จ",
     })
+
+
+@csrf_exempt
+def patient_google_auth(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    if rate_limited(request, "patient-google-login", limit=10, window_seconds=300):
+        return _cors_json(request, {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"}, status=429)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    credential = str(payload.get("credential") or "").strip()
+    if not credential:
+        return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลยืนยันจาก Google"}, status=400)
+
+    try:
+        claims = _verify_google_credential(credential)
+    except RuntimeError:
+        return _cors_json(request, {"ok": False, "error": "ระบบ Google Sign-In ยังไม่ได้ตั้งค่า"}, status=503)
+    except Exception:
+        security_logger.warning("patient_google_token_rejected")
+        return _cors_json(request, {"ok": False, "error": "ไม่สามารถยืนยันบัญชี Google ได้"}, status=401)
+
+    email = _normalize_email(claims.get("email"))
+    google_id = str(claims.get("sub") or "").strip()
+    if not google_id or not email or not bool(claims.get("email_verified")):
+        return _cors_json(request, {"ok": False, "error": "บัญชี Google ต้องมีอีเมลที่ยืนยันแล้ว"}, status=401)
+
+    patient = Patient.objects.filter(google_id=google_id, is_active=True).first()
+    if patient:
+        access_token, expires_at = _issue_patient_token(patient)
+        return _cors_json(request, {
+            "ok": True,
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
+            "expires_at": expires_at.isoformat(),
+            "profile": _patient_profile_payload(patient, mask_national_id=False),
+            "message": "เข้าสู่ระบบด้วย Google สำเร็จ",
+        })
+
+    email_matches = Patient.objects.filter(email__iexact=email, is_active=True)
+    if email_matches.count() > 1:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "พบอีเมลซ้ำในระบบ กรุณาติดต่อเจ้าหน้าที่เพื่อยืนยันบัญชี"},
+            status=409,
+        )
+    patient = email_matches.first()
+    if patient:
+        if patient.google_id and patient.google_id != google_id:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "อีเมลนี้เชื่อมกับบัญชี Google อื่นแล้ว กรุณาติดต่อเจ้าหน้าที่"},
+                status=409,
+            )
+        patient.google_id = google_id
+        patient.email = email
+        patient.email_verified = True
+        patient.save(update_fields=["google_id", "email", "email_verified", "updated_at"])
+        access_token, expires_at = _issue_patient_token(patient)
+        return _cors_json(request, {
+            "ok": True,
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
+            "expires_at": expires_at.isoformat(),
+            "profile": _patient_profile_payload(patient, mask_national_id=False),
+            "message": "เชื่อมบัญชี Google สำเร็จ",
+        })
+
+    full_name = str(claims.get("name") or "").strip().split()
+    first_name = str(claims.get("given_name") or (full_name[0] if full_name else "")).strip()
+    last_name = str(claims.get("family_name") or (" ".join(full_name[1:]) if len(full_name) > 1 else "")).strip()
+    temp_token = signing.dumps(
+        {
+            "sub": google_id,
+            "email": email,
+            "email_verified": True,
+            "first_name": first_name,
+            "last_name": last_name,
+        },
+        salt=GOOGLE_LINK_SALT,
+    )
+    return _cors_json(request, {
+        "ok": True,
+        "is_new_user": True,
+        "temp_token": temp_token,
+        "suggested_profile": {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+        },
+    })
+
+
+@csrf_exempt
+def patient_password_reset_request(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    identifier = str(payload.get("identifier") or "").strip()
+    channel = str(payload.get("channel") or "email").strip().lower()
+
+    generic = {
+        "ok": True,
+        "message": "ส่งรหัส OTP เรียบร้อยแล้ว หากมีบัญชีในระบบ",
+        "cooldown_seconds": 60,
+        "expires_in_seconds": int(getattr(settings, "OTP_TTL_SECONDS", 300)),
+        "masked_target": None,
+    }
+
+    if not identifier:
+        return _cors_json(request, generic)
+    if channel in {"sms", "phone"}:
+        return _cors_json(request, {"ok": False, "error": "ยังไม่เปิดให้บริการรับรหัสทาง SMS กรุณาใช้อีเมล"}, status=400)
+    if channel != "email":
+        return _cors_json(request, {"ok": False, "error": "ช่องทางรับรหัสไม่ถูกต้อง"}, status=400)
+
+    if rate_limited_by_identifier(
+        request,
+        "patient-password-reset",
+        identifier.lower(),
+        limit=int(getattr(settings, "OTP_REQUEST_LIMIT", 3)),
+        window_seconds=int(getattr(settings, "OTP_REQUEST_WINDOW", 900)),
+    ):
+        return _cors_json(request, {"ok": False, "error": "ขอรหัสถี่เกินไป กรุณารอสักครู่"}, status=429)
+
+    patient = _lookup_patient_by_identifier(identifier)
+    if not patient or not patient.is_active or not patient.email:
+        return _cors_json(request, generic)
+
+    generic["masked_target"] = _mask_email(patient.email)
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    now = timezone.now()
+    with transaction.atomic():
+        Patient.objects.select_for_update().only("pk").get(pk=patient.pk)
+        OtpChallenge.objects.filter(
+            national_id=patient.national_id,
+            purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+            consumed_at__isnull=True,
+        ).update(consumed_at=now)
+        challenge = OtpChallenge.objects.create(
+            national_id=patient.national_id,
+            channel=OtpChallenge.Channel.EMAIL,
+            purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+            code_hash=make_password(otp),
+            target=patient.email,
+            expires_at=now + timedelta(seconds=int(getattr(settings, "OTP_TTL_SECONDS", 300))),
+        )
+
+    try:
+        send_mail(
+            "รหัสยืนยัน (OTP) สำหรับเปลี่ยนรหัสผ่าน - โรงพยาบาล",
+            (
+                f"รหัสยืนยันของคุณคือ  {otp}\n"
+                "รหัสนี้ใช้ได้ภายใน 5 นาที และใช้ได้ครั้งเดียว\n"
+                "หากคุณไม่ได้เป็นผู้ขอ กรุณาละเว้นอีเมลฉบับนี้"
+            ),
+            settings.DEFAULT_FROM_EMAIL,
+            [patient.email],
+            fail_silently=False,
+        )
+    except Exception:
+        OtpChallenge.objects.filter(pk=challenge.pk).update(consumed_at=timezone.now())
+        security_logger.exception("patient_password_reset_email_delivery_failed")
+    return _cors_json(request, generic)
+
+
+@csrf_exempt
+def patient_password_reset_verify_otp(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    identifier = str(payload.get("identifier") or "").strip()
+    otp = str(payload.get("otp") or "").strip()
+    patient = _lookup_patient_by_identifier(identifier)
+    if not patient or not patient.is_active:
+        return _cors_json(request, {"ok": False, "error": "รหัส OTP ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                national_id=patient.national_id,
+                purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+                consumed_at__isnull=True,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not challenge:
+            return _cors_json(request, {"ok": False, "error": "รหัส OTP ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+        if challenge.expires_at <= timezone.now():
+            return _cors_json(request, {"ok": False, "error": "รหัส OTP หมดอายุ กรุณาขอใหม่"}, status=400)
+
+        max_attempts = int(getattr(settings, "OTP_MAX_ATTEMPTS", 5))
+        if challenge.attempts >= max_attempts:
+            return _cors_json(request, {"ok": False, "error": "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่"}, status=400)
+        if not re.fullmatch(r"[0-9]{6}", otp) or not check_password(otp, challenge.code_hash):
+            challenge.attempts += 1
+            challenge.save(update_fields=["attempts"])
+            message = "กรอกรหัส OTP ผิดเกินกำหนด กรุณาขอใหม่" if challenge.attempts >= max_attempts else "รหัส OTP ไม่ถูกต้อง"
+            return _cors_json(request, {"ok": False, "error": message}, status=400)
+
+        reset_token = secrets.token_hex(32)
+        challenge.reset_token_hash = _token_digest(reset_token)
+        challenge.reset_token_expires_at = timezone.now() + timedelta(
+            seconds=int(getattr(settings, "PASSWORD_RESET_TOKEN_TTL_SECONDS", 900))
+        )
+        # Rotate the OTP hash so the same OTP cannot mint another reset token.
+        challenge.code_hash = make_password(secrets.token_urlsafe(24))
+        challenge.save(update_fields=["reset_token_hash", "reset_token_expires_at", "code_hash"])
+
+    return _cors_json(request, {
+        "ok": True,
+        "reset_token": reset_token,
+        "message": "รหัส OTP ถูกต้อง กรุณาตั้งรหัสผ่านใหม่",
+    })
+
+
+@csrf_exempt
+def patient_password_reset_confirm(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    reset_token = str(payload.get("reset_token") or "").strip()
+    new_password = str(payload.get("new_password") or "")
+    confirm_password = str(payload.get("confirm_password") or "")
+    identifier = str(payload.get("identifier") or "").strip()
+
+    if not reset_token:
+        return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+    if confirm_password and new_password != confirm_password:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "รหัสผ่านยืนยันไม่ตรงกัน", "errors": {"confirm_password": ["รหัสผ่านยืนยันไม่ตรงกัน"]}},
+            status=400,
+        )
+    password_error = _validate_portal_password(new_password)
+    if password_error:
+        return _cors_json(
+            request,
+            {"ok": False, "error": password_error, "errors": {"new_password": [password_error]}},
+            status=400,
+        )
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                purpose=OtpChallenge.Purpose.PASSWORD_RESET,
+                reset_token_hash=_token_digest(reset_token),
+                consumed_at__isnull=True,
+            )
+            .first()
+        )
+        if (
+            not challenge
+            or not challenge.reset_token_expires_at
+            or challenge.reset_token_expires_at <= timezone.now()
+        ):
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+        patient = Patient.objects.select_for_update().filter(national_id=challenge.national_id).first()
+        if not patient or not patient.is_active:
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+        if identifier:
+            owner = _lookup_patient_by_identifier(identifier)
+            if not owner or owner.pk != patient.pk:
+                return _cors_json(request, {"ok": False, "error": "Reset token ไม่ตรงกับบัญชีผู้ใช้"}, status=400)
+
+        patient.password_hash = make_password(new_password)
+        patient.token_version += 1
+        patient.save(update_fields=["password_hash", "token_version", "updated_at"])
+        PatientAccessToken.objects.filter(patient=patient).delete()
+        challenge.consumed_at = timezone.now()
+        challenge.reset_token_hash = None
+        challenge.save(update_fields=["consumed_at", "reset_token_hash"])
+
+    if patient.email:
+        try:
+            send_mail(
+                "แจ้งเตือนการเปลี่ยนรหัสผ่าน - โรงพยาบาล",
+                "รหัสผ่านสำหรับบัญชีผู้ป่วยของคุณถูกเปลี่ยนแล้ว หากไม่ใช่คุณ กรุณาติดต่อโรงพยาบาลทันที",
+                settings.DEFAULT_FROM_EMAIL,
+                [patient.email],
+                fail_silently=False,
+            )
+        except Exception:
+            security_logger.exception("patient_password_reset_notification_failed")
+
+    return _cors_json(request, {"ok": True, "message": "เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบใหม่"})
 
 
 @csrf_exempt
@@ -598,10 +1214,18 @@ def patient_pin_reset_request(request):
         )
 
     patient = Patient.objects.filter(national_id=national_id).only("email").first()
-    generic_response = {"ok": True, "resend_after_seconds": 60}
+    generic_response = {
+        "ok": True,
+        "message": "ส่งรหัส OTP เรียบร้อยแล้ว",
+        "resend_after_seconds": 60,
+        "cooldown_seconds": 60,
+        "expires_in_seconds": int(getattr(settings, "OTP_TTL_SECONDS", 300)),
+        "masked_target": None,
+    }
     if not patient or not patient.email:
         return _cors_json(request, generic_response)
 
+    generic_response["masked_target"] = _mask_email(patient.email)
     otp = f"{secrets.randbelow(1_000_000):06d}"
     now = timezone.now()
     with transaction.atomic():
@@ -619,6 +1243,7 @@ def patient_pin_reset_request(request):
             channel=channel,
             purpose=OtpChallenge.Purpose.PIN_RESET,
             code_hash=make_password(otp),
+            target=patient.email,
             expires_at=now + timedelta(seconds=int(getattr(settings, "OTP_TTL_SECONDS", 300))),
         )
 
@@ -651,7 +1276,7 @@ def patient_pin_reset_confirm(request):
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     national_id = str(payload.get("national_id") or "").strip()
     otp = str(payload.get("otp") or "")
-    pin = str(payload.get("pin") or "")
+    pin = str(payload.get("pin") or payload.get("new_pin") or "")
     if not re.fullmatch(r"[0-9]{13}", national_id):
         return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
     if not PIN_PATTERN.fullmatch(pin):
@@ -738,7 +1363,7 @@ def patient_pin_reset_confirm(request):
 def patient_me(request):
     if request.method == "OPTIONS":
         return _cors_json(request, {})
-    if request.method != "GET":
+    if request.method not in {"GET", "PATCH"}:
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
     patient = _authenticated_patient(request)
@@ -748,6 +1373,153 @@ def patient_me(request):
             {"ok": False, "error": "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่"},
             status=401,
         )
+
+    if request.method == "PATCH":
+        payload, error, error_status = _json_body(request)
+        if error:
+            return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+
+        immutable_errors = {}
+        if "national_id" in payload and str(payload.get("national_id") or "") != patient.national_id:
+            immutable_errors["national_id"] = ["ไม่สามารถแก้ไขเลขบัตรประชาชนผ่าน Patient Portal ได้"]
+        if "hn" in payload and str(payload.get("hn") or "") != patient.hn:
+            immutable_errors["hn"] = ["ไม่สามารถแก้ไข HN ผ่าน Patient Portal ได้"]
+        if immutable_errors:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "มีข้อมูลที่ไม่อนุญาตให้แก้ไข", "errors": immutable_errors},
+                status=400,
+            )
+
+        errors = {}
+        changes = {}
+
+        for field in (
+            "first_name", "last_name", "address", "province", "district",
+            "subdistrict", "postal_code", "chronic_diseases", "allergies", "medications",
+        ):
+            if field in payload:
+                value = str(payload.get(field) or "").strip()
+                if field in {"first_name", "last_name"} and not value:
+                    errors[field] = ["กรุณาระบุข้อมูลในช่องนี้"]
+                else:
+                    changes[field] = value
+
+        if "gender" in payload:
+            gender = str(payload.get("gender") or "").upper()
+            valid_genders = {value for value, _ in Patient.GENDER_CHOICES}
+            if gender not in valid_genders:
+                errors["gender"] = ["เพศไม่ถูกต้อง"]
+            else:
+                changes["gender"] = gender
+
+        if "blood_type" in payload:
+            blood_type = str(payload.get("blood_type") or "").upper()
+            valid_blood_types = {value for value, _ in Patient.BLOOD_CHOICES}
+            if blood_type not in valid_blood_types:
+                errors["blood_type"] = ["กรุ๊ปเลือดไม่ถูกต้อง"]
+            else:
+                changes["blood_type"] = blood_type
+
+        if "birth_date" in payload:
+            raw_birth_date = payload.get("birth_date")
+            birth_date = parse_date(str(raw_birth_date)) if raw_birth_date else None
+            if raw_birth_date and not birth_date:
+                errors["birth_date"] = ["รูปแบบวันเกิดไม่ถูกต้อง"]
+            elif birth_date and birth_date > timezone.localdate():
+                errors["birth_date"] = ["วันเกิดต้องไม่เป็นวันที่ในอนาคต"]
+            else:
+                changes["birth_date"] = birth_date
+
+        if "age" in payload and payload.get("age") is not None:
+            try:
+                age = int(payload.get("age"))
+                if age < 0 or age > 130:
+                    raise ValueError
+                changes["age"] = age
+            except (TypeError, ValueError):
+                errors["age"] = ["กรุณาระบุอายุระหว่าง 0-130 ปี"]
+
+        for field in ("height_cm", "weight_kg"):
+            if field in payload:
+                value = payload.get(field)
+                if value in (None, ""):
+                    changes[field] = None
+                else:
+                    try:
+                        numeric = float(value)
+                        if numeric <= 0 or numeric > 999:
+                            raise ValueError
+                        changes[field] = numeric
+                    except (TypeError, ValueError):
+                        errors[field] = ["ค่าตัวเลขไม่ถูกต้อง"]
+
+        if "phone" in payload:
+            phone = _normalize_phone(payload.get("phone"))
+            if phone and not re.fullmatch(r"0[0-9]{8,9}", phone):
+                errors["phone"] = ["รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง"]
+            else:
+                changes["phone"] = phone
+                changes["phone_normalized"] = phone
+
+        if "email" in payload:
+            email = _normalize_email(payload.get("email")) or None
+            if email:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors["email"] = ["รูปแบบอีเมลไม่ถูกต้อง"]
+                else:
+                    owner = Patient.objects.filter(email__iexact=email).exclude(pk=patient.pk).first()
+                    if owner:
+                        errors["email"] = ["อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว"]
+            if "email" not in errors:
+                changes["email"] = email
+                if email != _normalize_email(patient.email):
+                    changes["email_verified"] = False
+
+        contacts, contacts_error = _validate_emergency_contacts(payload.get("emergency_contacts")) if "emergency_contacts" in payload else (None, None)
+        if contacts_error:
+            errors["emergency_contacts"] = [contacts_error]
+        elif contacts is not None:
+            changes["emergency_contacts"] = contacts
+            first = contacts[0] if contacts else {}
+            changes["emergency_name"] = first.get("name", "")
+            changes["emergency_relationship"] = first.get("relationship", "")
+            changes["emergency_phone"] = first.get("phone", "")
+        else:
+            for field in ("emergency_name", "emergency_relationship", "emergency_phone"):
+                if field in payload:
+                    value = str(payload.get(field) or "").strip()
+                    if field == "emergency_phone":
+                        value = _normalize_phone(value)
+                    changes[field] = value
+
+        if errors:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "กรุณาตรวจสอบข้อมูลที่แก้ไข", "errors": errors},
+                status=400,
+            )
+
+        for field, value in changes.items():
+            setattr(patient, field, value)
+
+        if contacts is None and any(
+            key in changes for key in ("emergency_name", "emergency_relationship", "emergency_phone")
+        ):
+            if patient.emergency_name or patient.emergency_phone:
+                patient.emergency_contacts = [{
+                    "id": "primary",
+                    "name": patient.emergency_name,
+                    "relationship": patient.emergency_relationship,
+                    "phone": patient.emergency_phone,
+                }]
+            else:
+                patient.emergency_contacts = []
+
+        patient.save()
+        patient.refresh_from_db()
 
     visits = list(
         Visit.objects.filter(patient=patient)
@@ -770,40 +1542,17 @@ def patient_me(request):
         }
         for appointment in patient.appointments.order_by("-date", "-time")[:20]
     ]
-    address = " ".join(filter(None, [
-        patient.address,
-        patient.subdistrict,
-        patient.district,
-        patient.province,
-        patient.postal_code,
-    ]))
-    return _cors_json(request, {
+
+    response_payload = {
         "ok": True,
-        "profile": {
-            "hn": patient.hn,
-            "first_name": patient.first_name,
-            "last_name": patient.last_name,
-            "national_id": _masked_national_id(patient.national_id),
-            "gender": patient.get_gender_display(),
-            "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
-            "age": patient.age_years,
-            "age_display": patient.age_display,
-            "phone": patient.phone,
-            "email": patient.email,
-            "blood_type": patient.get_blood_type_display(),
-            "height_cm": patient.height_cm,
-            "weight_kg": patient.weight_kg,
-            "chronic_diseases": patient.chronic_diseases,
-            "allergies": patient.allergies,
-            "medications": patient.medications,
-            "address": address,
-            "emergency_name": patient.emergency_name,
-            "emergency_phone": patient.emergency_phone,
-        },
+        "profile": _patient_profile_payload(patient, mask_national_id=False),
         "active_queue": _serialize_queue(active_queue) if active_queue else None,
         "visits": [_serialize_visit(visit) for visit in visits],
         "appointments": appointments,
-    })
+    }
+    if request.method == "PATCH":
+        response_payload["message"] = "บันทึกข้อมูลเรียบร้อยแล้ว"
+    return _cors_json(request, response_payload)
 
 
 @csrf_exempt
@@ -827,7 +1576,10 @@ def patient_queue(request):
         .first()
     )
     if not queue:
-        return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
+        return _cors_json(
+            request,
+            {"ok": True, "queue_number": None, "message": "ไม่มีคิวที่กำลังรอรับบริการในวันนี้"},
+        )
     return _cors_json(request, {"ok": True, **_serialize_queue(queue)})
 
 
@@ -854,7 +1606,7 @@ def patient_cancel_queue(request):
             .first()
         )
         if not queue:
-            return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
+            return _cors_json(request, {"ok": False, "error": "ไม่พบคิวที่กำลังใช้งาน"}, status=409)
         if queue.status == Queue.Status.CANCELLED:
             return _cors_json(request, {"ok": True, "message": "คิวนี้ถูกยกเลิกแล้ว"})
         if queue.status not in PATIENT_CANCELLABLE_QUEUE_STATUSES:
