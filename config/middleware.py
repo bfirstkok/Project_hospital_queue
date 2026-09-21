@@ -29,6 +29,24 @@ class PatientApiAuditMiddleware:
                     patch_vary_headers(response, ["Origin"])
                 return response
             raise
+        if (
+            request.path.startswith("/api/patient/")
+            and response.status_code >= 400
+            and "application/json" not in (response.get("Content-Type") or "")
+        ):
+            status_code = response.status_code
+            if status_code == 404:
+                message = "ไม่พบ API ที่ร้องขอ"
+            elif status_code == 405:
+                message = "Method not allowed"
+            else:
+                message = "ไม่สามารถดำเนินการได้"
+            response = JsonResponse({"ok": False, "error": message}, status=status_code)
+            origin = request.headers.get("Origin", "").rstrip("/")
+            if origin and origin in settings.PATIENT_APP_ORIGINS:
+                response["Access-Control-Allow-Origin"] = origin
+                response["Access-Control-Allow-Credentials"] = "true"
+                patch_vary_headers(response, ["Origin"])
         audit_patient_api_request(request, response.status_code)
         return response
 
