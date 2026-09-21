@@ -75,6 +75,12 @@ PUBLIC_STATUS = {
 
 
 def _cors_json(request, payload, status=200):
+    payload = dict(payload)
+    if status >= 400:
+        payload.setdefault("ok", False)
+        payload.setdefault("error", "ไม่สามารถดำเนินการตามคำขอได้")
+    else:
+        payload.setdefault("ok", True)
     response = JsonResponse(payload, status=status)
     origin = request.headers.get("Origin", "")
     if origin and origin in settings.PATIENT_APP_ORIGINS:
@@ -302,8 +308,8 @@ def _patient_profile_payload(patient, *, mask_national_id=True):
         "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
         "age": patient.age_years,
         "blood_type": patient.blood_type,
-        "height_cm": patient.height_cm,
-        "weight_kg": patient.weight_kg,
+        "height_cm": float(patient.height_cm) if patient.height_cm is not None else None,
+        "weight_kg": float(patient.weight_kg) if patient.weight_kg is not None else None,
         "address": patient.address,
         "province": patient.province,
         "district": patient.district,
@@ -1377,7 +1383,11 @@ def patient_me(request):
             "subdistrict", "postal_code", "chronic_diseases", "allergies", "medications",
         ):
             if field in payload:
-                changes[field] = str(payload.get(field) or "").strip()
+                value = str(payload.get(field) or "").strip()
+                if field in {"first_name", "last_name"} and not value:
+                    errors[field] = ["กรุณาระบุข้อมูลในช่องนี้"]
+                else:
+                    changes[field] = value
 
         if "gender" in payload:
             gender = str(payload.get("gender") or "").upper()
