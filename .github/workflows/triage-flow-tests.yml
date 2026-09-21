@@ -91,9 +91,6 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Apply migrations on PostgreSQL 17
         run: python manage.py migrate --noinput
-      - name: Verify native enum column types
-        run: |
-          python manage.py shell -c "from django.db import connection; expected={('patients_appointment','status'):'appointment_status_enum',('queues_visit','final_severity'):'triage_severity_enum',('queues_queue','status'):'queue_status_enum',('queues_criticalalert','status'):'critical_alert_status_enum',('queues_shiftschedule','status'):'shift_schedule_status_enum',('opd_visitassessment','opd_urgency'):'opd_urgency_enum'}; cur=connection.cursor(); [(cur.execute('SELECT udt_name FROM information_schema.columns WHERE table_name=%s AND column_name=%s',[table,column]), (_ for _ in ()).throw(AssertionError(f'{table}.{column}: expected {enum_name}, got {cur.fetchone()[0]}')) if cur.fetchone() else None) for (table,column),enum_name in []]"
       - name: Verify enum definitions
         run: |
           python - <<'PY'
