@@ -35,8 +35,14 @@ class VisitAssessmentForm(forms.ModelForm):
         ]
         widgets = {
             "chief_complaint": forms.Textarea(attrs={"rows": 3}),
-            "diagnosis": forms.Textarea(attrs={"rows": 3}),
-            "treatment": forms.Textarea(attrs={"rows": 3}),
+            "diagnosis": forms.Textarea(attrs={
+                "rows": 4,
+                "placeholder": "ระบุการวินิจฉัย หรือเลือกข้อความที่ใช้บ่อยด้านล่าง",
+            }),
+            "treatment": forms.Textarea(attrs={
+                "rows": 4,
+                "placeholder": "ระบุแผนการรักษา หรือเลือกข้อความที่ใช้บ่อยด้านล่าง",
+            }),
             "next_appointment_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
         }
 
