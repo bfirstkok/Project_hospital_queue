@@ -50,6 +50,16 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
     def clean_phone(self):
         return normalize_thai_phone(self.cleaned_data.get("phone"))
 
+    def clean_email(self):
+        email = str(self.cleaned_data.get("email") or "").strip().lower() or None
+        if email:
+            duplicate = Patient.objects.filter(email__iexact=email)
+            if self.instance and self.instance.pk:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if duplicate.exists():
+                raise forms.ValidationError("อีเมลนี้ถูกใช้กับผู้ป่วยรายอื่นแล้ว")
+        return email
+
     def validate_unique(self):
         # หน้าลงทะเบียนรับบริการต้องค้นหาผู้ป่วยเดิมด้วยเลขบัตรก่อน
         # ส่วนหน้าแก้ไขข้อมูลยังคงตรวจ unique ตามปกติ
@@ -97,6 +107,9 @@ class PublicPatientRegistrationForm(BirthDateValidationMixin, forms.ModelForm):
 
     def clean_phone(self):
         return normalize_thai_phone(self.cleaned_data.get("phone"))
+
+    def clean_email(self):
+        return str(self.cleaned_data.get("email") or "").strip().lower() or None
 
     def validate_unique(self):
         # ผู้ป่วยเดิมลงทะเบียนรับบริการครั้งใหม่ได้ โดย view จะอัปเดตข้อมูลเดิม
