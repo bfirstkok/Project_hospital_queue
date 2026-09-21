@@ -580,30 +580,57 @@ def patient_login(request):
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
-    if rate_limited(request, "patient-login", limit=10, window_seconds=300):
+    if rate_limited(
+        request,
+        "patient-login",
+        limit=int(getattr(settings, "PATIENT_LOGIN_RATE_LIMIT", 5)),
+        window_seconds=int(getattr(settings, "PATIENT_LOGIN_RATE_WINDOW", 60)),
+    ):
         return _cors_json(
             request,
             {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"},
             status=429,
         )
+
     payload, error, error_status = _json_body(request)
     if error:
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)
-    national_id = str(payload.get("national_id") or "").strip()
-    if not re.fullmatch(r"[0-9]{13}", national_id):
-        return _cors_json(
-            request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
-            status=400,
-        )
 
-    patient = Patient.objects.filter(national_id=national_id).first()
-    if not patient:
+    identifier = str(payload.get("identifier") or payload.get("national_id") or "").strip()
+    password = payload.get("password")
+    has_password = password is not None and str(password) != ""
+
+    if not identifier:
+        return _cors_json(request, {"ok": False, "error": "กรุณาระบุข้อมูลเข้าสู่ระบบ"}, status=400)
+
+    patient = _lookup_patient_by_identifier(identifier)
+    if not patient or not patient.is_active:
         return _cors_json(
             request,
-            {"ok": False, "error": "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง"},
+            {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
             status=401,
         )
+
+    if has_password:
+        # Google-only / legacy records can have no password. Never accept a
+        # password login when there is no server-side password hash.
+        if not patient.password_hash or not check_password(str(password), patient.password_hash):
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
+    else:
+        # Backward compatibility for the existing patient portal: legacy
+        # national-ID-only login remains available only when the caller
+        # explicitly supplies national_id and it is a valid 13-digit value.
+        national_id = str(payload.get("national_id") or "").strip()
+        if not re.fullmatch(r"[0-9]{13}", national_id) or national_id != patient.national_id:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"},
+                status=401,
+            )
 
     access_token, expires_at = _issue_patient_token(patient)
     return _cors_json(request, {
@@ -612,6 +639,8 @@ def patient_login(request):
         "token_type": "Bearer",
         "expires_in": int(getattr(settings, "PATIENT_TOKEN_MAX_AGE", 60 * 60 * 12)),
         "expires_at": expires_at.isoformat(),
+        "profile": _patient_profile_payload(patient, mask_national_id=False),
+        "message": "เข้าสู่ระบบสำเร็จ",
     })
 
 
