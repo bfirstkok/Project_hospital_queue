@@ -418,7 +418,8 @@ def public_register(request):
 
     if username and not re.fullmatch(r"[A-Za-z0-9_.-]{3,50}", username):
         account_errors["username"] = ["ชื่อผู้ใช้ต้องยาว 3-50 ตัว และใช้ตัวอักษร ตัวเลข . _ - เท่านั้น"]
-    if username and Patient.objects.filter(username__iexact=username).exists():
+    national_id_for_account = str(payload.get("national_id") or "").strip()
+    if username and Patient.objects.filter(username__iexact=username).exclude(national_id=national_id_for_account).exists():
         account_errors["username"] = ["ชื่อผู้ใช้นี้ถูกใช้งานแล้ว"]
     if email and Patient.objects.filter(email__iexact=email).exists():
         existing_email_owner = Patient.objects.filter(email__iexact=email).first()
@@ -1365,7 +1366,7 @@ def patient_me(request):
                     if parsed_birth_date > timezone.localdate():
                         raise ValueError
                     patient.birth_date = parsed_birth_date
-                    changed_fields.append("birth_date")
+                    changed_fields.extend(["birth_date", "age"])
                 except ValueError:
                     errors["birth_date"] = ["วันเกิดไม่ถูกต้อง"]
 
