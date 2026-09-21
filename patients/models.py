@@ -48,7 +48,15 @@ class Patient(models.Model):
     age = models.PositiveIntegerField(null=True, blank=True)
 
     phone = models.CharField(max_length=20, blank=True, default="")
-    email = models.EmailField(blank=True, null=True)
+    email = models.EmailField(blank=True, null=True, db_index=True)
+    username = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    password_hash = models.CharField(max_length=255, null=True, blank=True)
+    google_id = models.CharField(max_length=100, unique=True, null=True, blank=True, db_index=True)
+    email_verified = models.BooleanField(default=False)
+    token_version = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    emergency_contacts = models.JSONField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     # ✅ HN เจนอัตโนมัติ 6 หลัก และกันซ้ำ
     hn = models.CharField(max_length=6, unique=True, blank=True, default="", db_index=True)
@@ -149,6 +157,7 @@ class PatientAccessToken(models.Model):
     expires_at = models.DateTimeField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
+    token_version = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return f"PatientAccessToken(patient={self.patient_id}, expires={self.expires_at:%Y-%m-%d %H:%M})"
@@ -175,6 +184,7 @@ class OtpChallenge(models.Model):
 
     class Purpose(models.TextChoices):
         PIN_RESET = "PIN_RESET", "PIN reset"
+        PASSWORD_RESET = "PASSWORD_RESET", "Password reset"
 
     national_id = models.CharField(max_length=13, db_index=True)
     channel = models.CharField(max_length=10, choices=Channel.choices)
@@ -184,6 +194,8 @@ class OtpChallenge(models.Model):
     consumed_at = models.DateTimeField(null=True, blank=True)
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    reset_token_hash = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
+    reset_token_expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
