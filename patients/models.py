@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from config.db_fields import PostgresEnumField
 from dateutil.relativedelta import relativedelta
 import random
 
@@ -235,7 +236,12 @@ class Appointment(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="appointments")
     date = models.DateField()
     time = models.TimeField(null=True, blank=True)
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SCHEDULED)
+    status = PostgresEnumField(
+        enum_type="appointment_status_enum",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.SCHEDULED,
+    )
     note = models.CharField(max_length=255, blank=True, default="")
     attended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
