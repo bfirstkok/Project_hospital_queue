@@ -451,6 +451,13 @@ def public_register(request):
             national_id=form.cleaned_data["national_id"],
             defaults={key: value for key, value in form.cleaned_data.items() if key != "consent"},
         )
+        if not patient.is_active:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "บัญชีนี้ถูกระงับการใช้งาน"},
+                status=403,
+            )
+
         active_visit = (
             Visit.objects.select_related("queue")
             .filter(patient=patient, queue__status__in=ACTIVE_QUEUE_STATUSES)
@@ -799,6 +806,12 @@ def patient_pin_verify(request):
             return _cors_json(request, payload, status=401)
         _reset_pin_state(pin_state)
         patient = pin_state.patient
+        if not patient.is_active:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "บัญชีนี้ถูกระงับการใช้งาน"},
+                status=403,
+            )
 
     access_token, _ = _issue_patient_token(patient)
     return _cors_json(request, {"ok": True, "access_token": access_token})
@@ -1010,7 +1023,7 @@ def patient_pin_reset_confirm(request):
             return _cors_json(request, {"ok": False, "error": message}, status=400)
 
         patient = Patient.objects.filter(national_id=national_id).first()
-        if not patient:
+        if not patient or not patient.is_active:
             return _cors_json(
                 request,
                 {"ok": False, "error": "ไม่สามารถยืนยันรหัส OTP ได้ กรุณาขอใหม่"},
