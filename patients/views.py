@@ -1186,7 +1186,10 @@ def patient_queue(request):
         .first()
     )
     if not queue:
-        return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
+        return _cors_json(
+            request,
+            {"ok": True, "queue_number": None, "message": "ไม่มีคิวที่กำลังรอรับบริการในวันนี้"},
+        )
     return _cors_json(request, {"ok": True, **_serialize_queue(queue)})
 
 
@@ -1213,7 +1216,7 @@ def patient_cancel_queue(request):
             .first()
         )
         if not queue:
-            return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิวของผู้ป่วย"}, status=404)
+            return _cors_json(request, {"ok": False, "error": "ไม่พบคิวที่กำลังใช้งาน"}, status=409)
         if queue.status == Queue.Status.CANCELLED:
             return _cors_json(request, {"ok": True, "message": "คิวนี้ถูกยกเลิกแล้ว"})
         if queue.status not in PATIENT_CANCELLABLE_QUEUE_STATUSES:
