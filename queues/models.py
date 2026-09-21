@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+from config.db_fields import PostgresEnumField
 
 class Visit(models.Model):
     class Severity(models.TextChoices):
@@ -22,7 +23,13 @@ class Visit(models.Model):
     confirmed_at = models.DateTimeField(blank=True, null=True)
     called_at = models.DateTimeField(blank=True, null=True)
 
-    final_severity = models.CharField(max_length=10, choices=Severity.choices, blank=True, null=True)
+    final_severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Severity.choices,
+        blank=True,
+        null=True,
+    )
     note = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -66,7 +73,12 @@ class Queue(models.Model):
         CANCELLED = "CANCELLED", "Cancelled"
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="queue")
-    status = models.CharField(max_length=32, choices=Status.choices, default=Status.WAITING_VITALS)
+    status = PostgresEnumField(
+        enum_type="queue_status_enum",
+        max_length=32,
+        choices=Status.choices,
+        default=Status.WAITING_VITALS,
+    )
 
     priority = models.IntegerField(default=5)
     exam_room = models.PositiveSmallIntegerField(blank=True, null=True)
@@ -130,8 +142,20 @@ class TriageResult(models.Model):
 
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="triage_result")
 
-    ai_severity = models.CharField(max_length=10, choices=Visit.Severity.choices, blank=True, null=True)
-    nurse_severity = models.CharField(max_length=10, choices=Visit.Severity.choices, blank=True, null=True)
+    ai_severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Visit.Severity.choices,
+        blank=True,
+        null=True,
+    )
+    nurse_severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Visit.Severity.choices,
+        blank=True,
+        null=True,
+    )
 
     model_name = models.CharField(max_length=50, blank=True, null=True)
     confidence = models.FloatField(blank=True, null=True)
@@ -366,7 +390,12 @@ class ShiftSchedule(models.Model):
     shift_date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SCHEDULED)
+    status = PostgresEnumField(
+        enum_type="shift_schedule_status_enum",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.SCHEDULED,
+    )
     note = models.CharField(max_length=200, blank=True, default="")
     created_by = models.ForeignKey(
         "auth.User",
@@ -491,12 +520,22 @@ class CriticalAlert(models.Model):
 
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="critical_alerts")
     alert_type = models.CharField(max_length=24, choices=AlertType.choices)
-    severity = models.CharField(max_length=10, default=Visit.Severity.RED)
+    severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Visit.Severity.choices,
+        default=Visit.Severity.RED,
+    )
     message = models.CharField(max_length=255)
     value = models.FloatField(null=True, blank=True)
     threshold = models.CharField(max_length=50, blank=True, default="")
     source = models.CharField(max_length=32, blank=True, default="vitals")
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    status = PostgresEnumField(
+        enum_type="critical_alert_status_enum",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.NEW,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     acknowledged_by = models.ForeignKey(

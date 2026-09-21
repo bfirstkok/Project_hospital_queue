@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from config.db_fields import PostgresEnumField
 
 
 class VisitAssessment(models.Model):
@@ -71,10 +72,11 @@ class VisitAssessment(models.Model):
         YELLOW = "YELLOW", "เร่งด่วนสีเหลือง"
         NORMAL = "NORMAL", "ปกติ"
 
-    opd_urgency = models.CharField(
+    opd_urgency = PostgresEnumField(
+        enum_type="opd_urgency_enum",
         max_length=10,
         choices=OpdUrgency.choices,
-        default=OpdUrgency.NORMAL
+        default=OpdUrgency.NORMAL,
     )
     opd_reason = models.TextField(blank=True, default="")
 
