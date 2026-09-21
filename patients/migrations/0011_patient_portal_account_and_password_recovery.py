@@ -88,7 +88,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="updated_at",
-            field=models.DateTimeField(auto_now=True),
+            field=models.DateTimeField(auto_now=True, default=django.utils.timezone.now),
+            preserve_default=False,
         ),
         migrations.AddField(
             model_name="patientaccesstoken",
