@@ -496,6 +496,17 @@ def public_register(request):
                 status=409,
             )
 
+    if google_claims and google_claims.get("sub"):
+        google_owner = Patient.objects.filter(
+            google_id=str(google_claims["sub"])
+        ).exclude(pk=getattr(existing, "pk", None)).first()
+        if google_owner:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "บัญชี Google นี้เชื่อมกับผู้ป่วยรายอื่นแล้ว"},
+                status=409,
+            )
+
     contacts, contacts_error = _validate_emergency_contacts(payload.get("emergency_contacts"))
     if contacts_error:
         return _cors_json(
@@ -716,8 +727,21 @@ def patient_google_auth(request):
             "message": "เข้าสู่ระบบด้วย Google สำเร็จ",
         })
 
-    patient = Patient.objects.filter(email__iexact=email, is_active=True).first()
+    email_matches = Patient.objects.filter(email__iexact=email, is_active=True)
+    if email_matches.count() > 1:
+        return _cors_json(
+            request,
+            {"ok": False, "error": "พบอีเมลซ้ำในระบบ กรุณาติดต่อเจ้าหน้าที่เพื่อยืนยันบัญชี"},
+            status=409,
+        )
+    patient = email_matches.first()
     if patient:
+        if patient.google_id and patient.google_id != google_id:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "อีเมลนี้เชื่อมกับบัญชี Google อื่นแล้ว กรุณาติดต่อเจ้าหน้าที่"},
+                status=409,
+            )
         patient.google_id = google_id
         patient.email = email
         patient.email_verified = True
@@ -1164,10 +1188,18 @@ def patient_pin_reset_request(request):
         )
 
     patient = Patient.objects.filter(national_id=national_id).only("email").first()
-    generic_response = {"ok": True, "resend_after_seconds": 60}
+    generic_response = {
+        "ok": True,
+        "message": "ส่งรหัส OTP เรียบร้อยแล้ว",
+        "resend_after_seconds": 60,
+        "cooldown_seconds": 60,
+        "expires_in_seconds": int(getattr(settings, "OTP_TTL_SECONDS", 300)),
+        "masked_target": None,
+    }
     if not patient or not patient.email:
         return _cors_json(request, generic_response)
 
+    generic_response["masked_target"] = _mask_email(patient.email)
     otp = f"{secrets.randbelow(1_000_000):06d}"
     now = timezone.now()
     with transaction.atomic():
@@ -1185,6 +1217,7 @@ def patient_pin_reset_request(request):
             channel=channel,
             purpose=OtpChallenge.Purpose.PIN_RESET,
             code_hash=make_password(otp),
+            target=patient.email,
             expires_at=now + timedelta(seconds=int(getattr(settings, "OTP_TTL_SECONDS", 300))),
         )
 
@@ -1217,7 +1250,7 @@ def patient_pin_reset_confirm(request):
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     national_id = str(payload.get("national_id") or "").strip()
     otp = str(payload.get("otp") or "")
-    pin = str(payload.get("pin") or "")
+    pin = str(payload.get("pin") or payload.get("new_pin") or "")
     if not re.fullmatch(r"[0-9]{13}", national_id):
         return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
     if not PIN_PATTERN.fullmatch(pin):
