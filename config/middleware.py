@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.cache import patch_vary_headers
 
@@ -15,6 +17,17 @@ class PatientApiAuditMiddleware:
             response = self.get_response(request)
         except Exception:
             audit_patient_api_request(request, 500)
+            if request.path.startswith("/api/patient/"):
+                response = JsonResponse(
+                    {"ok": False, "error": "ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง"},
+                    status=500,
+                )
+                origin = request.headers.get("Origin", "").rstrip("/")
+                if origin and origin in settings.PATIENT_APP_ORIGINS:
+                    response["Access-Control-Allow-Origin"] = origin
+                    response["Access-Control-Allow-Credentials"] = "true"
+                    patch_vary_headers(response, ["Origin"])
+                return response
             raise
         audit_patient_api_request(request, response.status_code)
         return response
