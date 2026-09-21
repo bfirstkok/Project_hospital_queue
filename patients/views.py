@@ -6,6 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.core import signing
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import validate_email
 from django.core.mail import send_mail
 from django.db.models import Prefetch, Q
 from django.db import transaction
@@ -976,7 +977,7 @@ def patient_pin_reset_confirm(request):
 def patient_me(request):
     if request.method == "OPTIONS":
         return _cors_json(request, {})
-    if request.method != "GET":
+    if request.method not in {"GET", "PATCH"}:
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
     patient = _authenticated_patient(request)
@@ -986,6 +987,149 @@ def patient_me(request):
             {"ok": False, "error": "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่"},
             status=401,
         )
+
+    if request.method == "PATCH":
+        payload, error, error_status = _json_body(request)
+        if error:
+            return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+
+        immutable_errors = {}
+        if "national_id" in payload and str(payload.get("national_id") or "") != patient.national_id:
+            immutable_errors["national_id"] = ["ไม่สามารถแก้ไขเลขบัตรประชาชนผ่าน Patient Portal ได้"]
+        if "hn" in payload and str(payload.get("hn") or "") != patient.hn:
+            immutable_errors["hn"] = ["ไม่สามารถแก้ไข HN ผ่าน Patient Portal ได้"]
+        if immutable_errors:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "มีข้อมูลที่ไม่อนุญาตให้แก้ไข", "errors": immutable_errors},
+                status=400,
+            )
+
+        errors = {}
+        changes = {}
+
+        for field in (
+            "first_name", "last_name", "address", "province", "district",
+            "subdistrict", "postal_code", "chronic_diseases", "allergies", "medications",
+        ):
+            if field in payload:
+                changes[field] = str(payload.get(field) or "").strip()
+
+        if "gender" in payload:
+            gender = str(payload.get("gender") or "").upper()
+            valid_genders = {value for value, _ in Patient.GENDER_CHOICES}
+            if gender not in valid_genders:
+                errors["gender"] = ["เพศไม่ถูกต้อง"]
+            else:
+                changes["gender"] = gender
+
+        if "blood_type" in payload:
+            blood_type = str(payload.get("blood_type") or "").upper()
+            valid_blood_types = {value for value, _ in Patient.BLOOD_CHOICES}
+            if blood_type not in valid_blood_types:
+                errors["blood_type"] = ["กรุ๊ปเลือดไม่ถูกต้อง"]
+            else:
+                changes["blood_type"] = blood_type
+
+        if "birth_date" in payload:
+            raw_birth_date = payload.get("birth_date")
+            birth_date = parse_date(str(raw_birth_date)) if raw_birth_date else None
+            if raw_birth_date and not birth_date:
+                errors["birth_date"] = ["รูปแบบวันเกิดไม่ถูกต้อง"]
+            elif birth_date and birth_date > timezone.localdate():
+                errors["birth_date"] = ["วันเกิดต้องไม่เป็นวันที่ในอนาคต"]
+            else:
+                changes["birth_date"] = birth_date
+
+        if "age" in payload and payload.get("age") is not None:
+            try:
+                age = int(payload.get("age"))
+                if age < 0 or age > 130:
+                    raise ValueError
+                changes["age"] = age
+            except (TypeError, ValueError):
+                errors["age"] = ["กรุณาระบุอายุระหว่าง 0-130 ปี"]
+
+        for field in ("height_cm", "weight_kg"):
+            if field in payload:
+                value = payload.get(field)
+                if value in (None, ""):
+                    changes[field] = None
+                else:
+                    try:
+                        numeric = float(value)
+                        if numeric <= 0 or numeric > 999:
+                            raise ValueError
+                        changes[field] = numeric
+                    except (TypeError, ValueError):
+                        errors[field] = ["ค่าตัวเลขไม่ถูกต้อง"]
+
+        if "phone" in payload:
+            phone = _normalize_phone(payload.get("phone"))
+            if phone and not re.fullmatch(r"0[0-9]{8,9}", phone):
+                errors["phone"] = ["รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง"]
+            else:
+                changes["phone"] = phone
+                changes["phone_normalized"] = phone
+
+        if "email" in payload:
+            email = _normalize_email(payload.get("email")) or None
+            if email:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors["email"] = ["รูปแบบอีเมลไม่ถูกต้อง"]
+                else:
+                    owner = Patient.objects.filter(email__iexact=email).exclude(pk=patient.pk).first()
+                    if owner:
+                        errors["email"] = ["อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว"]
+            if "email" not in errors:
+                changes["email"] = email
+                if email != _normalize_email(patient.email):
+                    changes["email_verified"] = False
+
+        contacts, contacts_error = _validate_emergency_contacts(payload.get("emergency_contacts")) if "emergency_contacts" in payload else (None, None)
+        if contacts_error:
+            errors["emergency_contacts"] = [contacts_error]
+        elif contacts is not None:
+            changes["emergency_contacts"] = contacts
+            first = contacts[0] if contacts else {}
+            changes["emergency_name"] = first.get("name", "")
+            changes["emergency_relationship"] = first.get("relationship", "")
+            changes["emergency_phone"] = first.get("phone", "")
+        else:
+            for field in ("emergency_name", "emergency_relationship", "emergency_phone"):
+                if field in payload:
+                    value = str(payload.get(field) or "").strip()
+                    if field == "emergency_phone":
+                        value = _normalize_phone(value)
+                    changes[field] = value
+
+        if errors:
+            return _cors_json(
+                request,
+                {"ok": False, "error": "กรุณาตรวจสอบข้อมูลที่แก้ไข", "errors": errors},
+                status=400,
+            )
+
+        for field, value in changes.items():
+            setattr(patient, field, value)
+
+        if contacts is None and any(
+            key in changes for key in ("emergency_name", "emergency_relationship", "emergency_phone")
+        ):
+            if patient.emergency_name or patient.emergency_phone:
+                patient.emergency_contacts = [{
+                    "id": "primary",
+                    "name": patient.emergency_name,
+                    "relationship": patient.emergency_relationship,
+                    "phone": patient.emergency_phone,
+                }]
+            else:
+                patient.emergency_contacts = []
+
+        patient.save()
+        patient.refresh_from_db()
 
     visits = list(
         Visit.objects.filter(patient=patient)
@@ -1008,40 +1152,17 @@ def patient_me(request):
         }
         for appointment in patient.appointments.order_by("-date", "-time")[:20]
     ]
-    address = " ".join(filter(None, [
-        patient.address,
-        patient.subdistrict,
-        patient.district,
-        patient.province,
-        patient.postal_code,
-    ]))
-    return _cors_json(request, {
+
+    response_payload = {
         "ok": True,
-        "profile": {
-            "hn": patient.hn,
-            "first_name": patient.first_name,
-            "last_name": patient.last_name,
-            "national_id": _masked_national_id(patient.national_id),
-            "gender": patient.get_gender_display(),
-            "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
-            "age": patient.age_years,
-            "age_display": patient.age_display,
-            "phone": patient.phone,
-            "email": patient.email,
-            "blood_type": patient.get_blood_type_display(),
-            "height_cm": patient.height_cm,
-            "weight_kg": patient.weight_kg,
-            "chronic_diseases": patient.chronic_diseases,
-            "allergies": patient.allergies,
-            "medications": patient.medications,
-            "address": address,
-            "emergency_name": patient.emergency_name,
-            "emergency_phone": patient.emergency_phone,
-        },
+        "profile": _patient_profile_payload(patient),
         "active_queue": _serialize_queue(active_queue) if active_queue else None,
         "visits": [_serialize_visit(visit) for visit in visits],
         "appointments": appointments,
-    })
+    }
+    if request.method == "PATCH":
+        response_payload["message"] = "บันทึกข้อมูลเรียบร้อยแล้ว"
+    return _cors_json(request, response_payload)
 
 
 @csrf_exempt
