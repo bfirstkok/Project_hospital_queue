@@ -265,15 +265,27 @@ def _lookup_patient_by_identifier(identifier):
     value = str(identifier or "").strip()
     if not value:
         return None
-    query = Q(national_id=value)
+
+    by_national_id = Patient.objects.filter(national_id=value).first()
+    if by_national_id:
+        return by_national_id
+
     if "@" in value:
-        query |= Q(email__iexact=value)
-    else:
-        query |= Q(username__iexact=value)
-        normalized_phone = _normalize_phone(value)
-        if normalized_phone:
-            query |= Q(phone_normalized=normalized_phone) | Q(phone=normalized_phone)
-    return Patient.objects.filter(query).first()
+        matches = Patient.objects.filter(email__iexact=value)
+        return matches.first() if matches.count() == 1 else None
+
+    matches = Patient.objects.filter(username__iexact=value)
+    if matches.count() == 1:
+        return matches.first()
+
+    normalized_phone = _normalize_phone(value)
+    if normalized_phone:
+        matches = Patient.objects.filter(
+            Q(phone_normalized=normalized_phone) | Q(phone=normalized_phone)
+        ).distinct()
+        if matches.count() == 1:
+            return matches.first()
+    return None
 
 
 def _validate_portal_password(password):
