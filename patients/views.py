@@ -476,6 +476,9 @@ def public_register(request):
     elif username:
         field_errors["password"] = ["กรุณาระบุรหัสผ่านสำหรับบัญชีนี้"]
 
+    if (username or password or temp_token) and not email:
+        field_errors["email"] = ["กรุณาระบุอีเมลสำหรับบัญชีผู้ป่วย"]
+
     if temp_token:
         try:
             google_claims = signing.loads(
