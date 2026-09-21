@@ -621,9 +621,18 @@ def patient_login(request):
     if request.method != "POST":
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
-    if rate_limited(
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+
+    identifier = str(payload.get("identifier") or payload.get("national_id") or "").strip()
+    password = payload.get("password")
+    has_password = password is not None and str(password) != ""
+
+    if rate_limited_by_identifier(
         request,
         "patient-login",
+        identifier.lower() or "missing",
         limit=int(getattr(settings, "PATIENT_LOGIN_RATE_LIMIT", 5)),
         window_seconds=int(getattr(settings, "PATIENT_LOGIN_RATE_WINDOW", 60)),
     ):
@@ -632,14 +641,6 @@ def patient_login(request):
             {"ok": False, "error": "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่"},
             status=429,
         )
-
-    payload, error, error_status = _json_body(request)
-    if error:
-        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
-
-    identifier = str(payload.get("identifier") or payload.get("national_id") or "").strip()
-    password = payload.get("password")
-    has_password = password is not None and str(password) != ""
 
     if not identifier:
         return _cors_json(request, {"ok": False, "error": "กรุณาระบุข้อมูลเข้าสู่ระบบ"}, status=400)
