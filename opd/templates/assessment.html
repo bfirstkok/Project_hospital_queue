@@ -178,6 +178,150 @@
       margin-bottom: 2px;
     }
 
+    .clinical-note-card {
+      gap: 14px;
+      padding: 16px;
+      border-color: rgba(77, 129, 163, .20);
+      background:
+        radial-gradient(circle at top right, rgba(0, 150, 255, .06), transparent 38%),
+        rgba(255,255,255,.035);
+    }
+
+    .clinical-note-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .clinical-note-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .clinical-note-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #0f6e85;
+      background: rgba(15, 145, 170, .10);
+      border: 1px solid rgba(15, 145, 170, .18);
+      font-size: 17px;
+    }
+
+    .clinical-note-card .section-eyebrow {
+      margin-bottom: 3px;
+    }
+
+    .clinical-note-card .section-title {
+      color: #17324d;
+      font-size: 17px;
+    }
+
+    .clinical-note-card textarea {
+      width: 100%;
+      min-height: 116px;
+      border-radius: 10px;
+      border: 1px solid #c9d9e5;
+      background: #fff;
+      color: #17324d;
+      line-height: 1.55;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .clinical-note-card textarea:focus {
+      outline: none;
+      border-color: #3b9db2;
+      box-shadow: 0 0 0 3px rgba(59, 157, 178, .11);
+    }
+
+    .quick-phrases {
+      display: grid;
+      gap: 8px;
+    }
+
+    .quick-phrases-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #607b91;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .quick-phrases-label small {
+      color: #8ba0b1;
+      font-weight: 500;
+    }
+
+    .quick-phrase-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .quick-phrase {
+      appearance: none;
+      border: 1px solid #c9dce7;
+      border-radius: 999px;
+      background: #f7fbfd;
+      color: #28536d;
+      padding: 6px 10px;
+      min-height: 30px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .quick-phrase:hover {
+      transform: translateY(-1px);
+      border-color: #7fbac8;
+      background: #eef8fa;
+    }
+
+    .quick-phrase:active {
+      transform: translateY(0);
+    }
+
+    .monitoring-option {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 52px;
+      padding: 11px 12px;
+      border: 1px solid #cddde6;
+      border-radius: 10px;
+      background: #f5f9fb;
+      color: #17324d;
+      font-weight: 700;
+    }
+
+    .monitoring-option input {
+      width: 18px;
+      height: 18px;
+      accent-color: #0e8ca3;
+      flex: 0 0 auto;
+    }
+
+    .monitoring-option-text {
+      display: grid;
+      gap: 2px;
+    }
+
+    .monitoring-option-text small {
+      color: #73899a;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
     .field-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -596,21 +740,70 @@
         </div>
       </section>
 
-      <section class="section">
-        <div>
-          <div class="section-eyebrow">Clinical note</div>
-          <div class="section-title">วินิจฉัย</div>
+      <section class="section clinical-note-card">
+        <div class="clinical-note-head">
+          <div class="clinical-note-title">
+            <div class="clinical-note-icon" aria-hidden="true">Dx</div>
+            <div>
+              <div class="section-eyebrow">Clinical note</div>
+              <div class="section-title">วินิจฉัย</div>
+            </div>
+          </div>
         </div>
+
         <div class="field">{{ form.diagnosis }}</div>
+
+        <div class="quick-phrases">
+          <div class="quick-phrases-label">
+            <span>ข้อความที่ใช้บ่อย</span>
+            <small>กดเพื่อเพิ่มลงในช่องวินิจฉัย</small>
+          </div>
+          <div class="quick-phrase-list" data-quick-target="id_diagnosis">
+            <button class="quick-phrase" type="button" data-quick-text="Acute URI / ไข้หวัด">Acute URI / ไข้หวัด</button>
+            <button class="quick-phrase" type="button" data-quick-text="Acute gastroenteritis">Acute gastroenteritis</button>
+            <button class="quick-phrase" type="button" data-quick-text="Gastritis / Dyspepsia">Gastritis / Dyspepsia</button>
+            <button class="quick-phrase" type="button" data-quick-text="Headache / Migraine">Headache / Migraine</button>
+            <button class="quick-phrase" type="button" data-quick-text="Musculoskeletal pain">Musculoskeletal pain</button>
+            <button class="quick-phrase" type="button" data-quick-text="Allergic reaction">Allergic reaction</button>
+          </div>
+        </div>
       </section>
 
-      <section class="section">
-        <div>
-          <div class="section-eyebrow">Plan</div>
-          <div class="section-title">การรักษา/แผน</div>
+      <section class="section clinical-note-card">
+        <div class="clinical-note-head">
+          <div class="clinical-note-title">
+            <div class="clinical-note-icon" aria-hidden="true">Rx</div>
+            <div>
+              <div class="section-eyebrow">Plan</div>
+              <div class="section-title">การรักษา / แผน</div>
+            </div>
+          </div>
         </div>
+
         <div class="field">{{ form.treatment }}</div>
-        <label class="check-item">{{ form.send_to_monitoring }} <span>รับไว้รักษา/ติดตามอาการที่ รพ. (Monitoring)</span></label>
+
+        <div class="quick-phrases">
+          <div class="quick-phrases-label">
+            <span>ข้อความที่ใช้บ่อย</span>
+            <small>กดได้หลายรายการ ระบบจะต่อข้อความให้</small>
+          </div>
+          <div class="quick-phrase-list" data-quick-target="id_treatment">
+            <button class="quick-phrase" type="button" data-quick-text="ให้ยาตามอาการ">ให้ยาตามอาการ</button>
+            <button class="quick-phrase" type="button" data-quick-text="แนะนำพักผ่อนและดื่มน้ำให้เพียงพอ">พักผ่อน / ดื่มน้ำ</button>
+            <button class="quick-phrase" type="button" data-quick-text="เฝ้าระวังอาการ">เฝ้าระวังอาการ</button>
+            <button class="quick-phrase" type="button" data-quick-text="ส่งตรวจเพิ่มเติม">ส่งตรวจเพิ่มเติม</button>
+            <button class="quick-phrase" type="button" data-quick-text="นัดติดตามอาการ">นัดติดตามอาการ</button>
+            <button class="quick-phrase" type="button" data-quick-text="ส่งต่อแผนกฉุกเฉิน (ER)">ส่งต่อ ER</button>
+          </div>
+        </div>
+
+        <label class="monitoring-option">
+          {{ form.send_to_monitoring }}
+          <span class="monitoring-option-text">
+            <span>รับไว้ติดตามอาการในโรงพยาบาล</span>
+            <small>เปิด Monitoring และไม่สร้างนัดหมายครั้งต่อไปในครั้งนี้</small>
+          </span>
+        </label>
       </section>
 
       <section class="section full">
@@ -650,6 +843,34 @@
       if (event.target === modal) {
         modal.close();
       }
+    });
+  });
+
+  function appendQuickPhrase(target, phrase) {
+    if (!target || !phrase) return;
+    const current = target.value.trim();
+    const normalizedLines = current
+      .split(/\n+/)
+      .map((line) => line.replace(/^[-•]\s*/, "").trim())
+      .filter(Boolean);
+
+    if (normalizedLines.includes(phrase)) {
+      target.focus();
+      return;
+    }
+
+    target.value = current ? `${current}\n• ${phrase}` : phrase;
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+    target.focus();
+    target.setSelectionRange(target.value.length, target.value.length);
+  }
+
+  document.querySelectorAll("[data-quick-target]").forEach((group) => {
+    const target = document.getElementById(group.dataset.quickTarget);
+    group.querySelectorAll("[data-quick-text]").forEach((button) => {
+      button.addEventListener("click", () => {
+        appendQuickPhrase(target, button.dataset.quickText);
+      });
     });
   });
 
