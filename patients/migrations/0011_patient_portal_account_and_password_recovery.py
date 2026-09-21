@@ -39,6 +39,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterField(
+            model_name="patient",
+            name="email",
+            field=models.EmailField(blank=True, db_index=True, max_length=254, null=True),
+        ),
         migrations.AddField(
             model_name="patient",
             name="username",
