@@ -10,6 +10,7 @@ from django.db.models.functions import Concat
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
@@ -1578,6 +1579,13 @@ def my_critical_alerts(request):
                 "threshold": alert.threshold,
                 "status": alert.status,
                 "created_at": alert.created_at.isoformat(),
+                "actions": {
+                    "ack": reverse("acknowledge_alert", args=[alert.id]),
+                    "review": reverse("start_alert_review", args=[alert.id]),
+                    "resolve": reverse("resolve_alert", args=[alert.id]),
+                    "false_alarm": reverse("false_alarm_alert", args=[alert.id]),
+                    "escalate": reverse("escalate_alert", args=[alert.id]),
+                },
             }
             for alert in alerts
         ],
