@@ -476,9 +476,6 @@ def public_register(request):
     elif username:
         field_errors["password"] = ["กรุณาระบุรหัสผ่านสำหรับบัญชีนี้"]
 
-    if (username or password or temp_token) and not email:
-        field_errors["email"] = ["กรุณาระบุอีเมลสำหรับบัญชีผู้ป่วย"]
-
     if temp_token:
         try:
             google_claims = signing.loads(
@@ -490,6 +487,9 @@ def public_register(request):
             field_errors["temp_token"] = ["ข้อมูลเชื่อมบัญชี Google ไม่ถูกต้องหรือหมดอายุ"]
         if google_claims and google_claims.get("email"):
             email = _normalize_email(google_claims["email"])
+
+    if (username or password or temp_token) and not email:
+        field_errors["email"] = ["กรุณาระบุอีเมลสำหรับบัญชีผู้ป่วย"]
 
     form_payload = dict(payload)
     if email is not None:
