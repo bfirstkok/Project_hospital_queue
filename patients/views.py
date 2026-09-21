@@ -264,6 +264,9 @@ def _lookup_patient_by_identifier(identifier):
         query |= Q(email__iexact=value)
     else:
         query |= Q(username__iexact=value)
+        normalized_phone = _normalize_phone(value)
+        if normalized_phone:
+            query |= Q(phone_normalized=normalized_phone) | Q(phone=normalized_phone)
     return Patient.objects.filter(query).first()
 
 
