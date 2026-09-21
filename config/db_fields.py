@@ -19,6 +19,9 @@ class PostgresEnumField(models.CharField):
             return connection.ops.quote_name(self.enum_type)
         return super().db_type(connection)
 
+    def cast_db_type(self, connection):
+        return self.db_type(connection)
+
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()
         kwargs["enum_type"] = self.enum_type
