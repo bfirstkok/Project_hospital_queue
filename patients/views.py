@@ -307,6 +307,7 @@ def _patient_profile_payload(patient, *, mask_national_id=True):
         "gender": patient.gender,
         "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
         "age": patient.age_years,
+        "age_display": patient.age_display,
         "blood_type": patient.blood_type,
         "height_cm": float(patient.height_cm) if patient.height_cm is not None else None,
         "weight_kg": float(patient.weight_kg) if patient.weight_kg is not None else None,
