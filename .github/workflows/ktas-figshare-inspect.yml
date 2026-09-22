@@ -38,21 +38,25 @@ jobs:
           downloaded=""
           for url in "${urls[@]}"; do
             echo "Trying: $url"
-            if curl --fail --location --retry 2 --retry-delay 1               "$url" --output /tmp/ktas/ktas_download; then
-              downloaded="$url"
-              break
+            rm -f /tmp/ktas/ktas_download
+            if curl --fail --location --retry 2 --retry-delay 1 "$url" --output /tmp/ktas/ktas_download; then
+              bytes="$(stat -c%s /tmp/ktas/ktas_download 2>/dev/null || echo 0)"
+              echo "Response bytes: $bytes"
+              if [ "$bytes" -gt 0 ]; then
+                downloaded="$url"
+                break
+              fi
+              echo "Response was empty; trying next URL."
             fi
           done
 
           if [ -z "$downloaded" ]; then
-            echo "Could not download Figshare article archive." >&2
+            echo "Could not download non-empty Figshare article archive." >&2
             exit 1
           fi
 
           echo "Downloaded from: $downloaded"
-          echo "Downloaded bytes:"
           wc -c /tmp/ktas/ktas_download
-          echo "File type:"
           file /tmp/ktas/ktas_download
 
       - name: Extract and inspect files
@@ -65,14 +69,11 @@ jobs:
           else
             cp /tmp/ktas/ktas_download /tmp/ktas/extracted/downloaded_file
           fi
-
-          echo "Files:"
-          find /tmp/ktas/extracted -maxdepth 3 -type f -printf '%p\t%s bytes\n'
+          find /tmp/ktas/extracted -maxdepth 3 -type f -printf "%p\t%s bytes\n"
 
       - name: Inspect tabular structure
         shell: bash
         run: |
-          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import json
@@ -81,19 +82,13 @@ jobs:
           root = Path("/tmp/ktas/extracted")
           files = [p for p in root.rglob("*") if p.is_file()]
           report = []
-
           for path in files:
               suffix = path.suffix.lower()
               entry = {"file": str(path), "size": path.stat().st_size}
               try:
                   if suffix in {".csv", ".txt", ".tsv"}:
                       frame = None
-                      for kwargs in (
-                          {"sep": None, "engine": "python"},
-                          {"sep": ";"},
-                          {"sep": ","},
-                          {"sep": "\t"},
-                      ):
+                      for kwargs in ({"sep": None, "engine": "python"}, {"sep": ";"}, {"sep": ","}, {"sep": "\t"}):
                           try:
                               candidate = pd.read_csv(path, nrows=20, **kwargs)
                               if candidate.shape[1] > 1:
@@ -110,10 +105,11 @@ jobs:
                       entry["kind"] = "excel"
                       entry["sheets"] = book.sheet_names
                       entry["sheet_columns"] = {}
+                      entry["preview"] = {}
                       for sheet in book.sheet_names[:10]:
                           frame = pd.read_excel(path, sheet_name=sheet, nrows=20)
                           entry["sheet_columns"][sheet] = [str(c) for c in frame.columns]
-                          entry.setdefault("preview", {})[sheet] = frame.head(3).astype(str).to_dict(orient="records")
+                          entry["preview"][sheet] = frame.head(3).astype(str).to_dict(orient="records")
                   elif suffix == ".sav":
                       frame = pd.read_spss(path)
                       entry["kind"] = "spss"
@@ -124,6 +120,5 @@ jobs:
               except Exception as exc:
                   entry["error"] = repr(exc)
               report.append(entry)
-
           print(json.dumps(report, ensure_ascii=False, indent=2))
           PY
