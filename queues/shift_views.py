@@ -161,6 +161,7 @@ def shift_schedule(request):
     for shift in schedules:
         shift.actual_duty = duties.get((shift.user_id, shift.shift_date))
         shift.active_case_count = active_case_counts.get(shift.user_id, 0)
+        shift.is_current_user = shift.user_id == request.user.id
 
     week_count_by_date = dict(
         ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
@@ -209,6 +210,7 @@ def shift_schedule(request):
             "profile": duty.user.hospital_staff_profile,
             "case_count": active_case_counts.get(duty.user_id, 0),
             "planned_duty": planned.note if planned and planned.note else "ยังไม่ได้กำหนดหน้าที่",
+            "is_current_user": duty.user_id == request.user.id,
         })
 
     return render(request, "queues/shift_schedule_roles.html", {
