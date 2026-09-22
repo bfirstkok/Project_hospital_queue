@@ -1,16 +1,18 @@
-name: Inspect public KTAS Figshare dataset
+name: Public KTAS Figshare benchmark
 
 on:
   pull_request:
     paths:
       - ".github/workflows/ktas-figshare-inspect.yml"
-      - "ai_triage/ml/**"
+      - "ai_triage/ml/import_ktas_figshare.py"
+      - "ai_triage/ml/benchmark_ktas_figshare_augmentation.py"
+      - "ai_triage/ml/test_import_ktas_figshare.py"
   workflow_dispatch:
 
 jobs:
-  inspect-ktas:
+  ktas-benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v4
@@ -18,124 +20,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - name: Install inspection dependencies
-        run: python -m pip install pandas openpyxl pyreadstat
+      - name: Install project dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install openpyxl
 
-      - name: Download public KTAS dataset from Figshare
+      - name: Test KTAS importer
+        run: python -m unittest ai_triage.ml.test_import_ktas_figshare
+
+      - name: Download public KTAS dataset from PLOS Figshare
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/ktas
+          curl --fail --location --retry 4 --retry-delay 2             "https://plos.figshare.com/ndownloader/articles/8044793/versions/1"             --output /tmp/ktas/ktas.zip
 
-          urls=(
-            "https://plos.figshare.com/ndownloader/articles/7138472/versions/2"
-            "https://figshare.com/ndownloader/articles/7138472/versions/2"
-            "https://plos.figshare.com/ndownloader/articles/8044793/versions/1"
-            "https://figshare.com/ndownloader/articles/8044793/versions/1"
-          )
+          test -s /tmp/ktas/ktas.zip
+          unzip -q /tmp/ktas/ktas.zip -d /tmp/ktas/extracted
+          test -s "/tmp/ktas/extracted/Data sharing.xlsx"
 
-          downloaded=""
-          for url in "${urls[@]}"; do
-            echo "Trying: $url"
-            rm -f /tmp/ktas/ktas_download
-            if curl --fail --location --retry 2 --retry-delay 1 "$url" --output /tmp/ktas/ktas_download; then
-              bytes="$(stat -c%s /tmp/ktas/ktas_download 2>/dev/null || echo 0)"
-              echo "Response bytes: $bytes"
-              if [ "$bytes" -gt 0 ]; then
-                downloaded="$url"
-                break
-              fi
-              echo "Response was empty; trying next URL."
-            fi
-          done
-
-          if [ -z "$downloaded" ]; then
-            echo "Could not download non-empty Figshare article archive." >&2
-            exit 1
-          fi
-
-          echo "Downloaded from: $downloaded"
-          wc -c /tmp/ktas/ktas_download
-          file /tmp/ktas/ktas_download
-
-      - name: Extract and inspect files
-        shell: bash
+      - name: Convert larger public KTAS cohort
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/ktas/extracted
-          if unzip -t /tmp/ktas/ktas_download >/dev/null 2>&1; then
-            unzip -q /tmp/ktas/ktas_download -d /tmp/ktas/extracted
-          else
-            cp /tmp/ktas/ktas_download /tmp/ktas/extracted/downloaded_file
-          fi
-          find /tmp/ktas/extracted -maxdepth 3 -type f -printf "%p\t%s bytes\n"
+          python -m ai_triage.ml.import_ktas_figshare             --input "/tmp/ktas/extracted/Data sharing.xlsx"             --output /tmp/ktas/ktas_runtime.csv
 
-      - name: Inspect tabular structure
-        shell: bash
+      - name: Benchmark low-weight KTAS augmentation
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import json
-          import pandas as pd
+          python -m ai_triage.ml.benchmark_ktas_figshare_augmentation             --ktas-csv /tmp/ktas/ktas_runtime.csv             --max-external-per-class 2000             --weights 0.005,0.01,0.025,0.05,0.10             --output-dir ai_triage/reports/ktas_figshare_benchmark
 
-          root = Path("/tmp/ktas/extracted")
-          files = [p for p in root.rglob("*") if p.is_file()]
-          report = []
-          for path in files:
-              suffix = path.suffix.lower()
-              entry = {"file": str(path), "size": path.stat().st_size}
-              try:
-                  if suffix in {".csv", ".txt", ".tsv"}:
-                      frame = None
-                      for kwargs in ({"sep": None, "engine": "python"}, {"sep": ";"}, {"sep": ","}, {"sep": "\t"}):
-                          try:
-                              candidate = pd.read_csv(path, nrows=20, **kwargs)
-                              if candidate.shape[1] > 1:
-                                  frame = candidate
-                                  break
-                          except Exception:
-                              pass
-                      if frame is not None:
-                          entry["kind"] = "table"
-                          entry["columns"] = [str(c) for c in frame.columns]
-                          entry["preview"] = frame.head(3).astype(str).to_dict(orient="records")
-                  elif suffix in {".xlsx", ".xls"}:
-                      book = pd.ExcelFile(path)
-                      entry["kind"] = "excel"
-                      entry["sheets"] = book.sheet_names
-                      entry["sheet_columns"] = {}
-                      entry["preview"] = {}
-                      for sheet in book.sheet_names[:10]:
-                          frame = pd.read_excel(path, sheet_name=sheet, nrows=20)
-                          entry["sheet_columns"][sheet] = [str(c) for c in frame.columns]
-                          entry["preview"][sheet] = frame.head(3).astype(str).to_dict(orient="records")
-                  elif suffix == ".sav":
-                      frame = pd.read_spss(path)
-                      entry["kind"] = "spss"
-                      entry["columns"] = [str(c) for c in frame.columns]
-                      entry["preview"] = frame.head(3).astype(str).to_dict(orient="records")
-                  else:
-                      entry["kind"] = "other"
-              except Exception as exc:
-                  entry["error"] = repr(exc)
-              report.append(entry)
-          print(json.dumps(report, ensure_ascii=False, indent=2))
-          PY
+      - name: Print benchmark report
+        run: cat ai_triage/reports/ktas_figshare_benchmark/README.md
 
-      - name: Print KTAS dataset counts and dictionary
-        shell: bash
-        run: |
-          python - <<'PY'
-          import pandas as pd
-          path = "/tmp/ktas/extracted/Data sharing.xlsx"
-          data = pd.read_excel(path, sheet_name="Sheet1")
-          dictionary = pd.read_excel(path, sheet_name="Sheet2")
-          print("shape:", data.shape)
-          print("KTAS counts:")
-          print(data["KTAS Level"].value_counts(dropna=False).sort_index().to_string())
-          print("\nPain group counts:")
-          print(data["Group"].value_counts(dropna=False).sort_index().to_string())
-          print("\nDictionary:")
-          print(dictionary.to_string(index=False))
-          PY
+      - name: Upload aggregate benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktas-figshare-benchmark
+          path: ai_triage/reports/ktas_figshare_benchmark/
+          if-no-files-found: error
