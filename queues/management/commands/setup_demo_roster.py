@@ -19,6 +19,8 @@ ADDITIONAL_STAFF = [
     ("emergency004", "ศุภชัย", "คงมั่น", StaffProfile.Role.EMERGENCY),
     ("staff004", "อภิญญา", "วงศ์สวัสดิ์", StaffProfile.Role.STAFF),
     ("staff005", "ธนกฤต", "พูนทรัพย์", StaffProfile.Role.STAFF),
+    ("pharmacist001", "พิชชาภา", "โอสถดี", StaffProfile.Role.PHARMACIST),
+    ("cashier001", "ศิริพร", "การเงิน", StaffProfile.Role.CASHIER),
 ]
 
 SHIFT_TEMPLATES = [
@@ -33,6 +35,8 @@ ROLE_COVERAGE = {
     StaffProfile.Role.NURSE_ASSISTANT: 1,
     StaffProfile.Role.EMERGENCY: 1,
     StaffProfile.Role.STAFF: 1,
+    StaffProfile.Role.PHARMACIST: 1,
+    StaffProfile.Role.CASHIER: 1,
 }
 
 
