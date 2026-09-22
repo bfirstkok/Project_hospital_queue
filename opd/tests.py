@@ -95,6 +95,17 @@ class DoctorWorkspaceTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "แพทย์ ห้องหนึ่ง")
 
+    def test_assessment_shows_quick_phrases_for_common_notes(self):
+        response = self.client.get(
+            reverse("visit_assessment", args=[self.visit_room_one.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ข้อความที่ใช้บ่อย")
+        self.assertContains(response, "Acute URI / ไข้หวัด")
+        self.assertContains(response, "ให้ยาตามอาการ")
+        self.assertContains(response, "รับไว้ติดตามอาการในโรงพยาบาล")
+
     def test_signed_in_doctor_is_saved_with_assessment(self):
         response = self.client.post(
             reverse("visit_assessment", args=[self.visit_room_one.id]),
