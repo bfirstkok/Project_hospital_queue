@@ -8,7 +8,12 @@ from .models import ConfirmedTriageCase, TriageResult, Visit
 VALID_SEVERITIES = set(Visit.Severity.values)
 
 
-def _training_eligibility(triage_result, vitals):
+def _training_eligibility(triage_result, vitals, visit=None):
+    if visit and (
+        "[SYSTEM TEST]" in (visit.note or "")
+        or "[SYSTEM TEST]" in (getattr(visit.patient, "note", "") or "")
+    ):
+        return False, "ข้อมูลจำลองจาก System Test ไม่นำไปฝึกโมเดล"
     if not triage_result or triage_result.nurse_severity not in VALID_SEVERITIES:
         return False, "ยังไม่มีผลยืนยันจากพยาบาล"
     if vitals is None:
@@ -36,7 +41,7 @@ def capture_confirmed_triage_case(*, visit, triage_result=None, actor=None):
     )
     triage_result = triage_result or getattr(visit, "triage_result", None)
     vitals = getattr(visit, "vitals", None)
-    eligible, eligibility_note = _training_eligibility(triage_result, vitals)
+    eligible, eligibility_note = _training_eligibility(triage_result, vitals, visit)
 
     mental = getattr(triage_result, "mental_status", None)
     values = {

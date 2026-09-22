@@ -2,48 +2,220 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ศูนย์ทดสอบระบบ</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Control Center</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=admin-center-20260922">
   <style>
-    :root{--ink:#173242;--muted:#66808b;--line:#d9e7e9;--teal:#087f75;--teal2:#e8f7f4;--navy:#163b53;--bg:#f2f7f8;--danger:#bd4036;--amber:#a56c00}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Thai",Tahoma,sans-serif}.wrap{width:min(1440px,calc(100% - 32px));margin:28px auto 70px}.hero{display:flex;justify-content:space-between;gap:20px;padding:28px;border-radius:22px;background:#fff!important;color:#173242!important;border:1px solid #cfe1e4!important;box-shadow:0 10px 30px rgba(31,67,78,.08)!important}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#087f75!important}.hero h1{margin:5px 0 5px;font-size:32px;color:#173242!important}.hero p{margin:0;color:#4d6874!important;font-weight:600}.admin-pill{align-self:flex-start;padding:9px 12px;border:1px solid #9ed4cc;border-radius:999px;background:#edf9f6;color:#087467!important;font-weight:800;white-space:nowrap}.messages{margin:16px 0}.message{padding:12px 15px;border:1px solid #afe0d5;border-radius:12px;background:#ecfaf6;color:#076b60}.grid{display:grid;grid-template-columns:1.05fr 1.95fr;gap:16px;margin-top:16px}.panel{border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 7px 22px rgba(31,67,78,.06);overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:19px 20px;border-bottom:1px solid var(--line)}h2{margin:0;font-size:19px}.hint{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.55}.panel-body{padding:18px}.form-row{display:grid;grid-template-columns:1fr auto;gap:10px}.random-patient{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding:13px;border:1px solid #a8dcd4;border-radius:12px;background:#effaf8}.random-patient b{display:block;font-size:13px}.random-patient span{display:block;margin-top:3px;color:#55717b;font-size:10px}.random-patient .btn{white-space:nowrap}.sensor-sim{display:grid;gap:11px;margin-bottom:14px;padding:14px;border:1px solid #8fcfc5;border-radius:14px;background:linear-gradient(145deg,#f5fcfb,#eaf8f5)}.sensor-sim__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.sensor-sim__head b{font-size:14px}.sensor-sim__head span{display:block;margin-top:3px;color:#55717b;font-size:11px;line-height:1.5}.sensor-badge{padding:4px 8px;border-radius:999px;background:#d9f2ed;color:#087467;font-size:10px;font-weight:900;white-space:nowrap}.sensor-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(130px,.7fr) auto;gap:8px}.sensor-empty{padding:12px;border:1px dashed #bfd7d8;border-radius:10px;background:#fff;color:#667f89;font-size:11px;line-height:1.55}.legacy-title{margin-top:16px;color:#6c818a;font-size:11px;font-weight:900}select,.btn{min-height:42px;border-radius:10px;font:inherit}.select{width:100%;padding:0 12px;border:1px solid #bfd3d7;background:#fff;color:var(--ink)}.btn{display:inline-flex;align-items:center;justify-content:center;padding:0 15px;border:0;background:var(--teal);color:#fff;font-weight:800;text-decoration:none;cursor:pointer}.btn.secondary{border:1px solid #bcd3d6;background:#fff;color:#315660}.btn.warning{background:#bc7b05}.btn.danger{background:#fff0ee;color:var(--danger);border:1px solid #edc2bd}.run-list-head{display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding:0 2px 9px;color:var(--muted);font-size:11px}.run-list{max-height:470px;overflow-y:auto;overscroll-behavior:contain;padding-right:8px;border-top:1px solid #e5edef;scrollbar-gutter:stable}.run-list::-webkit-scrollbar{width:8px}.run-list::-webkit-scrollbar-thumb{border-radius:8px;background:#bed8d8}.run-list::-webkit-scrollbar-track{background:#f4f8f8}.run{padding:15px 0;border-bottom:1px solid #e5edef}.run:last-child{border-bottom:0}.run-top{display:flex;justify-content:space-between;gap:10px}.run-title{font-weight:900}.meta{color:var(--muted);font-size:12px}.tag{padding:4px 8px;border-radius:999px;background:var(--teal2);color:#087467;font-size:11px;font-weight:900}.run-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.run-actions form{display:inline}.run-actions .btn{min-height:34px;padding:0 10px;font-size:11px}.role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.role-card{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fbfdfd}.role-card h3{margin:0 0 4px;font-size:15px}.role-card p{margin:0 0 10px;color:var(--muted);font-size:12px}.rights{display:flex;gap:5px;flex-wrap:wrap}.right{padding:4px 7px;border-radius:7px;background:#edf4f6;color:#395d68;font-size:10px}.database{margin-top:16px}.table-wrap{overflow:auto}.data-table{width:100%;border-collapse:collapse;font-size:12px}.data-table th,.data-table td{padding:11px 13px;border-bottom:1px solid #e5edef;text-align:left;white-space:nowrap}.data-table th{position:sticky;top:0;background:#f4f9f9;color:#55717b}.count{font-weight:900;color:var(--teal)}.empty{padding:25px;text-align:center;color:var(--muted)}@media(max-width:900px){.grid{grid-template-columns:1fr}.role-grid{grid-template-columns:1fr}.hero{flex-direction:column}.form-row,.sensor-grid{grid-template-columns:1fr}.random-patient,.sensor-sim__head{align-items:stretch;flex-direction:column}.run-list{max-height:390px}.wrap{width:min(100% - 20px,1440px)}}
+    :root{
+      --navy:#17324d;--navy2:#234d61;--teal:#087f75;--teal2:#e8f6f3;
+      --bg:#f2f7f8;--card:#fff;--line:#d9e6e8;--muted:#6c818a;
+      --danger:#b42335;--warning:#a56a00;--ok:#087467;
+      --shadow:0 10px 28px rgba(31,67,78,.07)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--navy);font-family:"Sarabun",Tahoma,sans-serif}
+    .page{width:min(1480px,calc(100% - 34px));margin:20px auto 64px}
+    .hero{position:relative;overflow:hidden;display:flex;align-items:flex-start;justify-content:space-between;gap:28px;padding:28px;border-radius:24px;background:linear-gradient(135deg,#17324d 0%,#145d68 58%,#087f75 100%);color:#fff;box-shadow:0 18px 44px rgba(23,50,77,.18)}
+    .hero:after{content:"";position:absolute;right:-90px;top:-110px;width:310px;height:310px;border-radius:50%;background:rgba(255,255,255,.07)}
+    .hero-copy{position:relative;z-index:1;max-width:780px}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.13em;color:#bfe9e3}.hero h1{margin:5px 0 8px;font-size:34px}.hero p{margin:0;color:#dcefed;font-size:14px;line-height:1.7}
+    .admin-box{position:relative;z-index:1;min-width:270px;padding:14px 16px;border:1px solid rgba(255,255,255,.22);border-radius:15px;background:rgba(255,255,255,.09);backdrop-filter:blur(8px)}
+    .admin-box b{display:block;font-size:14px}.admin-box span{display:block;margin-top:5px;color:#d5efeb;font-size:11px}.admin-box time{display:block;margin-top:10px;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff}
+    .messages{display:grid;gap:8px;margin:14px 0}.message{padding:12px 14px;border:1px solid #bfe0da;border-radius:12px;background:#eefaf7;color:#087467;font-weight:800;font-size:12px}.message.warning{border-color:#ead6a8;background:#fff9e9;color:#795400}.message.error{border-color:#efc4ca;background:#fff1f3;color:#a51d30}
+    .section-nav{position:sticky;top:8px;z-index:50;display:flex;gap:7px;flex-wrap:wrap;margin:14px 0;padding:8px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(31,67,78,.06);backdrop-filter:blur(10px)}
+    .section-nav a{padding:8px 11px;border-radius:9px;color:#486672;text-decoration:none;font-size:11px;font-weight:900}.section-nav a:hover{background:#edf7f6;color:var(--teal)}
+    .stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+    .stat{padding:15px 16px;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 6px 18px rgba(31,67,78,.04)}
+    .stat-label{color:#718690;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.stat strong{display:block;margin-top:5px;color:var(--navy);font-size:27px}.stat small{display:block;margin-top:4px;color:#81939a;font-size:10px}
+    .stat.alert strong{color:var(--danger)}.stat.good strong{color:var(--teal)}
+    .section{margin-top:16px}.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 2px 9px}.section-title h2{margin:0;font-size:20px}.section-title p{margin:3px 0 0;color:var(--muted);font-size:11px}.section-title .aside{color:#7b9199;font-size:10px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.grid.wide-left{grid-template-columns:1.25fr .75fr}.grid.thirds{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .panel{overflow:hidden;border:1px solid var(--line);border-radius:17px;background:var(--card);box-shadow:var(--shadow)}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:16px 18px;border-bottom:1px solid #e4edef;background:#fbfdfd}.panel-head h3{margin:0;font-size:16px}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.55}.panel-body{padding:16px}
+    .health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.health{display:flex;align-items:center;gap:10px;padding:13px;border:1px solid #e0eaec;border-radius:12px;background:#fff}.health-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#d24b5d;box-shadow:0 0 0 4px rgba(210,75,93,.10)}.health.ok .health-dot{background:#12a284;box-shadow:0 0 0 4px rgba(18,162,132,.10)}.health b{display:block;font-size:12px}.health span{display:block;margin-top:2px;color:var(--muted);font-size:10px}.health-state{margin-left:auto;text-align:right;font-size:10px;font-weight:900;color:#a51d30}.health.ok .health-state{color:#087467}
+    .launcher{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.launch{display:flex;flex-direction:column;min-height:116px;padding:14px;border:1px solid #dbe7e9;border-radius:13px;background:#fff;color:var(--navy);text-decoration:none;transition:.15s}.launch:hover{transform:translateY(-2px);border-color:#9fcfc8;box-shadow:0 10px 22px rgba(31,67,78,.08)}.launch-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#e9f6f4;color:var(--teal);font-size:11px;font-weight:900}.launch b{margin-top:10px;font-size:13px}.launch span{margin-top:4px;color:var(--muted);font-size:10px;line-height:1.4}
+    .scenario-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.scenario{display:flex;flex-direction:column;min-height:185px;padding:15px;border:1px solid #dce8ea;border-radius:14px;background:#fbfdfd}.scenario-code{width:max-content;padding:4px 7px;border-radius:7px;background:#edf5f6;color:#58727c;font-size:9px;font-weight:900}.scenario h4{margin:10px 0 5px;font-size:14px}.scenario p{margin:0;color:var(--muted);font-size:10px;line-height:1.55}.scenario form{margin-top:auto;padding-top:13px}.scenario.emergency{border-color:#eccbd0;background:#fffafb}.scenario.emergency .scenario-code{background:#ffe9ec;color:#a51d30}.scenario.monitor{border-color:#c3dfda;background:#f8fcfb}.scenario.monitor .scenario-code{background:#dff5ef;color:#087467}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 13px;border:0;border-radius:9px;background:var(--teal);color:#fff;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn:hover{filter:brightness(.96)}.btn.secondary{border:1px solid #c9dadd;background:#fff;color:#3d5e69}.btn.danger{border:1px solid #efc6cb;background:#fff1f3;color:#a51d30}.btn.warning{background:#a86d06}.btn.full{width:100%}.btn.small{min-height:31px;padding:0 9px;font-size:10px}
+    .random-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:13px;border:1px dashed #abcfc9;border-radius:12px;background:#f3faf9}.random-card b{display:block;font-size:12px}.random-card span{display:block;margin-top:3px;color:var(--muted);font-size:10px}
+    .sensor{display:grid;gap:12px}.sensor-note{padding:12px;border:1px solid #c7e0dc;border-radius:11px;background:#f1faf8;color:#426862;font-size:10px;line-height:1.55}.sensor-form{display:grid;grid-template-columns:1fr 145px auto;gap:8px}.select,.input{width:100%;min-height:40px;padding:0 11px;border:1px solid #c7d8db;border-radius:9px;background:#fff;color:#264957;font:700 11px "Sarabun",Tahoma,sans-serif}.input{font-weight:600}.sensor-empty{padding:18px;border:1px dashed #c8d8db;border-radius:11px;color:#718690;text-align:center;font-size:11px;line-height:1.6}
+    .list{display:grid}.list-row{display:flex;align-items:center;gap:11px;padding:12px 15px;border-bottom:1px solid #e7eef0}.list-row:last-child{border-bottom:0}.list-main{min-width:0;flex:1}.list-title{overflow:hidden;font-size:12px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.list-sub{margin-top:3px;color:var(--muted);font-size:10px;line-height:1.45}.badge{display:inline-flex;align-items:center;width:max-content;padding:4px 7px;border-radius:999px;background:#edf5f6;color:#536f79;font-size:9px;font-weight:900}.badge.red{background:#ffe8ec;color:#a51d30}.badge.green{background:#e6f6f1;color:#087467}.badge.yellow{background:#fff4d7;color:#806000}
+    .run-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.run-vitals{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+    .telemetry-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.telemetry-actions form{display:inline}
+    .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:11px}.table th,.table td{padding:10px 12px;border-bottom:1px solid #e6edef;text-align:left;white-space:nowrap}.table th{background:#f6fafb;color:#607984;font-size:10px}.table tbody tr:hover td{background:#fbfdfd}
+    .danger-zone{display:grid;gap:10px;padding:14px;border:1px solid #efc7cd;border-radius:13px;background:#fff8f9}.danger-zone h4{margin:0;color:#9b2030;font-size:13px}.danger-zone p{margin:0;color:#805761;font-size:10px;line-height:1.55}.danger-form{display:grid;grid-template-columns:1fr auto;gap:8px}
+    details.panel>summary{list-style:none;cursor:pointer;padding:16px 18px;font-size:14px;font-weight:900}details.panel>summary::-webkit-details-marker{display:none}details.panel>summary:after{content:"เปิดดู";float:right;color:#6e858e;font-size:10px;font-weight:800}details.panel[open]>summary:after{content:"ซ่อน"}
+    .role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:0 16px 16px}.role{padding:13px;border:1px solid #e0eaec;border-radius:12px;background:#fbfdfd}.role-head{display:flex;justify-content:space-between;gap:8px}.role h4{margin:0;font-size:12px}.role-count{color:var(--teal);font-size:10px;font-weight:900}.role p{margin:5px 0 9px;color:var(--muted);font-size:10px;line-height:1.45}.rights{display:flex;flex-wrap:wrap;gap:4px}.right{padding:3px 6px;border-radius:6px;background:#edf4f6;color:#486672;font-size:8px}
+    .empty{padding:28px;text-align:center;color:#7b9098;font-size:11px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.muted{color:var(--muted)}
+    @media(max-width:1250px){.stats{grid-template-columns:repeat(3,1fr)}.health-grid,.launcher{grid-template-columns:repeat(2,1fr)}.role-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:900px){.page{width:min(100% - 20px,1480px)}.hero,.section-title{align-items:flex-start;flex-direction:column}.admin-box{min-width:0;width:100%}.grid,.grid.wide-left,.grid.thirds{grid-template-columns:1fr}.scenario-grid{grid-template-columns:1fr}.sensor-form,.danger-form{grid-template-columns:1fr}.section-nav{position:static}.launcher{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.stats,.health-grid,.launcher,.role-grid{grid-template-columns:1fr}.list-row{align-items:flex-start;flex-direction:column}.run-actions{justify-content:flex-start}.random-card{align-items:stretch;flex-direction:column}.hero h1{font-size:28px}}
   </style>
 </head>
 <body>
 {% include "includes/main_nav.html" %}
-<main class="wrap">
-  <section class="hero"><div><div class="eyebrow">ADMIN • CONTROLLED TEST ENVIRONMENT</div><h1>ศูนย์ทดสอบระบบ</h1><p>ทดสอบกระบวนการผู้ป่วย จำลอง packet จาก Sensor สิทธิ์บุคลากร และตรวจฐานข้อมูลจากหน้าเดียว</p></div><div class="admin-pill">สิทธิ์สูงสุด · {{ request.user.username }}</div></section>
-  {% if messages %}<div class="messages">{% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}</div>{% endif %}
-  <div class="grid">
-    <section class="panel"><div class="panel-head"><div><h2>Sensor Simulator</h2><div class="hint">จำลองข้อมูลที่ Sensor ส่งเข้าระบบจริง โดยใช้ Device/Visit ที่ Pair อยู่แล้ว — ไม่สร้างผู้ป่วยสวมนาฬิกาจำลองเพิ่ม</div></div></div><div class="panel-body">
-      {% if sensor_assignments %}
-      <form class="sensor-sim" action="{% url 'system_test:send_sensor_packet' %}" method="post">{% csrf_token %}
-        <div class="sensor-sim__head"><div><b>ส่ง packet จำลองผ่าน /api/iot/vitals/</b><span>ข้อมูลจะเข้า TelemetryLog, อัปเดต VitalSign และ Trigger CriticalAlert ด้วย logic เดียวกับ Sensor จริง</span></div><span class="sensor-badge">ใช้ Active Pairing</span></div>
-        <div class="sensor-grid">
-          <select class="select" name="assignment_id" required>
-            {% for assignment in sensor_assignments %}
-            <option value="{{ assignment.id }}">{{ assignment.device.device_id }} → Visit#{{ assignment.visit.id }} · HN {{ assignment.visit.patient.hn }} · {{ assignment.visit.patient.first_name }} {{ assignment.visit.patient.last_name }}</option>
-            {% endfor %}
-          </select>
-          <select class="select" name="mode">
-            <option value="normal">ค่าปกติ</option>
-            <option value="warning">ค่าเฝ้าระวัง</option>
-            <option value="critical">ค่าวิกฤต</option>
-          </select>
-          <button class="btn" type="submit">ส่ง Sensor</button>
+<main class="page">
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">SUPERUSER · OPERATIONS & TESTING</div>
+      <h1>Admin Control Center</h1>
+      <p>ภาพรวมสำหรับผู้ดูแลระบบ: ตรวจสุขภาพระบบ ดูสถานะงานสำคัญ จัดการข้อมูล ทดสอบ workflow และจำลอง Sensor โดยแยกเครื่องมือทดสอบออกจากการใช้งานจริงให้ชัดเจน</p>
+    </div>
+    <div class="admin-box">
+      <b>{{ request.user.get_full_name|default:request.user.username }}</b>
+      <span>@{{ request.user.username }} · Superuser</span>
+      <time>{{ server_time|date:"Y-m-d H:i:s" }} · server time</time>
+    </div>
+  </section>
+
+  {% if messages %}<div class="messages">{% for message in messages %}<div class="message{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <nav class="section-nav" aria-label="ทางลัดภายในหน้า">
+    <a href="#overview">ภาพรวม</a><a href="#health">สุขภาพระบบ</a><a href="#operations">ทางลัด Admin</a><a href="#test-lab">Test Lab</a><a href="#activity">เหตุการณ์</a><a href="#data">ข้อมูลและสิทธิ์</a>
+  </nav>
+
+  <section id="overview" class="section">
+    <div class="section-title"><div><h2>ภาพรวมระบบ</h2><p>ตัวเลขที่ผู้ดูแลระบบควรเห็นก่อนลงรายละเอียด</p></div><div class="aside">อัปเดตทุกครั้งที่เปิดหน้า</div></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">ผู้ใช้งาน</div><strong>{{ system_summary.users_active }}</strong><small>ใช้งานอยู่ / ทั้งหมด {{ system_summary.users_total }}</small></div>
+      <div class="stat"><div class="stat-label">ผู้ป่วยทั้งหมด</div><strong>{{ system_summary.patients_total }}</strong><small>Visit วันนี้ {{ system_summary.visits_today }}</small></div>
+      <div class="stat"><div class="stat-label">Queue ที่ยัง active</div><strong>{{ system_summary.active_queues }}</strong><small>Monitoring {{ system_summary.monitoring }}</small></div>
+      <div class="stat alert"><div class="stat-label">Critical Alerts</div><strong>{{ system_summary.critical_alerts }}</strong><small>สถานะที่ยังต้องดำเนินการ</small></div>
+      <div class="stat"><div class="stat-label">อุปกรณ์ active</div><strong>{{ system_summary.devices_active }}</strong><small>Pairing อยู่ {{ system_summary.active_pairings }}</small></div>
+      <div class="stat good"><div class="stat-label">Training ready</div><strong>{{ system_summary.training_ready }}</strong><small>Confirmed cases ที่พร้อมใช้</small></div>
+    </div>
+  </section>
+
+  <section id="health" class="section">
+    <div class="section-title"><div><h2>System Health</h2><p>เช็กสิ่งพื้นฐานที่มีผลกับ production โดยไม่เปิดเผย credential</p></div><a class="btn secondary small" href="{% url 'system_test:index' %}">ตรวจใหม่</a></div>
+    <div class="panel"><div class="panel-body"><div class="health-grid">
+      {% for item in health_checks %}
+      <div class="health{% if item.ok %} ok{% endif %}"><span class="health-dot"></span><div><b>{{ item.name }}</b><span>{{ item.detail }}</span></div><div class="health-state">{{ item.status }}</div></div>
+      {% endfor %}
+    </div></div></div>
+  </section>
+
+  <section id="operations" class="section">
+    <div class="section-title"><div><h2>Admin shortcuts</h2><p>รวมหน้าที่ผู้ดูแลระบบใช้บ่อยไว้จุดเดียว</p></div></div>
+    <div class="launcher">
+      <a class="launch" href="{% url 'database_index' %}"><span class="launch-mark">DB</span><b>Database Explorer</b><span>{{ system_summary.tables }} ตาราง · ดู ค้นหา และแก้ฟิลด์ที่อนุญาต</span></a>
+      <a class="launch" href="/admin/"><span class="launch-mark">DJ</span><b>Django Admin</b><span>จัดการ model ระดับ framework และข้อมูลที่ลงทะเบียนใน admin</span></a>
+      <a class="launch" href="{% url 'personnel_dashboard' %}"><span class="launch-mark">HR</span><b>บุคลากรและเวร</b><span>จัด role, สถานะบุคลากร และการมอบหมายผู้ดูแล</span></a>
+      <a class="launch" href="{% url 'device_management' %}"><span class="launch-mark">IoT</span><b>อุปกรณ์ IoT</b><span>ดูอุปกรณ์ จับคู่ Device กับ Visit และสถานะการใช้งาน</span></a>
+      <a class="launch" href="{% url 'dashboard:ai_evaluation' %}"><span class="launch-mark">AI</span><b>AI Learning</b><span>ดู AI vs Nurse, override และ training-ready cases</span></a>
+      <a class="launch" href="{% url 'dashboard:waiting_time_report' %}"><span class="launch-mark">RP</span><b>รายงานระบบ</b><span>เวลารอ เส้นทางบริการ และตัวชี้วัดการปฏิบัติงาน</span></a>
+      <a class="launch" href="{% url 'queue_list' %}"><span class="launch-mark">Q</span><b>จัดการคิว</b><span>เปิด workflow คิวจริงเพื่อเช็กสถานะผู้ป่วยที่กำลังให้บริการ</span></a>
+      <a class="launch" href="{% url 'patient_search' %}"><span class="launch-mark">PT</span><b>ค้นหาผู้ป่วย</b><span>ค้นข้อมูลผู้ป่วยและเปิดประวัติ Visit ที่ต้องตรวจสอบ</span></a>
+    </div>
+  </section>
+
+  <section id="test-lab" class="section">
+    <div class="section-title"><div><h2>Test Lab</h2><p>เครื่องมือสร้างข้อมูลจำลองและยิง Sensor สำหรับทดสอบ workflow จริง</p></div><span class="badge yellow">{{ system_summary.test_runs }} test runs</span></div>
+    <div class="grid wide-left">
+      <div class="panel">
+        <div class="panel-head"><div><h3>Quick scenarios</h3><p>สร้างสถานการณ์ที่แยกด้วยป้าย [SYSTEM TEST] และลบย้อนหลังได้จากหน้านี้</p></div></div>
+        <div class="panel-body">
+          <div class="scenario-grid">
+            <article class="scenario">
+              <span class="scenario-code">WAITING</span><h4>รอวัดสัญญาณชีพ</h4><p>สร้าง Patient + Visit + Queue ที่ WAITING_VITALS เหมาะสำหรับทดสอบ flow ตั้งแต่ต้น</p>
+              <form action="{% url 'system_test:create_scenario' %}" method="post">{% csrf_token %}<input type="hidden" name="scenario" value="WAITING"><button class="btn secondary full" type="submit">สร้าง Waiting case</button></form>
+            </article>
+            <article class="scenario monitor">
+              <span class="scenario-code">FULL</span><h4>Monitoring + Wearable</h4><p>สร้าง YELLOW case พร้อม Device pairing และ telemetry เริ่มต้นสำหรับทดสอบ monitoring/alert</p>
+              <form action="{% url 'system_test:create_scenario' %}" method="post">{% csrf_token %}<input type="hidden" name="scenario" value="FULL"><button class="btn full" type="submit">สร้าง Monitoring case</button></form>
+            </article>
+            <article class="scenario emergency">
+              <span class="scenario-code">EMERGENCY</span><h4>Critical / ส่ง ER</h4><p>สร้าง RED case พร้อมค่าผิดปกติและ Critical Alert เพื่อทดสอบเส้นทางฉุกเฉิน</p>
+              <form action="{% url 'system_test:create_scenario' %}" method="post">{% csrf_token %}<input type="hidden" name="scenario" value="EMERGENCY"><button class="btn danger full" type="submit">สร้าง Emergency case</button></form>
+            </article>
+          </div>
+          <form class="random-card" action="{% url 'system_test:create_random_registered_patient' %}" method="post">{% csrf_token %}<div><b>Random registration</b><span>สุ่มข้อมูลผู้ป่วยครบฟอร์ม แล้วส่งไป WAITING_VITALS เพื่อทดสอบหน้าลงทะเบียน</span></div><button class="btn secondary" type="submit">เพิ่มผู้ป่วยสุ่ม</button></form>
         </div>
-      </form>
-      {% else %}
-      <div class="sensor-empty"><b>ยังไม่มี Device ที่ Pair กับ Visit สำหรับ Monitoring</b><br>ให้ Pair อุปกรณ์กับ Visit ที่อยู่สถานะ Observation/Monitoring ก่อน แล้วตัว Sensor Simulator จะใช้คู่นั้นส่งข้อมูลได้ทันที</div>
-      {% endif %}
+      </div>
 
-      <form class="random-patient" action="{% url 'system_test:create_random_registered_patient' %}" method="post">{% csrf_token %}<div><b>ทดสอบ Registration แยกต่างหาก</b><span>สร้างผู้ป่วยสุ่มเฉพาะขั้นตอนลงทะเบียนและส่งไปรอวัดค่า ไม่สร้างนาฬิกาหรือ Sensor จำลอง</span></div><button class="btn secondary" type="submit">เพิ่มผู้ป่วยสุ่ม</button></form>
+      <div class="panel">
+        <div class="panel-head"><div><h3>Sensor Simulator</h3><p>ส่ง packet ผ่าน handler เดียวกับ Sensor จริง</p></div><span class="badge green">{{ sensor_assignments|length }} pairings</span></div>
+        <div class="panel-body sensor">
+          {% if sensor_assignments %}
+          <div class="sensor-note">Packet จะเข้า TelemetryLog, อัปเดต VitalSign และตรวจ CriticalAlert ด้วย logic production โดย wearable จะไม่เขียนทับ BP</div>
+          <form class="sensor-form" action="{% url 'system_test:send_sensor_packet' %}" method="post">{% csrf_token %}
+            <select class="select" name="assignment_id" required>{% for assignment in sensor_assignments %}<option value="{{ assignment.id }}">{{ assignment.device.device_id }} → Visit#{{ assignment.visit.id }} · {{ assignment.visit.patient.first_name }} {{ assignment.visit.patient.last_name }}</option>{% endfor %}</select>
+            <select class="select" name="mode"><option value="normal">Normal</option><option value="warning">Warning</option><option value="critical">Critical</option></select>
+            <button class="btn" type="submit">ส่ง Packet</button>
+          </form>
+          {% else %}
+          <div class="sensor-empty"><b>ยังไม่มี Active pairing ที่ใช้กับ Monitoring</b><br>สร้าง FULL scenario หรือจับคู่ Device กับ Visit ก่อน แล้วจะเลือกยิง packet ได้จากตรงนี้</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
 
-      <div class="legacy-title">ข้อมูลจำลองเดิมสำหรับล้างข้อมูลย้อนหลัง</div>
-      <div class="run-list-head"><b>รายการล่าสุด</b><span>{{ runs|length }} รายการ</span></div>
-      <div class="run-list">{% for run in runs %}<article class="run"><div class="run-top"><div><div class="run-title">TEST #{{ run.id }} · {{ run.get_scenario_display }}</div><div class="meta">{% if run.patient %}{{ run.patient.first_name }} {{ run.patient.last_name }} · HN {{ run.patient.hn }}{% else %}ข้อมูลถูกลบแล้ว{% endif %}</div></div><span class="tag">{{ run.created_at|date:"d/m H:i" }}</span></div><div class="run-actions">{% if run.visit %}<a class="btn secondary" href="{% url 'waiting_monitor_visit_detail' run.visit.id %}">ดู Visit</a>{% endif %}<form action="{% url 'system_test:delete_scenario' run.id %}" method="post" onsubmit="return confirm('ลบเฉพาะข้อมูลจำลองชุดนี้?')">{% csrf_token %}<button class="btn danger">ลบชุดทดสอบ</button></form></div></article>{% empty %}<div class="empty">ไม่มีข้อมูลจำลองเก่า</div>{% endfor %}</div>
-    </section>
-    <section class="panel"><div class="panel-head"><div><h2>สิทธิ์และหน้าที่บัญชี</h2><div class="hint">ผู้ดูแลระบบสูงสุดทำได้ทั้งหมด ส่วนบัญชีอื่นเห็นเฉพาะงานตามบทบาท</div></div></div><div class="panel-body role-grid">{% for row in role_rows %}<article class="role-card"><h3>{{ row.label }}</h3><p>{{ row.description }}</p><div class="rights">{% for capability in row.capabilities %}<span class="right">{{ capability }}</span>{% endfor %}</div></article>{% endfor %}</div></section>
-  </div>
-  <section class="panel database"><div class="panel-head"><div><h2>Database explorer</h2><div class="hint">แสดงข้อมูลสูงสุด 100 แถวต่อหน้าและปิดบังค่า password, token, PIN hash และ API key อัตโนมัติ การแก้ไขข้อมูลจริงใช้ Django Admin ที่ตรวจสิทธิ์ซ้ำ</div></div><div><span class="tag">{{ models|length }} models</span> <a class="btn" href="{% url 'database_index' %}">เปิดหน้า /database</a></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>แอป</th><th>ตารางจริง</th><th>ชื่อข้อมูล</th><th>จำนวนแถว</th><th>การทำงาน</th></tr></thead><tbody>{% for item in models %}<tr><td>{{ item.app_label }}</td><td>{{ item.db_table }}</td><td>{{ item.label }}</td><td class="count">{{ item.count }}</td><td><a class="btn secondary" href="{% url 'system_test:database_table' item.app_label item.model_name %}">เปิดดู</a>{% if item.admin_url %} <a class="btn" href="{{ item.admin_url }}">จัดการ</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div></section>
-</main></body></html>
+    <div class="grid" style="margin-top:13px">
+      <div class="panel">
+        <div class="panel-head"><div><h3>Test runs ล่าสุด</h3><p>เปิด Visit, ยิง telemetry ซ้ำ หรือลบเฉพาะชุดได้</p></div><span class="badge">{{ runs|length }} ล่าสุด</span></div>
+        <div class="list">
+          {% for run in runs %}
+          <article class="list-row">
+            <div class="list-main">
+              <div class="list-title">TEST #{{ run.id }} · {{ run.get_scenario_display }}</div>
+              <div class="list-sub">{% if run.patient %}{{ run.patient.first_name }} {{ run.patient.last_name }} · HN {{ run.patient.hn }}{% else %}Patient ถูกลบแล้ว{% endif %}{% if run.visit %} · Visit#{{ run.visit.id }}{% endif %} · {{ run.created_at|date:"d/m/Y H:i" }}</div>
+              <div class="run-vitals">{% if run.visit.final_severity %}<span class="badge{% if run.visit.final_severity == 'RED' %} red{% elif run.visit.final_severity == 'YELLOW' %} yellow{% else %} green{% endif %}">{{ run.visit.final_severity }}</span>{% endif %}{% if run.visit.queue %}<span class="badge">{{ run.visit.queue.status }}</span>{% endif %}{% if run.device %}<span class="badge green">{{ run.device.device_id }}</span>{% endif %}</div>
+              {% if run.device and run.visit %}<div class="telemetry-actions"><form action="{% url 'system_test:push_telemetry' run.id %}" method="post">{% csrf_token %}<input type="hidden" name="mode" value="normal"><button class="btn secondary small">Normal</button></form><form action="{% url 'system_test:push_telemetry' run.id %}" method="post">{% csrf_token %}<input type="hidden" name="mode" value="warning"><button class="btn warning small">Warning</button></form><form action="{% url 'system_test:push_telemetry' run.id %}" method="post">{% csrf_token %}<input type="hidden" name="mode" value="critical"><button class="btn danger small">Critical</button></form></div>{% endif %}
+            </div>
+            <div class="run-actions">{% if run.visit %}<a class="btn secondary small" href="{% url 'waiting_monitor_visit_detail' run.visit.id %}">ดู Visit</a>{% endif %}<form action="{% url 'system_test:delete_scenario' run.id %}" method="post" onsubmit="return confirm('ลบเฉพาะ TEST #{{ run.id }} ?')">{% csrf_token %}<button class="btn danger small">ลบ</button></form></div>
+          </article>
+          {% empty %}<div class="empty">ยังไม่มีข้อมูลจำลอง</div>{% endfor %}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><h3>Test data cleanup</h3><p>ล้างข้อมูลจำลองที่ลงทะเบียนไว้ใน TestScenarioRun</p></div></div>
+        <div class="panel-body">
+          <div class="danger-zone">
+            <h4>ล้าง Test Data ทั้งหมด</h4>
+            <p>ระบบจะลบเฉพาะ Patient/Visit ที่มีป้าย <b>[SYSTEM TEST]</b> และ Device ที่ขึ้นต้นด้วย <b>TESTWATCH</b> หาก registry ถูกแก้ไปชี้ข้อมูลจริง ระบบจะป้องกันข้อมูลนั้นไว้</p>
+            <form class="danger-form" action="{% url 'system_test:delete_all_scenarios' %}" method="post" onsubmit="return confirm('ยืนยันล้าง Test Data ทั้งหมด? ระบบจะลบเฉพาะข้อมูลที่มีป้าย SYSTEM TEST')">{% csrf_token %}<input class="input mono" name="confirm_text" autocomplete="off" placeholder="พิมพ์ DELETE TEST DATA"><button class="btn danger" type="submit">ล้างทั้งหมด</button></form>
+          </div>
+          <div class="sensor-note" style="margin-top:10px">เคสที่มาจาก System Test จะถูกทำเครื่องหมายว่า <b>ไม่พร้อมใช้ฝึกโมเดล</b> แม้ภายหลังจะผ่านขั้นตอนยืนยันผลคัดกรองจริง</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="activity" class="section">
+    <div class="section-title"><div><h2>Operational activity</h2><p>สิ่งที่กำลังเกิดขึ้นในระบบและรายการที่ควรตรวจ</p></div></div>
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head"><div><h3>Critical Alerts ที่ยัง active</h3><p>รวม NEW / ACKNOWLEDGED / IN_REVIEW / ESCALATED</p></div><span class="badge red">{{ system_summary.critical_alerts }}</span></div>
+        <div class="list">{% for alert in recent_alerts %}<div class="list-row"><span class="badge red">{{ alert.status }}</span><div class="list-main"><div class="list-title">Visit#{{ alert.visit_id }} · {{ alert.visit.patient.first_name }} {{ alert.visit.patient.last_name }}</div><div class="list-sub">{{ alert.message }}{% if alert.value != None %} · ค่า {{ alert.value }}{% endif %} · {{ alert.created_at|date:"d/m H:i" }}</div></div></div>{% empty %}<div class="empty">ไม่มี Critical Alert ที่ค้างอยู่</div>{% endfor %}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h3>Workflow ล่าสุด</h3><p>Audit trail ล่าสุดเพื่อช่วยตรวจว่ามีอะไรเกิดขึ้น</p></div></div>
+        <div class="list">{% for log in recent_workflow %}<div class="list-row"><span class="badge">{{ log.event_type }}</span><div class="list-main"><div class="list-title">Visit#{{ log.visit_id }} · {{ log.actor_name|default:"ระบบ" }}</div><div class="list-sub">{{ log.description|default:"-" }} · {{ log.created_at|date:"d/m H:i" }}</div></div></div>{% empty %}<div class="empty">ยังไม่มี workflow log</div>{% endfor %}</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="data" class="section">
+    <div class="section-title"><div><h2>Data & access</h2><p>ตรวจฐานข้อมูลและสิทธิ์โดยไม่ทำให้หน้าหลักรกเกินไป</p></div></div>
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head"><div><h3>ตารางที่ใช้บ่อย</h3><p>{{ system_summary.tables }} models · {{ system_summary.rows }} rows ที่เปิดผ่าน explorer</p></div><a class="btn secondary small" href="{% url 'database_index' %}">เปิดทุกตาราง</a></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>ตาราง</th><th>แถว</th><th></th></tr></thead><tbody>{% for item in quick_tables %}<tr><td><b>{{ item.label }}</b><div class="muted mono">{{ item.db_table }}</div></td><td>{{ item.count }}</td><td><a class="btn secondary small" href="{% url 'system_test:database_table' item.app_label item.model_name %}">เปิด</a></td></tr>{% empty %}<tr><td colspan="3">ไม่พบตาราง</td></tr>{% endfor %}</tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h3>Accounts</h3><p>สถานะบัญชีในระบบ</p></div></div>
+        <div class="panel-body">
+          <div class="stats" style="grid-template-columns:repeat(3,1fr)"><div class="stat"><div class="stat-label">ทั้งหมด</div><strong>{{ system_summary.users_total }}</strong></div><div class="stat good"><div class="stat-label">Active</div><strong>{{ system_summary.users_active }}</strong></div><div class="stat alert"><div class="stat-label">Suspended</div><strong>{{ system_summary.users_suspended }}</strong></div></div>
+          <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap"><a class="btn secondary" href="{% url 'personnel_dashboard' %}">จัดการบุคลากร</a><a class="btn secondary" href="/admin/auth/user/">Django Users</a></div>
+        </div>
+      </div>
+    </div>
+
+    <details class="panel" style="margin-top:13px">
+      <summary>สิทธิ์และหน้าที่แต่ละบทบาท</summary>
+      <div class="role-grid">{% for row in role_rows %}<article class="role"><div class="role-head"><h4>{{ row.label }}</h4><span class="role-count">{{ row.count }} บัญชี</span></div><p>{{ row.description }}</p><div class="rights">{% for capability in row.capabilities %}<span class="right">{{ capability }}</span>{% endfor %}</div></article>{% endfor %}</div>
+    </details>
+  </section>
+</main>
+</body>
+</html>

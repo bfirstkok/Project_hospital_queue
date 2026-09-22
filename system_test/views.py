@@ -2,13 +2,17 @@ import json
 import random
 import secrets
 from datetime import date, timedelta
+from pathlib import Path
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import models, transaction
+from django.db import connection, models, transaction
 from django.db.models import Q
+from django.db.migrations.executor import MigrationExecutor
 from django.forms import modelform_factory
 from django.test import RequestFactory
 from django.http import Http404
@@ -21,12 +25,15 @@ from accounts.access import CAPABILITY_LABELS, ROLE_CAPABILITIES, ROLE_DESCRIPTI
 from queues.models import StaffProfile
 from patients.models import Patient
 from queues.models import (
+    ConfirmedTriageCase,
+    CriticalAlert,
     Device,
     DeviceAssignment,
     Queue,
     TelemetryLog,
     TriageResult,
     Visit,
+    VisitWorkflowLog,
     VitalSign,
 )
 from queues.views import create_critical_alerts_for_visit, iot_vitals
@@ -100,7 +107,20 @@ def _safe_value(field_name, value):
 @superuser_required
 @require_GET
 def index(request):
-    runs = TestScenarioRun.objects.select_related("patient", "visit", "device", "created_by")[:20]
+    now = timezone.now()
+    today = timezone.localdate()
+    user_model = get_user_model()
+
+    runs = list(
+        TestScenarioRun.objects
+        .select_related(
+            "patient",
+            "visit",
+            "visit__queue",
+            "device",
+            "created_by",
+        )[:20]
+    )
     sensor_assignments = list(
         DeviceAssignment.objects
         .select_related("device", "visit", "visit__patient", "visit__queue")
@@ -118,22 +138,149 @@ def index(request):
         )
         .order_by("device__device_id")
     )
-    role_rows = []
+
     role_labels = dict(StaffProfile.Role.choices)
+    role_counts = {
+        row["role"]: row["total"]
+        for row in (
+            StaffProfile.objects
+            .values("role")
+            .annotate(total=models.Count("id"))
+        )
+    }
+    role_rows = []
     for role, capabilities in ROLE_CAPABILITIES.items():
         role_rows.append({
             "role": role,
             "label": role_labels.get(role, role),
             "description": ROLE_DESCRIPTIONS.get(role, ""),
+            "count": role_counts.get(role, 0),
             "capabilities": [CAPABILITY_LABELS[value] for value in sorted(capabilities)],
         })
-    return render(request, "system_test/index.html", {
-        "runs": runs,
-        "models": _model_catalog(),
-        "role_rows": role_rows,
-        "sensor_assignments": sensor_assignments,
+
+    terminal_statuses = [
+        Queue.Status.OPD_DONE,
+        Queue.Status.DISCHARGED,
+        Queue.Status.CANCELLED,
+    ]
+    monitoring_statuses = [
+        Queue.Status.MONITORING,
+        Queue.Status.OBSERVATION_MONITORING,
+        Queue.Status.REASSESSMENT_REQUIRED,
+    ]
+    catalog = _model_catalog()
+
+    system_summary = {
+        "users_total": user_model.objects.count(),
+        "users_active": user_model.objects.filter(is_active=True).count(),
+        "users_suspended": user_model.objects.filter(is_active=False).count(),
+        "patients_total": Patient.objects.count(),
+        "visits_today": Visit.objects.filter(registered_at__date=today).count(),
+        "active_queues": Queue.objects.exclude(status__in=terminal_statuses).count(),
+        "monitoring": Queue.objects.filter(status__in=monitoring_statuses).count(),
+        "critical_alerts": (
+            CriticalAlert.objects
+            .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+            .count()
+        ),
+        "devices_active": Device.objects.filter(is_active=True).count(),
+        "active_pairings": DeviceAssignment.objects.filter(is_active=True).count(),
+        "training_ready": ConfirmedTriageCase.objects.filter(
+            is_training_eligible=True
+        ).count(),
+        "test_runs": TestScenarioRun.objects.count(),
+        "tables": len(catalog),
+        "rows": sum(item["count"] for item in catalog),
+    }
+
+    health_checks = []
+    database_ok = False
+    database_detail = connection.vendor.upper()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            database_ok = cursor.fetchone()[0] == 1
+    except Exception as exc:
+        database_detail = f"{connection.vendor.upper()} · {type(exc).__name__}"
+    health_checks.append({
+        "name": "Database",
+        "ok": database_ok,
+        "status": "พร้อมใช้งาน" if database_ok else "เชื่อมต่อไม่ได้",
+        "detail": database_detail,
     })
 
+    pending_migrations = None
+    try:
+        executor = MigrationExecutor(connection)
+        targets = executor.loader.graph.leaf_nodes()
+        pending_migrations = len(executor.migration_plan(targets))
+        health_checks.append({
+            "name": "Migrations",
+            "ok": pending_migrations == 0,
+            "status": "ล่าสุดแล้ว" if pending_migrations == 0 else f"ค้าง {pending_migrations} รายการ",
+            "detail": "Database schema",
+        })
+    except Exception as exc:
+        health_checks.append({
+            "name": "Migrations",
+            "ok": False,
+            "status": "ตรวจสอบไม่ได้",
+            "detail": type(exc).__name__,
+        })
+
+    model_path = Path(settings.BASE_DIR) / "ai_triage" / "models" / "triage_dt_v1.pkl"
+    model_ok = model_path.exists()
+    health_checks.append({
+        "name": "AI model",
+        "ok": model_ok,
+        "status": "พร้อมใช้งาน" if model_ok else "ไม่พบไฟล์โมเดล",
+        "detail": "Random Forest production artifact",
+    })
+    health_checks.append({
+        "name": "Production mode",
+        "ok": not settings.DEBUG,
+        "status": "DEBUG ปิด" if not settings.DEBUG else "DEBUG เปิดอยู่",
+        "detail": "Django runtime",
+    })
+
+    recent_alerts = list(
+        CriticalAlert.objects
+        .select_related("visit", "visit__patient")
+        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+        .order_by("-created_at")[:8]
+    )
+    recent_workflow = list(
+        VisitWorkflowLog.objects
+        .select_related("visit", "actor")
+        .order_by("-created_at", "-id")[:10]
+    )
+
+    quick_tables = [
+        item for item in catalog
+        if item["db_table"] in {
+            "patients_patient",
+            "queues_visit",
+            "queues_queue",
+            "queues_triageresult",
+            "queues_confirmedtriagecase",
+            "queues_criticalalert",
+            "queues_device",
+            "auth_user",
+        }
+    ]
+
+    return render(request, "system_test/index.html", {
+        "runs": runs,
+        "models": catalog,
+        "quick_tables": quick_tables,
+        "role_rows": role_rows,
+        "sensor_assignments": sensor_assignments,
+        "system_summary": system_summary,
+        "health_checks": health_checks,
+        "recent_alerts": recent_alerts,
+        "recent_workflow": recent_workflow,
+        "server_time": now,
+    })
 
 @superuser_required
 @require_GET
@@ -403,19 +550,102 @@ def push_telemetry(request, run_id):
     return redirect("system_test:index")
 
 
+def _delete_test_run_safely(run):
+    """Delete one registered test run without ever deleting untagged real data."""
+    patient = run.patient
+    visit = run.visit
+    device = run.device
+
+    patient_is_test = bool(
+        patient
+        and "[SYSTEM TEST]" in (getattr(patient, "note", "") or "")
+    )
+    visit_is_test = bool(
+        visit
+        and "[SYSTEM TEST]" in (getattr(visit, "note", "") or "")
+    )
+    device_is_test = bool(
+        device
+        and str(getattr(device, "device_id", "") or "").startswith("TESTWATCH")
+    )
+
+    run_id = run.pk
+    run.delete()
+
+    removed_patient = False
+    removed_device = False
+    if patient and (patient_is_test or visit_is_test):
+        patient.delete()
+        removed_patient = True
+    if device and device_is_test and Device.objects.filter(pk=device.pk).exists():
+        device.delete()
+        removed_device = True
+
+    return {
+        "run_id": run_id,
+        "removed_patient": removed_patient,
+        "removed_device": removed_device,
+        "protected_real_data": bool(
+            (patient and not (patient_is_test or visit_is_test))
+            or (device and not device_is_test)
+        ),
+    }
+
+
 @superuser_required
 @require_POST
 @transaction.atomic
 def delete_scenario(request, run_id):
-    run = get_object_or_404(TestScenarioRun, pk=run_id)
-    patient = run.patient
-    device = run.device
-    run.delete()
-    if patient:
-        patient.delete()
-    if device:
-        device.delete()
-    messages.success(request, f"ลบข้อมูลจำลอง #{run_id} แล้ว โดยไม่แตะข้อมูลผู้ป่วยจริง")
+    run = get_object_or_404(
+        TestScenarioRun.objects.select_related("patient", "visit", "device"),
+        pk=run_id,
+    )
+    result = _delete_test_run_safely(run)
+    if result["protected_real_data"]:
+        messages.warning(
+            request,
+            f"ลบ TEST #{run_id} ออกจาก registry แล้ว แต่พบข้อมูลที่ไม่มีป้าย SYSTEM TEST "
+            "จึงไม่ลบ Patient/Device เพื่อป้องกันข้อมูลจริง",
+        )
+    else:
+        messages.success(
+            request,
+            f"ลบข้อมูลจำลอง #{run_id} แล้ว โดยไม่แตะข้อมูลจริง",
+        )
+    return redirect("system_test:index")
+
+
+@superuser_required
+@require_POST
+@transaction.atomic
+def delete_all_scenarios(request):
+    if request.POST.get("confirm_text", "").strip().upper() != "DELETE TEST DATA":
+        messages.error(
+            request,
+            'กรุณาพิมพ์ "DELETE TEST DATA" เพื่อยืนยันการล้างข้อมูลจำลองทั้งหมด',
+        )
+        return redirect("system_test:index")
+
+    runs = list(
+        TestScenarioRun.objects
+        .select_related("patient", "visit", "device")
+        .order_by("pk")
+    )
+    removed = 0
+    protected = 0
+    for run in runs:
+        result = _delete_test_run_safely(run)
+        removed += 1
+        protected += int(result["protected_real_data"])
+
+    if protected:
+        messages.warning(
+            request,
+            f"ล้าง Test registry {removed} รายการแล้ว และป้องกันข้อมูลที่ไม่ติดป้าย SYSTEM TEST "
+            f"{protected} รายการไม่ให้ถูกลบ",
+        )
+    else:
+        messages.success(request, f"ล้างข้อมูลจำลองทั้งหมด {removed} รายการแล้ว")
     return redirect("system_test:index")
 
 

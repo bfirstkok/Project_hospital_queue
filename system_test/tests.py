@@ -15,6 +15,63 @@ class SystemTestConsoleTests(TestCase):
         )
         self.client.force_login(self.admin)
 
+    def test_admin_control_center_shows_health_operations_and_test_lab(self):
+        response = self.client.get(reverse("system_test:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Admin Control Center")
+        self.assertContains(response, "System Health")
+        self.assertContains(response, "Admin shortcuts")
+        self.assertContains(response, "Quick scenarios")
+        self.assertContains(response, "Sensor Simulator")
+        self.assertContains(response, "Operational activity")
+        self.assertContains(response, "Database Explorer")
+        self.assertContains(response, "AI Learning")
+
+    def test_bulk_cleanup_deletes_tagged_test_data_but_protects_untagged_patient(self):
+        real_patient = Patient.objects.create(
+            first_name="Real",
+            last_name="Protected",
+            national_id="1234567890777",
+        )
+        real_visit = Visit.objects.create(patient=real_patient, note="real visit")
+        protected_run = TestScenarioRun.objects.create(
+            scenario=TestScenarioRun.Scenario.WAITING,
+            patient=real_patient,
+            visit=real_visit,
+            created_by=self.admin,
+        )
+        self.client.post(
+            reverse("system_test:create_scenario"),
+            {"scenario": TestScenarioRun.Scenario.WAITING},
+        )
+        synthetic_run = TestScenarioRun.objects.exclude(pk=protected_run.pk).get()
+        synthetic_patient_id = synthetic_run.patient_id
+
+        response = self.client.post(
+            reverse("system_test:delete_all_scenarios"),
+            {"confirm_text": "DELETE TEST DATA"},
+        )
+
+        self.assertRedirects(response, reverse("system_test:index"))
+        self.assertFalse(TestScenarioRun.objects.exists())
+        self.assertFalse(Patient.objects.filter(pk=synthetic_patient_id).exists())
+        self.assertTrue(Patient.objects.filter(pk=real_patient.pk).exists())
+
+    def test_bulk_cleanup_requires_confirmation_phrase(self):
+        self.client.post(
+            reverse("system_test:create_scenario"),
+            {"scenario": TestScenarioRun.Scenario.WAITING},
+        )
+
+        response = self.client.post(
+            reverse("system_test:delete_all_scenarios"),
+            {"confirm_text": "delete"},
+        )
+
+        self.assertRedirects(response, reverse("system_test:index"))
+        self.assertEqual(TestScenarioRun.objects.count(), 1)
+
     def test_full_scenario_and_watch_data_do_not_change_bp(self):
         self.client.post(reverse("system_test:create_scenario"), {"scenario": TestScenarioRun.Scenario.FULL})
         run = TestScenarioRun.objects.get()
