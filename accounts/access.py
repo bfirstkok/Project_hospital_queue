@@ -19,6 +19,12 @@ class Capability:
     RECORD_VITALS = "record_vitals"
     CONFIRM_TRIAGE = "confirm_triage"
     DOCTOR_ASSESSMENT = "doctor_assessment"
+    CREATE_PRESCRIPTION = "create_prescription"
+    ISSUE_MEDICAL_CERTIFICATE = "issue_medical_certificate"
+    VIEW_PHARMACY = "view_pharmacy"
+    MANAGE_PHARMACY = "manage_pharmacy"
+    VIEW_BILLING = "view_billing"
+    MANAGE_BILLING = "manage_billing"
     MONITOR_PATIENT = "monitor_patient"
     ACKNOWLEDGE_ALERT = "acknowledge_alert"
     END_MONITORING = "end_monitoring"
@@ -33,6 +39,8 @@ class Capability:
 ROLE_CAPABILITIES = {
     StaffProfile.Role.DOCTOR: {
         Capability.DOCTOR_ASSESSMENT,
+        Capability.CREATE_PRESCRIPTION,
+        Capability.ISSUE_MEDICAL_CERTIFICATE,
         Capability.TRANSFER_PATIENT,
         Capability.VIEW_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
@@ -72,6 +80,18 @@ ROLE_CAPABILITIES = {
         Capability.MANAGE_DEVICE,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
+    StaffProfile.Role.PHARMACIST: {
+        Capability.VIEW_PHARMACY,
+        Capability.MANAGE_PHARMACY,
+        Capability.VIEW_PATIENT,
+        Capability.VIEW_SHIFT_SCHEDULE,
+    },
+    StaffProfile.Role.CASHIER: {
+        Capability.VIEW_BILLING,
+        Capability.MANAGE_BILLING,
+        Capability.VIEW_PATIENT,
+        Capability.VIEW_SHIFT_SCHEDULE,
+    },
 }
 
 
@@ -83,6 +103,8 @@ ROLE_DESCRIPTIONS = {
     StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
     StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ ย้ายผู้ป่วย และจัดสถานะคิวบริการ",
     StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
+    StaffProfile.Role.PHARMACIST: "รับใบสั่งยา จัดยา ยืนยันความพร้อม และบันทึกการจ่ายยา",
+    StaffProfile.Role.CASHIER: "ตรวจสิทธิการรักษา สรุปค่าใช้จ่าย รับชำระ และออกใบเสร็จ",
 }
 
 CAPABILITY_LABELS = {
@@ -98,6 +120,12 @@ CAPABILITY_LABELS = {
     Capability.RECORD_VITALS: "วัดและบันทึกสัญญาณชีพ",
     Capability.CONFIRM_TRIAGE: "ยืนยันหรือแก้ผลคัดกรอง AI",
     Capability.DOCTOR_ASSESSMENT: "ตรวจรักษาและบันทึกผลแพทย์",
+    Capability.CREATE_PRESCRIPTION: "สร้างใบสั่งยา",
+    Capability.ISSUE_MEDICAL_CERTIFICATE: "ออกใบรับรองแพทย์",
+    Capability.VIEW_PHARMACY: "ดูคิวห้องยา",
+    Capability.MANAGE_PHARMACY: "จัดยาและยืนยันการจ่ายยา",
+    Capability.VIEW_BILLING: "ดูรายการค่าใช้จ่าย",
+    Capability.MANAGE_BILLING: "ตรวจสิทธิ รับชำระ และออกใบเสร็จ",
     Capability.MONITOR_PATIENT: "ติดตามข้อมูลจากอุปกรณ์",
     Capability.ACKNOWLEDGE_ALERT: "รับทราบสัญญาณเตือน",
     Capability.END_MONITORING: "สิ้นสุดการเฝ้าระวังตามแผนการรักษา",
