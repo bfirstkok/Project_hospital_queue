@@ -550,19 +550,102 @@ def push_telemetry(request, run_id):
     return redirect("system_test:index")
 
 
+def _delete_test_run_safely(run):
+    """Delete one registered test run without ever deleting untagged real data."""
+    patient = run.patient
+    visit = run.visit
+    device = run.device
+
+    patient_is_test = bool(
+        patient
+        and "[SYSTEM TEST]" in (getattr(patient, "note", "") or "")
+    )
+    visit_is_test = bool(
+        visit
+        and "[SYSTEM TEST]" in (getattr(visit, "note", "") or "")
+    )
+    device_is_test = bool(
+        device
+        and str(getattr(device, "device_id", "") or "").startswith("TESTWATCH")
+    )
+
+    run_id = run.pk
+    run.delete()
+
+    removed_patient = False
+    removed_device = False
+    if patient and (patient_is_test or visit_is_test):
+        patient.delete()
+        removed_patient = True
+    if device and device_is_test and Device.objects.filter(pk=device.pk).exists():
+        device.delete()
+        removed_device = True
+
+    return {
+        "run_id": run_id,
+        "removed_patient": removed_patient,
+        "removed_device": removed_device,
+        "protected_real_data": bool(
+            (patient and not (patient_is_test or visit_is_test))
+            or (device and not device_is_test)
+        ),
+    }
+
+
 @superuser_required
 @require_POST
 @transaction.atomic
 def delete_scenario(request, run_id):
-    run = get_object_or_404(TestScenarioRun, pk=run_id)
-    patient = run.patient
-    device = run.device
-    run.delete()
-    if patient:
-        patient.delete()
-    if device:
-        device.delete()
-    messages.success(request, f"ลบข้อมูลจำลอง #{run_id} แล้ว โดยไม่แตะข้อมูลผู้ป่วยจริง")
+    run = get_object_or_404(
+        TestScenarioRun.objects.select_related("patient", "visit", "device"),
+        pk=run_id,
+    )
+    result = _delete_test_run_safely(run)
+    if result["protected_real_data"]:
+        messages.warning(
+            request,
+            f"ลบ TEST #{run_id} ออกจาก registry แล้ว แต่พบข้อมูลที่ไม่มีป้าย SYSTEM TEST "
+            "จึงไม่ลบ Patient/Device เพื่อป้องกันข้อมูลจริง",
+        )
+    else:
+        messages.success(
+            request,
+            f"ลบข้อมูลจำลอง #{run_id} แล้ว โดยไม่แตะข้อมูลจริง",
+        )
+    return redirect("system_test:index")
+
+
+@superuser_required
+@require_POST
+@transaction.atomic
+def delete_all_scenarios(request):
+    if request.POST.get("confirm_text", "").strip().upper() != "DELETE TEST DATA":
+        messages.error(
+            request,
+            'กรุณาพิมพ์ "DELETE TEST DATA" เพื่อยืนยันการล้างข้อมูลจำลองทั้งหมด',
+        )
+        return redirect("system_test:index")
+
+    runs = list(
+        TestScenarioRun.objects
+        .select_related("patient", "visit", "device")
+        .order_by("pk")
+    )
+    removed = 0
+    protected = 0
+    for run in runs:
+        result = _delete_test_run_safely(run)
+        removed += 1
+        protected += int(result["protected_real_data"])
+
+    if protected:
+        messages.warning(
+            request,
+            f"ล้าง Test registry {removed} รายการแล้ว และป้องกันข้อมูลที่ไม่ติดป้าย SYSTEM TEST "
+            f"{protected} รายการไม่ให้ถูกลบ",
+        )
+    else:
+        messages.success(request, f"ล้างข้อมูลจำลองทั้งหมด {removed} รายการแล้ว")
     return redirect("system_test:index")
 
 
