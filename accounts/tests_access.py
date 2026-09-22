@@ -76,6 +76,18 @@ class RoleAccessTests(TestCase):
                 ("device_management",),
                 ("queue_list", "waiting_vitals", "waiting_confirmation", "register_patient", "patient_search", "opd_room_select", "emergency_transfers", "dashboard:home"),
             ),
+            (
+                StaffProfile.Role.PHARMACIST,
+                "pharmacist-only",
+                ("pharmacy_worklist",),
+                ("billing_worklist", "queue_list", "waiting_vitals", "waiting_confirmation", "register_patient", "opd_room_select", "device_management", "dashboard:home"),
+            ),
+            (
+                StaffProfile.Role.CASHIER,
+                "cashier-only",
+                ("billing_worklist",),
+                ("pharmacy_worklist", "queue_list", "waiting_vitals", "waiting_confirmation", "register_patient", "opd_room_select", "device_management", "dashboard:home"),
+            ),
         )
         for role, username, allowed, denied in cases:
             with self.subTest(role=role):
@@ -247,6 +259,10 @@ class RoleAccessTests(TestCase):
             Capability.CONFIRM_TRIAGE: StaffProfile.Role.NURSE,
             Capability.MANAGE_QUEUE: StaffProfile.Role.QUEUE_OPERATOR,
             Capability.DOCTOR_ASSESSMENT: StaffProfile.Role.DOCTOR,
+            Capability.CREATE_PRESCRIPTION: StaffProfile.Role.DOCTOR,
+            Capability.ISSUE_MEDICAL_CERTIFICATE: StaffProfile.Role.DOCTOR,
+            Capability.MANAGE_PHARMACY: StaffProfile.Role.PHARMACIST,
+            Capability.MANAGE_BILLING: StaffProfile.Role.CASHIER,
             Capability.ACKNOWLEDGE_ALERT: StaffProfile.Role.NURSE,
             Capability.END_MONITORING: StaffProfile.Role.NURSE,
             Capability.MANAGE_DEVICE: StaffProfile.Role.BIOMEDICAL,
