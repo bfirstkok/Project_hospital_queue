@@ -82,7 +82,7 @@
             </div>
 
             <div class="case-details">
-              <div class="detail-box"><span class="detail-label">เหตุผล / ผลยืนยันโดยพยาบาล</span><p class="reason-text">{% if q.visit.triage_result.nurse_note %}{{ q.visit.triage_result.nurse_note }}{% elif q.ai_reason_display %}{{ q.ai_reason_display }}{% elif q.visit.note %}{{ q.visit.note }}{% else %}พยาบาลยืนยันระดับฉุกเฉินแล้ว{% endif %}</p></div>
+              <div class="detail-box"><span class="detail-label">{% if q.er_transfer_from_monitoring %}เหตุผลส่งต่อจาก Monitoring{% else %}เหตุผล / ผลยืนยันโดยพยาบาล{% endif %}</span><p class="reason-text">{% if q.er_transfer_reason %}{{ q.er_transfer_reason }}{% elif q.visit.triage_result.nurse_note %}{{ q.visit.triage_result.nurse_note }}{% elif q.ai_reason_display %}{{ q.ai_reason_display }}{% elif q.visit.note %}{{ q.visit.note }}{% else %}พยาบาลยืนยันระดับฉุกเฉินแล้ว{% endif %}</p></div>
               <div class="detail-box"><span class="detail-label">สัญญาณชีพล่าสุด</span><div class="vital-list"><span class="vital-chip">PR <b>{{ q.visit.vitals.pr|default_if_none:"-" }}</b></span><span class="vital-chip">SpO₂ <b>{{ q.visit.vitals.o2sat|default_if_none:"-" }}{% if q.visit.vitals.o2sat != None %}%{% endif %}</b></span><span class="vital-chip">BP <b>{{ q.visit.vitals.sys_bp|default_if_none:"-" }}/{{ q.visit.vitals.dia_bp|default_if_none:"-" }}</b></span><span class="vital-chip">RR <b>{{ q.visit.vitals.rr|default_if_none:"-" }}</b></span><span class="vital-chip">BT <b>{{ q.visit.vitals.bt|default_if_none:"-" }}{% if q.visit.vitals.bt != None %}°C{% endif %}</b></span></div></div>
             </div>
 
