@@ -1355,6 +1355,50 @@ class ConfirmedTriageExportTests(TestCase):
         self.assertNotIn("phone", rows[0])
 
 
+    def test_system_test_case_is_never_training_eligible(self):
+        patient = Patient.objects.create(
+            first_name="System",
+            last_name="Test",
+            national_id="9000000000001",
+            age=50,
+            note="[SYSTEM TEST] synthetic patient",
+        )
+        visit = Visit.objects.create(
+            patient=patient,
+            note="[SYSTEM TEST] synthetic triage",
+            final_severity=Visit.Severity.RED,
+            confirmed_at=timezone.now(),
+        )
+        VitalSign.objects.create(
+            visit=visit,
+            rr=32,
+            pr=130,
+            sys_bp=85,
+            dia_bp=55,
+            bt=39.0,
+            o2sat=88,
+            pain_score=8,
+        )
+        triage = TriageResult.objects.create(
+            visit=visit,
+            ai_severity=Visit.Severity.RED,
+            nurse_severity=Visit.Severity.RED,
+            lifesaving_intervention=True,
+            high_risk_condition=True,
+            altered_mental_status=False,
+            mental_status="ALERT",
+            severe_distress=True,
+            expected_resources="2_PLUS",
+        )
+
+        case = capture_confirmed_triage_case(
+            visit=visit,
+            triage_result=triage,
+        )
+
+        self.assertFalse(case.is_training_eligible)
+        self.assertIn("System Test", case.eligibility_note)
+
 class DutyAndResponsibleNurseAlertTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
