@@ -10,6 +10,7 @@ urlpatterns = [
     path("visit/<int:visit_id>/assessment/", capability_required(Capability.DOCTOR_ASSESSMENT)(views.visit_assessment), name="visit_assessment"),
     path("visit/<int:visit_id>/detail/", capability_required(Capability.DOCTOR_ASSESSMENT)(views.opd_visit_detail), name="opd_visit_detail"),
     path("visit/<int:visit_id>/care/", capability_required(Capability.CREATE_PRESCRIPTION)(workflow_views.opd_care_plan), name="opd_care_plan"),
+    path("visit/<int:visit_id>/clinical-summary/", capability_required(Capability.DOCTOR_ASSESSMENT)(workflow_views.clinical_summary_print), name="clinical_summary_print"),
     path("prescription/item/<int:item_id>/delete/", capability_required(Capability.CREATE_PRESCRIPTION)(workflow_views.delete_prescription_item), name="delete_prescription_item"),
     path("pharmacy/", capability_required(Capability.VIEW_PHARMACY)(workflow_views.pharmacy_worklist), name="pharmacy_worklist"),
     path("pharmacy/<int:prescription_id>/status/", capability_required(Capability.MANAGE_PHARMACY)(workflow_views.pharmacy_update_status), name="pharmacy_update_status"),
