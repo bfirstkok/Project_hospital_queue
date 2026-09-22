@@ -37,6 +37,7 @@ urlpatterns = [
     path("api/alerts/<int:alert_id>/resolve/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.resolve_alert), name="resolve_alert"),
     path("api/alerts/<int:alert_id>/false-alarm/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.false_alarm_alert), name="false_alarm_alert"),
     path("api/alerts/<int:alert_id>/escalate/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.escalate_alert), name="escalate_alert"),
+    path("api/alerts/<int:alert_id>/transfer-er/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.transfer_alert_to_er), name="transfer_alert_to_er"),
     path("api/alerts/mine/", capability_required(Capability.ACKNOWLEDGE_ALERT)(views.my_critical_alerts), name="my_critical_alerts"),
 
     # /queues/monitor/ is the waiting-area wearable monitor. Post-OPD
