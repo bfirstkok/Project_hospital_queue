@@ -122,3 +122,20 @@ jobs:
               report.append(entry)
           print(json.dumps(report, ensure_ascii=False, indent=2))
           PY
+
+      - name: Print KTAS dataset counts and dictionary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          path = "/tmp/ktas/extracted/Data sharing.xlsx"
+          data = pd.read_excel(path, sheet_name="Sheet1")
+          dictionary = pd.read_excel(path, sheet_name="Sheet2")
+          print("shape:", data.shape)
+          print("KTAS counts:")
+          print(data["KTAS Level"].value_counts(dropna=False).sort_index().to_string())
+          print("\nPain group counts:")
+          print(data["Group"].value_counts(dropna=False).sort_index().to_string())
+          print("\nDictionary:")
+          print(dictionary.to_string(index=False))
+          PY
