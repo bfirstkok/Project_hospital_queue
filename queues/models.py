@@ -297,6 +297,11 @@ class VisitWorkflowLog(models.Model):
         EMERGENCY_DISCHARGED = "EMERGENCY_DISCHARGED", "สิ้นสุดการรักษาฉุกเฉิน"
         EMERGENCY_REFERRED = "EMERGENCY_REFERRED", "ส่งต่อผู้ป่วยฉุกเฉิน"
         DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
+        PRESCRIPTION_CREATED = "PRESCRIPTION_CREATED", "สร้าง/แก้ไขใบสั่งยา"
+        PHARMACY_STATUS_CHANGED = "PHARMACY_STATUS_CHANGED", "เปลี่ยนสถานะงานห้องยา"
+        BILL_CREATED = "BILL_CREATED", "สร้างรายการค่าใช้จ่าย"
+        PAYMENT_RECEIVED = "PAYMENT_RECEIVED", "รับชำระเงิน"
+        MEDICAL_CERTIFICATE_ISSUED = "MEDICAL_CERTIFICATE_ISSUED", "ออกใบรับรองแพทย์"
 
     visit = models.ForeignKey(
         Visit,
@@ -413,6 +418,8 @@ class StaffProfile(models.Model):
         STAFF = "STAFF", "เจ้าหน้าที่เวชระเบียน"
         QUEUE_OPERATOR = "QUEUE_OPERATOR", "เจ้าหน้าที่จัดคิว"
         BIOMEDICAL = "BIOMEDICAL", "เจ้าหน้าที่เครื่องมือแพทย์"
+        PHARMACIST = "PHARMACIST", "เภสัชกร"
+        CASHIER = "CASHIER", "เจ้าหน้าที่การเงิน"
 
     user = models.OneToOneField(
         "auth.User",
