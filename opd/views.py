@@ -343,8 +343,14 @@ def visit_assessment(request, visit_id: int):
 
     assessment = VisitAssessment.objects.filter(visit=visit).first()
 
+    prefill_initial = _assessment_initial_from_triage(visit)
+
     if request.method == "POST":
-        form = VisitAssessmentForm(request.POST, instance=assessment)
+        form = VisitAssessmentForm(
+            request.POST,
+            instance=assessment,
+            initial=None if assessment else prefill_initial,
+        )
         if form.is_valid():
             assessment = form.save(commit=False)
             assessment.visit = visit
@@ -389,12 +395,27 @@ def visit_assessment(request, visit_id: int):
             # Redirect ไปหน้ารายละเอียด Visit เพื่อให้เห็น Assessment ที่บันทึกไป
             return redirect("opd_visit_detail", visit_id=visit.id)
     else:
-        initial = None if assessment else _assessment_initial_from_triage(visit)
+        initial = None if assessment else prefill_initial
         form = VisitAssessmentForm(instance=assessment, initial=initial)
 
     color, reasons = _compute_opd(assessment)
 
     # ✅ จากโครงสร้างโฟลเดอร์ของเธอ: opd/templates/assessment.html
+    risk_flag_labels = {
+        "copd_asthma": "COPD / Asthma",
+        "child_under_5": "เด็กอายุต่ำกว่า 5 ปี",
+        "elderly_80": "ผู้สูงอายุ ≥ 80 ปี",
+        "pregnant": "ตั้งครรภ์",
+        "immunocompromised": "ภูมิคุ้มกันต่ำ",
+    }
+    triage_risk_flags = []
+    vitals = _get_related(visit, "vitals")
+    if vitals:
+        triage_risk_flags = [
+            risk_flag_labels.get(value, value)
+            for value in (vitals.risk_flags or [])
+        ]
+
     return render(request, "assessment.html", {
         "visit": visit,
         "q": q,
@@ -403,6 +424,7 @@ def visit_assessment(request, visit_id: int):
         "opd_reasons": reasons,
         "followup_visit_id": getattr(assessment, "followup_visit_id", None),
         "examiner": examiner,
+        "triage_risk_flags": triage_risk_flags,
     })
 
 
