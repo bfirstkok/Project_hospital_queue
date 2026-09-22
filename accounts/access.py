@@ -12,6 +12,7 @@ class Capability:
     MANAGE_QUEUE = "manage_queue"
     TRANSFER_PATIENT = "transfer_patient"
     VIEW_EMERGENCY = "view_emergency"
+    MANAGE_EMERGENCY = "manage_emergency"
     REGISTER_PATIENT = "register_patient"
     VIEW_PATIENT = "view_patient"
     EDIT_PATIENT = "edit_patient"
@@ -51,6 +52,7 @@ ROLE_CAPABILITIES = {
     },
     StaffProfile.Role.EMERGENCY: {
         Capability.VIEW_EMERGENCY,
+        Capability.MANAGE_EMERGENCY,
         Capability.VIEW_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
@@ -77,7 +79,7 @@ ROLE_DESCRIPTIONS = {
     StaffProfile.Role.DOCTOR: "ตรวจรักษา บันทึกผลประเมิน ย้ายผู้ป่วยระหว่างห้องตรวจเมื่อจำเป็น และดูข้อมูลผู้ป่วยที่เกี่ยวข้อง",
     StaffProfile.Role.NURSE: "คัดกรอง ยืนยันระดับความเร่งด่วน เฝ้าระวัง และตอบรับสัญญาณเตือน",
     StaffProfile.Role.NURSE_ASSISTANT: "วัดและบันทึกสัญญาณชีพภายใต้การกำกับของพยาบาลวิชาชีพ",
-    StaffProfile.Role.EMERGENCY: "รับช่วงและดูแลรายการผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
+    StaffProfile.Role.EMERGENCY: "รับช่วง ดูแล ปิดการรักษา หรือส่งต่อผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
     StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
     StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ ย้ายผู้ป่วย และจัดสถานะคิวบริการ",
     StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
@@ -88,7 +90,8 @@ CAPABILITY_LABELS = {
     Capability.VIEW_QUEUE: "ดูรายการคิว",
     Capability.MANAGE_QUEUE: "เรียกคิว ปรับลำดับ/เลขคิว และเปลี่ยนสถานะบริการ",
     Capability.TRANSFER_PATIENT: "ย้ายผู้ป่วยระหว่างห้องตรวจหรือส่งกลับไปรอเรียก",
-    Capability.VIEW_EMERGENCY: "รับช่วงรายการผู้ป่วยฉุกเฉิน",
+    Capability.VIEW_EMERGENCY: "ดูรายการผู้ป่วยฉุกเฉิน",
+    Capability.MANAGE_EMERGENCY: "รับเคส ปิดการรักษา หรือส่งต่อผู้ป่วยฉุกเฉิน",
     Capability.REGISTER_PATIENT: "ลงทะเบียนผู้ป่วย",
     Capability.VIEW_PATIENT: "ค้นหาและดูประวัติผู้ป่วย",
     Capability.EDIT_PATIENT: "แก้ไขข้อมูลและนัดหมาย",
