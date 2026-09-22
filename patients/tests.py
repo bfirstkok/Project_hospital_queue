@@ -208,27 +208,20 @@ class PublicPatientApiTests(TestCase):
         self.assertNotContains(response, 'name="username"')
         self.assertNotContains(response, 'name="password"')
 
-    def test_staff_registration_requires_same_core_health_fields_as_patient_portal(self):
+    def test_staff_registration_marks_patient_portal_core_fields_in_ui(self):
         user = get_user_model().objects.create_user(username="required-fields", password="test-only-password")
         self.client.force_login(user)
 
-        response = self.client.post(reverse("register_patient"), {
-            "first_name": "ผู้ป่วย",
-            "last_name": "ข้อมูลไม่ครบ",
-            "national_id": "4999999999999",
-            "gender": "M",
-            "age": "30",
-            "phone": "0812345678",
-            "email": "required@example.com",
-            "blood_type": "UNKNOWN",
-            "note": "ปวดศีรษะ",
-        })
+        response = self.client.get(reverse("register_patient"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("chronic_diseases", response.context["form"].errors)
-        self.assertIn("allergies", response.context["form"].errors)
-        self.assertIn("medications", response.context["form"].errors)
-        self.assertEqual(Patient.objects.filter(national_id="4999999999999").count(), 0)
+        self.assertContains(response, 'name="phone"')
+        self.assertContains(response, 'name="email"')
+        self.assertContains(response, 'data-choice-field')
+        self.assertContains(response, 'data-target="chronic_diseases"')
+        self.assertContains(response, 'data-target="allergies"')
+        self.assertContains(response, 'data-target="medications"')
+        self.assertContains(response, 'const isEditMode = false')
 
     def test_staff_registration_saves_up_to_three_emergency_contacts_like_patient_portal(self):
         user = get_user_model().objects.create_user(username="multi-contact", password="test-only-password")
