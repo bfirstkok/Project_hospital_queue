@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from patients.models import Patient
-from queues.models import CriticalAlert, Device, DeviceAssignment, Queue, TelemetryLog, Visit, VitalSign
+from queues.models import CriticalAlert, Device, DeviceAssignment, Queue, StaffDuty, StaffProfile, TelemetryLog, Visit, VisitWorkflowLog, VitalSign
 
 from .models import TestScenarioRun
 
@@ -25,8 +26,74 @@ class SystemTestConsoleTests(TestCase):
         self.assertContains(response, "Quick scenarios")
         self.assertContains(response, "Sensor Simulator")
         self.assertContains(response, "Operational activity")
+        self.assertContains(response, "Audit Log การทำงานของบุคลากร")
         self.assertContains(response, "Database Explorer")
         self.assertContains(response, "AI Learning")
+
+    def test_admin_control_center_shows_live_staff_presence_and_latest_action(self):
+        nurse = get_user_model().objects.create_user(
+            username="live-nurse",
+            first_name="พยาบาล",
+            last_name="ออนไลน์",
+            password="test-password-123",
+        )
+        StaffProfile.objects.create(user=nurse, role=StaffProfile.Role.NURSE)
+        StaffDuty.objects.create(
+            user=nurse,
+            duty_date=timezone.localdate(),
+            is_present=True,
+            is_available=True,
+            last_seen_at=timezone.now(),
+        )
+        patient = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="ทดสอบ",
+            national_id="1234567890111",
+        )
+        visit = Visit.objects.create(patient=patient)
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.VITALS_RECORDED,
+            actor=nurse,
+            description="บันทึกสัญญาณชีพจากจุดคัดกรอง",
+        )
+
+        response = self.client.get(reverse("system_test:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "live-nurse")
+        self.assertContains(response, "ออนไลน์")
+        self.assertContains(response, "บันทึกสัญญาณชีพ")
+        self.assertContains(response, "บันทึกสัญญาณชีพจากจุดคัดกรอง")
+
+    def test_admin_audit_log_can_filter_by_event(self):
+        patient = Patient.objects.create(
+            first_name="Audit",
+            last_name="Filter",
+            national_id="1234567890222",
+        )
+        visit = Visit.objects.create(patient=patient)
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.VITALS_RECORDED,
+            actor=self.admin,
+            description="SHOULD_NOT_MATCH_EVENT_FILTER",
+        )
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=VisitWorkflowLog.EventType.QUEUE_CALLED,
+            actor=self.admin,
+            description="MATCHED_QUEUE_EVENT",
+        )
+
+        response = self.client.get(
+            reverse("system_test:index"),
+            {"event": VisitWorkflowLog.EventType.QUEUE_CALLED, "period": "all"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MATCHED_QUEUE_EVENT")
+        self.assertNotContains(response, "SHOULD_NOT_MATCH_EVENT_FILTER")
 
     def test_bulk_cleanup_deletes_tagged_test_data_but_protects_untagged_patient(self):
         real_patient = Patient.objects.create(
