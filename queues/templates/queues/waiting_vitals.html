@@ -149,13 +149,14 @@
     .waiting-vitals-page .btn.primary { min-height: 42px; padding: 0 16px; border: 0 !important; border-radius: 10px; color: #fff !important; background: #087f75 !important; box-shadow: 0 8px 20px rgba(8,127,117,.17); }
     .waiting-vitals-page .btn.primary:hover { background: #066d65 !important; transform: translateY(-1px); }
 
-    .waiting-board { overflow: hidden; border: 1px solid #d4e2e6; border-radius: 16px; background: #fff; box-shadow: 0 14px 38px rgba(42,79,92,.07); }
-    .waiting-board__head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; border-bottom: 1px solid #e0eaed; }
-    .waiting-board__title { margin: 0; color: #17324d; font-size: 19px; font-weight: 800; }
-    .waiting-board__hint { margin-top: 3px; color: #718792; font-size: 13px; }
-    .waiting-board__total { flex: 0 0 auto; color: #08766e; font-size: 14px; font-weight: 800; }
+    .waiting-board { overflow: hidden; border: 1px solid #d2e2e5; border-radius: 20px; background: #fff; box-shadow: 0 18px 54px rgba(42,79,92,.09); }
+    .waiting-board__head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 21px 22px; border-bottom: 1px solid #dce8ea; background: linear-gradient(135deg,#ffffff 0%,#f4fbf9 100%); }
+    .waiting-board__title { margin: 0; color: #17324d; font-size: 20px; font-weight: 900; letter-spacing: -.01em; }
+    .waiting-board__hint { margin-top: 4px; color: #718792; font-size: 13px; }
+    .waiting-board__total { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 7px 11px; border: 1px solid #c8e5df; border-radius: 999px; color: #08766e; background: #ecf8f5; font-size: 13px; font-weight: 900; }
+    .waiting-board__total::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #0b9b8d; box-shadow: 0 0 0 4px rgba(11,155,141,.10); }
 
-    .waiting-vitals-page .list-tools { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; gap: 9px; margin: 0; padding: 13px 20px; border: 0; border-bottom: 1px solid #e0eaed; border-radius: 0; background: #f8fbfc !important; }
+    .waiting-vitals-page .list-tools { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; gap: 9px; margin: 0; padding: 14px 22px; border: 0; border-bottom: 1px solid #e0eaed; border-radius: 0; background: #fbfdfd !important; }
     .waiting-vitals-page .search-input { width: 100%; min-height: 43px; padding: 0 14px 0 42px; border: 1px solid #bfd2d8 !important; border-radius: 10px !important; color: #17324d !important; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23677f8b' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.7-3.7'/%3E%3C/svg%3E") no-repeat 14px center !important; box-shadow: none; }
     .waiting-vitals-page .search-input::placeholder { color: #8a9ba3; }
     .waiting-vitals-page .search-input:focus { border-color: #0b9185 !important; box-shadow: 0 0 0 3px rgba(11,145,133,.11); outline: 0; }
@@ -166,19 +167,20 @@
     .waiting-vitals-page .search-result { grid-column: 1 / -1; margin: 0; color: #627984; }
 
     .waiting-vitals-page .table-scroll { border-radius: 0; }
-    .waiting-vitals-page .table { min-width: 1120px; margin: 0; border: 0 !important; border-radius: 0 !important; background: #fff !important; box-shadow: none !important; }
-    .waiting-vitals-page .table th { padding: 12px 14px; border-bottom: 1px solid #dce8eb !important; color: #5d7581 !important; background: #f6fafb !important; font-size: 12px !important; letter-spacing: .02em; text-transform: none; }
-    .waiting-vitals-page .table td { padding: 16px 14px; border-bottom: 1px solid #e4edef !important; color: #17324d !important; background: #fff !important; font-size: 15px; }
-    .waiting-vitals-page .table tbody tr:hover td { background: #f8fcfc !important; }
+    .waiting-vitals-page .table { min-width: 1120px; margin: 0; border: 0 !important; border-collapse: separate; border-spacing: 0; border-radius: 0 !important; background: #fff !important; box-shadow: none !important; }
+    .waiting-vitals-page .table th { padding: 13px 14px; border-bottom: 1px solid #d9e6e9 !important; color: #58717d !important; background: #f5f9fa !important; font-size: 11px !important; font-weight: 900; letter-spacing: .035em; text-transform: none; }
+    .waiting-vitals-page .table td { padding: 18px 14px; border-bottom: 1px solid #e5edef !important; color: #17324d !important; background: #fff !important; font-size: 15px; transition: background .16s ease, box-shadow .16s ease; }
+    .waiting-vitals-page .table tbody tr:hover td { background: #f9fcfb !important; }
+    .waiting-vitals-page .table tbody tr:hover td:first-child { box-shadow: inset 4px 0 0 #76c9bf; }
     .waiting-vitals-page .table tbody tr:last-child td { border-bottom: 0 !important; }
     .waiting-vitals-page .table th:first-child,
     .waiting-vitals-page .table td:first-child { padding-left: 20px; }
     .waiting-vitals-page .table th:last-child,
     .waiting-vitals-page .table td:last-child { padding-right: 20px; }
     .waiting-vitals-page .table td:nth-child(2) { font-size: 15px; font-weight: 400; }
-    .queue-badge { display: inline-flex; min-width: 62px; min-height: 34px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid #c8e0eb; border-radius: 9px; color: #1977a4; background: #edf7fb; font-size: 14px; font-weight: 900; }
-    .patient-summary { display: flex; align-items: center; gap: 11px; }
-    .patient-avatar { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 11px; color: #08766e; background: #e4f5f2; font-size: 16px; font-weight: 900; }
+    .queue-badge { display: inline-flex; min-width: 68px; min-height: 38px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #bcdbe7; border-radius: 11px; color: #126f99; background: linear-gradient(180deg,#f3fbfe,#eaf6fb); box-shadow: 0 2px 7px rgba(25,119,164,.08); font-size: 14px; font-weight: 900; }
+    .patient-summary { display: flex; align-items: center; gap: 12px; }
+    .patient-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border: 1px solid #c8e8e2; border-radius: 13px; color: #08766e; background: linear-gradient(145deg,#eaf8f5,#dff2ee); font-size: 17px; font-weight: 900; box-shadow: 0 3px 10px rgba(8,127,117,.07); }
     .waiting-vitals-page .patient-name { color: #17324d; font-size: 17px; line-height: 1.25; }
     .patient-meta { margin-top: 4px; color: #748993; font-size: 12px; font-weight: 500; }
     .waiting-vitals-page .detail-box { margin-top: 6px; margin-left: 49px; }
@@ -210,11 +212,17 @@
     .waiting-vitals-page .patient-menu-item.edit:hover { color: #735500; background: #fff8e4; }
     .registration-time { display: block; color: #17324d; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .registration-time small { display: block; margin-top: 3px; color: #82949c; font-size: 11px; font-weight: 500; }
-    .waiting-vitals-page .status { padding: 6px 10px; border: 1px solid #efd38d !important; border-radius: 8px; color: #8b6200 !important; background: #fff8e4 !important; font-size: 13px; }
+    .waiting-vitals-page .status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #efd38d !important; border-radius: 999px; color: #8b6200 !important; background: #fff8e4 !important; font-size: 12px; }
+    .waiting-vitals-page .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #d69614; box-shadow: 0 0 0 3px rgba(214,150,20,.12); }
     .waiting-vitals-page .vitals { gap: 5px; }
-    .waiting-vitals-page .vital { padding: 5px 8px; border: 1px solid #d8e5e8 !important; border-radius: 7px; color: #49636f !important; background: #f7fafb !important; font-size: 12px; }
+    .waiting-vitals-page .vital { padding: 5px 8px; border: 1px solid #d8e5e8 !important; border-radius: 8px; color: #49636f !important; background: #f7fafb !important; font-size: 11px; font-weight: 700; }
+    .vitals-empty { display: inline-flex; align-items: center; gap: 8px; color: #7b9099; font-size: 12px; font-weight: 700; }
+    .vitals-empty::before { content: ""; width: 8px; height: 8px; border: 2px solid #aebfc5; border-radius: 50%; background: #fff; }
     .waiting-vitals-page .action-stack { align-items: stretch; }
-    .waiting-vitals-page .action-stack .btn { justify-content: center; min-height: 38px; white-space: nowrap; }
+    .waiting-vitals-page .action-stack .btn { justify-content: center; min-height: 40px; white-space: nowrap; }
+    .waiting-vitals-page .assess-button { gap: 9px; border-radius: 10px !important; font-size: 13px; box-shadow: 0 7px 16px rgba(8,127,117,.16); }
+    .waiting-vitals-page .assess-button span { font-size: 16px; line-height: 1; transition: transform .16s ease; }
+    .waiting-vitals-page .assess-button:hover span { transform: translateX(2px); }
 
     .waiting-vitals-page .list-controls { margin: 0; padding: 14px 20px; border: 0; border-top: 1px solid #e0eaed; border-radius: 0; background: #f8fbfc !important; }
     .waiting-vitals-page .page-size-form { color: #526d79; }
@@ -392,17 +400,21 @@
             <td><span class="registration-time">{{ v.registered_at|date:"H:i" }}<small>{{ v.registered_at|date:"d/m/Y" }}</small></span></td>
             <td><span class="status">รอวัดค่า</span></td>
             <td>
-              <div class="vitals">
-                <span class="vital">HR {{ vs.pr|default:"-" }}</span>
-                <span class="vital">SpO2 {{ vs.o2sat|default:"-" }}</span>
-                <span class="vital">Temp {{ vs.bt|default:"-" }}</span>
-                <span class="vital">RR {{ vs.rr|default:"-" }}</span>
-                <span class="vital">BP {{ vs.sys_bp|default:"-" }}/{{ vs.dia_bp|default:"-" }}</span>
-              </div>
+              {% if vs.pr or vs.o2sat or vs.bt or vs.rr or vs.sys_bp or vs.dia_bp %}
+                <div class="vitals">
+                  <span class="vital">HR {{ vs.pr|default:"-" }}</span>
+                  <span class="vital">SpO2 {{ vs.o2sat|default:"-" }}</span>
+                  <span class="vital">Temp {{ vs.bt|default:"-" }}</span>
+                  <span class="vital">RR {{ vs.rr|default:"-" }}</span>
+                  <span class="vital">BP {{ vs.sys_bp|default:"-" }}/{{ vs.dia_bp|default:"-" }}</span>
+                </div>
+              {% else %}
+                <span class="vitals-empty">ยังไม่ได้วัดสัญญาณชีพ</span>
+              {% endif %}
             </td>
             <td>
               <div class="action-stack">
-                <a class="btn primary" href="{% url 'nurse_triage_assessment' v.id %}">ประเมินสุขภาพ</a>
+                <a class="btn primary assess-button" href="{% url 'nurse_triage_assessment' v.id %}">ประเมินสุขภาพ <span aria-hidden="true">→</span></a>
               </div>
             </td>
           </tr>
