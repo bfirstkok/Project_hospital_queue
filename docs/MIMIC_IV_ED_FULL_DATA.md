@@ -109,3 +109,33 @@ Do not report ordinary row-level cross-validation on repeated patients as if it 
 7. Keep rule-based safety guardrails and nurse confirmation unchanged.
 
 The production model must not be replaced only because training performance improves on mixed-domain data.
+
+
+## Project-only validation after MIMIC augmentation
+
+Do not judge the augmentation by evaluating on MIMIC rows. The important
+question for this project is whether external data helps performance on the
+project's own data distribution.
+
+After converting MIMIC:
+
+```bash
+python -m ai_triage.ml.benchmark_mimic_augmentation \
+  --mimic-csv /opt/hospital-private/mimic/mimic_runtime.csv \
+  --max-external-per-class 5000 \
+  --external-weight 0.35 \
+  --output /opt/hospital-private/mimic/augmentation_result.json
+```
+
+The script compares:
+
+- current Random Forest trained on project data only
+- the same Random Forest trained on project data + MIMIC augmentation
+
+Both are evaluated on the same held-out project-only folds. This prevents a
+large external dataset from making the reported score look good simply because
+the test data comes from the same external source.
+
+Start with `external_weight=0.35`. If MIMIC improves RED/PINK recall without
+degrading route accuracy or severe under-triage, repeat with 0.20, 0.50, and
+1.00 as a sensitivity analysis.
