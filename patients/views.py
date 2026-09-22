@@ -25,7 +25,7 @@ import logging
 import re
 import secrets
 
-from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm
+from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm, normalize_thai_phone
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
 from .security import rate_limited, rate_limited_by_identifier
 from queues.models import Visit, Queue, VitalSign, VisitWorkflowLog
@@ -1622,6 +1622,84 @@ def patient_cancel_queue(request):
     return _cors_json(request, {"ok": True, "message": "ยกเลิกคิวเรียบร้อยแล้ว"})
 
 
+def _staff_emergency_contacts_from_post(data):
+    contacts = []
+    for index in range(1, 4):
+        name = str(data.get(f"emergency_name_{index}") or "").strip()
+        relationship = str(data.get(f"emergency_relationship_{index}") or "").strip().upper()
+        phone = normalize_thai_phone(data.get(f"emergency_phone_{index}"))
+        if not (name or relationship or phone):
+            continue
+        contacts.append({
+            "id": f"staff-{index}",
+            "name": name[:120],
+            "relationship": relationship[:20],
+            "phone": phone[:20],
+        })
+    if contacts:
+        return contacts
+
+    # Backward-compatible fallback for older single-contact submissions.
+    name = str(data.get("emergency_name") or "").strip()
+    relationship = str(data.get("emergency_relationship") or "").strip().upper()
+    phone = normalize_thai_phone(data.get("emergency_phone"))
+    if name or relationship or phone:
+        return [{
+            "id": "staff-1",
+            "name": name[:120],
+            "relationship": relationship[:20],
+            "phone": phone[:20],
+        }]
+    return []
+
+
+def _staff_emergency_contacts_for_patient(patient):
+    contacts = patient.emergency_contacts if isinstance(patient.emergency_contacts, list) else []
+    normalized = []
+    for index, contact in enumerate(contacts[:3], start=1):
+        if not isinstance(contact, dict):
+            continue
+        normalized.append({
+            "id": str(contact.get("id") or f"staff-{index}"),
+            "name": str(contact.get("name") or ""),
+            "relationship": str(contact.get("relationship") or ""),
+            "phone": str(contact.get("phone") or ""),
+        })
+    if normalized:
+        return normalized
+    if patient.emergency_name or patient.emergency_relationship or patient.emergency_phone:
+        return [{
+            "id": "staff-1",
+            "name": patient.emergency_name or "",
+            "relationship": patient.emergency_relationship or "",
+            "phone": patient.emergency_phone or "",
+        }]
+    return [{"id": "staff-1", "name": "", "relationship": "", "phone": ""}]
+
+
+def _apply_staff_emergency_contacts(patient, contacts):
+    patient.emergency_contacts = contacts
+    primary = contacts[0] if contacts else {}
+    patient.emergency_name = primary.get("name", "")
+    patient.emergency_relationship = primary.get("relationship", "")
+    patient.emergency_phone = primary.get("phone", "")
+
+
+def _registration_context(form, *, is_edit=False, patient=None, emergency_contacts=None):
+    if emergency_contacts is None:
+        emergency_contacts = (
+            _staff_emergency_contacts_for_patient(patient)
+            if patient
+            else [{"id": "staff-1", "name": "", "relationship": "", "phone": ""}]
+        )
+    return {
+        "form": form,
+        "is_edit": is_edit,
+        "patient": patient,
+        "emergency_contacts": emergency_contacts,
+    }
+
+
 def _after_patient_change(request, patient):
     """Continue in the signed-in user's workflow instead of leaking into another role."""
     if has_capability(request.user, Capability.RECORD_VITALS):
@@ -1635,9 +1713,14 @@ def _after_patient_change(request, patient):
 def register_patient(request):
     if request.method == "POST":
         form = PatientForm(request.POST, allow_existing=True)
+        emergency_contacts = _staff_emergency_contacts_from_post(request.POST)
 
         if not form.is_valid():
-            return render(request, "patients/register.html", {"form": form})
+            return render(
+                request,
+                "patients/register.html",
+                _registration_context(form, emergency_contacts=emergency_contacts),
+            )
 
         national_id = form.cleaned_data["national_id"]
 
@@ -1658,29 +1741,33 @@ def register_patient(request):
                         None,
                         f"ผู้ป่วยมีคิว {active_queue.display_number} ที่กำลังรับบริการอยู่แล้ว กรุณาตรวจสอบคิวเดิม",
                     )
-                    return render(request, "patients/register.html", {"form": form})
+                    return render(
+                        request,
+                        "patients/register.html",
+                        _registration_context(form, emergency_contacts=emergency_contacts),
+                    )
 
                 for field, value in form.cleaned_data.items():
                     setattr(patient, field, value)
+                _apply_staff_emergency_contacts(patient, emergency_contacts)
                 patient.save()
             else:
-                patient = Patient.objects.create(**form.cleaned_data)
+                patient = Patient(**form.cleaned_data)
+                _apply_staff_emergency_contacts(patient, emergency_contacts)
+                patient.save()
 
-            # สร้าง Visit ใหม่ทุกครั้ง
             visit = Visit.objects.create(
                 patient=patient,
                 registered_at=timezone.now(),
                 note=patient.note,
             )
 
-            # สร้าง VitalSign จากข้อมูลที่กรอกในฟอร์ม
             VitalSign.objects.create(
                 visit=visit,
                 sys_bp=patient.bp_sys,
                 dia_bp=patient.bp_dia,
             )
 
-            # Queue starts outside the prioritized examination queue.
             Queue.objects.create(
                 visit=visit,
                 status=Queue.Status.WAITING_VITALS,
@@ -1688,8 +1775,8 @@ def register_patient(request):
 
         return _after_patient_change(request, patient)
 
-    # GET
-    return render(request, "patients/register.html", {"form": PatientForm()})
+    form = PatientForm(allow_existing=True)
+    return render(request, "patients/register.html", _registration_context(form))
 
 
 @login_required
@@ -1697,17 +1784,26 @@ def edit_patient(request, patient_id):
     patient = get_object_or_404(Patient, pk=patient_id)
     if request.method == "POST":
         form = PatientForm(request.POST, instance=patient)
+        emergency_contacts = _staff_emergency_contacts_from_post(request.POST)
         if form.is_valid():
-            form.save()
+            patient = form.save(commit=False)
+            _apply_staff_emergency_contacts(patient, emergency_contacts)
+            patient.save()
             messages.success(request, "แก้ไขข้อมูลผู้ป่วยเรียบร้อยแล้ว")
             return _after_patient_change(request, patient)
     else:
         form = PatientForm(instance=patient)
+        emergency_contacts = _staff_emergency_contacts_for_patient(patient)
 
     return render(
         request,
         "patients/register.html",
-        {"form": form, "is_edit": True, "patient": patient},
+        _registration_context(
+            form,
+            is_edit=True,
+            patient=patient,
+            emergency_contacts=emergency_contacts,
+        ),
     )
 
 
