@@ -527,6 +527,12 @@ def accept_emergency_case(request, visit_id: int):
     return redirect("emergency_transfers")
 
 
+def _emergency_case_is_accepted(visit):
+    return visit.workflow_logs.filter(
+        event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED,
+    ).exists()
+
+
 def _finish_emergency_visit(*, visit, outcome, actor, description, details=None):
     queue_item = Queue.objects.select_for_update().get(visit=visit)
     if queue_item.status != Queue.Status.EMERGENCY_TRANSFER:
@@ -561,6 +567,10 @@ def discharge_emergency_case(request, visit_id: int):
         pk=visit_id,
         queue__status=Queue.Status.EMERGENCY_TRANSFER,
     )
+    if not _emergency_case_is_accepted(visit):
+        messages.error(request, "ต้องกดรับเคสก่อนจึงจะปิดการรักษาได้")
+        return redirect("emergency_transfers")
+
     note = request.POST.get("note", "").strip()
     description = note or "รักษาเสร็จและจำหน่ายจากหน่วยฉุกเฉิน"
 
@@ -590,6 +600,10 @@ def refer_emergency_case(request, visit_id: int):
         pk=visit_id,
         queue__status=Queue.Status.EMERGENCY_TRANSFER,
     )
+    if not _emergency_case_is_accepted(visit):
+        messages.error(request, "ต้องกดรับเคสก่อนจึงจะบันทึกการส่งต่อได้")
+        return redirect("emergency_transfers")
+
     destination = request.POST.get("destination", "").strip()
     reason = request.POST.get("reason", "").strip()
     if len(destination) < 2:
