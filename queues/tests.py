@@ -1476,6 +1476,24 @@ class ShiftScheduleTests(TestCase):
         self.assertContains(response, "ยังไม่มีบุคลากรกดเริ่มเวร")
         self.assertFalse(StaffDuty.objects.filter(user=self.nurse).exists())
 
+    def test_shift_schedule_highlights_the_signed_in_staff_member(self):
+        ShiftSchedule.objects.create(
+            user=self.nurse,
+            shift_date=timezone.localdate(),
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            note="คัดกรองผู้ป่วย",
+            created_by=self.manager,
+        )
+        self.client.force_login(self.nurse)
+
+        response = self.client.get(reverse("shift_schedule"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="shift-row current-user', html=False)
+        self.assertContains(response, '<span class="you-badge">คุณ</span>', html=False)
+        self.assertContains(response, "shift-nurse")
+
     def test_schedule_can_be_viewed_one_selected_day_at_a_time(self):
         selected = date(2026, 9, 16)
         ShiftSchedule.objects.create(
