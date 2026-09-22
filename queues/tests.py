@@ -898,6 +898,8 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, 'class="main-nav"')
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")
+        self.assertContains(response, 'class="patient-menu-trigger js-patient-menu-trigger"')
+        self.assertContains(response, 'role="menu"')
         self.assertContains(response, reverse("edit_patient", args=[patient.id]))
         self.assertContains(response, "ประเมินสุขภาพ")
         self.assertNotContains(response, "กรอกค่าด้วยตนเอง")
