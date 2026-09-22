@@ -17,6 +17,7 @@ from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
 from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 from queues.training_cases import capture_confirmed_triage_case
+from queues.management.commands.setup_demo_roster import ROLE_COVERAGE, SHIFT_TEMPLATES
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -1631,11 +1632,23 @@ class ShiftScheduleTests(TestCase):
         self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.NURSE_ASSISTANT).count(), 4)
         self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.EMERGENCY).count(), 4)
         self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.STAFF).count(), 4)
+        # Calculate the expected weekly coverage from the command's actual
+        # role/shift configuration instead of hard-coding 119. This keeps the
+        # test valid when operational roles (for example Pharmacy/Cashier) are
+        # intentionally added to the roster.
+        daily_expected = 0
+        for shift_index, _shift in enumerate(SHIFT_TEMPLATES):
+            for role, coverage in ROLE_COVERAGE.items():
+                if role == StaffProfile.Role.STAFF and shift_index == 0:
+                    continue
+                daily_expected += coverage
+        expected_weekly_shifts = daily_expected * 7
+
         self.assertEqual(
             ShiftSchedule.objects.filter(
                 shift_date__range=(selected_week, selected_week + timedelta(days=6)),
             ).count(),
-            119,
+            expected_weekly_shifts,
         )
 
 
