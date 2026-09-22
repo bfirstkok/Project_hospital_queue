@@ -7,6 +7,7 @@ erDiagram
     AUTH_USER ||--o{ NURSE_CARE_ASSIGNMENT : nurse
     AUTH_USER ||--o{ CRITICAL_ALERT : acknowledges
     AUTH_USER ||--o{ VISIT_ASSESSMENT : examines
+    AUTH_USER ||--o{ CONFIRMED_TRIAGE_CASE : confirms
 
     PATIENT ||--o{ VISIT : receives
     PATIENT ||--o{ APPOINTMENT : has
@@ -15,6 +16,7 @@ erDiagram
 
     VISIT ||--o| VITAL_SIGN : current_vitals
     VISIT ||--o| TRIAGE_RESULT : triage
+    VISIT ||--o| CONFIRMED_TRIAGE_CASE : training_snapshot
     VISIT ||--o| QUEUE : queue_state
     VISIT ||--o| VISIT_ASSESSMENT : opd_assessment
     VISIT ||--o{ VISIT_WORKFLOW_LOG : audit
@@ -56,6 +58,17 @@ erDiagram
       varchar ai_severity
       varchar nurse_severity
       float confidence
+    }
+    CONFIRMED_TRIAGE_CASE {
+      bigint id PK
+      bigint visit_id FK_UK
+      bigint confirmed_by_id FK
+      varchar ai_severity
+      varchar nurse_severity
+      float confidence
+      bool is_ai_match
+      bool is_training_eligible
+      datetime confirmed_at
     }
     QUEUE {
       bigint id PK
