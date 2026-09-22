@@ -131,10 +131,44 @@ class DashboardPresentationTests(TestCase):
         self.assertContains(response, "AI Learning Dashboard")
         self.assertContains(response, "TRAINING READY")
         self.assertContains(response, "NURSE OVERRIDE")
-        self.assertContains(response, "Confirmed Training Cases ล่าสุด")
+        self.assertContains(response, "เคสล่าสุด — AI แนะนำอะไร และพยาบาลยืนยันอะไร")
+        self.assertContains(response, "ข้อมูลไหลอย่างไร")
         self.assertContains(response, "random_forest_5level_runtime_v3_guarded_by_rules")
-        self.assertContains(response, "Override")
+        self.assertContains(response, "พยาบาลแก้ผล")
         self.assertNotContains(response, "Test Person")
+
+
+    def test_waiting_time_report_exports_are_summary_reports(self):
+        patient = Patient.objects.create(
+            first_name="Summary",
+            last_name="Patient",
+            national_id="3333333333333",
+        )
+        visit = Visit.objects.create(
+            patient=patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        Queue.objects.create(visit=visit, status=Queue.Status.WAITING_QUEUE, priority=4)
+
+        csv_response = self.client.get(reverse("dashboard:waiting_time_report_csv"))
+        self.assertEqual(csv_response.status_code, 200)
+        self.assertIn("hospital_summary_report.csv", csv_response["Content-Disposition"])
+        csv_text = csv_response.content.decode("utf-8-sig")
+        self.assertIn("รายงานสรุปประสิทธิภาพบริการ", csv_text)
+        self.assertIn("จำนวนผู้ป่วยแยกตามระดับ", csv_text)
+        self.assertNotIn("Summary Patient", csv_text)
+
+        xls_response = self.client.get(reverse("dashboard:waiting_time_report_xls"))
+        self.assertEqual(xls_response.status_code, 200)
+        self.assertIn("hospital_summary_report.xls", xls_response["Content-Disposition"])
+        xls_text = xls_response.content.decode("utf-8-sig")
+        self.assertIn("รายงานสรุปประสิทธิภาพบริการ", xls_text)
+        self.assertNotIn("Summary Patient", xls_text)
+
+        pdf_response = self.client.get(reverse("dashboard:waiting_time_report_pdf"))
+        self.assertEqual(pdf_response.status_code, 200)
+        self.assertIn("hospital_summary_report.pdf", pdf_response["Content-Disposition"])
+        self.assertTrue(pdf_response.content.startswith(b"%PDF"))
 
     def test_waiting_time_report_uses_report_hero_and_exports(self):
         response = self.client.get(reverse("dashboard:waiting_time_report"))
@@ -142,8 +176,10 @@ class DashboardPresentationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="report-hero"')
         self.assertContains(response, 'class="detail-toggle"')
-        self.assertContains(response, 'data-open-severity="RED"')
-        self.assertContains(response, "ผลสุดท้ายยืนยันโดยพยาบาล")
+        self.assertContains(response, "กราฟภาพรวม")
+        self.assertContains(response, "ช่วงบริการที่ใช้เวลานาน")
+        self.assertContains(response, "แนวโน้มเวลารอรวม 6 เดือนล่าสุด")
+        self.assertContains(response, "ไฟล์ส่งออกเป็นรายงานสรุปยอด")
         self.assertContains(response, reverse("dashboard:waiting_time_report_csv"))
         self.assertContains(response, reverse("dashboard:waiting_time_report_xls"))
         self.assertContains(response, reverse("dashboard:waiting_time_report_pdf"))
