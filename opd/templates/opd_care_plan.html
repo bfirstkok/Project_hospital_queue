@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="th">
+<head>
+{% load static %}
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>แผนหลังตรวจ OPD</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v=opd-aftercare-20260923">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1280px,calc(100% - 36px));margin:24px auto 70px}
+.hero{padding:24px 26px;border-radius:20px;background:linear-gradient(135deg,#173e54,#087f75)!important;color:#fff}.hero h1{margin:4px 0 7px;color:#fff!important;font-size:29px}.hero p{margin:0;color:#e8fffb!important;font-size:13px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.1em}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.step{padding:13px 14px;border:1px solid #d8e6e9;border-radius:13px;background:#fff}.step b{display:block;font-size:12px}.step span{display:block;margin-top:3px;color:#728790;font-size:10px}.step.done{border-color:#a9d8d0;background:#f1faf8}.step.current{border-color:#79bdb3;box-shadow:0 0 0 3px rgba(8,127,117,.08)}
+.messages{display:grid;gap:8px;margin-top:13px}.messages div{padding:11px 13px;border-radius:10px;background:#eaf7f4;color:#087467;font-size:11px;font-weight:800}.messages .error{background:#fff0f2;color:#a51d30}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:13px;margin-top:14px}.card{overflow:hidden;border:1px solid #d7e5e8;border-radius:18px;background:#fff;box-shadow:0 8px 22px rgba(31,67,78,.05)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #e7eef0}.head h2{margin:0;font-size:17px}.head p{margin:4px 0 0;color:#6d838c;font-size:11px;line-height:1.5}.body{padding:18px 20px}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.summary div{padding:11px 12px;border-radius:10px;background:#f7fafb}.summary small{display:block;color:#7b9098;font-size:9px}.summary b{display:block;margin-top:3px;font-size:12px}
+.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px;margin-top:12px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#5f7781}.field input,.field textarea,.field select{width:100%;min-height:40px;padding:9px 10px;border:1px solid #cbdadd;border-radius:9px;background:#fff;font:700 11px "Sarabun",Tahoma,sans-serif}.field textarea{min-height:70px;resize:vertical}.span2{grid-column:span 2}.span3{grid-column:1/-1}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn.secondary{border:1px solid #cbdadd;background:#fff;color:#3c5e69!important}.btn.danger{border:1px solid #efc6cb;background:#fff2f3;color:#a51d30!important}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px;border-bottom:1px solid #e8eff1;text-align:left;vertical-align:top}th{background:#f7fafb;color:#627a84;font-size:9px}.money{text-align:right;white-space:nowrap}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e8f6f3;color:#087467;font-size:9px;font-weight:900}.badge.warn{background:#fff3d6;color:#805e00}.muted{color:#7b9098}.total{display:flex;justify-content:space-between;margin-top:12px;padding:12px 13px;border-radius:11px;background:#f1f8f7;font-size:12px}.total strong{font-size:16px;color:#087f75}
+@media(max-width:850px){.grid,.steps,.form-grid,.summary{grid-template-columns:1fr}.span2,.span3{grid-column:auto}.page{width:calc(100% - 18px)}}
+</style></head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="page">
+<section class="hero"><div class="eyebrow">OPD AFTERCARE</div><h1>แผนหลังตรวจ · Visit #{{ visit.id }}</h1><p>{{ visit.patient.first_name }} {{ visit.patient.last_name }} · HN {{ visit.patient.hn }} · แพทย์ {{ assessment.examiner.get_full_name|default:assessment.examiner.username }}</p></section>
+<div class="steps"><div class="step done"><b>1 · แพทย์ตรวจ</b><span>บันทึก Diagnosis / Treatment แล้ว</span></div><div class="step {% if prescription and prescription.status != 'DRAFT' %}done{% else %}current{% endif %}"><b>2 · ใบสั่งยา</b><span>{% if prescription %}{{ prescription.get_status_display }}{% else %}ยังไม่มีใบสั่งยา{% endif %}</span></div><div class="step {% if prescription.status == 'DISPENSED' %}done{% endif %}"><b>3 · ห้องยา</b><span>{% if prescription %}{{ prescription.get_status_display }}{% else %}รอคำสั่งแพทย์{% endif %}</span></div><div class="step {% if bill.status == 'PAID' or bill.status == 'WAIVED' %}done{% endif %}"><b>4 · การเงิน</b><span>{% if bill %}{{ bill.get_status_display }}{% else %}ยังไม่ส่งการเงิน{% endif %}</span></div></div>
+{% if messages %}<div class="messages">{% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+<div class="grid">
+<section class="card">
+<div class="head"><div><h2>ใบสั่งยาและเวชภัณฑ์</h2><p>เพิ่มรายการให้ครบก่อนกดส่งห้องยา หลังส่งแล้วจะแก้รายการจากหน้านี้ไม่ได้</p></div>{% if prescription %}<span class="badge {% if prescription.status == 'DRAFT' %}warn{% endif %}">{{ prescription.get_status_display }}</span>{% endif %}</div>
+<div class="body">
+{% if not prescription or prescription.status == 'DRAFT' %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_medication">
+<div class="form-grid">
+<div class="field"><label>ชื่อยา / เวชภัณฑ์</label><input name="medication_name" required placeholder="เช่น Paracetamol"></div>
+<div class="field"><label>ความแรง</label><input name="strength" placeholder="500 mg"></div>
+<div class="field"><label>จำนวน</label><input name="quantity" type="number" min="1" value="1"></div>
+<div class="field"><label>ขนาดรับประทาน</label><input name="dosage" placeholder="ครั้งละ 1 เม็ด"></div>
+<div class="field"><label>ความถี่</label><input name="frequency" placeholder="วันละ 3 ครั้ง"></div>
+<div class="field"><label>จำนวนวัน</label><input name="duration_days" type="number" min="1" placeholder="5"></div>
+<div class="field"><label>หน่วย</label><input name="unit" value="เม็ด"></div>
+<div class="field"><label>ราคาต่อหน่วย (บาท)</label><input name="unit_price" type="number" step="0.01" min="0" value="0"></div>
+<div class="field span3"><label>วิธีใช้ / หมายเหตุ</label><input name="instructions" placeholder="หลังอาหาร / ก่อนนอน / เมื่อมีอาการ"></div>
+</div><div class="actions"><button class="btn" type="submit">+ เพิ่มรายการ</button></div></form>
+{% endif %}
+
+{% if prescription and prescription.items.all %}
+<table><thead><tr><th>รายการ</th><th>วิธีใช้</th><th>จำนวน</th><th class="money">ราคา</th>{% if prescription.status == 'DRAFT' %}<th></th>{% endif %}</tr></thead><tbody>
+{% for item in prescription.items.all %}<tr><td><b>{{ item.medication_name }}</b><div class="muted">{{ item.strength }}</div></td><td>{{ item.dosage }} {{ item.frequency }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}<div class="muted">{{ item.instructions }}</div></td><td>{{ item.quantity }} {{ item.unit }}</td><td class="money">{{ item.line_total|floatformat:2 }}</td>{% if prescription.status == 'DRAFT' %}<td><form method="post" action="{% url 'delete_prescription_item' item.id %}">{% csrf_token %}<button class="btn danger" type="submit">ลบ</button></form></td>{% endif %}</tr>{% endfor %}
+</tbody></table>
+{% else %}<p class="muted">ยังไม่มีรายการยา/เวชภัณฑ์</p>{% endif %}
+
+<div class="actions">
+{% if prescription and prescription.status == 'DRAFT' and prescription.items.all %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ส่งใบสั่งยาไปห้องยา</button></form>{% endif %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ส่งค่าใช้จ่ายไปการเงิน</button></form>
+<a class="btn secondary" href="{% url 'opd_visit_detail' visit.id %}">ดูข้อมูล Visit</a>
+</div>
+{% if bill %}<div class="total"><span>ยอดค่าใช้จ่ายปัจจุบัน</span><strong>{{ bill.subtotal|floatformat:2 }} บาท</strong></div>{% endif %}
+</div></section>
+
+<aside>
+<section class="card">
+<div class="head"><div><h2>สรุปการตรวจ</h2><p>ข้อมูลจาก VisitAssessment</p></div></div>
+<div class="body"><div class="summary"><div><small>Diagnosis</small><b>{{ assessment.diagnosis|default:"-" }}</b></div><div><small>Treatment</small><b>{{ assessment.treatment|default:"-" }}</b></div><div><small>OPD urgency</small><b>{{ assessment.opd_urgency }}</b></div><div><small>นัดครั้งต่อไป</small><b>{{ assessment.next_appointment_at|date:"d/m/Y H:i"|default:"-" }}</b></div></div></div>
+</section>
+
+<section class="card" style="margin-top:13px">
+<div class="head"><div><h2>ใบรับรองแพทย์</h2><p>ดึง Diagnosis และข้อมูลผู้ป่วยจาก Visit นี้อัตโนมัติ</p></div></div>
+<div class="body">
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="issue_certificate">
+<div class="field"><label>ความเห็น / คำแนะนำแพทย์</label><textarea name="recommendation" placeholder="เช่น ควรพักรักษาตัวและหลีกเลี่ยงการทำงานหนัก">{{ certificate.recommendation|default:"" }}</textarea></div>
+<div class="form-grid" style="grid-template-columns:1fr 1fr"><div class="field"><label>พักตั้งแต่</label><input type="date" name="rest_from" value="{{ certificate.rest_from|date:'Y-m-d' }}"></div><div class="field"><label>ถึงวันที่</label><input type="date" name="rest_to" value="{{ certificate.rest_to|date:'Y-m-d' }}"></div></div>
+<div class="actions"><button class="btn secondary" type="submit">{% if certificate %}อัปเดตใบรับรอง{% else %}สร้างใบรับรอง{% endif %}</button>{% if certificate %}<a class="btn" target="_blank" href="{% url 'medical_certificate_print' certificate.id %}">เปิดเอกสารสำหรับพิมพ์</a>{% endif %}</div>
+</form></div></section>
+</aside>
+</div>
+</main></body></html>
