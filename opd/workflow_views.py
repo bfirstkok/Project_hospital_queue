@@ -359,3 +359,21 @@ def medical_certificate_print(request, certificate_id):
         "certificate": certificate,
         "visit": certificate.visit,
     })
+
+
+@login_required
+def clinical_summary_print(request, visit_id):
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "vitals", "queue"),
+        pk=visit_id,
+    )
+    assessment = get_object_or_404(
+        VisitAssessment.objects.select_related("examiner"),
+        visit=visit,
+    )
+    prescription = Prescription.objects.filter(visit=visit).prefetch_related("items").first()
+    return render(request, "clinical_summary_print.html", {
+        "visit": visit,
+        "assessment": assessment,
+        "prescription": prescription,
+    })
