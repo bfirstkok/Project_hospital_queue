@@ -131,6 +131,109 @@
       padding: 18px;
     }
 
+    .source-card {
+      margin-bottom: 14px;
+      padding: 16px 18px;
+      border: 1px solid #cfe0e5;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f8fcfd, #f1f8f7);
+    }
+
+    .source-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .source-card h2 {
+      margin: 0;
+      color: #17324d;
+      font-size: 16px;
+    }
+
+    .source-card p {
+      margin: 4px 0 0;
+      color: #6c8290;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .source-badge {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #e3f4f0;
+      color: #087467;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .source-item {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid #dce8ea;
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .source-item.wide {
+      grid-column: span 2;
+    }
+
+    .source-item span {
+      display: block;
+      color: #79909a;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .source-item strong {
+      display: block;
+      margin-top: 4px;
+      overflow-wrap: anywhere;
+      color: #17324d;
+      font-size: 12px;
+    }
+
+    .source-flags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .source-flag {
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: #edf5f6;
+      color: #536f79;
+      font-size: 9px;
+      font-weight: 900;
+    }
+
+    .prefill-note {
+      color: #6a8791;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .field input:disabled,
+    .field input[readonly] {
+      border-color: #c8d8dc;
+      background: #edf3f4;
+      color: #46616c;
+      cursor: not-allowed;
+    }
+
     .assessment-page .btn {
       display: inline-flex;
       align-items: center;
@@ -544,8 +647,13 @@
       .field-grid,
       .field-grid.two,
       .check-grid,
-      .detail-grid {
+      .detail-grid,
+      .source-grid {
         grid-template-columns: 1fr;
+      }
+
+      .source-item.wide {
+        grid-column: auto;
       }
 
       .info-row {
@@ -598,6 +706,31 @@
       <a href="{% url 'select_examiner' visit.id %}" style="display:block;margin-top:5px;text-align:right;font-size:12px;color:#087f75">เปลี่ยนแพทย์</a>
     </div>
   </section>
+
+  {% with p=visit.patient vs=visit.vitals %}
+  <section class="source-card">
+    <div class="source-card-head">
+      <div>
+        <h2>ข้อมูลที่ระบบกรอกให้จาก Registration / Triage</h2>
+        <p>แพทย์ไม่ต้องกรอกข้อมูลเดิมซ้ำ อายุยึดจากข้อมูลผู้ป่วย ส่วนค่าทางคลินิกด้านล่างถูกนำมาเป็นค่าเริ่มต้นและแก้ไขได้หากตรวจซ้ำแล้วพบค่าปัจจุบันต่างออกไป</p>
+      </div>
+      <span class="source-badge">AUTO PREFILL</span>
+    </div>
+    <div class="source-grid">
+      <div class="source-item"><span>อายุ</span><strong>{{ p.age_display }}</strong></div>
+      <div class="source-item"><span>Pain</span><strong>{{ vs.pain_score|default_if_none:"-" }}</strong></div>
+      <div class="source-item"><span>PR</span><strong>{{ vs.pr|default_if_none:"-" }}</strong></div>
+      <div class="source-item"><span>RR</span><strong>{{ vs.rr|default_if_none:"-" }}</strong></div>
+      <div class="source-item"><span>SpO₂</span><strong>{{ vs.o2sat|default_if_none:"-" }}{% if vs.o2sat != None %}%{% endif %}</strong></div>
+      <div class="source-item"><span>BT</span><strong>{{ vs.bt|default_if_none:"-" }}{% if vs.bt != None %} °C{% endif %}</strong></div>
+      <div class="source-item"><span>BP</span><strong>{{ vs.sys_bp|default_if_none:"-" }}/{{ vs.dia_bp|default_if_none:"-" }}</strong></div>
+      <div class="source-item wide"><span>อาการสำคัญ</span><strong>{{ visit.note|default:"-" }}</strong></div>
+    </div>
+    {% if triage_risk_flags %}
+      <div class="source-flags">{% for flag in triage_risk_flags %}<span class="source-flag">{{ flag }}</span>{% endfor %}</div>
+    {% endif %}
+  </section>
+  {% endwith %}
 
   {% with p=visit.patient vs=visit.vitals tr=visit.triage_result %}
   <dialog class="patient-modal" id="patient-context-modal">
@@ -688,6 +821,7 @@
         <div>
           <div class="section-eyebrow">Clinical values</div>
           <div class="section-title">ค่าสำหรับคำนวณความเร่งด่วน</div>
+          <div class="prefill-note">Pain, BT และ BP จะกรอกค่าจากจุดคัดกรองให้ก่อน หากแพทย์วัดใหม่สามารถแก้เป็นค่าปัจจุบันได้</div>
         </div>
 
         <label class="check-item">{{ form.known_copd_asthma }} <span>Known COPD/Asthma + เหนื่อย</span></label>
@@ -718,6 +852,7 @@
         <div>
           <div class="section-eyebrow">Special groups</div>
           <div class="section-title">กลุ่มพิเศษ</div>
+          <div class="prefill-note">กลุ่มที่พยาบาลยืนยันไว้จะถูกเลือกให้อัตโนมัติ รายการที่ระบบต้นทางไม่มีข้อมูลยังให้แพทย์ระบุเอง</div>
         </div>
 
         <div class="check-grid">
@@ -730,8 +865,8 @@
         </div>
 
         <div class="field-grid two">
-          <div class="field"><label>อายุ</label>{{ form.age }}</div>
-          <div class="field"><label>GA (สัปดาห์)</label>{{ form.ga_weeks }}</div>
+          <div class="field"><label>อายุ · จากข้อมูลผู้ป่วย</label>{{ form.age }}<span class="prefill-note">ล็อกไว้เพื่อไม่ให้อายุใน OPD ขัดกับวันเกิด/ทะเบียนผู้ป่วย</span></div>
+          <div class="field"><label>GA (สัปดาห์)</label>{{ form.ga_weeks }}<span class="prefill-note">ระบบจะกรอกให้ได้เมื่อมีการบันทึกอายุครรภ์จากต้นทาง ปัจจุบันกรอกเมื่อทราบค่า</span></div>
         </div>
 
         <div class="field">
