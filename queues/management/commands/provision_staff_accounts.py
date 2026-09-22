@@ -18,6 +18,8 @@ ROLE_USERNAME_PREFIX = {
     StaffProfile.Role.BIOMEDICAL: "biomedical",
     StaffProfile.Role.EMERGENCY: "emergency",
     StaffProfile.Role.STAFF: "staff",
+    StaffProfile.Role.PHARMACIST: "pharmacist",
+    StaffProfile.Role.CASHIER: "cashier",
 }
 
 
