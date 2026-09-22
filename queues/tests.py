@@ -723,9 +723,13 @@ class QueueWorkflowTests(TestCase):
             "gender": "M",
             "age": "31",
             "phone": "0812345678",
+            "email": "queue-demo@example.com",
             "blood_type": "UNKNOWN",
             "bp_sys": "118",
             "bp_dia": "76",
+            "chronic_diseases": "ไม่มีโรคประจำตัว",
+            "allergies": "ไม่มีประวัติแพ้ยา",
+            "medications": "ไม่มียาที่ใช้ประจำ",
             "note": "เวียนหัวเล็กน้อย",
         })
 

@@ -167,7 +167,11 @@ class PublicPatientApiTests(TestCase):
             "gender": self.payload["gender"],
             "age": self.payload["age"],
             "phone": self.payload["phone"],
+            "email": "staff-patient@example.com",
             "blood_type": self.payload["blood_type"],
+            "chronic_diseases": "ไม่มีโรคประจำตัว",
+            "allergies": "ไม่มีประวัติแพ้ยา",
+            "medications": "ไม่มียาที่ใช้ประจำ",
             "note": self.payload["note"],
         }
 
@@ -192,6 +196,72 @@ class PublicPatientApiTests(TestCase):
         self.assertContains(response, "service-steps")
         self.assertContains(response, "วัดสัญญาณชีพ")
         self.assertContains(response, "รอเรียกคิว")
+        self.assertContains(response, "วัน/เดือน/ปีเกิด")
+        self.assertContains(response, 'aria-label="ปีเกิด (พ.ศ.)"')
+        self.assertContains(response, "แพ้ยากลุ่มเพนิซิลลิน (Penicillin)")
+        self.assertContains(response, "แพ้ยาแก้ปวด (NSAIDs / แอสไพริน)")
+        self.assertContains(response, "ยาลดกรด / ยาโรคกระเพาะ")
+        self.assertContains(response, "ยาไทรอยด์")
+        self.assertContains(response, "-- เลือกจังหวัด (77 จังหวัด) --")
+        self.assertContains(response, 'id="addEmergencyContact"')
+        self.assertContains(response, 'name="emergency_name_1"')
+        self.assertNotContains(response, 'name="username"')
+        self.assertNotContains(response, 'name="password"')
+
+    def test_staff_registration_marks_patient_portal_core_fields_in_ui(self):
+        user = get_user_model().objects.create_user(username="required-fields", password="test-only-password")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("register_patient"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="phone"')
+        self.assertContains(response, 'name="email"')
+        self.assertContains(response, 'data-choice-field')
+        self.assertContains(response, 'data-target="chronic_diseases"')
+        self.assertContains(response, 'data-target="allergies"')
+        self.assertContains(response, 'data-target="medications"')
+        self.assertContains(response, 'const isEditMode = false')
+
+    def test_staff_registration_saves_up_to_three_emergency_contacts_like_patient_portal(self):
+        user = get_user_model().objects.create_user(username="multi-contact", password="test-only-password")
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("register_patient"), {
+            "first_name": "สมหญิง",
+            "last_name": "หลายผู้ติดต่อ",
+            "national_id": "4888888888888",
+            "gender": "F",
+            "birth_date": "1996-09-22",
+            "age": "30",
+            "phone": "0811111111",
+            "email": "multi-contact@example.com",
+            "blood_type": "A",
+            "chronic_diseases": "ไม่มีโรคประจำตัว",
+            "allergies": "ไม่มีประวัติแพ้ยา",
+            "medications": "ไม่มียาที่ใช้ประจำ",
+            "note": "มีไข้ / หนาวสั่น",
+            "emergency_name_1": "สมชาย ใจดี",
+            "emergency_relationship_1": "SPOUSE",
+            "emergency_phone_1": "0891111111",
+            "emergency_name_2": "สมศรี ใจดี",
+            "emergency_relationship_2": "MOTHER",
+            "emergency_phone_2": "0892222222",
+        })
+
+        patient = Patient.objects.get(national_id="4888888888888")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(patient.emergency_contacts), 2)
+        self.assertEqual(patient.emergency_contacts[0]["name"], "สมชาย ใจดี")
+        self.assertEqual(patient.emergency_contacts[1]["relationship"], "MOTHER")
+        self.assertEqual(patient.emergency_name, "สมชาย ใจดี")
+        self.assertEqual(patient.emergency_relationship, "SPOUSE")
+        self.assertEqual(patient.emergency_phone, "0891111111")
+
+        edit = self.client.get(reverse("edit_patient", args=[patient.id]))
+        self.assertContains(edit, "สมชาย ใจดี")
+        self.assertContains(edit, "สมศรี ใจดี")
+        self.assertContains(edit, 'name="emergency_name_2"')
 
     def test_invalid_registration_returns_field_errors(self):
         self.payload["national_id"] = "123"

@@ -48,7 +48,10 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         return nid
 
     def clean_phone(self):
-        return normalize_thai_phone(self.cleaned_data.get("phone"))
+        phone = normalize_thai_phone(self.cleaned_data.get("phone"))
+        if self.allow_existing and phone and len("".join(ch for ch in phone if ch.isdigit())) < 9:
+            raise forms.ValidationError("กรุณาระบุเบอร์โทรศัพท์ให้ครบถ้วน")
+        return phone
 
     def clean_email(self):
         email = str(self.cleaned_data.get("email") or "").strip().lower() or None
@@ -56,6 +59,12 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
             duplicate = Patient.objects.filter(email__iexact=email)
             if self.instance and self.instance.pk:
                 duplicate = duplicate.exclude(pk=self.instance.pk)
+            elif self.allow_existing:
+                # Re-registering an existing patient for a new visit may reuse
+                # that same patient's email, but not another patient's email.
+                national_id = (self.cleaned_data.get("national_id") or "").strip()
+                if national_id:
+                    duplicate = duplicate.exclude(national_id=national_id)
             if duplicate.exists():
                 raise forms.ValidationError("อีเมลนี้ถูกใช้กับผู้ป่วยรายอื่นแล้ว")
         return email
