@@ -11,6 +11,7 @@ on:
       - "opd/**"
       - "ai_triage/**"
       - "config/**"
+      - "dashboard/**"
       - "system_test/**"
       - "requirements.txt"
       - "scripts/deploy_production.sh"
@@ -23,6 +24,7 @@ on:
       - "opd/**"
       - "ai_triage/**"
       - "config/**"
+      - "dashboard/**"
       - "system_test/**"
       - "requirements.txt"
       - "scripts/deploy_production.sh"
@@ -56,8 +58,8 @@ jobs:
         run: python manage.py check
       - name: Verify migrations
         run: python manage.py makemigrations --check --dry-run
-      - name: Run account, queue, patient, OPD and system-test tests
-        run: python manage.py test accounts queues patients opd system_test
+      - name: Run application tests
+        run: python manage.py test accounts queues patients opd dashboard system_test
 
 
   postgres-enum-migration:
