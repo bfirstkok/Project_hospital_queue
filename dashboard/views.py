@@ -166,6 +166,10 @@ def ai_evaluation_view(request):
                 for case in eligible_cases
                 if case.nurse_severity == severity
             ),
+            "bar_width": (
+                round((severity_matches / severity_total) * 100, 2)
+                if severity_total else 0
+            ),
         })
 
     confusion_rows = []
@@ -251,6 +255,7 @@ def ai_evaluation_view(request):
         "override_rate": override_rate,
         "confirmed_total": len(cases),
         "training_eligible_total": eligible_total,
+        "training_not_ready_total": len(cases) - eligible_total,
         "training_eligibility_rate": eligibility_rate,
         "avg_confidence": avg_confidence,
         "severity_rows": severity_rows,
@@ -284,6 +289,113 @@ def _format_wait_minutes(minutes):
     if hours:
         return f"{hours} ชม. {mins} นาที"
     return f"{mins} นาที"
+
+
+def _waiting_report_summary_data(limit=500):
+    visits = list(
+        Visit.objects
+        .select_related("patient", "queue", "triage_result")
+        .order_by("-registered_at")[:limit]
+    )
+
+    severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
+    triage_minutes = []
+    called_minutes = []
+    confirmation_minutes = []
+    bottleneck_totals = {
+        "registration_to_triage": [],
+        "triage_to_confirmation": [],
+        "confirmation_to_call": [],
+        "call_to_now_or_done": [],
+    }
+    monthly = {}
+    invalid_intervals = 0
+
+    for visit in visits:
+        for start, end in (
+            (visit.registered_at, visit.triaged_at),
+            (visit.triaged_at, visit.confirmed_at),
+            (visit.confirmed_at, visit.called_at),
+            (visit.registered_at, visit.called_at),
+        ):
+            if start and end and end < start:
+                invalid_intervals += 1
+
+        triage_wait = _minutes_between(visit.registered_at, visit.triaged_at)
+        called_wait = _minutes_between(visit.registered_at, visit.called_at)
+        confirmation_wait = _minutes_between(visit.triaged_at, visit.confirmed_at)
+        call_wait = _minutes_between(visit.confirmed_at, visit.called_at)
+
+        if visit.final_severity:
+            severity_counts[visit.final_severity] = severity_counts.get(visit.final_severity, 0) + 1
+        if triage_wait is not None:
+            triage_minutes.append(triage_wait)
+            bottleneck_totals["registration_to_triage"].append(triage_wait)
+        if called_wait is not None:
+            called_minutes.append(called_wait)
+        if confirmation_wait is not None:
+            confirmation_minutes.append(confirmation_wait)
+            bottleneck_totals["triage_to_confirmation"].append(confirmation_wait)
+        if call_wait is not None:
+            bottleneck_totals["confirmation_to_call"].append(call_wait)
+
+        queue = getattr(visit, "queue", None)
+        if visit.called_at and getattr(queue, "status", "") not in {"OPD_DONE", "DISCHARGED", "CANCELLED"}:
+            call_to_now = _minutes_between(visit.called_at, timezone.now())
+            if call_to_now is not None:
+                bottleneck_totals["call_to_now_or_done"].append(call_to_now)
+
+        if called_wait is not None:
+            month_key = visit.registered_at.strftime("%Y-%m")
+            monthly.setdefault(month_key, []).append(called_wait)
+
+    avg_triage = round(sum(triage_minutes) / len(triage_minutes), 2) if triage_minutes else None
+    avg_called = round(sum(called_minutes) / len(called_minutes), 2) if called_minutes else None
+    avg_confirmation = round(sum(confirmation_minutes) / len(confirmation_minutes), 2) if confirmation_minutes else None
+
+    bottleneck_labels = {
+        "registration_to_triage": "ลงทะเบียน → คัดกรอง",
+        "triage_to_confirmation": "คัดกรอง → พยาบาลยืนยัน",
+        "confirmation_to_call": "ยืนยัน → เรียกคิว",
+        "call_to_now_or_done": "เรียกคิว → ขั้นตอนปัจจุบัน",
+    }
+    bottlenecks = []
+    for key, values in bottleneck_totals.items():
+        avg = round(sum(values) / len(values), 2) if values else None
+        bottlenecks.append({
+            "name": key,
+            "label": bottleneck_labels[key],
+            "avg": avg,
+            "avg_display": _format_wait_minutes(avg),
+            "count": len(values),
+        })
+    bottlenecks.sort(key=lambda row: row["avg"] or 0, reverse=True)
+
+    monthly_rows = [
+        {
+            "period": key,
+            "avg_called": round(sum(values) / len(values), 2),
+            "avg_called_display": _format_wait_minutes(round(sum(values) / len(values), 2)),
+            "count": len(values),
+        }
+        for key, values in sorted(monthly.items(), reverse=True)
+        if values
+    ][:12]
+
+    return {
+        "generated_at": timezone.now(),
+        "total": len(visits),
+        "avg_triage": avg_triage,
+        "avg_triage_display": _format_wait_minutes(avg_triage),
+        "avg_called": avg_called,
+        "avg_called_display": _format_wait_minutes(avg_called),
+        "avg_confirmation": avg_confirmation,
+        "avg_confirmation_display": _format_wait_minutes(avg_confirmation),
+        "severity_counts": severity_counts,
+        "bottlenecks": bottlenecks,
+        "monthly_rows": monthly_rows,
+        "invalid_intervals": invalid_intervals,
+    }
 
 
 @login_required
@@ -404,6 +516,34 @@ def waiting_time_report(request):
         if values
     ][:12]
 
+    severity_max = max(severity_counts.values()) if severity_counts else 0
+    severity_chart_rows = [
+        {
+            "code": severity,
+            "label": SEVERITY_LABELS.get(severity, severity),
+            "count": severity_counts.get(severity, 0),
+            "width": round((severity_counts.get(severity, 0) / severity_max) * 100, 1) if severity_max else 0,
+        }
+        for severity in SEVERITY_LEVELS
+    ]
+    bottleneck_max = max((row["avg"] or 0 for row in bottlenecks), default=0)
+    bottleneck_chart_rows = [
+        {
+            **row,
+            "width": round(((row["avg"] or 0) / bottleneck_max) * 100, 1) if bottleneck_max else 0,
+        }
+        for row in bottlenecks
+    ]
+    monthly_chart_source = list(reversed(monthly_rows[:6]))
+    monthly_max = max((row["avg_called"] or 0 for row in monthly_chart_source), default=0)
+    monthly_chart_rows = [
+        {
+            **row,
+            "width": round(((row["avg_called"] or 0) / monthly_max) * 100, 1) if monthly_max else 0,
+        }
+        for row in monthly_chart_source
+    ]
+
     return render(request, "dashboard/waiting_time_report.html", {
         "rows": rows,
         "avg_triage": avg_triage,
@@ -418,6 +558,9 @@ def waiting_time_report(request):
         "monthly_rows": monthly_rows,
         "total": len(rows),
         "invalid_intervals": invalid_intervals,
+        "severity_chart_rows": severity_chart_rows,
+        "bottleneck_chart_rows": bottleneck_chart_rows,
+        "monthly_chart_rows": monthly_chart_rows,
         "severity_groups": _severity_detail_groups(visits),
         "severity_context_label": "ผู้ป่วยในรายงานล่าสุดสูงสุด 500 Visit",
     })
@@ -425,69 +568,79 @@ def waiting_time_report(request):
 
 @login_required
 def waiting_time_report_csv(request):
-    visits = Visit.objects.select_related("patient", "queue").order_by("-registered_at")
+    summary = _waiting_report_summary_data()
 
     response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="waiting_time_report.csv"'
+    response["Content-Disposition"] = 'attachment; filename="hospital_summary_report.csv"'
     response.write("\ufeff")
     writer = csv.writer(response)
-    writer.writerow([
-        "visit_id", "patient_name", "severity", "queue_status",
-        "registered_at", "triaged_at", "called_at",
-        "registered_to_triaged_min", "registered_to_called_min",
-    ])
 
-    for visit in visits:
-        queue = getattr(visit, "queue", None)
-        writer.writerow([
-            visit.id,
-            f"{visit.patient.first_name} {visit.patient.last_name}",
-            visit.final_severity or "",
-            queue.status if queue else "",
-            visit.registered_at,
-            visit.triaged_at,
-            visit.called_at,
-            _minutes_between(visit.registered_at, visit.triaged_at),
-            _minutes_between(visit.registered_at, visit.called_at),
-        ])
+    writer.writerow(["รายงานสรุปประสิทธิภาพบริการ"])
+    writer.writerow(["สร้างเมื่อ", timezone.localtime(summary["generated_at"]).strftime("%Y-%m-%d %H:%M")])
+    writer.writerow([])
+    writer.writerow(["ตัวชี้วัด", "ค่า"])
+    writer.writerow(["จำนวน Visit", summary["total"]])
+    writer.writerow(["เฉลี่ย ลงทะเบียน → คัดกรอง (นาที)", summary["avg_triage"] if summary["avg_triage"] is not None else ""])
+    writer.writerow(["เฉลี่ย คัดกรอง → ยืนยันผล (นาที)", summary["avg_confirmation"] if summary["avg_confirmation"] is not None else ""])
+    writer.writerow(["เฉลี่ย ลงทะเบียน → เรียกคิว (นาที)", summary["avg_called"] if summary["avg_called"] is not None else ""])
+    writer.writerow(["จุดข้อมูลเวลาไม่ถูกลำดับ", summary["invalid_intervals"]])
+
+    writer.writerow([])
+    writer.writerow(["จำนวนผู้ป่วยแยกตามระดับ", "จำนวน"])
+    for severity in SEVERITY_LEVELS:
+        writer.writerow([SEVERITY_LABELS.get(severity, severity), summary["severity_counts"].get(severity, 0)])
+
+    writer.writerow([])
+    writer.writerow(["ช่วงบริการ", "เวลาเฉลี่ย (นาที)", "จำนวนข้อมูล"])
+    for row in summary["bottlenecks"]:
+        writer.writerow([row["label"], row["avg"] if row["avg"] is not None else "", row["count"]])
+
+    writer.writerow([])
+    writer.writerow(["เดือน", "เวลารอรวมเฉลี่ย (นาที)", "จำนวน Visit"])
+    for row in summary["monthly_rows"]:
+        writer.writerow([row["period"], row["avg_called"], row["count"]])
 
     return response
 
 
 @login_required
 def waiting_time_report_xls(request):
-    visits = Visit.objects.select_related("patient", "queue").order_by("-registered_at")
+    summary = _waiting_report_summary_data()
     response = HttpResponse(content_type="application/vnd.ms-excel; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="waiting_time_report.xls"'
+    response["Content-Disposition"] = 'attachment; filename="hospital_summary_report.xls"'
     response.write("\ufeff")
-    response.write("<table><thead><tr>")
-    headers = [
-        "visit_id", "patient_name", "severity", "queue_status",
-        "registered_at", "triaged_at", "confirmed_at", "called_at",
-        "registered_to_triaged_min", "registered_to_called_min",
+    response.write("<html><head><meta charset='utf-8'><style>")
+    response.write("body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}th,td{border:1px solid #b8c8cc;padding:7px 10px}th{background:#eaf4f2}.title{font-size:20px;font-weight:bold}")
+    response.write("</style></head><body>")
+    response.write("<div class='title'>รายงานสรุปประสิทธิภาพบริการ</div>")
+    response.write(f"<p>สร้างเมื่อ {timezone.localtime(summary['generated_at']):%Y-%m-%d %H:%M}</p>")
+
+    response.write("<table><tr><th>ตัวชี้วัด</th><th>ค่า</th></tr>")
+    overview = [
+        ("จำนวน Visit", summary["total"]),
+        ("ลงทะเบียน → คัดกรอง เฉลี่ย", summary["avg_triage_display"]),
+        ("คัดกรอง → ยืนยันผล เฉลี่ย", summary["avg_confirmation_display"]),
+        ("ลงทะเบียน → เรียกคิว เฉลี่ย", summary["avg_called_display"]),
+        ("จุดข้อมูลเวลาไม่ถูกลำดับ", summary["invalid_intervals"]),
     ]
-    for header in headers:
-        response.write(f"<th>{header}</th>")
-    response.write("</tr></thead><tbody>")
-    for visit in visits:
-        queue = getattr(visit, "queue", None)
-        cells = [
-            visit.id,
-            f"{visit.patient.first_name} {visit.patient.last_name}",
-            visit.final_severity or "",
-            queue.status if queue else "",
-            visit.registered_at,
-            visit.triaged_at or "",
-            visit.confirmed_at or "",
-            visit.called_at or "",
-            _minutes_between(visit.registered_at, visit.triaged_at) or "",
-            _minutes_between(visit.registered_at, visit.called_at) or "",
-        ]
-        response.write("<tr>")
-        for cell in cells:
-            response.write(f"<td>{cell}</td>")
-        response.write("</tr>")
-    response.write("</tbody></table>")
+    for label, value in overview:
+        response.write(f"<tr><td>{label}</td><td>{value}</td></tr>")
+    response.write("</table>")
+
+    response.write("<table><tr><th>ระดับผู้ป่วย</th><th>จำนวน</th></tr>")
+    for severity in SEVERITY_LEVELS:
+        response.write(f"<tr><td>{SEVERITY_LABELS.get(severity, severity)}</td><td>{summary['severity_counts'].get(severity, 0)}</td></tr>")
+    response.write("</table>")
+
+    response.write("<table><tr><th>ช่วงบริการ</th><th>เวลาเฉลี่ย</th><th>จำนวนข้อมูล</th></tr>")
+    for row in summary["bottlenecks"]:
+        response.write(f"<tr><td>{row['label']}</td><td>{row['avg_display']}</td><td>{row['count']}</td></tr>")
+    response.write("</table>")
+
+    response.write("<table><tr><th>เดือน</th><th>เวลารอรวมเฉลี่ย</th><th>Visit</th></tr>")
+    for row in summary["monthly_rows"]:
+        response.write(f"<tr><td>{row['period']}</td><td>{row['avg_called_display']}</td><td>{row['count']}</td></tr>")
+    response.write("</table></body></html>")
     return response
 
 
@@ -526,33 +679,35 @@ def _simple_pdf(lines):
 
 @login_required
 def waiting_time_report_pdf(request):
-    visits = Visit.objects.select_related("patient", "queue").order_by("-registered_at")[:40]
-    lines = ["Hospital Queue Executive Report", f"Generated: {timezone.now():%Y-%m-%d %H:%M}"]
-    severity_counts = {severity: 0 for severity in SEVERITY_LEVELS}
-    waits = []
-    for visit in visits:
-        if visit.final_severity:
-            severity_counts[visit.final_severity] = severity_counts.get(visit.final_severity, 0) + 1
-        wait = _minutes_between(visit.registered_at, visit.called_at)
-        if wait is not None:
-            waits.append(wait)
-    avg_wait = round(sum(waits) / len(waits), 2) if waits else "-"
-    lines.extend([
-        f"Total rows: {visits.count()}",
-        f"Average registered-to-called: {avg_wait} minutes",
-        "Severity RED/PINK/YELLOW/GREEN/WHITE: "
-        + "/".join(str(severity_counts[level]) for level in SEVERITY_LEVELS),
+    summary = _waiting_report_summary_data()
+    severity_line = " / ".join(
+        f"{severity} {summary['severity_counts'].get(severity, 0)}"
+        for severity in SEVERITY_LEVELS
+    )
+    lines = [
+        "Hospital Service Summary Report",
+        f"Generated: {timezone.localtime(summary['generated_at']):%Y-%m-%d %H:%M}",
         "",
-        "Recent visits:",
-    ])
-    for visit in visits[:30]:
-        queue = getattr(visit, "queue", None)
-        lines.append(
-            f"#{visit.id} {visit.patient.first_name} {visit.patient.last_name} "
-            f"{visit.final_severity or '-'} {queue.status if queue else '-'}"
-        )
+        "OVERVIEW",
+        f"Total visits: {summary['total']}",
+        f"Average registration-to-triage: {summary['avg_triage_display']}",
+        f"Average triage-to-confirmation: {summary['avg_confirmation_display']}",
+        f"Average registration-to-call: {summary['avg_called_display']}",
+        f"Invalid timestamp intervals excluded: {summary['invalid_intervals']}",
+        "",
+        "PATIENT SEVERITY TOTALS",
+        severity_line,
+        "",
+        "SERVICE BOTTLENECKS",
+    ]
+    for row in summary["bottlenecks"]:
+        lines.append(f"{row['label']}: {row['avg_display']} ({row['count']} samples)")
+    lines.extend(["", "MONTHLY WAITING-TIME TREND"])
+    for row in summary["monthly_rows"][:6]:
+        lines.append(f"{row['period']}: {row['avg_called_display']} ({row['count']} visits)")
+
     response = HttpResponse(_simple_pdf(lines), content_type="application/pdf")
-    response["Content-Disposition"] = 'attachment; filename="waiting_time_report.pdf"'
+    response["Content-Disposition"] = 'attachment; filename="hospital_summary_report.pdf"'
     return response
 
 
