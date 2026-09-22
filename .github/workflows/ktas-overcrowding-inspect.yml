@@ -1,0 +1,85 @@
+name: Inspect public KTAS overcrowding dataset
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ktas-overcrowding-inspect.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install inspection dependencies
+        run: python -m pip install pandas openpyxl
+
+      - name: Download PLOS supporting XLSX
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ktas-overcrowding
+
+          urls=(
+            "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0247042.s001&type=supplementary"
+            "https://journals.plos.org/plosone/article/file?type=supplementary&id=info:doi/10.1371/journal.pone.0247042.s001"
+            "https://pmc.ncbi.nlm.nih.gov/articles/instance/7888587/bin/pone.0247042.s001.xlsx"
+          )
+
+          downloaded=""
+          for url in "${urls[@]}"; do
+            echo "Trying: $url"
+            rm -f /tmp/ktas-overcrowding/raw
+            if curl --fail --location --retry 2 --retry-delay 1               "$url" --output /tmp/ktas-overcrowding/raw; then
+              bytes="$(stat -c%s /tmp/ktas-overcrowding/raw 2>/dev/null || echo 0)"
+              echo "Response bytes: $bytes"
+              if [ "$bytes" -gt 10000 ]; then
+                downloaded="$url"
+                break
+              fi
+            fi
+          done
+
+          if [ -z "$downloaded" ]; then
+            echo "Could not download a usable supporting file" >&2
+            exit 1
+          fi
+
+          echo "Downloaded from: $downloaded"
+          file /tmp/ktas-overcrowding/raw
+          cp /tmp/ktas-overcrowding/raw /tmp/ktas-overcrowding/data.xlsx
+
+      - name: Inspect workbook
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import pandas as pd
+
+          path = "/tmp/ktas-overcrowding/data.xlsx"
+          book = pd.ExcelFile(path)
+          report = {"sheets": book.sheet_names, "details": {}}
+
+          for sheet in book.sheet_names:
+              frame = pd.read_excel(path, sheet_name=sheet)
+              report["details"][sheet] = {
+                  "shape": list(frame.shape),
+                  "columns": [str(c) for c in frame.columns],
+                  "preview": frame.head(3).astype(str).to_dict(orient="records"),
+              }
+              for col in frame.columns:
+                  name = str(col).lower()
+                  if any(token in name for token in ("ktas", "triage", "level")):
+                      report["details"][sheet].setdefault("candidate_counts", {})[str(col)] = (
+                          frame[col].value_counts(dropna=False).head(20).to_dict()
+                      )
+
+          print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+          PY
