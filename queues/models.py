@@ -293,6 +293,9 @@ class VisitWorkflowLog(models.Model):
         CRITICAL_ALERT_ESCALATED = "CRITICAL_ALERT_ESCALATED", "ยกระดับการดูแลจากสัญญาณเตือน"
         CRITICAL_ALERT_RESOLVED = "CRITICAL_ALERT_RESOLVED", "ปิดสัญญาณเตือนและกลับไปเฝ้าระวัง"
         CRITICAL_ALERT_FALSE_ALARM = "CRITICAL_ALERT_FALSE_ALARM", "ปิดสัญญาณเตือนเป็น false alarm"
+        EMERGENCY_ACCEPTED = "EMERGENCY_ACCEPTED", "เจ้าหน้าที่ฉุกเฉินรับเคส"
+        EMERGENCY_DISCHARGED = "EMERGENCY_DISCHARGED", "สิ้นสุดการรักษาฉุกเฉิน"
+        EMERGENCY_REFERRED = "EMERGENCY_REFERRED", "ส่งต่อผู้ป่วยฉุกเฉิน"
         DOCTOR_ASSESSMENT = "DOCTOR_ASSESSMENT", "แพทย์บันทึกผลตรวจ"
 
     visit = models.ForeignKey(

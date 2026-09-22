@@ -473,6 +473,14 @@ def emergency_transfers(request):
         )
         queue_item.er_transfer_from_monitoring = bool(er_log)
 
+    for queue_item in page.object_list:
+        queue_item.emergency_accept_log = (
+            queue_item.visit.workflow_logs
+            .filter(event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+
     return render(request, "queues/emergency_transfers.html", {
         "q_items": page,
         "page_obj": page,
@@ -480,6 +488,151 @@ def emergency_transfers(request):
         "red_total": severity_counts["red"],
         "pink_total": severity_counts["pink"],
     })
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def accept_emergency_case(request, visit_id: int):
+    queue_item = get_object_or_404(
+        Queue.objects.select_for_update().select_related("visit", "visit__patient"),
+        visit_id=visit_id,
+        status=Queue.Status.EMERGENCY_TRANSFER,
+    )
+    visit = queue_item.visit
+    existing = (
+        visit.workflow_logs
+        .filter(event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if existing:
+        messages.info(
+            request,
+            f"Visit #{visit.id} มีเจ้าหน้าที่ฉุกเฉินรับเคสแล้ว",
+        )
+        return redirect("emergency_transfers")
+
+    VisitWorkflowLog.record(
+        visit=visit,
+        event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED,
+        actor=request.user,
+        description="เจ้าหน้าที่ฉุกเฉินรับช่วงผู้ป่วยเพื่อเริ่มดูแล",
+        details={"queue_status": queue_item.status},
+    )
+    messages.success(
+        request,
+        f"รับเคส {queue_item.display_number} · {visit.patient.first_name} {visit.patient.last_name} แล้ว",
+    )
+    return redirect("emergency_transfers")
+
+
+def _emergency_case_is_accepted(visit):
+    return visit.workflow_logs.filter(
+        event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED,
+    ).exists()
+
+
+def _finish_emergency_visit(*, visit, outcome, actor, description, details=None):
+    queue_item = Queue.objects.select_for_update().get(visit=visit)
+    if queue_item.status != Queue.Status.EMERGENCY_TRANSFER:
+        return False
+
+    queue_item.status = Queue.Status.DISCHARGED
+    queue_item.exam_room = None
+    queue_item.save(update_fields=["status", "exam_room"])
+
+    unpair_active_wearable(visit)
+    CriticalAlert.objects.filter(
+        visit=visit,
+        status__in=CriticalAlert.ACTIVE_STATUSES,
+    ).update(status=CriticalAlert.Status.RESOLVED)
+
+    VisitWorkflowLog.record(
+        visit=visit,
+        event_type=outcome,
+        actor=actor,
+        description=description,
+        details=details or {},
+    )
+    return True
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def discharge_emergency_case(request, visit_id: int):
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "queue"),
+        pk=visit_id,
+        queue__status=Queue.Status.EMERGENCY_TRANSFER,
+    )
+    if not _emergency_case_is_accepted(visit):
+        messages.error(request, "ต้องกดรับเคสก่อนจึงจะปิดการรักษาได้")
+        return redirect("emergency_transfers")
+
+    note = request.POST.get("note", "").strip()
+    description = note or "รักษาเสร็จและจำหน่ายจากหน่วยฉุกเฉิน"
+
+    if not _finish_emergency_visit(
+        visit=visit,
+        outcome=VisitWorkflowLog.EventType.EMERGENCY_DISCHARGED,
+        actor=request.user,
+        description=description,
+        details={"disposition": "DISCHARGED"},
+    ):
+        messages.error(request, "รายการนี้ไม่ได้อยู่ในคิวฉุกเฉินแล้ว")
+        return redirect("emergency_transfers")
+
+    messages.success(
+        request,
+        f"ปิดการรักษา Visit #{visit.id} แล้ว รายการถูกนำออกจากคิวฉุกเฉิน",
+    )
+    return redirect("emergency_transfers")
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def refer_emergency_case(request, visit_id: int):
+    visit = get_object_or_404(
+        Visit.objects.select_related("patient", "queue"),
+        pk=visit_id,
+        queue__status=Queue.Status.EMERGENCY_TRANSFER,
+    )
+    if not _emergency_case_is_accepted(visit):
+        messages.error(request, "ต้องกดรับเคสก่อนจึงจะบันทึกการส่งต่อได้")
+        return redirect("emergency_transfers")
+
+    destination = request.POST.get("destination", "").strip()
+    reason = request.POST.get("reason", "").strip()
+    if len(destination) < 2:
+        messages.error(request, "กรุณาระบุหน่วยงานหรือโรงพยาบาลปลายทาง")
+        return redirect("emergency_transfers")
+
+    description = f"ส่งต่อไป {destination}"
+    if reason:
+        description += f" · {reason}"
+
+    if not _finish_emergency_visit(
+        visit=visit,
+        outcome=VisitWorkflowLog.EventType.EMERGENCY_REFERRED,
+        actor=request.user,
+        description=description,
+        details={
+            "disposition": "REFERRED",
+            "destination": destination,
+            "reason": reason,
+        },
+    ):
+        messages.error(request, "รายการนี้ไม่ได้อยู่ในคิวฉุกเฉินแล้ว")
+        return redirect("emergency_transfers")
+
+    messages.success(
+        request,
+        f"บันทึกส่งต่อ Visit #{visit.id} ไป {destination} แล้ว",
+    )
+    return redirect("emergency_transfers")
 
 
 @login_required

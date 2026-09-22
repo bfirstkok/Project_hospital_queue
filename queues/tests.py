@@ -1638,3 +1638,164 @@ class ShiftScheduleTests(TestCase):
             119,
         )
 
+
+
+class EmergencyOfficerWorkflowTests(TestCase):
+    def setUp(self):
+        self.officer = get_user_model().objects.create_user(
+            username="emergency-officer",
+            password="secret",
+            first_name="กู้ชีพ",
+            last_name="หนึ่ง",
+        )
+        StaffProfile.objects.create(
+            user=self.officer,
+            role=StaffProfile.Role.EMERGENCY,
+        )
+        self.client.force_login(self.officer)
+        self.patient = Patient.objects.create(
+            first_name="ฉุกเฉิน",
+            last_name="ทดสอบ",
+            national_id="7900000000001",
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.PINK,
+            confirmed_at=timezone.now(),
+            note="เจ็บหน้าอก",
+        )
+        Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.EMERGENCY_TRANSFER,
+            priority=2,
+        )
+        VitalSign.objects.create(
+            visit=self.visit,
+            rr=24,
+            pr=112,
+            sys_bp=108,
+            dia_bp=68,
+            bt=37.2,
+            o2sat=95,
+            pain_score=7,
+        )
+        TriageResult.objects.create(
+            visit=self.visit,
+            ai_severity=Visit.Severity.PINK,
+            nurse_severity=Visit.Severity.PINK,
+            nurse_note="ส่งประเมินฉุกเฉิน",
+        )
+
+    def test_emergency_page_exposes_accept_then_final_actions(self):
+        first = self.client.get(reverse("emergency_transfers"))
+
+        self.assertEqual(first.status_code, 200)
+        self.assertContains(first, "รับเคส")
+        self.assertNotContains(first, "รักษาเสร็จ / จำหน่าย")
+
+        response = self.client.post(
+            reverse("accept_emergency_case", args=[self.visit.id]),
+        )
+        self.assertRedirects(response, reverse("emergency_transfers"))
+
+        accepted = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.EMERGENCY_ACCEPTED,
+        )
+        self.assertEqual(accepted.actor, self.officer)
+
+        second = self.client.get(reverse("emergency_transfers"))
+        self.assertContains(second, "รับเคสแล้ว")
+        self.assertContains(second, "รักษาเสร็จ / จำหน่าย")
+        self.assertContains(second, "ส่งต่อหน่วยอื่น")
+
+    def test_cannot_discharge_before_accepting_case(self):
+        response = self.client.post(
+            reverse("discharge_emergency_case", args=[self.visit.id]),
+            {"note": "อาการคงที่"},
+        )
+
+        self.assertRedirects(response, reverse("emergency_transfers"))
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(
+            self.visit.queue.status,
+            Queue.Status.EMERGENCY_TRANSFER,
+        )
+        self.assertFalse(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.EMERGENCY_DISCHARGED,
+            ).exists()
+        )
+
+    def test_accept_then_discharge_closes_case_and_resolves_active_alerts(self):
+        alert = CriticalAlert.objects.create(
+            visit=self.visit,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
+            severity=Visit.Severity.PINK,
+            status=CriticalAlert.Status.NEW,
+            message="ชีพจรสูง",
+        )
+        device = Device.objects.create(
+            device_id="ER-TEST-001",
+            api_key="secret",
+            is_active=True,
+        )
+        assignment = DeviceAssignment.objects.create(
+            device=device,
+            visit=self.visit,
+            is_active=True,
+        )
+
+        self.client.post(
+            reverse("accept_emergency_case", args=[self.visit.id]),
+        )
+        response = self.client.post(
+            reverse("discharge_emergency_case", args=[self.visit.id]),
+            {"note": "อาการดีขึ้น แพทย์อนุญาตกลับบ้าน"},
+        )
+
+        self.assertRedirects(response, reverse("emergency_transfers"))
+        self.visit.queue.refresh_from_db()
+        alert.refresh_from_db()
+        assignment.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.DISCHARGED)
+        self.assertEqual(alert.status, CriticalAlert.Status.RESOLVED)
+        self.assertFalse(assignment.is_active)
+        self.assertTrue(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.EMERGENCY_DISCHARGED,
+                description__icontains="อาการดีขึ้น",
+            ).exists()
+        )
+        page = self.client.get(reverse("emergency_transfers"))
+        self.assertNotContains(
+            page,
+            f"{self.patient.first_name} {self.patient.last_name}",
+        )
+
+    def test_accept_then_refer_records_destination_and_closes_case(self):
+        self.client.post(
+            reverse("accept_emergency_case", args=[self.visit.id]),
+        )
+        response = self.client.post(
+            reverse("refer_emergency_case", args=[self.visit.id]),
+            {
+                "destination": "โรงพยาบาลศูนย์จังหวัด",
+                "reason": "ต้องการศัลยแพทย์เฉพาะทาง",
+            },
+        )
+
+        self.assertRedirects(response, reverse("emergency_transfers"))
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.DISCHARGED)
+        log = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.EMERGENCY_REFERRED,
+        )
+        self.assertEqual(
+            log.details["destination"],
+            "โรงพยาบาลศูนย์จังหวัด",
+        )
+        self.assertEqual(log.details["disposition"], "REFERRED")

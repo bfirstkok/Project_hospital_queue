@@ -51,6 +51,30 @@ class VisitAssessmentForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields["has_next_appointment"].initial = bool(self.instance.next_appointment_at)
 
+        # Age is identity/demographic data already known from Patient. Keep it
+        # visible in the clinical form, but never ask the doctor to re-enter or
+        # override it here.
+        self.fields["age"].disabled = True
+        self.fields["age"].help_text = "คำนวณอัตโนมัติจากวันเกิด/ข้อมูลผู้ป่วย"
+        self.fields["age"].widget.attrs.update({
+            "readonly": "readonly",
+            "aria-readonly": "true",
+            "data-source": "patient",
+        })
+
+        for name in (
+            "chief_complaint",
+            "known_copd_asthma",
+            "pain_score",
+            "bt",
+            "sys_bp",
+            "dia_bp",
+            "child_under_5",
+            "pregnant",
+            "low_immunity",
+        ):
+            self.fields[name].widget.attrs.setdefault("data-prefill-source", "triage")
+
     def clean(self):
         cleaned_data = super().clean()
         send_to_monitoring = cleaned_data.get("send_to_monitoring")
