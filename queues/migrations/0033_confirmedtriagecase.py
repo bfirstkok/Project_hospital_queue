@@ -119,11 +119,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="confirmedtriagecase",
-            index=models.Index(fields=["nurse_severity", "-confirmed_at"], name="queues_conf_nurse_s_6a1b45_idx"),
+            index=models.Index(fields=["nurse_severity", "-confirmed_at"], name="queues_conf_nurse_s_1b1b4e_idx"),
         ),
         migrations.AddIndex(
             model_name="confirmedtriagecase",
-            index=models.Index(fields=["model_name", "-confirmed_at"], name="queues_conf_model_n_26d7a7_idx"),
+            index=models.Index(fields=["model_name", "-confirmed_at"], name="queues_conf_model_n_b4b6b4_idx"),
         ),
         migrations.RunPython(backfill_confirmed_cases, migrations.RunPython.noop),
     ]
