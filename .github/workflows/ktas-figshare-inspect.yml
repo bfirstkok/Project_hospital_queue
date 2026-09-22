@@ -19,13 +19,37 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install inspection dependencies
+        run: python -m pip install pandas openpyxl pyreadstat
+
       - name: Download public KTAS dataset from Figshare
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/ktas
-          curl --fail --location --retry 4 --retry-delay 2             "https://figshare.com/ndownloader/articles/8044793/versions/2"             --output /tmp/ktas/ktas_download
 
+          urls=(
+            "https://plos.figshare.com/ndownloader/articles/7138472/versions/2"
+            "https://figshare.com/ndownloader/articles/7138472/versions/2"
+            "https://plos.figshare.com/ndownloader/articles/8044793/versions/1"
+            "https://figshare.com/ndownloader/articles/8044793/versions/1"
+          )
+
+          downloaded=""
+          for url in "${urls[@]}"; do
+            echo "Trying: $url"
+            if curl --fail --location --retry 2 --retry-delay 1               "$url" --output /tmp/ktas/ktas_download; then
+              downloaded="$url"
+              break
+            fi
+          done
+
+          if [ -z "$downloaded" ]; then
+            echo "Could not download Figshare article archive." >&2
+            exit 1
+          fi
+
+          echo "Downloaded from: $downloaded"
           echo "Downloaded bytes:"
           wc -c /tmp/ktas/ktas_download
           echo "File type:"
@@ -63,14 +87,13 @@ jobs:
               entry = {"file": str(path), "size": path.stat().st_size}
               try:
                   if suffix in {".csv", ".txt", ".tsv"}:
-                      attempts = [
+                      frame = None
+                      for kwargs in (
                           {"sep": None, "engine": "python"},
                           {"sep": ";"},
                           {"sep": ","},
                           {"sep": "\t"},
-                      ]
-                      frame = None
-                      for kwargs in attempts:
+                      ):
                           try:
                               candidate = pd.read_csv(path, nrows=20, **kwargs)
                               if candidate.shape[1] > 1:
@@ -90,8 +113,12 @@ jobs:
                       for sheet in book.sheet_names[:10]:
                           frame = pd.read_excel(path, sheet_name=sheet, nrows=20)
                           entry["sheet_columns"][sheet] = [str(c) for c in frame.columns]
+                          entry.setdefault("preview", {})[sheet] = frame.head(3).astype(str).to_dict(orient="records")
                   elif suffix == ".sav":
+                      frame = pd.read_spss(path)
                       entry["kind"] = "spss"
+                      entry["columns"] = [str(c) for c in frame.columns]
+                      entry["preview"] = frame.head(3).astype(str).to_dict(orient="records")
                   else:
                       entry["kind"] = "other"
               except Exception as exc:
