@@ -1,0 +1,102 @@
+name: Inspect public KTAS Figshare dataset
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ktas-figshare-inspect.yml"
+      - "ai_triage/ml/**"
+  workflow_dispatch:
+
+jobs:
+  inspect-ktas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download public KTAS dataset from Figshare
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ktas
+          curl --fail --location --retry 4 --retry-delay 2             "https://figshare.com/ndownloader/articles/8044793/versions/2"             --output /tmp/ktas/ktas_download
+
+          echo "Downloaded bytes:"
+          wc -c /tmp/ktas/ktas_download
+          echo "File type:"
+          file /tmp/ktas/ktas_download
+
+      - name: Extract and inspect files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ktas/extracted
+          if unzip -t /tmp/ktas/ktas_download >/dev/null 2>&1; then
+            unzip -q /tmp/ktas/ktas_download -d /tmp/ktas/extracted
+          else
+            cp /tmp/ktas/ktas_download /tmp/ktas/extracted/downloaded_file
+          fi
+
+          echo "Files:"
+          find /tmp/ktas/extracted -maxdepth 3 -type f -printf '%p\t%s bytes\n'
+
+      - name: Inspect tabular structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import pandas as pd
+
+          root = Path("/tmp/ktas/extracted")
+          files = [p for p in root.rglob("*") if p.is_file()]
+          report = []
+
+          for path in files:
+              suffix = path.suffix.lower()
+              entry = {"file": str(path), "size": path.stat().st_size}
+              try:
+                  if suffix in {".csv", ".txt", ".tsv"}:
+                      attempts = [
+                          {"sep": None, "engine": "python"},
+                          {"sep": ";"},
+                          {"sep": ","},
+                          {"sep": "\t"},
+                      ]
+                      frame = None
+                      for kwargs in attempts:
+                          try:
+                              candidate = pd.read_csv(path, nrows=20, **kwargs)
+                              if candidate.shape[1] > 1:
+                                  frame = candidate
+                                  break
+                          except Exception:
+                              pass
+                      if frame is not None:
+                          entry["kind"] = "table"
+                          entry["columns"] = [str(c) for c in frame.columns]
+                          entry["preview"] = frame.head(3).astype(str).to_dict(orient="records")
+                  elif suffix in {".xlsx", ".xls"}:
+                      book = pd.ExcelFile(path)
+                      entry["kind"] = "excel"
+                      entry["sheets"] = book.sheet_names
+                      entry["sheet_columns"] = {}
+                      for sheet in book.sheet_names[:10]:
+                          frame = pd.read_excel(path, sheet_name=sheet, nrows=20)
+                          entry["sheet_columns"][sheet] = [str(c) for c in frame.columns]
+                  elif suffix == ".sav":
+                      entry["kind"] = "spss"
+                  else:
+                      entry["kind"] = "other"
+              except Exception as exc:
+                  entry["error"] = repr(exc)
+              report.append(entry)
+
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
