@@ -684,15 +684,24 @@ def waiting_time_report_pdf(request):
         f"{severity} {summary['severity_counts'].get(severity, 0)}"
         for severity in SEVERITY_LEVELS
     )
+    bottleneck_english = {
+        "registration_to_triage": "Registration to triage",
+        "triage_to_confirmation": "Triage to nurse confirmation",
+        "confirmation_to_call": "Confirmation to queue call",
+        "call_to_now_or_done": "Queue call to current stage",
+    }
+    def minutes_text(value):
+        return f"{value:.2f} min" if value is not None else "-"
+
     lines = [
         "Hospital Service Summary Report",
         f"Generated: {timezone.localtime(summary['generated_at']):%Y-%m-%d %H:%M}",
         "",
         "OVERVIEW",
         f"Total visits: {summary['total']}",
-        f"Average registration-to-triage: {summary['avg_triage_display']}",
-        f"Average triage-to-confirmation: {summary['avg_confirmation_display']}",
-        f"Average registration-to-call: {summary['avg_called_display']}",
+        f"Average registration-to-triage: {minutes_text(summary['avg_triage'])}",
+        f"Average triage-to-confirmation: {minutes_text(summary['avg_confirmation'])}",
+        f"Average registration-to-call: {minutes_text(summary['avg_called'])}",
         f"Invalid timestamp intervals excluded: {summary['invalid_intervals']}",
         "",
         "PATIENT SEVERITY TOTALS",
@@ -701,10 +710,16 @@ def waiting_time_report_pdf(request):
         "SERVICE BOTTLENECKS",
     ]
     for row in summary["bottlenecks"]:
-        lines.append(f"{row['label']}: {row['avg_display']} ({row['count']} samples)")
+        lines.append(
+            f"{bottleneck_english.get(row['name'], row['name'])}: "
+            f"{minutes_text(row['avg'])} ({row['count']} samples)"
+        )
     lines.extend(["", "MONTHLY WAITING-TIME TREND"])
     for row in summary["monthly_rows"][:6]:
-        lines.append(f"{row['period']}: {row['avg_called_display']} ({row['count']} visits)")
+        lines.append(
+            f"{row['period']}: {minutes_text(row['avg_called'])} "
+            f"({row['count']} visits)"
+        )
 
     response = HttpResponse(_simple_pdf(lines), content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="hospital_summary_report.pdf"'
