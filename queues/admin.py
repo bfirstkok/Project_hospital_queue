@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    ConfirmedTriageCase,
     CriticalAlert,
     Device,
     DeviceAssignment,
@@ -115,6 +116,29 @@ class TriageResultAdmin(admin.ModelAdmin):
         "visit__patient__last_name",
         "model_name",
     )
+
+
+@admin.register(ConfirmedTriageCase)
+class ConfirmedTriageCaseAdmin(ReadOnlyAdmin):
+    list_display = (
+        "confirmed_at",
+        "visit",
+        "ai_severity",
+        "nurse_severity",
+        "is_ai_match",
+        "is_training_eligible",
+        "model_name",
+        "confidence",
+    )
+    list_filter = (
+        "nurse_severity",
+        "ai_severity",
+        "is_ai_match",
+        "is_training_eligible",
+        "model_name",
+    )
+    search_fields = ("visit__id", "model_name")
+    date_hierarchy = "confirmed_at"
 
 
 @admin.register(Device)
