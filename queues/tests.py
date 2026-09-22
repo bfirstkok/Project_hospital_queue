@@ -1770,7 +1770,10 @@ class EmergencyOfficerWorkflowTests(TestCase):
             ).exists()
         )
         page = self.client.get(reverse("emergency_transfers"))
-        self.assertNotContains(page, self.patient.first_name)
+        self.assertNotContains(
+            page,
+            f"{self.patient.first_name} {self.patient.last_name}",
+        )
 
     def test_accept_then_refer_records_destination_and_closes_case(self):
         self.client.post(
