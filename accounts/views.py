@@ -27,6 +27,10 @@ def role_landing(request):
         return redirect("system_test:index")
     if has_capability(request.user, Capability.DOCTOR_ASSESSMENT):
         return redirect("opd_room_select")
+    if has_capability(request.user, Capability.VIEW_PHARMACY):
+        return redirect("pharmacy_worklist")
+    if has_capability(request.user, Capability.VIEW_BILLING):
+        return redirect("billing_worklist")
     if has_capability(request.user, Capability.RECORD_VITALS):
         return redirect("waiting_vitals")
     if has_capability(request.user, Capability.CONFIRM_TRIAGE):
