@@ -237,6 +237,14 @@ def main():
         if feature not in external.columns:
             external[feature] = np.nan
 
+    # Empty text cells are read back from CSV as NaN; TfidfVectorizer expects
+    # strings, so preserve the intentional "no compatible free-text field"
+    # representation as an empty string.
+    if "chief_complain" in external.columns:
+        external["chief_complain"] = (
+            external["chief_complain"].fillna("").astype(str)
+        )
+
     weights = [float(item.strip()) for item in args.weights.split(",") if item.strip()]
     results = []
     for weight in weights:
