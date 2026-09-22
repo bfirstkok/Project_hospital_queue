@@ -116,9 +116,13 @@ class FullPatientWorkflowReportTests(TestCase):
             "gender": "M",
             "age": "31",
             "phone": "0812345678",
+            "email": "workflow-patient@example.com",
             "blood_type": "UNKNOWN",
             "bp_sys": "118",
             "bp_dia": "76",
+            "chronic_diseases": "ไม่มีโรคประจำตัว",
+            "allergies": "ไม่มีประวัติแพ้ยา",
+            "medications": "ไม่มียาที่ใช้ประจำ",
             "note": "ผู้ป่วยจำลองสำหรับทดสอบ workflow อัตโนมัติ",
         })
         patient = Patient.objects.get(national_id="1234567890999")
