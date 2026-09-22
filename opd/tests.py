@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from patients.models import Patient
-from queues.models import Queue, ShiftSchedule, StaffProfile, Visit, VisitWorkflowLog
+from queues.models import Queue, ShiftSchedule, StaffProfile, Visit, VisitWorkflowLog, VitalSign
 
 from .models import VisitAssessment
 
@@ -105,6 +105,49 @@ class DoctorWorkspaceTests(TestCase):
         self.assertContains(response, "Acute URI / ไข้หวัด")
         self.assertContains(response, "ให้ยาตามอาการ")
         self.assertContains(response, "รับไว้ติดตามอาการในโรงพยาบาล")
+
+
+    def test_assessment_prefills_known_registration_and_triage_data(self):
+        today = timezone.localdate()
+        patient = self.visit_room_one.patient
+        patient.birth_date = date(today.year - 21, today.month, min(today.day, 28))
+        patient.bp_sys = 124
+        patient.bp_dia = 78
+        patient.save(update_fields=["birth_date", "bp_sys", "bp_dia"])
+
+        self.visit_room_one.note = "ไอ มีไข้ และอ่อนเพลีย"
+        self.visit_room_one.save(update_fields=["note"])
+        VitalSign.objects.create(
+            visit=self.visit_room_one,
+            pain_score=6,
+            bt=38.1,
+            sys_bp=118,
+            dia_bp=74,
+            pr=96,
+            rr=22,
+            o2sat=97,
+            risk_flags=["pregnant", "immunocompromised"],
+        )
+
+        response = self.client.get(
+            reverse("visit_assessment", args=[self.visit_room_one.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(form["age"].value(), 21)
+        self.assertTrue(form.fields["age"].disabled)
+        self.assertEqual(form["chief_complaint"].value(), "ไอ มีไข้ และอ่อนเพลีย")
+        self.assertEqual(form["pain_score"].value(), 6)
+        self.assertEqual(form["bt"].value(), 38.1)
+        self.assertEqual(form["sys_bp"].value(), 118)
+        self.assertEqual(form["dia_bp"].value(), 74)
+        self.assertTrue(form["pregnant"].value())
+        self.assertTrue(form["low_immunity"].value())
+        self.assertContains(response, "ข้อมูลที่ระบบกรอกให้จาก Registration / Triage")
+        self.assertContains(response, "AUTO PREFILL")
+        self.assertContains(response, "ตั้งครรภ์")
+        self.assertContains(response, "ภูมิคุ้มกันต่ำ")
 
     def test_signed_in_doctor_is_saved_with_assessment(self):
         response = self.client.post(
