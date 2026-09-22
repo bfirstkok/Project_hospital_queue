@@ -1,6 +1,6 @@
 # ER Diagram และ Data Dictionary ฉบับ Final
 
-เอกสารนี้อ้างอิงโครงสร้างโมเดลที่ใช้งานจริงหลังการปรับฐานข้อมูล, Audit Trail และ PostgreSQL native ENUM ถึง migration `queues.0032`, `patients.0012` และ `opd.0008`
+เอกสารนี้อ้างอิงโครงสร้างโมเดลที่ใช้งานจริงหลังการปรับฐานข้อมูล, Audit Trail และ PostgreSQL native ENUM ถึง migration `queues.0033`, `patients.0012` และ `opd.0008`
 
 > หลักการออกแบบหลัก: **Patient = บุคคล**, **Visit = การมารับบริการแต่ละครั้ง** และข้อมูลการรักษา/คัดกรอง/คิว/IoT/ผลตรวจต้องอ้างอิง Visit เพื่อไม่ให้ข้อมูลคนละ encounter ปะปนกัน
 
@@ -16,6 +16,7 @@ erDiagram
     AUTH_USER ||--o{ NURSE_CARE_ASSIGNMENT : nurse
     AUTH_USER ||--o{ CRITICAL_ALERT : acknowledges
     AUTH_USER ||--o{ VISIT_ASSESSMENT : examines
+    AUTH_USER ||--o{ CONFIRMED_TRIAGE_CASE : confirms
 
     PATIENT ||--o{ VISIT : receives
     PATIENT ||--o{ APPOINTMENT : has
@@ -24,6 +25,7 @@ erDiagram
 
     VISIT ||--o| VITAL_SIGN : current_vitals
     VISIT ||--o| TRIAGE_RESULT : triage
+    VISIT ||--o| CONFIRMED_TRIAGE_CASE : training_snapshot
     VISIT ||--o| QUEUE : queue_state
     VISIT ||--o| VISIT_ASSESSMENT : opd_assessment
     VISIT ||--o{ VISIT_WORKFLOW_LOG : audit
@@ -65,6 +67,17 @@ erDiagram
       triage_severity_enum ai_severity
       triage_severity_enum nurse_severity
       float confidence
+    }
+    CONFIRMED_TRIAGE_CASE {
+      bigint id PK
+      bigint visit_id FK_UK
+      bigint confirmed_by_id FK
+      triage_severity_enum ai_severity
+      triage_severity_enum nurse_severity
+      float confidence
+      bool is_ai_match
+      bool is_training_eligible
+      datetime confirmed_at
     }
     QUEUE {
       bigint id PK
@@ -192,6 +205,7 @@ erDiagram
 | Patient → Visit | 1:N | ผู้ป่วยหนึ่งคนมารับบริการได้หลายครั้ง |
 | Visit → VitalSign | 1:0..1 | ค่าหลัก/ค่าล่าสุดของ Visit |
 | Visit → TriageResult | 1:0..1 | ผลประเมิน AI และผลยืนยันจากพยาบาล |
+| Visit → ConfirmedTriageCase | 1:0..1 | Snapshot de-identified ของข้อมูลคัดกรอง ณ เวลาพยาบาลยืนยัน สำหรับประเมิน AI/ฝึกโมเดลรอบถัดไป |
 | Visit → Queue | 1:0..1 | สถานะคิวของ encounter |
 | Visit → VisitAssessment | 1:0..1 | ผลตรวจ OPD ของแพทย์ในครั้งนั้น |
 | Visit → TelemetryLog | 1:N | ประวัติข้อมูลจาก wearable ตามเวลา |
@@ -214,7 +228,7 @@ erDiagram
 | ENUM type | ใช้กับ Field | ค่าที่อนุญาต |
 |---|---|---|
 | appointment_status_enum | patients_appointment.status | SCHEDULED, ATTENDED, MISSED, CANCELLED |
-| triage_severity_enum | queues_visit.final_severity, queues_triageresult.ai_severity, queues_triageresult.nurse_severity, queues_criticalalert.severity | RED, PINK, YELLOW, GREEN, WHITE |
+| triage_severity_enum | queues_visit.final_severity, queues_triageresult.ai_severity, queues_triageresult.nurse_severity, queues_confirmedtriagecase.ai_severity, queues_confirmedtriagecase.nurse_severity, queues_criticalalert.severity | RED, PINK, YELLOW, GREEN, WHITE |
 | queue_status_enum | queues_queue.status | WAITING_VITALS, WAITING_CONFIRMATION, WAITING_QUEUE, WAITING, CALLED, MONITORING, OBSERVATION_MONITORING, REASSESSMENT_REQUIRED, EMERGENCY_TRANSFER, OPD_DONE, FOLLOWUP, DISCHARGED, CANCELLED |
 | critical_alert_status_enum | queues_criticalalert.status | NEW, ACKNOWLEDGED, IN_REVIEW, ESCALATED, RESOLVED, FALSE_ALARM |
 | shift_schedule_status_enum | queues_shiftschedule.status | SCHEDULED, LEAVE, CANCELLED |
@@ -586,6 +600,42 @@ Constraint: user + shift_date + start_time ต้องไม่ซ้ำ
 | consumed_at | datetime | NULL | ถูกใช้เมื่อไร |
 | attempts | positive small int | NOT NULL | จำนวนครั้งลอง |
 | created_at | datetime | NOT NULL | เวลาสร้าง |
+
+
+## 3.21 queues_confirmedtriagecase — ConfirmedTriageCase
+
+Snapshot สำหรับ Continuous Learning ที่สร้าง/อัปเดตทันทีเมื่อบุคลากรยืนยันผลคัดกรอง เก็บเฉพาะข้อมูลที่ใช้ประเมินและฝึกโมเดล ไม่คัดลอกชื่อ HN เลขบัตร โทรศัพท์ หรือที่อยู่ลงใน snapshot
+
+| Field | Type | Key / Null | ความหมาย |
+|---|---|---|---|
+| id | BigAutoField | PK | Snapshot ID |
+| visit_id | bigint | FK + UNIQUE | Visit ต้นทาง ใช้กันข้อมูลเคสเดียวซ้ำ |
+| confirmed_by_id | bigint | FK auth_user, NULL | ผู้ยืนยันผลล่าสุด |
+| confirmed_at | datetime | INDEX, NULL | เวลายืนยันผล |
+| age | positive small int | NULL | อายุ ณ เวลาสร้าง snapshot |
+| nrs_pain | positive small int | NULL | Pain score |
+| rr / pr | int | NULL | Respiratory / Pulse rate |
+| sys_bp / dia_bp | int | NULL | Blood pressure |
+| bt | float | NULL | Body temperature |
+| o2sat | int | NULL | Oxygen saturation |
+| chief_complain | text | NOT NULL | อาการสำคัญของ Visit |
+| urgent_symptoms / risk_flags | JSON | NOT NULL | อาการเร่งด่วนและกลุ่มเสี่ยง |
+| lifesaving_intervention | boolean | NULL | Structured triage decision point |
+| high_risk_condition | boolean | NULL | Structured triage decision point |
+| altered_mental_status | boolean | NULL | Structured triage decision point |
+| mental_status | varchar(20) | NULL | ALERT/VERBAL/PAIN/UNRESPONSIVE |
+| severe_distress | boolean | NULL | Structured triage decision point |
+| expected_resources | varchar(10) | NULL | 0/1/2_PLUS |
+| ai_severity | triage_severity_enum | NULL | ระดับที่ระบบแนะนำ ณ ตอนยืนยัน |
+| nurse_severity | triage_severity_enum | NOT NULL | Label สุดท้ายจากบุคลากร |
+| model_name | varchar(120) | NOT NULL | Model/version ที่สร้างคำแนะนำ |
+| confidence | float | NULL | Confidence ของ AI |
+| ai_reason / nurse_note | text | NOT NULL | เหตุผลประกอบ |
+| is_ai_match | boolean | INDEX | AI ตรงกับพยาบาลหรือไม่ |
+| is_training_eligible | boolean | INDEX | Structured fields ครบพอสำหรับ export ไปฝึกหรือไม่ |
+| eligibility_note | varchar(220) | NOT NULL | เหตุผลพร้อม/ไม่พร้อม |
+| snapshot_version | varchar(12) | NOT NULL | Version ของ schema snapshot |
+| captured_at / updated_at | datetime | NOT NULL | เวลาสร้างและอัปเดต snapshot |
 
 ---
 

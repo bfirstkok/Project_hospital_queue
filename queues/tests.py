@@ -15,7 +15,8 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
+from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
+from queues.training_cases import capture_confirmed_triage_case
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -1313,9 +1314,12 @@ class ConfirmedTriageExportTests(TestCase):
             o2sat=98,
             pain_score=2,
         )
-        TriageResult.objects.create(
+        triage = TriageResult.objects.create(
             visit=visit,
+            ai_severity=Visit.Severity.GREEN,
             nurse_severity=Visit.Severity.GREEN,
+            model_name="random_forest_5level_runtime_v3_guarded_by_rules",
+            confidence=0.82,
             lifesaving_intervention=False,
             high_risk_condition=False,
             altered_mental_status=False,
@@ -1323,6 +1327,19 @@ class ConfirmedTriageExportTests(TestCase):
             severe_distress=False,
             expected_resources="1",
         )
+        visit.final_severity = Visit.Severity.GREEN
+        visit.confirmed_at = timezone.now()
+        visit.save(update_fields=["final_severity", "confirmed_at"])
+        case = capture_confirmed_triage_case(visit=visit, triage_result=triage)
+        self.assertTrue(case.is_training_eligible)
+        self.assertTrue(case.is_ai_match)
+
+        # Mutating the live vitals after confirmation must not change the
+        # feature snapshot used for model learning.
+        visit.vitals.pr = 140
+        visit.vitals.save(update_fields=["pr", "updated_at"])
+        case.refresh_from_db()
+        self.assertEqual(case.pr, 82)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "confirmed.csv"

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from patients.models import Patient
-from queues.models import CriticalAlert, Queue, TriageResult, Visit
+from queues.models import ConfirmedTriageCase, CriticalAlert, Queue, TriageResult, Visit
 
 
 class DashboardPresentationTests(TestCase):
@@ -102,6 +102,39 @@ class DashboardPresentationTests(TestCase):
         queue.refresh_from_db()
         self.assertEqual(alert.status, CriticalAlert.Status.IN_REVIEW)
         self.assertEqual(queue.status, Queue.Status.OBSERVATION_MONITORING)
+
+    def test_ai_learning_dashboard_uses_confirmed_snapshots(self):
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Person",
+            national_id="0000000000000",
+        )
+        visit = Visit.objects.create(
+            patient=patient,
+            final_severity=Visit.Severity.PINK,
+        )
+        ConfirmedTriageCase.objects.create(
+            visit=visit,
+            confirmed_by=self.user,
+            ai_severity=Visit.Severity.YELLOW,
+            nurse_severity=Visit.Severity.PINK,
+            model_name="random_forest_5level_runtime_v3_guarded_by_rules",
+            confidence=0.78,
+            is_ai_match=False,
+            is_training_eligible=True,
+            eligibility_note="พร้อมใช้เป็นข้อมูลฝึกโมเดล",
+        )
+
+        response = self.client.get(reverse("dashboard:ai_evaluation"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AI Learning Dashboard")
+        self.assertContains(response, "TRAINING READY")
+        self.assertContains(response, "NURSE OVERRIDE")
+        self.assertContains(response, "Confirmed Training Cases ล่าสุด")
+        self.assertContains(response, "random_forest_5level_runtime_v3_guarded_by_rules")
+        self.assertContains(response, "Override")
+        self.assertNotContains(response, "Test Person")
 
     def test_waiting_time_report_uses_report_hero_and_exports(self):
         response = self.client.get(reverse("dashboard:waiting_time_report"))

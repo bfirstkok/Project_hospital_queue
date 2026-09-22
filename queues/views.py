@@ -27,6 +27,7 @@ from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
 from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
+from .training_cases import capture_confirmed_triage_case
 
 QUEUE_VISIBLE_STATUSES = [
     Queue.Status.WAITING_QUEUE,
@@ -701,6 +702,11 @@ def triage_visit(request, visit_id: int):
     triage_result.nurse_severity = new_sev
     triage_result.nurse_note = nurse_note
     triage_result.save(update_fields=["nurse_severity", "nurse_note"])
+    capture_confirmed_triage_case(
+        visit=visit,
+        triage_result=triage_result,
+        actor=request.user,
+    )
     VisitWorkflowLog.record(
         visit=visit,
         event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
@@ -792,6 +798,11 @@ def update_severity_api(request, visit_id: int):
         triage_result, _ = TriageResult.objects.get_or_create(visit=visit)
         triage_result.nurse_severity = new_sev
         triage_result.save(update_fields=["nurse_severity"])
+        capture_confirmed_triage_case(
+            visit=visit,
+            triage_result=triage_result,
+            actor=request.user,
+        )
         VisitWorkflowLog.record(
             visit=visit,
             event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,

@@ -1,103 +1,134 @@
 <!doctype html>
 <html lang="th">
 <head>
-  
   {% load static %}
-<meta charset="utf-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ประเมินผลระบบช่วยคัดกรอง</title>
+  <title>AI Learning Dashboard</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=ai-learning-20260922">
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e1a; color: #e8eaf0; }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    a { color: #00d4aa; text-decoration: none; }
-    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 18px; margin: 14px 0; }
-    pre { white-space: pre-wrap; overflow: auto; background: rgba(0,0,0,.25); border-radius: 8px; padding: 14px; }
-    .muted { color: rgba(255,255,255,.55); }
+    *{box-sizing:border-box}
+    body{margin:0;background:#f2f7f8;color:#173242;font-family:"Sarabun",Tahoma,sans-serif}
+    .page{width:min(1380px,calc(100% - 32px));margin:20px auto 60px}
+    .hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding:26px;border-radius:22px;background:linear-gradient(135deg,#173e54,#087f75);color:#fff;box-shadow:0 18px 42px rgba(23,62,84,.16)}
+    .hero h1{margin:4px 0 7px;font-size:31px}.hero p{max-width:760px;margin:0;color:#dcefed;line-height:1.7}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#bce6df}
+    .hero-note{min-width:230px;padding:13px 15px;border:1px solid rgba(255,255,255,.22);border-radius:14px;background:rgba(255,255,255,.09);font-size:12px;line-height:1.6}
+    .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:15px}
+    .stat{padding:17px;border:1px solid #d5e4e7;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(31,67,78,.06)}
+    .stat span{display:block;color:#6c838d;font-size:11px;font-weight:800}.stat strong{display:block;margin-top:5px;color:#173e54;font-size:28px}.stat small{display:block;margin-top:5px;color:#7d9199;font-size:11px}
+    .stat.good strong{color:#087f75}.stat.warn strong{color:#ad7508}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-top:14px}
+    .card{overflow:hidden;border:1px solid #d5e4e7;border-radius:17px;background:#fff;box-shadow:0 8px 24px rgba(31,67,78,.05)}
+    .card-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:16px 18px;border-bottom:1px solid #e2ecee;background:#fbfdfd}
+    .card-head h2{margin:0;font-size:18px}.card-head p{margin:4px 0 0;color:#718792;font-size:12px}.pill{padding:5px 9px;border-radius:999px;background:#e8f6f3;color:#087467;font-size:11px;font-weight:900}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px 13px;border-bottom:1px solid #e5edef;text-align:left;white-space:nowrap}th{background:#f5f9fa;color:#5d7581;font-size:11px}tbody tr:hover td{background:#fafdfd}
+    .sev{display:inline-flex;min-width:70px;justify-content:center;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900}.sev.RED{background:#ffe9ec;color:#a51d30}.sev.PINK{background:#fdeaf2;color:#a83263}.sev.YELLOW{background:#fff5d9;color:#8b6200}.sev.GREEN{background:#e8f6ef;color:#14704a}.sev.WHITE{border:1px solid #d8e3e6;background:#fff;color:#607983}
+    .bar{height:7px;min-width:120px;border-radius:999px;background:#e8eff1;overflow:hidden}.bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0a9a8c,#29bba7)}
+    .match{color:#087467;font-weight:900}.override{color:#b05812;font-weight:900}.muted{color:#7a8f98}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+    details.raw{margin:14px 0;border:1px solid #d8e5e8;border-radius:14px;background:#fff}details.raw summary{cursor:pointer;padding:14px 16px;font-weight:800}details.raw pre{margin:0;padding:16px;border-top:1px solid #e2ecee;white-space:pre-wrap;overflow:auto;background:#f8fbfb;color:#395764;font-size:11px}
+    .matrix td,.matrix th{text-align:center}.matrix th:first-child,.matrix td:first-child{text-align:left}.matrix .hit{background:#edf8f5;font-weight:900;color:#087467}
+    .privacy{margin-top:14px;padding:13px 15px;border:1px solid #cae1dd;border-radius:13px;background:#f0faf7;color:#426862;font-size:12px;line-height:1.6}
+    @media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+    @media(max-width:650px){.page{width:min(100% - 20px,1380px)}.hero{flex-direction:column}.hero-note{min-width:0;width:100%}.stats{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-direction:column}}
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
 <body>
-  <div class="wrap">
-    {% include "includes/main_nav.html" %}
-    <h1>ประเมินผลระบบช่วยคัดกรอง</h1>
-    <p class="muted">ผลประเมินโมเดล Decision Tree จากชุดข้อมูลคัดกรองจำลอง</p>
-
-    <div class="card">
-      <h2>ผลเทียบกับข้อมูลใช้งานจริง</h2>
-      <p class="muted">เทียบ `ai_severity` กับ `nurse_severity` ที่บันทึกหลังพยาบาลยืนยันหรือ override</p>
-      <table style="width:100%; border-collapse:collapse">
-        <tr>
-          <td>จำนวนเคสที่เทียบได้</td>
-          <td><strong>{{ actual_total }}</strong></td>
-        </tr>
-        <tr>
-          <td>AI ตรงกับพยาบาล</td>
-          <td><strong>{{ actual_matches }}</strong></td>
-        </tr>
-        <tr>
-          <td>Nurse override</td>
-          <td><strong>{{ actual_overrides }}</strong></td>
-        </tr>
-        <tr>
-          <td>Accuracy จากข้อมูลจริง</td>
-          <td><strong>{{ actual_accuracy|default:"-" }}%</strong></td>
-        </tr>
-      </table>
+{% include "includes/main_nav.html" %}
+<main class="page">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">AI QUALITY & CONTINUOUS LEARNING</div>
+      <h1>AI Learning Dashboard</h1>
+      <p>ติดตามผลคำแนะนำของ AI เทียบกับผลที่พยาบาลยืนยันจริง และตรวจว่าเคสใดพร้อมนำไปใช้เป็นข้อมูลฝึกโมเดลรอบถัดไป</p>
     </div>
+    <div class="hero-note"><b>หลักการ</b><br>AI เป็น Decision Support เท่านั้น ผลสุดท้ายยังยืนยันโดยบุคลากร และข้อมูลฝึกที่ส่งออกจะไม่รวมชื่อ HN เลขบัตร โทรศัพท์ หรือที่อยู่</div>
+  </section>
 
-    <div class="card">
-      <h2>Accuracy รายเดือน</h2>
-      <table style="width:100%; border-collapse:collapse">
-        <thead>
-          <tr><th>เดือน</th><th>จำนวน</th><th>ตรงกัน</th><th>Override</th><th>Accuracy</th></tr>
-        </thead>
+  <section class="stats">
+    <div class="stat"><span>CONFIRMED SNAPSHOTS</span><strong>{{ confirmed_total }}</strong><small>เคสที่บันทึก snapshot หลังพยาบาลยืนยัน</small></div>
+    <div class="stat good"><span>TRAINING READY</span><strong>{{ training_eligible_total }}</strong><small>{% if training_eligibility_rate != None %}{{ training_eligibility_rate }}% ของ snapshot ทั้งหมด{% else %}ยังไม่มีข้อมูล{% endif %}</small></div>
+    <div class="stat good"><span>AI ↔ NURSE MATCH</span><strong>{% if actual_accuracy != None %}{{ actual_accuracy }}%{% else %}-{% endif %}</strong><small>{{ actual_matches }}/{{ actual_total }} เคสที่เทียบได้</small></div>
+    <div class="stat warn"><span>NURSE OVERRIDE</span><strong>{% if override_rate != None %}{{ override_rate }}%{% else %}-{% endif %}</strong><small>{{ actual_overrides }} เคสที่พยาบาลเปลี่ยนระดับ</small></div>
+    <div class="stat"><span>AVG CONFIDENCE</span><strong>{% if avg_confidence != None %}{{ avg_confidence }}%{% else %}-{% endif %}</strong><small>ค่า confidence เฉลี่ยของ AI ในเคสจริง</small></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <div class="card-head"><div><h2>ความแม่นยำแยกตามระดับ</h2><p>เทียบ AI กับระดับสุดท้ายที่พยาบาลยืนยัน</p></div><span class="pill">5-level triage</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ระดับ</th><th>เคส</th><th>ตรงกัน</th><th>Override</th><th>Accuracy</th><th>Training ready</th></tr></thead>
         <tbody>
-          {% for row in monthly_rows %}
-            <tr>
-              <td>{{ row.month }}</td>
-              <td>{{ row.total }}</td>
-              <td>{{ row.matches }}</td>
-              <td>{{ row.overrides }}</td>
-              <td>{{ row.accuracy }}%</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="5" class="muted">ยังไม่มีข้อมูล nurse confirmation สำหรับประเมิน</td></tr>
-          {% endfor %}
+        {% for row in severity_rows %}
+          <tr>
+            <td><span class="sev {{ row.severity }}">{{ row.severity }}</span></td>
+            <td>{{ row.total }}</td><td>{{ row.matches }}</td><td>{{ row.overrides }}</td>
+            <td>{% if row.accuracy != None %}<b>{{ row.accuracy }}%</b>{% else %}<span class="muted">-</span>{% endif %}</td>
+            <td>{{ row.training_eligible }}</td>
+          </tr>
+        {% endfor %}
         </tbody>
-      </table>
-    </div>
+      </table></div>
+    </article>
 
-    <div class="card">
-      <h2>รายการ Nurse Override ล่าสุด</h2>
-      <table style="width:100%; border-collapse:collapse">
-        <thead>
-          <tr><th>Visit</th><th>ผู้ป่วย</th><th>AI</th><th>Nurse</th><th>หมายเหตุ</th></tr>
-        </thead>
+    <article class="card">
+      <div class="card-head"><div><h2>ผลแยกตามโมเดล</h2><p>ช่วยดูว่า model version ไหนกำลังสร้างข้อมูลจริงอยู่</p></div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Model</th><th>เคส</th><th>Accuracy</th><th>Confidence</th></tr></thead>
         <tbody>
-          {% for result in recent_overrides %}
-            <tr>
-              <td>#{{ result.visit_id }}</td>
-              <td>{{ result.visit.patient.first_name }} {{ result.visit.patient.last_name }}</td>
-              <td>{{ result.ai_severity }}</td>
-              <td>{{ result.nurse_severity }}</td>
-              <td>{{ result.nurse_note|default:"-" }}</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="5" class="muted">ยังไม่มี override</td></tr>
-          {% endfor %}
+        {% for row in model_rows %}
+          <tr><td class="mono">{{ row.name }}</td><td>{{ row.total }}</td><td>{{ row.accuracy }}%</td><td>{% if row.avg_confidence != None %}{{ row.avg_confidence }}%{% else %}-{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="4" class="muted">ยังไม่มีข้อมูลจากการใช้งานจริง</td></tr>{% endfor %}
         </tbody>
-      </table>
-    </div>
+      </table></div>
+    </article>
+  </section>
 
-    <div class="card">
-      <h2>ตัวชี้วัด</h2>
-      <pre>{{ metrics }}</pre>
-    </div>
+  <section class="grid">
+    <article class="card">
+      <div class="card-head"><div><h2>Confusion Matrix จากการใช้งานจริง</h2><p>แถว = ผลพยาบาล · คอลัมน์ = ผล AI</p></div></div>
+      <div class="table-wrap"><table class="matrix">
+        <thead><tr><th>Nurse \ AI</th>{% for severity in severity_rows %}<th>{{ severity.severity }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in confusion_rows %}
+          <tr><td><span class="sev {{ row.actual }}">{{ row.actual }}</span></td>{% for cell in row.cells %}<td class="{% if cell.predicted == row.actual %}hit{% endif %}">{{ cell.count }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </article>
 
-    <div class="card">
-      <h2>ตาราง Confusion Matrix</h2>
-      <pre>{{ confusion }}</pre>
-    </div>
-  </div>
+    <article class="card">
+      <div class="card-head"><div><h2>แนวโน้มรายเดือน</h2><p>ดูจำนวน confirmation และ override ที่เกิดขึ้นจริง</p></div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>เดือน</th><th>เคส</th><th>ตรงกัน</th><th>Override</th><th>Accuracy</th></tr></thead>
+        <tbody>{% for row in monthly_rows %}<tr><td>{{ row.month }}</td><td>{{ row.total }}</td><td>{{ row.matches }}</td><td>{{ row.overrides }}</td><td>{{ row.accuracy }}%</td></tr>{% empty %}<tr><td colspan="5" class="muted">ยังไม่มีข้อมูล</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </article>
+  </section>
+
+  <article class="card" style="margin-top:14px">
+    <div class="card-head"><div><h2>Confirmed Training Cases ล่าสุด</h2><p>แสดงเฉพาะ Visit ID และข้อมูลโมเดล ไม่แสดงข้อมูลระบุตัวผู้ป่วย</p></div><span class="pill">{{ confirmed_total }} snapshots</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Visit</th><th>ยืนยันเมื่อ</th><th>AI</th><th>Nurse</th><th>ผล</th><th>Confidence</th><th>Training</th><th>Model</th></tr></thead>
+      <tbody>
+      {% for case in recent_cases %}
+        <tr>
+          <td>#{{ case.visit_id }}</td><td>{{ case.confirmed_at|date:"Y-m-d H:i"|default:"-" }}</td>
+          <td>{% if case.ai_severity %}<span class="sev {{ case.ai_severity }}">{{ case.ai_severity }}</span>{% else %}-{% endif %}</td>
+          <td><span class="sev {{ case.nurse_severity }}">{{ case.nurse_severity }}</span></td>
+          <td>{% if case.ai_severity %}{% if case.is_ai_match %}<span class="match">ตรงกัน</span>{% else %}<span class="override">Override</span>{% endif %}{% else %}<span class="muted">ไม่มี AI</span>{% endif %}</td>
+          <td>{% if case.confidence != None %}{{ case.confidence|floatformat:2 }}{% else %}-{% endif %}</td>
+          <td>{% if case.is_training_eligible %}<span class="match">พร้อม</span>{% else %}<span class="muted" title="{{ case.eligibility_note }}">ยังไม่พร้อม</span>{% endif %}</td>
+          <td class="mono">{{ case.model_name|default:"-" }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="8" class="muted">ยังไม่มี Confirmed Training Case</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </article>
+
+  <div class="privacy">เมื่อพยาบาลยืนยันระดับ ระบบจะสร้าง snapshot ของ Age, Pain, Vital signs, Chief complaint, structured triage, AI prediction, confidence, model name และ Final severity ไว้ใน <b>ConfirmedTriageCase</b> เพื่อให้ค่าที่ใช้ฝึกไม่เปลี่ยนตาม vital signs ภายหลัง</div>
+
+  <details class="raw"><summary>ผลประเมินโมเดลจากชุดข้อมูลอ้างอิง (offline)</summary><pre>{{ metrics }}</pre></details>
+  <details class="raw"><summary>Offline confusion matrix</summary><pre>{{ confusion }}</pre></details>
+</main>
 </body>
 </html>

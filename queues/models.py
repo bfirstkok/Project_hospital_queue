@@ -189,6 +189,90 @@ class TriageResult(models.Model):
     location_updated_at = models.DateTimeField(blank=True, null=True)
 
 
+class ConfirmedTriageCase(models.Model):
+    """De-identified feature snapshot captured when a nurse confirms triage."""
+
+    SNAPSHOT_VERSION = "v1"
+
+    visit = models.OneToOneField(
+        Visit,
+        on_delete=models.CASCADE,
+        related_name="confirmed_training_case",
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="confirmed_triage_training_cases",
+    )
+    confirmed_at = models.DateTimeField(blank=True, null=True, db_index=True)
+
+    age = models.PositiveSmallIntegerField(blank=True, null=True)
+    nrs_pain = models.PositiveSmallIntegerField(blank=True, null=True)
+    rr = models.IntegerField(blank=True, null=True)
+    pr = models.IntegerField(blank=True, null=True)
+    sys_bp = models.IntegerField(blank=True, null=True)
+    dia_bp = models.IntegerField(blank=True, null=True)
+    bt = models.FloatField(blank=True, null=True)
+    o2sat = models.IntegerField(blank=True, null=True)
+    chief_complain = models.TextField(blank=True, default="")
+    urgent_symptoms = models.JSONField(default=list, blank=True)
+    risk_flags = models.JSONField(default=list, blank=True)
+
+    lifesaving_intervention = models.BooleanField(blank=True, null=True)
+    high_risk_condition = models.BooleanField(blank=True, null=True)
+    altered_mental_status = models.BooleanField(blank=True, null=True)
+    mental_status = models.CharField(
+        max_length=20,
+        choices=TriageResult.MentalStatus.choices,
+        blank=True,
+        null=True,
+    )
+    severe_distress = models.BooleanField(blank=True, null=True)
+    expected_resources = models.CharField(
+        max_length=10,
+        choices=TriageResult.ExpectedResources.choices,
+        blank=True,
+        null=True,
+    )
+
+    ai_severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Visit.Severity.choices,
+        blank=True,
+        null=True,
+    )
+    nurse_severity = PostgresEnumField(
+        enum_type="triage_severity_enum",
+        max_length=10,
+        choices=Visit.Severity.choices,
+    )
+    model_name = models.CharField(max_length=120, blank=True, default="")
+    confidence = models.FloatField(blank=True, null=True)
+    ai_reason = models.TextField(blank=True, default="")
+    nurse_note = models.TextField(blank=True, default="")
+
+    is_ai_match = models.BooleanField(default=False, db_index=True)
+    is_training_eligible = models.BooleanField(default=False, db_index=True)
+    eligibility_note = models.CharField(max_length=220, blank=True, default="")
+    snapshot_version = models.CharField(max_length=12, default=SNAPSHOT_VERSION)
+
+    captured_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-confirmed_at", "-id"]
+        indexes = [
+            models.Index(fields=["nurse_severity", "-confirmed_at"]),
+            models.Index(fields=["model_name", "-confirmed_at"]),
+        ]
+
+    def __str__(self):
+        return f"ConfirmedTriageCase(visit={self.visit_id}, label={self.nurse_severity})"
+
+
 class VisitWorkflowLog(models.Model):
     """Immutable accountability trail for actions performed during a visit."""
 
