@@ -262,6 +262,182 @@ form { counter-reset: register-section; }
 }
 .emergency-box .grid { margin-bottom: 0; }
 
+/* Patient Portal parity: DOB, choice fields, and multi-contact editor */
+.grid.three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dob-select-row {
+  display: grid;
+  grid-template-columns: .8fr 1.5fr 1fr;
+  gap: 10px;
+}
+
+.dob-select-row select {
+  width: 100%;
+  min-height: 50px;
+  padding: 11px 12px;
+  border: 1.5px solid #c9dbd7;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: var(--register-ink);
+  font: inherit;
+}
+
+.dob-select-row select:focus {
+  border-color: var(--register-primary);
+  box-shadow: 0 0 0 4px rgba(13, 138, 125, 0.14);
+}
+
+.input-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-suffix input {
+  padding-right: 58px !important;
+}
+
+.input-suffix em {
+  position: absolute;
+  right: 14px;
+  color: var(--register-muted);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.age-badge-notification {
+  grid-column: 1 / -1;
+  margin-top: -4px;
+  padding: 10px 13px;
+  border: 1px solid #b9ddd8;
+  border-radius: 10px;
+  background: #effbf8;
+  color: #17685f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.age-badge-notification[hidden] { display: none; }
+
+.portal-choice-field {
+  margin: 18px 0;
+  padding: 17px;
+  border: 1px solid #d4e3e4;
+  border-radius: 13px;
+  background: #fbfdfd;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+
+.portal-choice-field.has-error {
+  border-color: #e7a5a1;
+  background: #fff9f8;
+  box-shadow: 0 0 0 3px rgba(197, 34, 31, .07);
+}
+
+.field-group-title {
+  display: block;
+  margin-bottom: 12px;
+  color: #304c5d;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.field-group-title small {
+  display: block;
+  margin-top: 4px;
+  color: var(--register-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.choice-custom-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1.5px solid #c9dbd7;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: var(--register-ink);
+  font: inherit;
+}
+
+.choice-custom-input:focus {
+  border-color: var(--register-primary);
+  box-shadow: 0 0 0 4px rgba(13, 138, 125, .12);
+}
+
+.emergency-contacts-wrapper {
+  display: grid;
+  gap: 12px;
+}
+
+.emergency-entry-card {
+  padding: 16px;
+  border: 1px solid #cfe0e4;
+  border-radius: 13px;
+  background: #f8fcfb;
+}
+
+.emergency-entry-card .grid {
+  margin-bottom: 0;
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+
+.entry-tag {
+  color: #315464;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.remove-entry-btn {
+  border: 0;
+  background: transparent;
+  color: #b3262e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.remove-entry-btn:hover {
+  text-decoration: underline;
+}
+
+.add-emergency-btn {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 11px;
+  border: 1.5px dashed #8dc9c1;
+  border-radius: 11px;
+  background: #f5fbfa;
+  color: var(--register-primary-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.add-emergency-btn:hover {
+  border-color: var(--register-primary);
+  background: var(--register-primary-soft);
+}
+
+.add-emergency-btn[hidden] { display: none; }
+
 .consent-box {
   display: flex;
   align-items: flex-start;
@@ -326,12 +502,15 @@ form { counter-reset: register-section; }
   .service-steps { gap: 4px; }
   .service-steps li { flex-direction: column; gap: 4px; padding: 7px 4px; font-size: 13px; text-align: center; }
   .card { padding: 10px 16px 24px; }
-  .grid { grid-template-columns: 1fr; gap: 14px; }
+  .grid, .grid.three-column { grid-template-columns: 1fr; gap: 14px; }
   .field.full { grid-column: 1; }
   .card h3 { font-size: 19px; }
   .section-help { margin-left: 0; }
   .choice-chips { gap: 7px; }
   .choice-chip { min-height: 34px; padding: 6px 11px; font-size: 12px; }
   .emergency-box { padding: 14px; }
+  .dob-select-row { grid-template-columns: 1fr 1.35fr 1fr; gap: 7px; }
+  .portal-choice-field { padding: 14px; }
+  .emergency-entry-card { padding: 14px; }
   .footer { grid-template-columns: 1fr; }
 }
