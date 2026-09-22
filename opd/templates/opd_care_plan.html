@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px
 <aside>
 <section class="card">
 <div class="head"><div><h2>สรุปการตรวจ</h2><p>ข้อมูลจาก VisitAssessment</p></div></div>
-<div class="body"><div class="summary"><div><small>Diagnosis</small><b>{{ assessment.diagnosis|default:"-" }}</b></div><div><small>Treatment</small><b>{{ assessment.treatment|default:"-" }}</b></div><div><small>OPD urgency</small><b>{{ assessment.opd_urgency }}</b></div><div><small>นัดครั้งต่อไป</small><b>{{ assessment.next_appointment_at|date:"d/m/Y H:i"|default:"-" }}</b></div></div></div>
+<div class="body"><div class="summary"><div><small>Diagnosis</small><b>{{ assessment.diagnosis|default:"-" }}</b></div><div><small>Treatment</small><b>{{ assessment.treatment|default:"-" }}</b></div><div><small>OPD urgency</small><b>{{ assessment.opd_urgency }}</b></div><div><small>นัดครั้งต่อไป</small><b>{{ assessment.next_appointment_at|date:"d/m/Y H:i"|default:"-" }}</b></div></div><div class="actions"><a class="btn secondary" target="_blank" href="{% url 'clinical_summary_print' visit.id %}">สรุปผลการตรวจ / ใบรายงานผล</a></div></div>
 </section>
 
 <section class="card" style="margin-top:13px">
