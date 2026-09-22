@@ -6,6 +6,8 @@ from patients.models import Patient
 from queues import views as queue_views
 from queues.models import (
     CriticalAlert,
+    Device,
+    DeviceAssignment,
     NurseCareAssignment,
     Queue,
     StaffProfile,
@@ -100,6 +102,7 @@ class WearableOnlyCriticalAlertTests(TestCase):
         self.assertEqual(payload["actions"]["resolve"], reverse("resolve_alert", args=[alert.id]))
         self.assertEqual(payload["actions"]["false_alarm"], reverse("false_alarm_alert", args=[alert.id]))
         self.assertEqual(payload["actions"]["escalate"], reverse("escalate_alert", args=[alert.id]))
+        self.assertEqual(payload["actions"]["transfer_er"], reverse("transfer_alert_to_er", args=[alert.id]))
 
     def test_global_alert_page_sets_csrf_cookie_and_allows_real_csrf_checked_post(self):
         vitals = VitalSign.objects.create(
@@ -235,6 +238,107 @@ class WearableOnlyCriticalAlertTests(TestCase):
             self.visit.queue.status,
             Queue.Status.OBSERVATION_MONITORING,
         )
+
+    def test_reviewed_wearable_alert_can_be_transferred_to_er_with_audit_trail(self):
+        device = Device.objects.create(
+            device_id="ER-WEAR-001",
+            api_key="secret",
+            is_active=True,
+        )
+        assignment = DeviceAssignment.objects.create(
+            device=device,
+            visit=self.visit,
+            is_active=True,
+        )
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=132,
+            o2sat=91,
+            bt=37.2,
+            rr=24,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        too_early = self.client.post(
+            reverse("transfer_alert_to_er", args=[alert.id]),
+            {"reason": "อาการทรุด"},
+        )
+        self.assertEqual(too_early.status_code, 409)
+
+        self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.client.post(reverse("start_alert_review", args=[alert.id]))
+        response = self.client.post(
+            reverse("transfer_alert_to_er", args=[alert.id]),
+            {"reason": "SpO2 ยังต่ำหลังตรวจซ้ำ"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.json()["queue_status"], Queue.Status.EMERGENCY_TRANSFER)
+
+        self.visit.refresh_from_db()
+        self.visit.queue.refresh_from_db()
+        alert.refresh_from_db()
+        assignment.refresh_from_db()
+
+        self.assertEqual(self.visit.final_severity, Visit.Severity.PINK)
+        self.assertEqual(self.visit.queue.status, Queue.Status.EMERGENCY_TRANSFER)
+        self.assertEqual(self.visit.queue.priority, 2)
+        self.assertEqual(alert.status, CriticalAlert.Status.ESCALATED)
+        self.assertFalse(assignment.is_active)
+        self.assertIsNotNone(assignment.unpaired_at)
+        self.assertFalse(
+            NurseCareAssignment.objects.filter(
+                visit=self.visit,
+                nurse=self.nurse,
+                is_active=True,
+            ).exists()
+        )
+
+        log = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+            details__destination="ER",
+        )
+        self.assertEqual(log.actor, self.nurse)
+        self.assertEqual(log.details["reason"], "SpO2 ยังต่ำหลังตรวจซ้ำ")
+        self.assertEqual(log.details["previous_severity"], Visit.Severity.YELLOW)
+        self.assertEqual(log.details["current_severity"], Visit.Severity.PINK)
+
+        active_feed = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(active_feed.status_code, 200)
+        self.assertEqual(active_feed.json()["count"], 0)
+
+    def test_monitor_detail_shows_er_transfer_only_after_review_started(self):
+        vitals = VitalSign.objects.create(
+            visit=self.visit,
+            pr=128,
+            o2sat=92,
+            bt=37.0,
+            rr=20,
+        )
+        alert = queue_views.create_critical_alerts_for_visit(
+            self.visit,
+            vitals,
+            source="iot_vitals",
+        )[0]
+
+        before = self.client.get(reverse("waiting_monitor_visit_detail", args=[self.visit.id]))
+        self.assertContains(before, "ต้องรับทราบ Alert และเริ่มตรวจผู้ป่วยก่อน")
+        self.assertNotContains(before, 'class="er-transfer-form js-er-transfer-form"')
+
+        self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.client.post(reverse("start_alert_review", args=[alert.id]))
+
+        after = self.client.get(reverse("waiting_monitor_visit_detail", args=[self.visit.id]))
+        self.assertContains(after, "ส่งต่อ ER")
+        self.assertContains(after, 'class="er-transfer-form js-er-transfer-form"')
+        self.assertContains(after, reverse("transfer_alert_to_er", args=[alert.id]))
 
     def test_nurse_cannot_acknowledge_alert_owned_by_another_nurse(self):
         other_nurse = get_user_model().objects.create_user(

@@ -458,6 +458,19 @@ def emergency_transfers(request):
         queue_item.ai_reason_display = localize_ai_reason(
             getattr(triage_result, "ai_reason", "")
         )
+        er_log = (
+            queue_item.visit.workflow_logs
+            .filter(
+                event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+                details__destination="ER",
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        queue_item.er_transfer_reason = (
+            (er_log.details or {}).get("reason", "") if er_log else ""
+        )
+        queue_item.er_transfer_from_monitoring = bool(er_log)
 
     return render(request, "queues/emergency_transfers.html", {
         "q_items": page,
@@ -1551,10 +1564,124 @@ def escalate_alert(request, alert_id: int):
 
 
 @login_required
+@require_POST
+@transaction.atomic
+def transfer_alert_to_er(request, alert_id: int):
+    """Human-confirmed transfer from wearable alert review to the ER workflow."""
+    alert = get_object_or_404(
+        CriticalAlert.objects.select_for_update().select_related("visit", "visit__patient"),
+        id=alert_id,
+    )
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse(
+            {"ok": False, "message": "Only the responsible nurse can transfer this patient"},
+            status=403,
+        )
+
+    if alert.status not in {CriticalAlert.Status.IN_REVIEW, CriticalAlert.Status.ESCALATED}:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": "กรุณารับทราบและเริ่มตรวจผู้ป่วยก่อนส่งต่อ ER",
+            },
+            status=409,
+        )
+
+    reason = request.POST.get("reason", "").strip()
+    if len(reason) < 3:
+        return JsonResponse(
+            {"ok": False, "message": "กรุณาระบุเหตุผลในการส่งต่อ ER อย่างน้อย 3 ตัวอักษร"},
+            status=400,
+        )
+
+    visit = Visit.objects.select_for_update().get(pk=alert.visit_id)
+    queue_item = Queue.objects.select_for_update().filter(visit=visit).first()
+    if not queue_item:
+        return JsonResponse({"ok": False, "message": "ไม่พบคิวของผู้ป่วย"}, status=409)
+
+    if queue_item.status == Queue.Status.EMERGENCY_TRANSFER:
+        return JsonResponse({
+            "ok": True,
+            "alert_id": alert.id,
+            "visit_id": alert.visit_id,
+            "status": alert.status,
+            "queue_status": queue_item.status,
+            "already_transferred": True,
+        })
+
+    allowed_source_statuses = {
+        Queue.Status.OBSERVATION_MONITORING,
+        Queue.Status.MONITORING,
+        Queue.Status.CALLED,
+        Queue.Status.REASSESSMENT_REQUIRED,
+    }
+    if queue_item.status not in allowed_source_statuses:
+        return JsonResponse(
+            {"ok": False, "message": "สถานะผู้ป่วยปัจจุบันไม่สามารถส่งต่อ ER จาก Monitoring ได้"},
+            status=409,
+        )
+
+    previous_severity = visit.final_severity
+    target_severity = (
+        Visit.Severity.RED
+        if previous_severity == Visit.Severity.RED
+        else Visit.Severity.PINK
+    )
+
+    # The original nurse-confirmed triage remains in TriageResult.
+    # Visit.final_severity reflects the current operational severity after
+    # a clinician decides to escalate a deteriorating monitored patient.
+    if visit.final_severity != target_severity:
+        visit.final_severity = target_severity
+        visit.save(update_fields=["final_severity"])
+
+    CriticalAlert.objects.filter(
+        visit=visit,
+        status__in=CriticalAlert.ACTIVE_STATUSES,
+    ).update(status=CriticalAlert.Status.ESCALATED)
+    alert.status = CriticalAlert.Status.ESCALATED
+
+    unpair_active_wearable(visit)
+    queue_item.status = Queue.Status.EMERGENCY_TRANSFER
+    queue_item.priority = SEVERITY_PRIORITY[target_severity]
+    queue_item.save(update_fields=["status", "priority"])
+
+    VisitWorkflowLog.record(
+        visit=visit,
+        event_type=VisitWorkflowLog.EventType.CRITICAL_ALERT_ESCALATED,
+        actor=request.user,
+        description=f"ส่งต่อ ER หลังตรวจผู้ป่วยจากสัญญาณเตือน: {alert.message}",
+        details={
+            "alert_id": alert.id,
+            "alert_type": alert.alert_type,
+            "source": alert.source,
+            "destination": "ER",
+            "reason": reason,
+            "previous_severity": previous_severity,
+            "current_severity": target_severity,
+        },
+    )
+
+    return JsonResponse({
+        "ok": True,
+        "alert_id": alert.id,
+        "visit_id": alert.visit_id,
+        "status": CriticalAlert.Status.ESCALATED,
+        "queue_status": queue_item.status,
+        "severity": target_severity,
+        "already_transferred": False,
+    })
+
+
+@login_required
 @require_GET
 def my_critical_alerts(request):
     """Return unresolved wearable alerts assigned to the signed-in nurse."""
-    alerts = CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+    alerts = (
+        CriticalAlert.objects
+        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+        .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
+    )
     if not is_effective_superuser(request.user):
         alerts = alerts.filter(
             visit__nurse_care_assignments__nurse=request.user,
@@ -1585,6 +1712,7 @@ def my_critical_alerts(request):
                     "resolve": reverse("resolve_alert", args=[alert.id]),
                     "false_alarm": reverse("false_alarm_alert", args=[alert.id]),
                     "escalate": reverse("escalate_alert", args=[alert.id]),
+                    "transfer_er": reverse("transfer_alert_to_er", args=[alert.id]),
                 },
             }
             for alert in alerts
@@ -1659,7 +1787,7 @@ def monitor_summary_api(request):
 
 @login_required
 def monitor_visit_detail(request, visit_id: int):
-    visit = get_object_or_404(Visit.objects.select_related("patient"), pk=visit_id)
+    visit = get_object_or_404(Visit.objects.select_related("patient", "queue"), pk=visit_id)
     logs = TelemetryLog.objects.filter(visit=visit).select_related("device").order_by("-ts")[:50]
 
     # ดึงข้อมูล assessment ถ้ามี
@@ -1667,10 +1795,34 @@ def monitor_visit_detail(request, visit_id: int):
     if hasattr(visit, 'opd_assessment'):
         assessment = visit.opd_assessment
 
+    active_alerts = list(
+        CriticalAlert.objects
+        .filter(visit=visit, status__in=CriticalAlert.ACTIVE_STATUSES)
+        .order_by("-created_at")
+    )
+    er_transfer_alert = next(
+        (
+            item for item in active_alerts
+            if item.status in {
+                CriticalAlert.Status.IN_REVIEW,
+                CriticalAlert.Status.ESCALATED,
+            }
+        ),
+        None,
+    )
+    can_transfer_to_er = bool(
+        er_transfer_alert
+        and visit.queue.status != Queue.Status.EMERGENCY_TRANSFER
+        and _alert_manage_allowed(request.user, er_transfer_alert)
+    )
+
     return render(request, "queues/monitor_visit_detail.html", {
         "visit": visit,
         "logs": logs,
-        "assessment": assessment
+        "assessment": assessment,
+        "active_alerts": active_alerts,
+        "er_transfer_alert": er_transfer_alert,
+        "can_transfer_to_er": can_transfer_to_er,
     })
 
 

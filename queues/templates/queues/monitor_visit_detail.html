@@ -223,6 +223,88 @@
       gap: 14px;
     }
 
+    .critical-action-card {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 16px 18px;
+      border: 1px solid #efb6bf;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #fff7f8, #fff);
+      box-shadow: 0 8px 24px rgba(185, 28, 52, .07);
+    }
+
+    .critical-action-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    .critical-action-icon {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: #b91c34;
+      font-weight: 900;
+    }
+
+    .critical-action-card h2 {
+      margin: 0;
+      color: #7f1426;
+      font-size: 17px;
+    }
+
+    .critical-action-card p {
+      margin: 4px 0 0;
+      color: #80515a;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .er-transfer-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: stretch;
+    }
+
+    .er-transfer-form input {
+      min-width: 0;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid #e2b6bd;
+      border-radius: 9px;
+      color: #3f2830;
+      background: #fff;
+      font: inherit;
+    }
+
+    .er-transfer-form input:focus {
+      outline: none;
+      border-color: #b91c34;
+      box-shadow: 0 0 0 3px rgba(185, 28, 52, .10);
+    }
+
+    .btn-er {
+      min-height: 42px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 9px;
+      color: #fff;
+      background: #b91c34;
+      font: 800 13px "Sarabun", Arial, sans-serif;
+      cursor: pointer;
+    }
+
+    .btn-er:hover { background: #99172b; }
+    .btn-er:disabled { cursor: wait; opacity: .7; }
+    .er-feedback { color: #8c1a2e; font-size: 12px; font-weight: 700; }
+    .er-feedback.error { color: #b91c34; }
+
     .profile-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -319,6 +401,7 @@
       .toolbar { justify-content: flex-start; }
       .latest-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .summary-strip { grid-template-columns: 1fr; }
+      .er-transfer-form { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 560px) {
@@ -347,6 +430,30 @@
       {% include "includes/main_nav.html" %}
     </div>
   </header>
+
+  {% if active_alerts %}
+    <section class="critical-action-card" aria-labelledby="critical-action-title">
+      <div class="critical-action-head">
+        <span class="critical-action-icon" aria-hidden="true">!</span>
+        <div>
+          <h2 id="critical-action-title">พบสัญญาณเตือนวิกฤตจากอุปกรณ์</h2>
+          {% if er_transfer_alert %}
+            <p>Alert อยู่ในขั้นตรวจผู้ป่วย/ยกระดับแล้ว หากประเมินผู้ป่วยจริงและจำเป็น สามารถส่งต่อไป ER ได้จากหน้านี้</p>
+          {% else %}
+            <p>ต้องรับทราบ Alert และเริ่มตรวจผู้ป่วยก่อน จึงจะเปิดคำสั่งส่งต่อ ER ได้</p>
+          {% endif %}
+        </div>
+      </div>
+      {% if can_transfer_to_er and er_transfer_alert %}
+        <form class="er-transfer-form js-er-transfer-form" method="post" action="{% url 'transfer_alert_to_er' er_transfer_alert.id %}">
+          {% csrf_token %}
+          <input name="reason" minlength="3" required placeholder="ระบุเหตุผลในการส่งต่อ ER เช่น SpO₂ ยังต่ำหลังตรวจซ้ำ">
+          <button class="btn-er" type="submit">ส่งต่อ ER</button>
+        </form>
+        <div class="er-feedback js-er-feedback" role="status" aria-live="polite"></div>
+      {% endif %}
+    </section>
+  {% endif %}
 
   <div class="detail-grid">
     <div class="card">
@@ -551,5 +658,59 @@
     </section>
   </main>
 </div>
+<script>
+  document.querySelectorAll(".js-er-transfer-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = form.querySelector(".btn-er");
+      const feedback = form.parentElement.querySelector(".js-er-feedback");
+      const reason = form.querySelector("[name='reason']").value.trim();
+      if (reason.length < 3) {
+        if (feedback) {
+          feedback.textContent = "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร";
+          feedback.classList.add("error");
+        }
+        return;
+      }
+      if (!window.confirm("ยืนยันส่งผู้ป่วยไป ER? ระบบจะยุติการจับคู่อุปกรณ์และย้ายผู้ป่วยออกจาก Monitoring")) return;
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "กำลังส่งต่อ...";
+      }
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": form.querySelector("[name='csrfmiddlewaretoken']").value,
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: new FormData(form),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.message || "ส่งต่อ ER ไม่สำเร็จ");
+        }
+        if (feedback) {
+          feedback.textContent = "ส่งต่อ ER สำเร็จ · นำผู้ป่วยออกจาก Monitoring แล้ว";
+          feedback.classList.remove("error");
+        }
+        window.setTimeout(() => {
+          window.location.href = "{% url 'monitor_dashboard' %}";
+        }, 900);
+      } catch (error) {
+        if (feedback) {
+          feedback.textContent = error.message || "ส่งต่อ ER ไม่สำเร็จ";
+          feedback.classList.add("error");
+        }
+        if (button) {
+          button.disabled = false;
+          button.textContent = "ส่งต่อ ER";
+        }
+      }
+    });
+  });
+</script>
 </body>
 </html>

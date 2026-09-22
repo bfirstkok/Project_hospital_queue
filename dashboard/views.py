@@ -77,7 +77,11 @@ def dashboard_view(request):
         .filter(queue__in=active, final_severity__in=SEVERITY_LEVELS)
         .order_by("queue__priority", "registered_at")
     )
-    alerts = CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+    alerts = (
+        CriticalAlert.objects
+        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+        .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
+    )
     severity_totals = {
         severity: active.filter(visit__final_severity=severity).count()
         for severity in SEVERITY_LEVELS
@@ -460,6 +464,7 @@ def live_summary_api(request):
     alerts = (
         CriticalAlert.objects
         .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+        .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
         .select_related("visit", "visit__patient", "visit__queue")
         .order_by("-created_at")[:10]
     )
@@ -474,7 +479,12 @@ def live_summary_api(request):
             ).exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"]).count()
             for severity in SEVERITY_LEVELS
         },
-        "new_alert_total": CriticalAlert.objects.filter(status__in=CriticalAlert.ACTIVE_STATUSES).count(),
+        "new_alert_total": (
+            CriticalAlert.objects
+            .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+            .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
+            .count()
+        ),
         "alerts": [
             {
                 "id": alert.id,
