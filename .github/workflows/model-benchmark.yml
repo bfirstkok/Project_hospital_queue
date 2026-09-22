@@ -31,9 +31,17 @@ jobs:
       - name: Print benchmark report
         run: cat ai_triage/reports/model_benchmark/README.md
 
+      - name: Run nested safety-weighted tuning
+        run: python -m ai_triage.ml.tune_safety_models --output-dir ai_triage/reports/safety_tuning
+
+      - name: Print safety tuning report
+        run: cat ai_triage/reports/safety_tuning/README.md
+
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
           name: triage-model-benchmark
-          path: ai_triage/reports/model_benchmark/
+          path: |
+            ai_triage/reports/model_benchmark/
+            ai_triage/reports/safety_tuning/
           if-no-files-found: error
