@@ -25,9 +25,62 @@
     .table td:nth-child(2) { font-size: 20px; font-weight: 600; }
     .patient-name { font-weight: 900; color: #f8fbff; font-size: 20px; }
     .detail-box { margin-top: 8px; }
-    .patient-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .detail-open { min-height: 30px; color: #dbeafe; background: rgba(56,189,248,.11); border-color: rgba(56,189,248,.28); }
-    .patient-edit { min-height: 30px; color: #fef3c7; background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.32); }
+    .patient-actions { display: flex; align-items: center; }
+    .patient-menu-trigger {
+      display: inline-grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 9px;
+      color: #dbeafe;
+      background: rgba(255,255,255,.06);
+      font: inherit;
+      font-size: 21px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .patient-menu-trigger:hover,
+    .patient-menu-trigger[aria-expanded="true"] {
+      border-color: rgba(56,189,248,.38);
+      background: rgba(56,189,248,.13);
+    }
+    .patient-menu-trigger:active { transform: translateY(1px); }
+    .patient-menu-panel {
+      position: fixed;
+      z-index: 1200;
+      width: 218px;
+      padding: 6px;
+      border: 1px solid rgba(174,194,220,.22);
+      border-radius: 11px;
+      background: #101d30;
+      box-shadow: 0 16px 44px rgba(0,0,0,.34);
+    }
+    .patient-menu-panel[hidden] { display: none; }
+    .patient-menu-item {
+      display: flex;
+      width: 100%;
+      min-height: 39px;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      color: #eaf2ff;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: left;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .patient-menu-item:hover { background: rgba(255,255,255,.08); }
+    .patient-menu-item svg { width: 16px; height: 16px; flex: 0 0 16px; }
+    .patient-menu-item.edit { color: #fde9a7; }
     .patient-modal { width: min(820px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 48px)); padding: 0; color: #edf4ff; background: #0b1628; border: 1px solid rgba(174,194,220,.22); border-radius: 12px; box-shadow: 0 24px 90px rgba(0,0,0,.52); overflow: hidden; }
     .patient-modal::backdrop { background: rgba(2,8,20,.72); backdrop-filter: blur(3px); }
     .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid rgba(174,194,220,.12); background: rgba(255,255,255,.04); }
@@ -128,13 +181,33 @@
     .patient-avatar { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 11px; color: #08766e; background: #e4f5f2; font-size: 16px; font-weight: 900; }
     .waiting-vitals-page .patient-name { color: #17324d; font-size: 17px; line-height: 1.25; }
     .patient-meta { margin-top: 4px; color: #748993; font-size: 12px; font-weight: 500; }
-    .waiting-vitals-page .detail-box { margin-top: 8px; margin-left: 49px; }
+    .waiting-vitals-page .detail-box { margin-top: 6px; margin-left: 49px; }
     .waiting-vitals-page .patient-actions { gap: 6px; }
-    .waiting-vitals-page .detail-open,
-    .waiting-vitals-page .patient-edit { min-height: 28px; padding: 0; border: 0 !important; color: #496874 !important; background: transparent !important; font-size: 12px; box-shadow: none !important; }
-    .waiting-vitals-page .detail-open:hover,
-    .waiting-vitals-page .patient-edit:hover { color: #087f75 !important; background: transparent !important; }
-    .waiting-vitals-page .patient-edit::before { content: "·"; margin-right: 6px; color: #a5b5bb; }
+    .waiting-vitals-page .patient-menu-trigger {
+      width: 30px;
+      height: 30px;
+      border-color: #cbdcdf;
+      border-radius: 9px;
+      color: #607984;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(37,67,79,.04);
+    }
+    .waiting-vitals-page .patient-menu-trigger:hover,
+    .waiting-vitals-page .patient-menu-trigger[aria-expanded="true"] {
+      border-color: #8dc8c0;
+      color: #087f75;
+      background: #edf8f6;
+    }
+    .waiting-vitals-page .patient-menu-panel {
+      border-color: #d3e0e4;
+      color: #17324d;
+      background: #fff;
+      box-shadow: 0 16px 40px rgba(42,79,92,.16);
+    }
+    .waiting-vitals-page .patient-menu-item { color: #365765; }
+    .waiting-vitals-page .patient-menu-item:hover { color: #087f75; background: #edf8f6; }
+    .waiting-vitals-page .patient-menu-item.edit { color: #8a6500; }
+    .waiting-vitals-page .patient-menu-item.edit:hover { color: #735500; background: #fff8e4; }
     .registration-time { display: block; color: #17324d; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .registration-time small { display: block; margin-top: 3px; color: #82949c; font-size: 11px; font-weight: 500; }
     .waiting-vitals-page .status { padding: 6px 10px; border: 1px solid #efd38d !important; border-radius: 8px; color: #8b6200 !important; background: #fff8e4 !important; font-size: 13px; }
@@ -230,8 +303,26 @@
               <div class="patient-summary"><span class="patient-avatar">{{ p.first_name|default:"?"|slice:":1" }}</span><div><div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div><div class="patient-meta">HN {{ p.hn|default:"ยังไม่มีเลข HN" }}</div></div></div>
               <div class="detail-box">
                 <div class="patient-actions">
-                  <button class="btn detail-open js-open-modal" type="button" data-target="patient-modal-{{ q.id }}">ดูข้อมูลผู้ป่วย</button>
-                  {% if 'edit_patient' in access_capabilities %}<a class="btn patient-edit" href="{% url 'edit_patient' p.id %}">แก้ไขข้อมูลผู้ป่วย</a>{% endif %}
+                  <button
+                    class="patient-menu-trigger js-patient-menu-trigger"
+                    type="button"
+                    aria-label="เมนูเพิ่มเติมของ {{ p.first_name|default:'ผู้ป่วย' }} {{ p.last_name|default:'' }}"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    data-menu-target="patient-menu-{{ q.id }}"
+                  >⋮</button>
+                  <div class="patient-menu-panel" id="patient-menu-{{ q.id }}" role="menu" hidden>
+                    <button class="patient-menu-item js-open-modal" type="button" role="menuitem" data-target="patient-modal-{{ q.id }}">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19c.9-3.4 3.2-5.2 6.5-5.2s5.6 1.8 6.5 5.2"/></svg>
+                      <span>ดูข้อมูลผู้ป่วย</span>
+                    </button>
+                    {% if 'edit_patient' in access_capabilities %}
+                      <a class="patient-menu-item edit" href="{% url 'edit_patient' p.id %}" role="menuitem">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
+                        <span>แก้ไขข้อมูลผู้ป่วย</span>
+                      </a>
+                    {% endif %}
+                  </div>
                 </div>
                 <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
                   <div class="modal-head">
@@ -345,8 +436,70 @@
     </section>
   </main>
   <script>
+    const patientMenuTriggers = Array.from(document.querySelectorAll(".js-patient-menu-trigger"));
+
+    function closePatientMenus(exceptTrigger = null) {
+      patientMenuTriggers.forEach((trigger) => {
+        if (trigger === exceptTrigger) return;
+        const menu = document.getElementById(trigger.dataset.menuTarget);
+        trigger.setAttribute("aria-expanded", "false");
+        if (menu) menu.hidden = true;
+      });
+    }
+
+    function positionPatientMenu(trigger, menu) {
+      const rect = trigger.getBoundingClientRect();
+      const menuWidth = 218;
+      const gutter = 10;
+      const left = Math.min(
+        Math.max(gutter, rect.left),
+        Math.max(gutter, window.innerWidth - menuWidth - gutter)
+      );
+      menu.style.left = `${left}px`;
+      menu.style.top = `${rect.bottom + 6}px`;
+
+      requestAnimationFrame(() => {
+        const menuRect = menu.getBoundingClientRect();
+        if (menuRect.bottom > window.innerHeight - gutter) {
+          menu.style.top = `${Math.max(gutter, rect.top - menuRect.height - 6)}px`;
+        }
+      });
+    }
+
+    patientMenuTriggers.forEach((trigger) => {
+      const menu = document.getElementById(trigger.dataset.menuTarget);
+      if (!menu) return;
+
+      document.body.appendChild(menu);
+
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const willOpen = menu.hidden;
+        closePatientMenus(trigger);
+
+        if (willOpen) {
+          menu.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+          positionPatientMenu(trigger, menu);
+        } else {
+          menu.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      menu.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    document.addEventListener("click", () => closePatientMenus());
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closePatientMenus();
+    });
+    window.addEventListener("resize", () => closePatientMenus());
+    window.addEventListener("scroll", () => closePatientMenus(), true);
+
     document.querySelectorAll(".js-open-modal").forEach((button) => {
       button.addEventListener("click", () => {
+        closePatientMenus();
         const modal = document.getElementById(button.dataset.target);
         if (modal && typeof modal.showModal === "function") {
           modal.showModal();
