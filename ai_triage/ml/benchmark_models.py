@@ -100,11 +100,10 @@ def model_factories():
             n_jobs=2,
         ),
         "Logistic Regression": lambda: LogisticRegression(
-            max_iter=3000,
-            solver="saga",
+            max_iter=5000,
+            solver="lbfgs",
             class_weight="balanced",
             random_state=42,
-            n_jobs=2,
         ),
     }
 
@@ -228,7 +227,7 @@ def evaluate_model(
         fit_seconds = time.perf_counter() - started
         total_fit_seconds += fit_seconds
 
-        fold_pred = pipeline.predict(X_test).astype(int)
+        fold_pred = np.asarray(pipeline.predict(X_test)).reshape(-1).astype(int)
         predictions[test_index] = fold_pred
 
         fold_rows.append(
