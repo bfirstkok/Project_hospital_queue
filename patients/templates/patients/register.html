@@ -51,7 +51,7 @@
           <div class="alert" role="alert">{{ error }}</div>
         {% endfor %}
 
-        <form id="patientRegisterForm" method="post" autocomplete="off">
+        <form id="patientRegisterForm" method="post" autocomplete="on">
           {% csrf_token %}
 
           <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
@@ -400,7 +400,9 @@
 </div>
 
 <script>
-  // ล้างช่องว่างเลขบัตร
+  const isEditMode = {{ is_edit|yesno:"true,false" }};
+
+  // เลขบัตรประชาชน: ให้เหมือน Patient Portal — รับเฉพาะตัวเลข 13 หลัก
   const nid = document.querySelector('input[name="national_id"]');
   if (nid) {
     nid.addEventListener("input", () => {
@@ -408,7 +410,102 @@
     });
   }
 
-  // ตัวเลือกแบบชิป: เพิ่ม/ลบข้อความในช่องที่ส่งเข้า backend เดิม
+  // ===== วัน/เดือน/ปีเกิด แบบ Patient Portal (แสดงปี พ.ศ. แต่เก็บ ISO ค.ศ.) =====
+  const birthDay = document.getElementById("birth_day");
+  const birthMonth = document.getElementById("birth_month");
+  const birthYear = document.getElementById("birth_year");
+  const birthDate = document.getElementById("birth_date");
+  const ageInput = document.getElementById("age");
+  const ageBadge = document.getElementById("ageBadge");
+
+  function daysInMonth(month, year) {
+    const m = Number(month);
+    const y = Number(year) || 2000;
+    if (!m) return 31;
+    return new Date(y, m, 0).getDate();
+  }
+
+  function populateBirthYears() {
+    if (!birthYear) return;
+    const currentYear = new Date().getFullYear();
+    for (let year = currentYear; year >= currentYear - 120; year -= 1) {
+      birthYear.add(new Option(String(year + 543), String(year)));
+    }
+  }
+
+  function populateBirthDays(selectedDay = "") {
+    if (!birthDay) return;
+    const maxDay = daysInMonth(birthMonth?.value, birthYear?.value);
+    const safeDay = Math.min(Number(selectedDay || birthDay.value || 0), maxDay);
+    birthDay.innerHTML = '<option value="">วัน</option>';
+    for (let day = 1; day <= maxDay; day += 1) {
+      birthDay.add(new Option(String(day), String(day)));
+    }
+    if (safeDay) birthDay.value = String(safeDay);
+  }
+
+  function updateAgeFromBirthDate(isoDate) {
+    if (!isoDate || !ageInput || !ageBadge) {
+      if (ageBadge) ageBadge.hidden = true;
+      return;
+    }
+    const parts = isoDate.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return;
+    const [year, month, day] = parts;
+    const birth = new Date(year, month - 1, day);
+    const now = new Date();
+    if (Number.isNaN(birth.getTime()) || birth > now) return;
+
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    let days = now.getDate() - birth.getDate();
+    if (days < 0) {
+      months -= 1;
+      days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    ageInput.value = String(Math.max(0, years));
+    ageBadge.textContent = `อายุ: ${Math.max(0, years)} ปี ${months} เดือน ${days} วัน`;
+    ageBadge.hidden = false;
+  }
+
+  function commitBirthDate() {
+    if (!birthDate || !birthDay || !birthMonth || !birthYear) return;
+    if (!birthDay.value || !birthMonth.value || !birthYear.value) {
+      birthDate.value = "";
+      if (ageBadge) ageBadge.hidden = true;
+      return;
+    }
+    const iso = `${birthYear.value}-${birthMonth.value.padStart(2, "0")}-${birthDay.value.padStart(2, "0")}`;
+    birthDate.value = iso;
+    updateAgeFromBirthDate(iso);
+  }
+
+  populateBirthYears();
+  if (birthDate?.value && /^\d{4}-\d{2}-\d{2}$/.test(birthDate.value)) {
+    const [year, month, day] = birthDate.value.split("-");
+    if (birthYear) birthYear.value = year;
+    if (birthMonth) birthMonth.value = String(Number(month));
+    populateBirthDays(String(Number(day)));
+    updateAgeFromBirthDate(birthDate.value);
+  } else {
+    populateBirthDays();
+  }
+
+  birthDay?.addEventListener("change", commitBirthDate);
+  birthMonth?.addEventListener("change", () => {
+    populateBirthDays();
+    commitBirthDate();
+  });
+  birthYear?.addEventListener("change", () => {
+    populateBirthDays();
+    commitBirthDate();
+  });
+
+  // ===== อาการสำคัญ: chip กดได้หลายรายการเหมือน Patient Portal =====
   document.querySelectorAll("[data-chip-group]").forEach(group => {
     const target = document.getElementById(group.dataset.target);
     if (!target) return;
@@ -416,8 +513,9 @@
     const syncSelectedState = () => {
       const values = target.value.split(/\s*,\s*/).filter(Boolean);
       group.querySelectorAll(".choice-chip").forEach(chip => {
-        chip.classList.toggle("selected", values.includes(chip.dataset.value));
-        chip.setAttribute("aria-pressed", values.includes(chip.dataset.value) ? "true" : "false");
+        const selected = values.includes(chip.dataset.value);
+        chip.classList.toggle("selected", selected);
+        chip.setAttribute("aria-pressed", selected ? "true" : "false");
       });
     };
 
@@ -438,16 +536,123 @@
     syncSelectedState();
   });
 
-  const registerForm = document.getElementById("patientRegisterForm");
-  const submitPatientBtn = document.getElementById("submitPatientBtn");
-  if (registerForm && submitPatientBtn) {
-    registerForm.addEventListener("submit", () => {
-      submitPatientBtn.disabled = true;
-      submitPatientBtn.textContent = "กำลังบันทึก...";
+  // ===== โรคประจำตัว / แพ้ยา / ยาประจำ: choices + ช่องระบุเพิ่มเติม =====
+  document.querySelectorAll("[data-choice-field]").forEach(group => {
+    const target = document.getElementById(group.dataset.target);
+    const customInput = group.querySelector("[data-custom-input]");
+    const chips = Array.from(group.querySelectorAll(".choice-chip"));
+    const knownValues = chips.map(chip => chip.dataset.value);
+    let selected = [];
+
+    const initialValues = (target?.value || "").split(/\s*,\s*/).filter(Boolean);
+    selected = initialValues.filter(value => knownValues.includes(value));
+    const customValues = initialValues.filter(value => !knownValues.includes(value));
+    if (customInput) customInput.value = customValues.join(", ");
+
+    const sync = () => {
+      const custom = customInput?.value.trim() || "";
+      const values = [...selected, ...(custom ? [custom] : [])];
+      if (target) target.value = values.join(", ");
+      chips.forEach(chip => {
+        const active = selected.includes(chip.dataset.value);
+        chip.classList.toggle("selected", active);
+        chip.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      if (values.length) group.classList.remove("has-error");
+    };
+
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        const value = chip.dataset.value;
+        const noneValue = group.dataset.none;
+        if (value === noneValue) {
+          if (selected.includes(value)) {
+            selected = [];
+          } else {
+            selected = [value];
+            if (customInput) customInput.value = "";
+          }
+        } else {
+          selected = selected.filter(item => item !== noneValue);
+          selected = selected.includes(value)
+            ? selected.filter(item => item !== value)
+            : [...selected, value];
+        }
+        sync();
+      });
     });
+
+    customInput?.addEventListener("input", () => {
+      if (customInput.value.trim()) {
+        selected = selected.filter(item => item !== group.dataset.none);
+      }
+      sync();
+    });
+
+    group._syncChoiceField = sync;
+    sync();
+  });
+
+  // ===== ผู้ติดต่อฉุกเฉินสูงสุด 3 คน =====
+  const emergencyContainer = document.getElementById("emergencyContacts");
+  const emergencyTemplate = document.getElementById("emergencyContactTemplate");
+  const addEmergencyButton = document.getElementById("addEmergencyContact");
+  const legacyEmergencyName = document.getElementById("legacyEmergencyName");
+  const legacyEmergencyRelationship = document.getElementById("legacyEmergencyRelationship");
+  const legacyEmergencyPhone = document.getElementById("legacyEmergencyPhone");
+
+  function emergencyEntries() {
+    return emergencyContainer ? Array.from(emergencyContainer.querySelectorAll("[data-emergency-entry]")) : [];
   }
 
-  // ===== Address Dropdown (Thailand full) + Auto PostalCode =====
+  function syncPrimaryEmergencyContact() {
+    const first = emergencyEntries()[0];
+    if (!first) return;
+    if (legacyEmergencyName) legacyEmergencyName.value = first.querySelector("[data-emergency-name]")?.value || "";
+    if (legacyEmergencyRelationship) legacyEmergencyRelationship.value = first.querySelector("[data-emergency-relationship]")?.value || "";
+    if (legacyEmergencyPhone) legacyEmergencyPhone.value = first.querySelector("[data-emergency-phone]")?.value || "";
+  }
+
+  function reindexEmergencyContacts() {
+    const entries = emergencyEntries();
+    entries.forEach((entry, index) => {
+      const number = index + 1;
+      const numberLabel = entry.querySelector("[data-contact-number]");
+      if (numberLabel) numberLabel.textContent = String(number);
+      const name = entry.querySelector("[data-emergency-name]");
+      const relationship = entry.querySelector("[data-emergency-relationship]");
+      const phone = entry.querySelector("[data-emergency-phone]");
+      if (name) name.name = `emergency_name_${number}`;
+      if (relationship) relationship.name = `emergency_relationship_${number}`;
+      if (phone) phone.name = `emergency_phone_${number}`;
+    });
+    if (addEmergencyButton) {
+      addEmergencyButton.hidden = entries.length >= 3;
+      addEmergencyButton.textContent = `+ เพิ่มผู้ติดต่อฉุกเฉิน (${entries.length}/3)`;
+    }
+    syncPrimaryEmergencyContact();
+  }
+
+  emergencyContainer?.addEventListener("click", event => {
+    const removeButton = event.target.closest("[data-remove-contact]");
+    if (!removeButton) return;
+    removeButton.closest("[data-emergency-entry]")?.remove();
+    reindexEmergencyContacts();
+  });
+
+  emergencyContainer?.addEventListener("input", syncPrimaryEmergencyContact);
+  emergencyContainer?.addEventListener("change", syncPrimaryEmergencyContact);
+
+  addEmergencyButton?.addEventListener("click", () => {
+    if (!emergencyContainer || !emergencyTemplate || emergencyEntries().length >= 3) return;
+    emergencyContainer.appendChild(emergencyTemplate.content.cloneNode(true));
+    reindexEmergencyContacts();
+    emergencyEntries().at(-1)?.querySelector("[data-emergency-name]")?.focus();
+  });
+
+  reindexEmergencyContacts();
+
+  // ===== Address Dropdown (Thailand 77 จังหวัด) + Auto PostalCode =====
   fetch("{% static 'data/th_address.json' %}")
     .then(res => res.json())
     .then(list => {
@@ -459,63 +664,47 @@
       const districtNameInput = document.getElementById("district_name");
       const subdistrictNameInput = document.getElementById("subdistrict_name");
 
-      if (!provinceSel || !districtSel || !subdistrictSel || !postalInput) {
-        console.warn("Address elements not found (province/district/subdistrict/postal_code).");
-        return;
-      }
+      if (!provinceSel || !districtSel || !subdistrictSel || !postalInput) return;
 
       function resetDistrict() {
-        districtSel.innerHTML = '<option value="">-- เลือกอำเภอ --</option>';
+        districtSel.innerHTML = '<option value="">-- กรุณาเลือกจังหวัดก่อน --</option>';
         districtSel.disabled = true;
         districtNameInput.value = "";
       }
       function resetSubdistrict() {
-        subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล --</option>';
+        subdistrictSel.innerHTML = '<option value="">-- กรุณาเลือกอำเภอก่อน --</option>';
         subdistrictSel.disabled = true;
         subdistrictNameInput.value = "";
-      }
-      function resetPostal() {
-        postalInput.value = "";
       }
       function selectedText(select) {
         return select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : "";
       }
 
-      // load provinces
-      provinceSel.innerHTML = '<option value="">-- เลือกจังหวัด --</option>';
-      list.forEach(p => {
-        provinceSel.add(new Option(p.provinceNameTh, p.provinceCode));
-      });
+      provinceSel.innerHTML = '<option value="">-- เลือกจังหวัด (77 จังหวัด) --</option>';
+      list.forEach(p => provinceSel.add(new Option(p.provinceNameTh, p.provinceCode)));
 
-      // ===== คืนค่าที่อยู่เดิม ถ้า submit ฟอร์มไม่ผ่านและมีข้อมูลที่กรอกไว้แล้ว =====
       const savedProvince = provinceNameInput.value;
       const savedDistrict = districtNameInput.value;
       const savedSubdistrict = subdistrictNameInput.value;
 
       if (savedProvince) {
-        const p = list.find(x => x.provinceNameTh === savedProvince);
+        const p = list.find(item => item.provinceNameTh === savedProvince);
         if (p) {
           provinceSel.value = p.provinceCode;
-
-          districtSel.innerHTML = '<option value="">-- เลือกอำเภอ --</option>';
+          districtSel.innerHTML = '<option value="">-- เลือกอำเภอ / เขต --</option>';
           p.districts.forEach(d => districtSel.add(new Option(d.districtNameTh, d.districtCode)));
           districtSel.disabled = false;
 
           if (savedDistrict) {
-            const d = p.districts.find(x => x.districtNameTh === savedDistrict);
+            const d = p.districts.find(item => item.districtNameTh === savedDistrict);
             if (d) {
               districtSel.value = d.districtCode;
-
-              subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล --</option>';
+              subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล / แขวง --</option>';
               d.subdistricts.forEach(s => subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode)));
               subdistrictSel.disabled = false;
-
               if (savedSubdistrict) {
-                const s = d.subdistricts.find(x => x.subdistrictNameTh === savedSubdistrict);
-                if (s) {
-                  subdistrictSel.value = s.subdistrictCode;
-                  // postal_code ถูกคืนค่าจาก Django ไว้แล้วในตอน render ไม่ต้องเซ็ตซ้ำ
-                }
+                const sub = d.subdistricts.find(item => item.subdistrictNameTh === savedSubdistrict);
+                if (sub) subdistrictSel.value = sub.subdistrictCode;
               }
             }
           }
@@ -525,57 +714,70 @@
       provinceSel.addEventListener("change", () => {
         resetDistrict();
         resetSubdistrict();
-        resetPostal();
+        postalInput.value = "";
         provinceNameInput.value = "";
-
-        const p = list.find(x => x.provinceCode === provinceSel.value);
+        const p = list.find(item => item.provinceCode === provinceSel.value);
         if (!p) return;
         provinceNameInput.value = selectedText(provinceSel);
-
-        p.districts.forEach(d => {
-          districtSel.add(new Option(d.districtNameTh, d.districtCode));
-        });
+        districtSel.innerHTML = '<option value="">-- เลือกอำเภอ / เขต --</option>';
+        p.districts.forEach(d => districtSel.add(new Option(d.districtNameTh, d.districtCode)));
         districtSel.disabled = false;
       });
 
       districtSel.addEventListener("change", () => {
         resetSubdistrict();
-        resetPostal();
+        postalInput.value = "";
         districtNameInput.value = "";
-
-        const p = list.find(x => x.provinceCode === provinceSel.value);
-        if (!p) return;
-
-        const d = p.districts.find(x => x.districtCode === districtSel.value);
+        const p = list.find(item => item.provinceCode === provinceSel.value);
+        const d = p?.districts.find(item => item.districtCode === districtSel.value);
         if (!d) return;
         districtNameInput.value = selectedText(districtSel);
-
-        d.subdistricts.forEach(s => {
-          subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode));
-        });
+        subdistrictSel.innerHTML = '<option value="">-- เลือกตำบล / แขวง --</option>';
+        d.subdistricts.forEach(s => subdistrictSel.add(new Option(s.subdistrictNameTh, s.subdistrictCode)));
         subdistrictSel.disabled = false;
       });
 
       subdistrictSel.addEventListener("change", () => {
-        resetPostal();
+        postalInput.value = "";
         subdistrictNameInput.value = "";
-
-        const p = list.find(x => x.provinceCode === provinceSel.value);
-        if (!p) return;
-
-        const d = p.districts.find(x => x.districtCode === districtSel.value);
-        if (!d) return;
-
-        const s = d.subdistricts.find(x => x.subdistrictCode === subdistrictSel.value);
-        if (!s) return;
+        const p = list.find(item => item.provinceCode === provinceSel.value);
+        const d = p?.districts.find(item => item.districtCode === districtSel.value);
+        const sub = d?.subdistricts.find(item => item.subdistrictCode === subdistrictSel.value);
+        if (!sub) return;
         subdistrictNameInput.value = selectedText(subdistrictSel);
-
-        postalInput.value = s.postalCode || "";
+        postalInput.value = sub.postalCode || "";
       });
     })
-    .catch(err => {
-      console.error("Failed to load th_address.json", err);
+    .catch(err => console.error("Failed to load th_address.json", err));
+
+  // ===== Validate fields that are satisfied by chips before submit =====
+  const registerForm = document.getElementById("patientRegisterForm");
+  const submitPatientBtn = document.getElementById("submitPatientBtn");
+  registerForm?.addEventListener("submit", event => {
+    document.querySelectorAll("[data-choice-field]").forEach(group => {
+      if (typeof group._syncChoiceField === "function") group._syncChoiceField();
     });
+    syncPrimaryEmergencyContact();
+
+    if (!isEditMode) {
+      const missingGroup = Array.from(document.querySelectorAll("[data-choice-field]")).find(group => {
+        const target = document.getElementById(group.dataset.target);
+        return !target?.value.trim();
+      });
+      if (missingGroup) {
+        event.preventDefault();
+        missingGroup.classList.add("has-error");
+        missingGroup.scrollIntoView({ behavior: "smooth", block: "center" });
+        missingGroup.querySelector("[data-custom-input]")?.focus();
+        return;
+      }
+    }
+
+    if (submitPatientBtn) {
+      submitPatientBtn.disabled = true;
+      submitPatientBtn.textContent = "กำลังบันทึก...";
+    }
+  });
 </script>
 
 </body>
