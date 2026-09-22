@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วย{% endif %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
-  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=patient-style-20260908">
+  <link rel="stylesheet" href="{% static 'css/register_dark.css' %}?v=portal-parity-20260922">
 </head>
 
 <body>
@@ -56,78 +56,103 @@
 
           <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
           <h3>ข้อมูลผู้ป่วย</h3>
+          <p class="section-help">กรอกข้อมูลส่วนบุคคลให้เหมือนกับหน้าลงทะเบียนของผู้ป่วย</p>
           <div class="grid">
             <div class="field">
-              <label>ชื่อ</label>
-              <input name="first_name" required placeholder="เช่น สมชาย"
+              <label>ชื่อ <span class="required-mark">*</span></label>
+              <input name="first_name" maxlength="100" required autocomplete="given-name" placeholder="เช่น สมชาย"
                      class="{% if form.first_name.errors %}has-error{% endif %}"
                      value="{{ form.first_name.value|default:'' }}">
               {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
-              <label>นามสกุล</label>
-              <input name="last_name" required placeholder="เช่น ใจดี"
+              <label>นามสกุล <span class="required-mark">*</span></label>
+              <input name="last_name" maxlength="100" required autocomplete="family-name" placeholder="เช่น ใจดี"
                      class="{% if form.last_name.errors %}has-error{% endif %}"
                      value="{{ form.last_name.value|default:'' }}">
               {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field full">
-              <label>เลขบัตรประชาชน</label>
-              <input name="national_id" required inputmode="numeric"
-                     placeholder="13 หลัก ไม่ต้องใส่ขีด"
+              <label>เลขบัตรประชาชน <span class="required-mark">*</span></label>
+              <input name="national_id" required maxlength="13" minlength="13" inputmode="numeric" pattern="[0-9]{13}"
+                     autocomplete="off" placeholder="ตัวเลข 13 หลัก ไม่ต้องใส่ขีด"
                      class="{% if form.national_id.errors %}has-error{% endif %}"
                      value="{{ form.national_id.value|default:'' }}">
-              <div class="hint">ใช้ตรวจสอบผู้ป่วยซ้ำในระบบ</div>
+              <div class="hint">ใช้ตรวจสอบผู้ป่วยเดิมและป้องกันการสร้างคิวซ้ำ</div>
               {% if form.national_id.errors %}<div class="field-error">{{ form.national_id.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
               <label>เพศ</label>
               <select name="gender" class="{% if form.gender.errors %}has-error{% endif %}">
-                <option value="" {% if not form.gender.value %}selected{% endif %}>-- เลือก --</option>
+                <option value="UNKNOWN" {% if not form.gender.value or form.gender.value == "UNKNOWN" %}selected{% endif %}>ไม่ระบุ</option>
                 <option value="M" {% if form.gender.value == "M" %}selected{% endif %}>ชาย</option>
                 <option value="F" {% if form.gender.value == "F" %}selected{% endif %}>หญิง</option>
-                <option value="O" {% if form.gender.value == "O" %}selected{% endif %}>อื่นๆ</option>
-                <option value="UNKNOWN" {% if form.gender.value == "UNKNOWN" %}selected{% endif %}>ไม่ระบุ</option>
+                <option value="O" {% if form.gender.value == "O" %}selected{% endif %}>อื่น ๆ</option>
               </select>
               {% if form.gender.errors %}<div class="field-error">{{ form.gender.errors.0 }}</div>{% endif %}
             </div>
 
-            <div class="field">
-              <label>วันเดือนปีเกิด</label>
-              <input name="birth_date" type="date"
-                     class="{% if form.birth_date.errors %}has-error{% endif %}"
-                     value="{{ form.birth_date.value|default:'' }}">
-              <div class="hint">ใช้คำนวณอายุเป็นปี เดือน และวัน</div>
+            <div class="field full">
+              <label>วัน/เดือน/ปีเกิด</label>
+              <div class="dob-select-row">
+                <select id="birth_day" aria-label="วันเกิด"><option value="">วัน</option></select>
+                <select id="birth_month" aria-label="เดือนเกิด">
+                  <option value="">เดือน</option>
+                  <option value="1">มกราคม</option>
+                  <option value="2">กุมภาพันธ์</option>
+                  <option value="3">มีนาคม</option>
+                  <option value="4">เมษายน</option>
+                  <option value="5">พฤษภาคม</option>
+                  <option value="6">มิถุนายน</option>
+                  <option value="7">กรกฎาคม</option>
+                  <option value="8">สิงหาคม</option>
+                  <option value="9">กันยายน</option>
+                  <option value="10">ตุลาคม</option>
+                  <option value="11">พฤศจิกายน</option>
+                  <option value="12">ธันวาคม</option>
+                </select>
+                <select id="birth_year" aria-label="ปีเกิด (พ.ศ.)"><option value="">ปี พ.ศ.</option></select>
+              </div>
+              <input id="birth_date" name="birth_date" type="hidden" value="{{ form.birth_date.value|default:'' }}">
+              <div class="hint">เลือกวัน เดือน และปี พ.ศ. ระบบจะคำนวณอายุให้อัตโนมัติ</div>
               {% if form.birth_date.errors %}<div class="field-error">{{ form.birth_date.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
-              <label>อายุโดยประมาณ</label>
-              <input name="age" type="number" min="0" placeholder="ปี"
-                     class="{% if form.age.errors %}has-error{% endif %}"
-                     value="{{ form.age.value|default:'' }}">
-              <div class="hint">กรอกเมื่อไม่ทราบวันเดือนปีเกิด</div>
+              <label>อายุ (ปี)</label>
+              <div class="input-suffix">
+                <input id="age" name="age" type="number" min="0" max="130" inputmode="numeric" placeholder="0"
+                       class="{% if form.age.errors %}has-error{% endif %}"
+                       value="{{ form.age.value|default:'' }}">
+                <em>ปี</em>
+              </div>
+              <div class="hint">กรอกเองได้เมื่อไม่ทราบวันเดือนปีเกิด</div>
               {% if form.age.errors %}<div class="field-error">{{ form.age.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
-              <label>เบอร์โทร</label>
-              <input name="phone" placeholder="08xxxxxxxx"
+              <label>เบอร์โทรศัพท์ {% if not is_edit %}<span class="required-mark">*</span>{% endif %}</label>
+              <input name="phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxx"
+                     {% if not is_edit %}required{% endif %}
                      class="{% if form.phone.errors %}has-error{% endif %}"
                      value="{{ form.phone.value|default:'' }}">
               {% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}
             </div>
 
-            <div class="field">
-              <label>อีเมลสำหรับกู้คืนรหัส PIN</label>
-              <input name="email" type="email" placeholder="patient@example.com"
+            <div class="field full">
+              <label>อีเมล {% if not is_edit %}<span class="required-mark">*</span>{% endif %}</label>
+              <input name="email" type="email" maxlength="254" autocomplete="email" placeholder="patient@example.com"
+                     {% if not is_edit %}required{% endif %}
                      class="{% if form.email.errors %}has-error{% endif %}"
                      value="{{ form.email.value|default:'' }}">
+              <div class="hint">ใช้ยืนยันตัวตนและกู้คืนรหัสผ่าน/PIN ใน Patient Portal</div>
               {% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
             </div>
+
+            <div id="ageBadge" class="age-badge-notification" hidden role="status"></div>
           </div>
 
           <!-- ================= SECTION 2: อาการที่มารับบริการ ================= -->
@@ -152,8 +177,9 @@
           <!-- ================= SECTION 3: สุขภาพ ================= -->
           <h3>ข้อมูลสุขภาพและประวัติการแพ้</h3>
           <p class="section-help">ข้อมูลเบื้องต้นเพื่อความปลอดภัยในการตรวจรักษา</p>
-          <div class="health-notice">ข้อมูลสัญญาณชีพ เช่น ชีพจร อุณหภูมิ และออกซิเจนในเลือด จะบันทึกในขั้นตอนวัดสัญญาณชีพ</div>
-          <div class="grid">
+          <div class="health-notice">สัญญาณชีพ เช่น ความดันโลหิต ชีพจร อุณหภูมิ และออกซิเจนในเลือด จะได้รับการตรวจวัด ณ จุดคัดกรอง</div>
+
+          <div class="grid three-column">
             <div class="field">
               <label>หมู่เลือด</label>
               <select name="blood_type">
@@ -166,26 +192,34 @@
             </div>
 
             <div class="field">
-              <label>ส่วนสูง (cm)</label>
-              <input name="height_cm" type="number" step="0.01"
-                     class="{% if form.height_cm.errors %}has-error{% endif %}"
-                     value="{{ form.height_cm.value|default:'' }}">
+              <label>ส่วนสูง</label>
+              <div class="input-suffix">
+                <input name="height_cm" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="170"
+                       class="{% if form.height_cm.errors %}has-error{% endif %}"
+                       value="{{ form.height_cm.value|default:'' }}">
+                <em>ซม.</em>
+              </div>
               {% if form.height_cm.errors %}<div class="field-error">{{ form.height_cm.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="field">
-              <label>น้ำหนัก (kg)</label>
-              <input name="weight_kg" type="number" step="0.01"
-                     class="{% if form.weight_kg.errors %}has-error{% endif %}"
-                     value="{{ form.weight_kg.value|default:'' }}">
+              <label>น้ำหนัก</label>
+              <div class="input-suffix">
+                <input name="weight_kg" type="number" min="1" max="400" step="0.1" inputmode="decimal" placeholder="65"
+                       class="{% if form.weight_kg.errors %}has-error{% endif %}"
+                       value="{{ form.weight_kg.value|default:'' }}">
+                <em>กก.</em>
+              </div>
               {% if form.weight_kg.errors %}<div class="field-error">{{ form.weight_kg.errors.0 }}</div>{% endif %}
             </div>
-
           </div>
 
-          <div class="field full">
-            <label>โรคประจำตัว</label>
-            <div class="choice-chips" data-chip-group data-target="chronic_diseases">
+          <div class="portal-choice-field {% if form.chronic_diseases.errors %}has-error{% endif %}"
+               data-choice-field data-target="chronic_diseases" data-none="ไม่มีโรคประจำตัว">
+            <div class="field-group-title">🩺 โรคประจำตัว {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
+              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มีโรคประจำตัว”</small>
+            </div>
+            <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มีโรคประจำตัว">ไม่มีโรคประจำตัว</button>
               <button type="button" class="choice-chip" data-value="ความดันโลหิตสูง">ความดันโลหิตสูง</button>
               <button type="button" class="choice-chip" data-value="เบาหวาน">เบาหวาน</button>
@@ -194,24 +228,34 @@
               <button type="button" class="choice-chip" data-value="หอบหืด / ภูมิแพ้">หอบหืด / ภูมิแพ้</button>
               <button type="button" class="choice-chip" data-value="ไขมันในเลือดสูง">ไขมันในเลือดสูง</button>
             </div>
-            <textarea id="chronic_diseases" name="chronic_diseases" placeholder="ระบุโรคประจำตัวเพิ่มเติม (ถ้ามี)">{{ form.chronic_diseases.value|default:'' }}</textarea>
+            <input class="choice-custom-input" type="text" data-custom-input placeholder="ระบุโรคประจำตัวอื่น ๆ (หากมี)">
+            <input id="chronic_diseases" name="chronic_diseases" type="hidden" value="{{ form.chronic_diseases.value|default:'' }}">
+            {% if form.chronic_diseases.errors %}<div class="field-error">{{ form.chronic_diseases.errors.0 }}</div>{% endif %}
           </div>
 
-          <div class="field full">
-            <label>แพ้ยา / อาหาร</label>
-            <div class="choice-chips" data-chip-group data-target="allergies">
+          <div class="portal-choice-field {% if form.allergies.errors %}has-error{% endif %}"
+               data-choice-field data-target="allergies" data-none="ไม่มีประวัติแพ้ยา">
+            <div class="field-group-title">⚠️ ประวัติแพ้ยาและอาหาร {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
+              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มีประวัติแพ้ยา”</small>
+            </div>
+            <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มีประวัติแพ้ยา">ไม่มีประวัติแพ้ยา</button>
-              <button type="button" class="choice-chip" data-value="แพ้ยากลุ่มเพนิซิลลิน">แพ้ยากลุ่มเพนิซิลลิน</button>
-              <button type="button" class="choice-chip" data-value="แพ้ยาแก้ปวด / แอสไพริน">แพ้ยาแก้ปวด / แอสไพริน</button>
-              <button type="button" class="choice-chip" data-value="แพ้ยาซัลฟา">แพ้ยาซัลฟา</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยากลุ่มเพนิซิลลิน (Penicillin)">แพ้ยากลุ่มเพนิซิลลิน (Penicillin)</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยาแก้ปวด (NSAIDs / แอสไพริน)">แพ้ยาแก้ปวด (NSAIDs / แอสไพริน)</button>
+              <button type="button" class="choice-chip" data-value="แพ้ยาซัลฟา (Sulfa)">แพ้ยาซัลฟา (Sulfa)</button>
               <button type="button" class="choice-chip" data-value="แพ้อาหารทะเล">แพ้อาหารทะเล</button>
             </div>
-            <textarea id="allergies" name="allergies" placeholder="ระบุประวัติแพ้ยา อาหาร หรือสารอื่นเพิ่มเติม">{{ form.allergies.value|default:'' }}</textarea>
+            <input class="choice-custom-input" type="text" data-custom-input placeholder="ระบุยาหรือสารที่แพ้อื่น ๆ (หากมี)">
+            <input id="allergies" name="allergies" type="hidden" value="{{ form.allergies.value|default:'' }}">
+            {% if form.allergies.errors %}<div class="field-error">{{ form.allergies.errors.0 }}</div>{% endif %}
           </div>
 
-          <div class="field full">
-            <label>ยาที่ใช้ประจำ</label>
-            <div class="choice-chips" data-chip-group data-target="medications">
+          <div class="portal-choice-field {% if form.medications.errors %}has-error{% endif %}"
+               data-choice-field data-target="medications" data-none="ไม่มียาที่ใช้ประจำ">
+            <div class="field-group-title">💊 ยาที่ใช้ประจำ {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
+              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มียาที่ใช้ประจำ”</small>
+            </div>
+            <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มียาที่ใช้ประจำ">ไม่มียาที่ใช้ประจำ</button>
               <button type="button" class="choice-chip" data-value="ยาลดความดันโลหิต">ยาลดความดันโลหิต</button>
               <button type="button" class="choice-chip" data-value="ยารักษาโรคเบาหวาน">ยารักษาโรคเบาหวาน</button>
@@ -219,80 +263,122 @@
               <button type="button" class="choice-chip" data-value="ยาโรคหัวใจ">ยาโรคหัวใจ</button>
               <button type="button" class="choice-chip" data-value="ยาละลายลิ่มเลือด / ต้านเกล็ดเลือด">ยาละลายลิ่มเลือด / ต้านเกล็ดเลือด</button>
               <button type="button" class="choice-chip" data-value="ยาพ่นหอบหืด / ยาภูมิแพ้">ยาพ่นหอบหืด / ยาภูมิแพ้</button>
+              <button type="button" class="choice-chip" data-value="ยาลดกรด / ยาโรคกระเพาะ">ยาลดกรด / ยาโรคกระเพาะ</button>
+              <button type="button" class="choice-chip" data-value="ยาไทรอยด์">ยาไทรอยด์</button>
             </div>
-            <textarea id="medications" name="medications" placeholder="ระบุชื่อยาและขนาดยาที่ใช้เพิ่มเติม">{{ form.medications.value|default:'' }}</textarea>
+            <input class="choice-custom-input" type="text" data-custom-input placeholder="ระบุชื่อยาอื่น ๆ หรือรายละเอียดเพิ่มเติม (เช่น ขนาดยา วิธีรับประทาน)">
+            <input id="medications" name="medications" type="hidden" value="{{ form.medications.value|default:'' }}">
+            {% if form.medications.errors %}<div class="field-error">{{ form.medications.errors.0 }}</div>{% endif %}
           </div>
 
           <!-- ================= SECTION 4: ที่อยู่ ================= -->
-          <h3>ที่อยู่ (เลือก)</h3>
+          <h3>ที่อยู่ปัจจุบัน</h3>
+          <p class="section-help">ระบุที่อยู่เพื่อการติดต่อและบันทึกประวัติการรักษา</p>
           <div class="grid">
             <div class="field">
               <label>จังหวัด</label>
               <select id="province" name="province_code">
-                <option value="">-- เลือกจังหวัด --</option>
+                <option value="">-- เลือกจังหวัด (77 จังหวัด) --</option>
               </select>
             </div>
 
             <div class="field">
-              <label>อำเภอ</label>
+              <label>อำเภอ / เขต</label>
               <select id="district" name="district_code" disabled>
-                <option value="">-- เลือกอำเภอ --</option>
+                <option value="">-- กรุณาเลือกจังหวัดก่อน --</option>
               </select>
             </div>
 
             <div class="field">
-              <label>ตำบล</label>
+              <label>ตำบล / แขวง</label>
               <select id="subdistrict" name="subdistrict_code" disabled>
-                <option value="">-- เลือกตำบล --</option>
+                <option value="">-- กรุณาเลือกอำเภอก่อน --</option>
               </select>
             </div>
 
             <div class="field">
-              <label>รหัสไปรษณีย์ (อัตโนมัติ)</label>
-              <input id="postal_code" name="postal_code" readonly placeholder="เลือกตำบลก่อน"
-                     value="{{ form.postal_code.value|default:'' }}">
+              <label>รหัสไปรษณีย์</label>
+              <input id="postal_code" name="postal_code" maxlength="5" inputmode="numeric" pattern="[0-9]{5}"
+                     readonly placeholder="5 หลัก" value="{{ form.postal_code.value|default:'' }}">
             </div>
           </div>
           <input id="province_name" name="province" type="hidden" value="{{ form.province.value|default:'' }}">
           <input id="district_name" name="district" type="hidden" value="{{ form.district.value|default:'' }}">
           <input id="subdistrict_name" name="subdistrict" type="hidden" value="{{ form.subdistrict.value|default:'' }}">
-          <div class="hint">
-            • เลือกครบ 3 ชั้น ระบบจะเติมรหัสไปรษณีย์ให้เอง<br>
-            • ระบบจะบันทึกชื่อจังหวัด อำเภอ ตำบล และรหัสไปรษณีย์ไว้ในข้อมูลผู้ป่วย
-          </div>
+          <div class="hint">เลือกจังหวัด → อำเภอ/เขต → ตำบล/แขวง แล้วระบบจะเติมรหัสไปรษณีย์ให้อัตโนมัติ</div>
 
           <!-- ================= SECTION 5: ติดต่อฉุกเฉิน ================= -->
           <h3>ผู้ติดต่อฉุกเฉิน</h3>
-          <p class="section-help">บุคคลที่สามารถติดต่อได้ในกรณีฉุกเฉิน</p>
-          <div class="emergency-box">
-          <div class="grid">
-            <div class="field">
-              <label>ชื่อผู้ติดต่อ</label>
-              <input name="emergency_name" value="{{ form.emergency_name.value|default:'' }}">
-            </div>
-
-            <div class="field">
-              <label>ความสัมพันธ์กับผู้ป่วย</label>
-              <select name="emergency_relationship">
-                <option value="" {% if not form.emergency_relationship.value %}selected{% endif %}>-- เลือก --</option>
-                <option value="FATHER" {% if form.emergency_relationship.value == "FATHER" %}selected{% endif %}>พ่อ</option>
-                <option value="MOTHER" {% if form.emergency_relationship.value == "MOTHER" %}selected{% endif %}>แม่</option>
-                <option value="SPOUSE" {% if form.emergency_relationship.value == "SPOUSE" %}selected{% endif %}>คู่สมรส</option>
-                <option value="CHILD" {% if form.emergency_relationship.value == "CHILD" %}selected{% endif %}>บุตร</option>
-                <option value="SIBLING" {% if form.emergency_relationship.value == "SIBLING" %}selected{% endif %}>พี่น้อง</option>
-                <option value="RELATIVE" {% if form.emergency_relationship.value == "RELATIVE" %}selected{% endif %}>ญาติ</option>
-                <option value="FRIEND" {% if form.emergency_relationship.value == "FRIEND" %}selected{% endif %}>เพื่อน</option>
-                <option value="CAREGIVER" {% if form.emergency_relationship.value == "CAREGIVER" %}selected{% endif %}>ผู้ดูแล</option>
-                <option value="OTHER" {% if form.emergency_relationship.value == "OTHER" %}selected{% endif %}>อื่น ๆ</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label>เบอร์โทร</label>
-              <input name="emergency_phone" value="{{ form.emergency_phone.value|default:'' }}">
-            </div>
+          <p class="section-help">ข้อมูลบุคคลที่สามารถติดต่อได้ในกรณีจำเป็นเร่งด่วน เพิ่มได้สูงสุด 3 ท่าน</p>
+          <div id="emergencyContacts" class="emergency-contacts-wrapper">
+            {% for contact in emergency_contacts %}
+              <div class="emergency-entry-card" data-emergency-entry>
+                <div class="entry-header">
+                  <span class="entry-tag">ผู้ติดต่อฉุกเฉินท่านที่ <span data-contact-number>{{ forloop.counter }}</span>{% if forloop.first %} (หลัก){% endif %}</span>
+                  {% if not forloop.first %}<button type="button" class="remove-entry-btn" data-remove-contact>ลบรายการ</button>{% endif %}
+                </div>
+                <div class="grid three-column">
+                  <div class="field">
+                    <label>ชื่อผู้ติดต่อ</label>
+                    <input data-emergency-name name="emergency_name_{{ forloop.counter }}" maxlength="120"
+                           placeholder="ชื่อ-นามสกุล" value="{{ contact.name|default:'' }}">
+                  </div>
+                  <div class="field">
+                    <label>ความสัมพันธ์</label>
+                    <select data-emergency-relationship name="emergency_relationship_{{ forloop.counter }}">
+                      <option value="">-- เลือก --</option>
+                      <option value="FATHER" {% if contact.relationship == "FATHER" %}selected{% endif %}>บิดา</option>
+                      <option value="MOTHER" {% if contact.relationship == "MOTHER" %}selected{% endif %}>มารดา</option>
+                      <option value="SPOUSE" {% if contact.relationship == "SPOUSE" %}selected{% endif %}>คู่สมรส</option>
+                      <option value="CHILD" {% if contact.relationship == "CHILD" %}selected{% endif %}>บุตร</option>
+                      <option value="SIBLING" {% if contact.relationship == "SIBLING" %}selected{% endif %}>พี่น้อง</option>
+                      <option value="RELATIVE" {% if contact.relationship == "RELATIVE" %}selected{% endif %}>ญาติ</option>
+                      <option value="FRIEND" {% if contact.relationship == "FRIEND" %}selected{% endif %}>เพื่อน</option>
+                      <option value="CAREGIVER" {% if contact.relationship == "CAREGIVER" %}selected{% endif %}>ผู้ดูแล</option>
+                      <option value="OTHER" {% if contact.relationship == "OTHER" %}selected{% endif %}>อื่น ๆ</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>เบอร์โทรศัพท์</label>
+                    <input data-emergency-phone name="emergency_phone_{{ forloop.counter }}" maxlength="20" inputmode="tel"
+                           placeholder="08xxxxxxxx" value="{{ contact.phone|default:'' }}">
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
           </div>
-          </div>
+          <button id="addEmergencyContact" type="button" class="add-emergency-btn">+ เพิ่มผู้ติดต่อฉุกเฉิน</button>
+          <input id="legacyEmergencyName" name="emergency_name" type="hidden">
+          <input id="legacyEmergencyRelationship" name="emergency_relationship" type="hidden">
+          <input id="legacyEmergencyPhone" name="emergency_phone" type="hidden">
+
+          <template id="emergencyContactTemplate">
+            <div class="emergency-entry-card" data-emergency-entry>
+              <div class="entry-header">
+                <span class="entry-tag">ผู้ติดต่อฉุกเฉินท่านที่ <span data-contact-number></span></span>
+                <button type="button" class="remove-entry-btn" data-remove-contact>ลบรายการ</button>
+              </div>
+              <div class="grid three-column">
+                <div class="field"><label>ชื่อผู้ติดต่อ</label><input data-emergency-name maxlength="120" placeholder="ชื่อ-นามสกุล"></div>
+                <div class="field">
+                  <label>ความสัมพันธ์</label>
+                  <select data-emergency-relationship>
+                    <option value="">-- เลือก --</option>
+                    <option value="FATHER">บิดา</option>
+                    <option value="MOTHER">มารดา</option>
+                    <option value="SPOUSE">คู่สมรส</option>
+                    <option value="CHILD">บุตร</option>
+                    <option value="SIBLING">พี่น้อง</option>
+                    <option value="RELATIVE">ญาติ</option>
+                    <option value="FRIEND">เพื่อน</option>
+                    <option value="CAREGIVER">ผู้ดูแล</option>
+                    <option value="OTHER">อื่น ๆ</option>
+                  </select>
+                </div>
+                <div class="field"><label>เบอร์โทรศัพท์</label><input data-emergency-phone maxlength="20" inputmode="tel" placeholder="08xxxxxxxx"></div>
+              </div>
+            </div>
+          </template>
 
           {% if not is_edit %}
           <label class="consent-box">
