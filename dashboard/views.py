@@ -1,11 +1,11 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, F
+from django.db.models import Avg, Count, F
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 import csv
 from pathlib import Path
-from queues.models import CriticalAlert, Queue, TriageResult, Visit
+from queues.models import ConfirmedTriageCase, CriticalAlert, Queue, TriageResult, Visit
 from queues.triage import SEVERITY_LEVELS
 from ai_triage.services import localize_ai_reason
 
@@ -114,26 +114,87 @@ def ai_evaluation_view(request):
     metrics = metrics_path.read_text(encoding="utf-8") if metrics_path.exists() else "No metrics file found."
     confusion = confusion_path.read_text(encoding="utf-8") if confusion_path.exists() else "No confusion matrix found."
 
-    actual_results = (
-        TriageResult.objects
-        .exclude(ai_severity__isnull=True)
-        .exclude(ai_severity="")
-        .exclude(nurse_severity__isnull=True)
-        .exclude(nurse_severity="")
-        .select_related("visit", "visit__patient")
-        .order_by("-created_at")
+    cases = list(
+        ConfirmedTriageCase.objects
+        .select_related("confirmed_by")
+        .order_by("-confirmed_at", "-id")
     )
-    total_actual = actual_results.count()
-    matches = actual_results.filter(ai_severity=F("nurse_severity")).count() if total_actual else 0
-    accuracy = round((matches / total_actual) * 100, 2) if total_actual else None
+    evaluated = [
+        case for case in cases
+        if case.ai_severity in SEVERITY_LEVELS
+        and case.nurse_severity in SEVERITY_LEVELS
+    ]
+    total_actual = len(evaluated)
+    matches = sum(1 for case in evaluated if case.is_ai_match)
     override_count = total_actual - matches
+    accuracy = round((matches / total_actual) * 100, 2) if total_actual else None
+    override_rate = round((override_count / total_actual) * 100, 2) if total_actual else None
+
+    eligible_cases = [case for case in cases if case.is_training_eligible]
+    eligible_total = len(eligible_cases)
+    eligibility_rate = (
+        round((eligible_total / len(cases)) * 100, 2)
+        if cases else None
+    )
+    confidence_values = [
+        case.confidence for case in evaluated if case.confidence is not None
+    ]
+    avg_confidence = (
+        round((sum(confidence_values) / len(confidence_values)) * 100, 2)
+        if confidence_values else None
+    )
+
+    severity_rows = []
+    for severity in SEVERITY_LEVELS:
+        severity_cases = [
+            case for case in evaluated if case.nurse_severity == severity
+        ]
+        severity_matches = sum(1 for case in severity_cases if case.is_ai_match)
+        severity_total = len(severity_cases)
+        severity_rows.append({
+            "severity": severity,
+            "label": SEVERITY_LABELS[severity],
+            "total": severity_total,
+            "matches": severity_matches,
+            "overrides": severity_total - severity_matches,
+            "accuracy": (
+                round((severity_matches / severity_total) * 100, 2)
+                if severity_total else None
+            ),
+            "training_eligible": sum(
+                1
+                for case in eligible_cases
+                if case.nurse_severity == severity
+            ),
+        })
+
+    confusion_rows = []
+    for actual in SEVERITY_LEVELS:
+        cells = []
+        for predicted in SEVERITY_LEVELS:
+            count = sum(
+                1
+                for case in evaluated
+                if case.nurse_severity == actual
+                and case.ai_severity == predicted
+            )
+            cells.append({"predicted": predicted, "count": count})
+        confusion_rows.append({
+            "actual": actual,
+            "label": SEVERITY_LABELS[actual],
+            "cells": cells,
+        })
 
     by_month = {}
-    for result in actual_results:
-        key = result.created_at.strftime("%Y-%m")
-        bucket = by_month.setdefault(key, {"total": 0, "matches": 0, "overrides": 0})
+    for case in evaluated:
+        captured = case.confirmed_at or case.captured_at
+        key = timezone.localtime(captured).strftime("%Y-%m") if captured else "-"
+        bucket = by_month.setdefault(
+            key,
+            {"total": 0, "matches": 0, "overrides": 0},
+        )
         bucket["total"] += 1
-        if result.ai_severity == result.nurse_severity:
+        if case.is_ai_match:
             bucket["matches"] += 1
         else:
             bucket["overrides"] += 1
@@ -143,22 +204,60 @@ def ai_evaluation_view(request):
             "total": data["total"],
             "matches": data["matches"],
             "overrides": data["overrides"],
-            "accuracy": round((data["matches"] / data["total"]) * 100, 2) if data["total"] else None,
+            "accuracy": (
+                round((data["matches"] / data["total"]) * 100, 2)
+                if data["total"] else None
+            ),
         }
         for month, data in sorted(by_month.items(), reverse=True)
     ]
 
+    model_buckets = {}
+    for case in evaluated:
+        model_name = case.model_name or "ไม่ระบุโมเดล"
+        bucket = model_buckets.setdefault(
+            model_name,
+            {"total": 0, "matches": 0, "confidence": []},
+        )
+        bucket["total"] += 1
+        bucket["matches"] += int(case.is_ai_match)
+        if case.confidence is not None:
+            bucket["confidence"].append(case.confidence)
+    model_rows = []
+    for model_name, data in sorted(
+        model_buckets.items(),
+        key=lambda item: item[1]["total"],
+        reverse=True,
+    ):
+        model_rows.append({
+            "name": model_name,
+            "total": data["total"],
+            "accuracy": round((data["matches"] / data["total"]) * 100, 2),
+            "avg_confidence": (
+                round((sum(data["confidence"]) / len(data["confidence"])) * 100, 2)
+                if data["confidence"] else None
+            ),
+        })
+
+    recent_cases = cases[:40]
+
     return render(request, "dashboard/ai_evaluation.html", {
         "metrics": metrics,
         "confusion": confusion,
-        "metrics_path": metrics_path,
-        "confusion_path": confusion_path,
         "actual_total": total_actual,
         "actual_matches": matches,
         "actual_overrides": override_count,
         "actual_accuracy": accuracy,
+        "override_rate": override_rate,
+        "confirmed_total": len(cases),
+        "training_eligible_total": eligible_total,
+        "training_eligibility_rate": eligibility_rate,
+        "avg_confidence": avg_confidence,
+        "severity_rows": severity_rows,
+        "confusion_rows": confusion_rows,
         "monthly_rows": monthly_rows,
-        "recent_overrides": actual_results.exclude(ai_severity=F("nurse_severity"))[:30],
+        "model_rows": model_rows,
+        "recent_cases": recent_cases,
     })
 
 
