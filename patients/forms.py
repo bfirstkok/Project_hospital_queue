@@ -20,20 +20,6 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.allow_existing = allow_existing
 
-        # Keep staff-side registration aligned with the patient portal.
-        # Editing an existing patient remains a partial update, so these fields
-        # are only mandatory while creating a new service registration.
-        if allow_existing:
-            for field_name in (
-                "phone",
-                "email",
-                "chronic_diseases",
-                "allergies",
-                "medications",
-                "note",
-            ):
-                self.fields[field_name].required = True
-
     class Meta:
         model = Patient
         fields = [
