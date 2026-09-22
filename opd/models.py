@@ -254,7 +254,7 @@ class Bill(models.Model):
     def recalculate(self, save=True):
         prescription = getattr(self.visit, "prescription", None)
         medicine_total = Decimal("0.00")
-        if prescription:
+        if prescription and prescription.status != Prescription.Status.CANCELLED:
             medicine_total = sum((item.line_total for item in prescription.items.all()), Decimal("0.00"))
         subtotal = (self.consultation_fee or Decimal("0.00")) + medicine_total + (self.other_fee or Decimal("0.00"))
         percent = self.coverage.coverage_percent if self.coverage and self.coverage.is_active else 0
