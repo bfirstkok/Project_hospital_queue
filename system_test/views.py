@@ -22,7 +22,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.access import CAPABILITY_LABELS, ROLE_CAPABILITIES, ROLE_DESCRIPTIONS, superuser_required
-from queues.models import StaffProfile
+from queues.models import StaffDuty, StaffProfile
 from patients.models import Patient
 from queues.models import (
     ConfirmedTriageCase,
@@ -170,6 +170,70 @@ def index(request):
     ]
     catalog = _model_catalog()
 
+    # Live staff presence is based on actual attendance plus recent authenticated
+    # requests. StaffActivityMiddleware refreshes StaffDuty.last_seen_at while a
+    # checked-in user is working in the system.
+    online_cutoff = now - timedelta(minutes=2)
+    idle_cutoff = now - timedelta(minutes=15)
+    duties_today = list(
+        StaffDuty.objects
+        .select_related("user", "user__hospital_staff_profile")
+        .filter(duty_date=today)
+        .order_by("-is_present", "user__first_name", "user__username")
+    )
+    duty_user_ids = [duty.user_id for duty in duties_today]
+    latest_action_by_user = {}
+    if duty_user_ids:
+        for log in (
+            VisitWorkflowLog.objects
+            .select_related("visit")
+            .filter(actor_id__in=duty_user_ids, created_at__date=today)
+            .order_by("-created_at", "-id")[:500]
+        ):
+            latest_action_by_user.setdefault(log.actor_id, log)
+
+    presence_rows = []
+    online_count = 0
+    idle_count = 0
+    on_duty_count = 0
+    for duty in duties_today:
+        if duty.is_present:
+            on_duty_count += 1
+
+        if duty.is_present and duty.last_seen_at and duty.last_seen_at >= online_cutoff:
+            presence_status = "online"
+            presence_label = "ออนไลน์"
+            online_count += 1
+        elif duty.is_present and duty.last_seen_at and duty.last_seen_at >= idle_cutoff:
+            presence_status = "idle"
+            presence_label = "ไม่ได้ใช้งานชั่วคราว"
+            idle_count += 1
+        elif duty.is_present:
+            presence_status = "away"
+            presence_label = "ไม่ได้ใช้งาน"
+        else:
+            presence_status = "offline"
+            presence_label = "ลงเวรแล้ว"
+
+        profile = getattr(duty.user, "hospital_staff_profile", None)
+        latest_action = latest_action_by_user.get(duty.user_id)
+        presence_rows.append({
+            "user": duty.user,
+            "duty": duty,
+            "role_label": profile.get_role_display() if profile else (
+                "Superuser" if duty.user.is_superuser else "บุคลากร"
+            ),
+            "status": presence_status,
+            "status_label": presence_label,
+            "last_seen_at": duty.last_seen_at,
+            "latest_action": latest_action,
+            "latest_action_label": (
+                latest_action.get_event_type_display()
+                if latest_action
+                else "ยังไม่มีรายการ Audit วันนี้"
+            ),
+        })
+
     system_summary = {
         "users_total": user_model.objects.count(),
         "users_active": user_model.objects.filter(is_active=True).count(),
@@ -191,6 +255,10 @@ def index(request):
         "test_runs": TestScenarioRun.objects.count(),
         "tables": len(catalog),
         "rows": sum(item["count"] for item in catalog),
+        "online_users": online_count,
+        "idle_users": idle_count,
+        "on_duty": on_duty_count,
+        "logs_today": VisitWorkflowLog.objects.filter(created_at__date=today).count(),
     }
 
     health_checks = []
@@ -249,10 +317,50 @@ def index(request):
         .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
         .order_by("-created_at")[:8]
     )
-    recent_workflow = list(
+
+    # Searchable staff audit table. This is intentionally based on the existing
+    # immutable VisitWorkflowLog rather than introducing a second audit source.
+    log_period = request.GET.get("period", "7d").strip()
+    period_days = {"24h": 1, "7d": 7, "30d": 30, "all": None}
+    if log_period not in period_days:
+        log_period = "7d"
+
+    log_actor = request.GET.get("actor", "").strip()
+    log_event = request.GET.get("event", "").strip()
+    log_query = request.GET.get("q", "").strip()
+
+    workflow_logs = (
         VisitWorkflowLog.objects
-        .select_related("visit", "actor")
-        .order_by("-created_at", "-id")[:10]
+        .select_related("visit", "visit__patient", "actor")
+        .order_by("-created_at", "-id")
+    )
+    days = period_days[log_period]
+    if days is not None:
+        workflow_logs = workflow_logs.filter(created_at__gte=now - timedelta(days=days))
+    if log_actor.isdigit():
+        workflow_logs = workflow_logs.filter(actor_id=int(log_actor))
+    if log_event in VisitWorkflowLog.EventType.values:
+        workflow_logs = workflow_logs.filter(event_type=log_event)
+    if log_query:
+        search_filter = (
+            Q(actor_name__icontains=log_query)
+            | Q(actor_role__icontains=log_query)
+            | Q(description__icontains=log_query)
+            | Q(actor__username__icontains=log_query)
+            | Q(visit__patient__first_name__icontains=log_query)
+            | Q(visit__patient__last_name__icontains=log_query)
+            | Q(visit__patient__hn__icontains=log_query)
+        )
+        if log_query.isdigit():
+            search_filter |= Q(visit_id=int(log_query))
+        workflow_logs = workflow_logs.filter(search_filter)
+
+    workflow_page = Paginator(workflow_logs, 25).get_page(request.GET.get("page"))
+    log_actors = (
+        user_model.objects
+        .filter(visit_workflow_logs__isnull=False)
+        .distinct()
+        .order_by("first_name", "last_name", "username")
     )
 
     quick_tables = [
@@ -278,7 +386,14 @@ def index(request):
         "system_summary": system_summary,
         "health_checks": health_checks,
         "recent_alerts": recent_alerts,
-        "recent_workflow": recent_workflow,
+        "presence_rows": presence_rows,
+        "workflow_page": workflow_page,
+        "log_actors": log_actors,
+        "log_event_choices": VisitWorkflowLog.EventType.choices,
+        "log_period": log_period,
+        "log_actor": log_actor,
+        "log_event": log_event,
+        "log_query": log_query,
         "server_time": now,
     })
 
