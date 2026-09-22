@@ -1731,7 +1731,7 @@ class EmergencyOfficerWorkflowTests(TestCase):
     def test_accept_then_discharge_closes_case_and_resolves_active_alerts(self):
         alert = CriticalAlert.objects.create(
             visit=self.visit,
-            alert_type=CriticalAlert.AlertType.HIGH_HR,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
             severity=Visit.Severity.PINK,
             status=CriticalAlert.Status.NEW,
             message="ชีพจรสูง",
