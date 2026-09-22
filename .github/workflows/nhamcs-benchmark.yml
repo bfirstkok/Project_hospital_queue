@@ -1,0 +1,83 @@
+name: NHAMCS external-data benchmark
+
+on:
+  pull_request:
+    paths:
+      - "ai_triage/ml/import_nhamcs.py"
+      - "ai_triage/ml/benchmark_nhamcs_augmentation.py"
+      - "ai_triage/ml/test_import_nhamcs.py"
+      - ".github/workflows/nhamcs-benchmark.yml"
+  workflow_dispatch:
+
+jobs:
+  nhamcs-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Test NHAMCS importer
+        run: python -m unittest ai_triage.ml.test_import_nhamcs
+
+      - name: Download CDC NHAMCS 2018-2022 public-use Stata files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nhamcs
+          declare -A URLS=(
+            [2018]="https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHAMCS/stata/ED2018-stata.zip"
+            [2019]="https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHAMCS/stata/ED2019-stata.zip"
+            [2020]="https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHAMCS/stata/ed2020-stata.zip"
+            [2021]="https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHAMCS/stata/ed2021-stata.zip"
+            [2022]="https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHAMCS/stata/ed2022-stata.zip"
+          )
+
+          : > /tmp/nhamcs/inputs.txt
+          for year in 2018 2019 2020 2021 2022; do
+            mkdir -p "/tmp/nhamcs/$year"
+            curl --fail --location --retry 4 --retry-delay 2               "${URLS[$year]}"               --output "/tmp/nhamcs/$year/data.zip"
+            unzip -q "/tmp/nhamcs/$year/data.zip" -d "/tmp/nhamcs/$year"
+            dta_file="$(find "/tmp/nhamcs/$year" -type f -iname '*.dta' | head -n 1)"
+            if [ -z "$dta_file" ]; then
+              echo "No .dta file found for $year" >&2
+              find "/tmp/nhamcs/$year" -maxdepth 2 -type f -print
+              exit 1
+            fi
+            echo "$year=$dta_file" >> /tmp/nhamcs/inputs.txt
+          done
+
+          cat /tmp/nhamcs/inputs.txt
+
+      - name: Convert NHAMCS to project runtime schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=()
+          while IFS= read -r item; do
+            args+=(--input "$item")
+          done < /tmp/nhamcs/inputs.txt
+
+          python -m ai_triage.ml.import_nhamcs             "${args[@]}"             --output /tmp/nhamcs/nhamcs_runtime.csv
+
+      - name: Benchmark NHAMCS augmentation on project-only validation
+        run: |
+          python -m ai_triage.ml.benchmark_nhamcs_augmentation             --nhamcs-csv /tmp/nhamcs/nhamcs_runtime.csv             --max-external-per-class 2000             --weights 0.10,0.25,0.35,0.50,1.00             --output-dir ai_triage/reports/nhamcs_benchmark
+
+      - name: Print benchmark report
+        run: cat ai_triage/reports/nhamcs_benchmark/README.md
+
+      - name: Upload aggregate benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhamcs-2018-2022-benchmark
+          path: ai_triage/reports/nhamcs_benchmark/
+          if-no-files-found: error
