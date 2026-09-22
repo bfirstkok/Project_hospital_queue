@@ -392,8 +392,9 @@ def visit_assessment(request, visit_id: int):
             request.session.pop("opd_examiner_id", None)
             request.session.pop("opd_examiner_visit_id", None)
 
-            # Redirect ไปหน้ารายละเอียด Visit เพื่อให้เห็น Assessment ที่บันทึกไป
-            return redirect("opd_visit_detail", visit_id=visit.id)
+            # Continue to the OPD downstream plan: prescription, certificate,
+            # pharmacy handoff and billing.
+            return redirect("opd_care_plan", visit_id=visit.id)
     else:
         initial = None if assessment else prefill_initial
         form = VisitAssessmentForm(instance=assessment, initial=initial)
