@@ -346,6 +346,81 @@ def shift_schedule(request):
 
     detailed_mode = bool(role_filter or search_query)
 
+    # Timetable layout used by the main roster screen:
+    # rows are weekdays, columns are the three hospital shifts.
+    timetable_shift_defs = (
+        ("night", "เวรดึก", "00:00–08:00", 0),
+        ("morning", "เวรเช้า", "08:00–16:00", 8),
+        ("evening", "เวรบ่าย", "16:00–00:00", 16),
+    )
+    timetable_source = week_schedules if detailed_mode else all_week_schedules
+    timetable_bucket = defaultdict(list)
+    for shift in timetable_source:
+        if shift.status == ShiftSchedule.Status.CANCELLED:
+            continue
+        start_hour = shift.start_time.hour
+        shift_key = next(
+            (key for key, _label, _time_label, hour in timetable_shift_defs if hour == start_hour),
+            None,
+        )
+        if shift_key:
+            timetable_bucket[(shift.shift_date, shift_key)].append(shift)
+
+    timetable_rows = []
+    for day_info in week_days:
+        cells = []
+        for shift_key, shift_label, time_label, _hour in timetable_shift_defs:
+            cell_shifts = timetable_bucket[(day_info["date"], shift_key)]
+            scheduled_shifts = [
+                shift for shift in cell_shifts
+                if shift.status == ShiftSchedule.Status.SCHEDULED
+            ]
+            leave_count = sum(
+                1 for shift in cell_shifts if shift.status == ShiftSchedule.Status.LEAVE
+            )
+
+            role_summary_map = defaultdict(list)
+            for shift in scheduled_shifts:
+                profile = shift.user.hospital_staff_profile
+                role_summary_map[profile.role].append(shift)
+
+            role_summaries = []
+            for role, label in StaffProfile.Role.choices:
+                role_shifts = role_summary_map.get(role, [])
+                if not role_shifts:
+                    continue
+                role_summaries.append({
+                    "role": role,
+                    "label": label,
+                    "count": len(role_shifts),
+                    "names": [
+                        shift.user.get_full_name() or shift.user.username
+                        for shift in role_shifts
+                    ],
+                })
+
+            cells.append({
+                "key": shift_key,
+                "label": shift_label,
+                "time_label": time_label,
+                "count": len(scheduled_shifts),
+                "leave_count": leave_count,
+                "role_summaries": role_summaries,
+                "people": [
+                    {
+                        "name": shift.user.get_full_name() or shift.user.username,
+                        "role": shift.user.hospital_staff_profile.get_role_display(),
+                        "duty": shift.note,
+                    }
+                    for shift in scheduled_shifts
+                ],
+            })
+
+        timetable_rows.append({
+            **day_info,
+            "cells": cells,
+        })
+
     role_counts = list(
         ShiftSchedule.objects.filter(shift_date=selected)
         .values("user__hospital_staff_profile__role")
@@ -396,6 +471,8 @@ def shift_schedule(request):
         "selected_shift_summary": selected_shift_summary,
         "overview_role_rows": overview_role_rows,
         "detailed_mode": detailed_mode,
+        "timetable_shift_defs": timetable_shift_defs,
+        "timetable_rows": timetable_rows,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
