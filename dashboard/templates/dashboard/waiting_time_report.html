@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>รายงานสรุปประสิทธิภาพบริการ</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=report-summary-20260923">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=report-summary-20260923b">
   <style>
     :root{--navy:#17324d;--muted:#647b86;--line:#d8e6e9;--teal:#087f75;--bg:#f3f8f9;--warn:#a86c00}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--navy);font-family:"Sarabun",Tahoma,sans-serif}
@@ -14,17 +14,21 @@
     .eyebrow{margin:0 0 4px;color:var(--teal);font-size:11px;font-weight:900;letter-spacing:.05em}.report-hero h1{margin:0;font-size:30px}.report-hero p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
     .exports{display:flex;gap:8px;flex-wrap:wrap}.export{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid #c9dadd;border-radius:10px;background:#fff;color:#385665!important;text-decoration:none;font-size:11px;font-weight:900}.export:hover{border-color:var(--teal);color:var(--teal)!important}
     .guide{display:flex;align-items:center;gap:7px;margin-bottom:17px;padding:12px 15px;border:1px solid #cfe3df;border-radius:12px;background:#eaf6f3;color:#27685f;font-size:11px;line-height:1.6}.guide b{color:#075f5a}
-    .section{margin-top:22px}.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px;padding:0 5px}.section-title h2{margin:0;font-size:20px}.section-title p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.55}
+    .section{margin-top:28px}.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:15px;padding:0 4px}.section-title h2{margin:0;color:#17324d;font-size:24px;font-weight:900;line-height:1.2}.section-title p{margin:7px 0 0;color:#6e858f;font-size:13px;font-weight:600;line-height:1.65}
     .summary{display:grid;grid-template-columns:.8fr repeat(3,1fr);gap:12px}.metric{padding:19px 19px 18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(31,67,78,.04)}.metric.primary{background:#0b746c;color:#fff}.metric-label{color:var(--muted);font-size:11px;font-weight:800}.primary .metric-label{color:#cbeae6}.metric-value{margin-top:10px;font-size:30px;font-weight:900;line-height:1}.metric-help{margin-top:9px;color:#80949d;font-size:10px;line-height:1.5}.primary .metric-help{color:#d7efec}
-    .charts{display:grid;grid-template-columns:1fr 1fr;gap:13px}.chart-card{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 8px 24px rgba(31,67,78,.045)}.chart-head{padding:18px 20px 14px;border-bottom:1px solid #e6eef0}.chart-head h3{margin:0;font-size:16px}.chart-head p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.bars{display:grid;gap:13px;padding:18px 20px}.bar-row{display:grid;grid-template-columns:165px 1fr 90px;gap:12px;align-items:center}.bar-label b{display:block;font-size:11px}.bar-label small{display:block;margin-top:2px;color:#82959d;font-size:9px}.track{height:11px;border-radius:999px;background:#e8eff1;overflow:hidden}.track i{display:block;height:100%;min-width:2px;border-radius:inherit;background:linear-gradient(90deg,#0b8f82,#31b8a5)}.bar-value{text-align:right;font-size:11px;font-weight:900}.bar-value small{display:block;color:#899aa1;font-size:9px;font-weight:600}
-    .sev.RED i{background:#dc2626}.sev.PINK i{background:#db2777}.sev.YELLOW i{background:#eab308}.sev.GREEN i{background:#16a34a}.sev.WHITE i{background:#94a3b8}
+    .charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.chart-card{position:relative;overflow:hidden;border:1px solid #d7e5e8;border-radius:21px;background:#fff;box-shadow:0 12px 32px rgba(31,67,78,.06)}.chart-card:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#d4e5e7}.chart-card.severity-card:before{background:linear-gradient(#e7353f 0 20%,#dc2b77 20% 40%,#e8ad08 40% 60%,#22a65b 60% 80%,#8b9db2 80%)}.chart-card.bottleneck-card:before,.chart-card.trend-card:before{background:linear-gradient(180deg,#0b8f82,#35b8a7)}.chart-card.trend-card{grid-column:1/-1}
+    .chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px 16px 24px;border-bottom:1px solid #e8eff1;background:linear-gradient(180deg,#fff,#fbfdfd)}.chart-head h3{margin:0;color:#17324d;font-size:18px;font-weight:900;line-height:1.3}.chart-head p{margin:6px 0 0;color:#6e858f;font-size:12px;font-weight:600;line-height:1.55}.chart-hint{flex:0 0 auto;padding:5px 9px;border-radius:999px;background:#eef7f6;color:#087467;font-size:9px;font-weight:900;white-space:nowrap}
+    .bars{display:grid;gap:8px;padding:15px 18px 19px 22px}.bar-row{display:grid;grid-template-columns:185px minmax(120px,1fr) 98px;gap:15px;align-items:center;min-height:54px;padding:9px 10px;border-radius:13px;transition:background .15s ease}.bar-row:hover{background:#f8fbfb}.bar-label{position:relative;padding-left:13px}.bar-label:before{content:"";position:absolute;left:0;top:6px;width:6px;height:6px;border-radius:50%;background:#15998c}.bar-label b{display:block;color:#17324d;font-size:13px;font-weight:850;line-height:1.4}.bar-label small{display:block;margin-top:3px;color:#81949c;font-size:10px;font-weight:650;line-height:1.35}
+    .track{position:relative;height:13px;border-radius:999px;background:#e7eff1;overflow:hidden;box-shadow:inset 0 1px 2px rgba(34,69,79,.05)}.track i{display:block;height:100%;min-width:2px;border-radius:inherit;background:linear-gradient(90deg,#0b8f82,#36b9a7);box-shadow:inset 0 -1px 0 rgba(0,0,0,.06)}.bar-value{text-align:right;color:#17324d;font-size:13px;font-weight:900;line-height:1.35;white-space:nowrap}.bar-value small{display:block;margin-top:2px;color:#899aa1;font-size:9px;font-weight:650}
+    .sev.RED{--sev:#e7353f}.sev.PINK{--sev:#dc2b77}.sev.YELLOW{--sev:#e8ad08}.sev.GREEN{--sev:#22a65b}.sev.WHITE{--sev:#8b9db2}.sev .bar-label:before{background:var(--sev)}.sev .track{background:color-mix(in srgb,var(--sev) 12%,#eef3f4)}.sev .track i{background:var(--sev)}.sev .bar-value{color:color-mix(in srgb,var(--sev) 78%,#17324d)}
+    .bottleneck-card .bar-label:before,.trend-card .bar-label:before{background:#0b8f82}.bottleneck-card .track i{background:linear-gradient(90deg,#087f75,#36b9a7)}.trend-card .track i{background:linear-gradient(90deg,#166b85,#13a39a,#41c2ae)}
     .quality{margin-top:14px;padding:12px 15px;border:1px solid #efd39c;border-radius:12px;background:#fff9e9;color:#78551b;font-size:11px;line-height:1.6}
     .panels{display:grid;grid-template-columns:1.25fr 1fr;gap:13px}.panel{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}.panel-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}.panel-head h3{margin:0;font-size:16px}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:11px}
     table{width:100%;border-collapse:collapse}.compact th,.compact td{padding:12px 14px;border-bottom:1px solid #edf2f3;text-align:left;font-size:11px}.compact th{background:#f8fbfb;color:#667e89;font-size:10px}.compact td:nth-child(n+2),.compact th:nth-child(n+2){text-align:right}.empty{padding:26px!important;color:var(--muted);text-align:center!important}
     .detail-toggle{margin-top:14px;border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}.detail-toggle summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;cursor:pointer;list-style:none;font-weight:900}.detail-toggle summary::-webkit-details-marker{display:none}.detail-toggle summary span{color:var(--muted);font-size:10px;font-weight:600}.detail-toggle summary::after{content:"เปิดดู";padding:6px 9px;border-radius:8px;background:#e8f4f2;color:#087f75;font-size:10px}.detail-toggle[open] summary::after{content:"ซ่อน"}.table-scroll{overflow:auto;border-top:1px solid var(--line)}.detail{min-width:1080px}.detail th,.detail td{padding:12px;border-bottom:1px solid #edf2f3;text-align:left;font-size:10px}.detail th{position:sticky;top:0;background:#f4f8f9;color:#607783}.detail tbody tr:nth-child(even){background:#fbfdfd}.patient b{display:block;font-size:11px}.patient small{color:var(--muted)}.badge{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800}.badge.red{background:#fee2e2;color:#b91c1c}.badge.pink{background:#fce7f3;color:#be185d}.badge.yellow{background:#fef3c7;color:#916300}.badge.green{background:#dcfce7;color:#18794e}.badge.white,.badge.none{background:#edf2f4;color:#536b77}.time{white-space:nowrap}.time small{display:block;color:var(--muted)}
     .export-note{margin-top:11px;color:#738991;font-size:10px;line-height:1.55}
-    @media(max-width:1050px){.summary{grid-template-columns:repeat(2,1fr)}.charts,.panels{grid-template-columns:1fr}}
-    @media(max-width:700px){.report-page{width:calc(100% - 18px);padding-top:12px}.report-hero{align-items:flex-start;flex-direction:column}.exports{width:100%}.export{flex:1}.summary{grid-template-columns:1fr}.bar-row{grid-template-columns:1fr}.bar-value{text-align:left}}
+    @media(max-width:1050px){.summary{grid-template-columns:repeat(2,1fr)}.charts,.panels{grid-template-columns:1fr}.chart-card.trend-card{grid-column:auto}}
+    @media(max-width:700px){.report-page{width:calc(100% - 18px);padding-top:12px}.report-hero{align-items:flex-start;flex-direction:column}.exports{width:100%}.export{flex:1}.summary{grid-template-columns:1fr}.section-title h2{font-size:21px}.chart-head{padding:17px 16px 14px 19px}.chart-head h3{font-size:16px}.chart-hint{display:none}.bars{padding:12px 13px 15px 17px}.bar-row{grid-template-columns:1fr;gap:7px;min-height:0;padding:10px}.bar-value{text-align:left;padding-left:13px}.track{height:11px}}
   </style>
 </head>
 <body>
@@ -60,12 +64,12 @@
   <section class="section">
     <div class="section-title"><div><h2>กราฟภาพรวม</h2><p>ช่วยให้เห็นสัดส่วนและคอขวดได้เร็วกว่าการอ่านตารางตัวเลข</p></div></div>
     <div class="charts">
-      <article class="chart-card">
-        <div class="chart-head"><h3>จำนวนผู้ป่วยแยกตามระดับ</h3><p>เปรียบเทียบจำนวนเคสตามระดับความเร่งด่วน</p></div>
+      <article class="chart-card severity-card">
+        <div class="chart-head"><div><h3>จำนวนผู้ป่วยแยกตามระดับ</h3><p>ดูสัดส่วนผู้ป่วยตามระดับความเร่งด่วนได้ในครั้งเดียว</p></div><span class="chart-hint">จำนวนเคส</span></div>
         <div class="bars">
           {% for row in severity_chart_rows %}
           <div class="bar-row sev {{ row.code }}">
-            <div class="bar-label"><b>{{ row.label }}</b><small>{{ row.code }}</small></div>
+            <div class="bar-label"><b>{{ row.label }}</b><small>{{ row.code }} · {{ row.count }} เคส</small></div>
             <div class="track"><i style="width:{{ row.width }}%"></i></div>
             <div class="bar-value">{{ row.count }} เคส</div>
           </div>
@@ -73,8 +77,8 @@
         </div>
       </article>
 
-      <article class="chart-card">
-        <div class="chart-head"><h3>ช่วงบริการที่ใช้เวลานาน</h3><p>แถบยาวกว่า = ใช้เวลาเฉลี่ยมากกว่า</p></div>
+      <article class="chart-card bottleneck-card">
+        <div class="chart-head"><div><h3>ช่วงบริการที่ใช้เวลานาน</h3><p>ยิ่งแถบยาว ยิ่งเป็นช่วงที่ใช้เวลาเฉลี่ยมากและควรตรวจสอบก่อน</p></div><span class="chart-hint">คอขวด</span></div>
         <div class="bars">
           {% for row in bottleneck_chart_rows %}
           <div class="bar-row">
@@ -86,8 +90,8 @@
         </div>
       </article>
 
-      <article class="chart-card" style="grid-column:1/-1">
-        <div class="chart-head"><h3>แนวโน้มเวลารอรวม 6 เดือนล่าสุด</h3><p>ลงทะเบียน → เรียกคิว เฉลี่ยของแต่ละเดือน</p></div>
+      <article class="chart-card trend-card">
+        <div class="chart-head"><div><h3>แนวโน้มเวลารอรวม 6 เดือนล่าสุด</h3><p>เปรียบเทียบเวลาเฉลี่ยตั้งแต่ลงทะเบียนจนถึงถูกเรียกคิวในแต่ละเดือน</p></div><span class="chart-hint">แนวโน้ม</span></div>
         <div class="bars">
           {% for row in monthly_chart_rows %}
           <div class="bar-row">
