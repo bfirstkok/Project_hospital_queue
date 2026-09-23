@@ -15,6 +15,8 @@ from .models import NurseCareAssignment, ShiftSchedule, StaffDuty, StaffProfile
 
 
 THAI_WEEKDAYS = ("จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์")
+ADMIN_ROLE = "ADMIN"
+ADMIN_ROLE_LABEL = "ผู้ดูแลระบบ"
 DEFAULT_DUTY_SUGGESTIONS = (
     "คัดกรองผู้ป่วย",
     "เฝ้าระวังผู้ป่วย",
@@ -97,8 +99,13 @@ def shift_schedule(request):
             user_model.objects.select_related("hospital_staff_profile"),
             pk=request.POST.get("user_id"),
             is_active=True,
-            hospital_staff_profile__isnull=False,
         )
+        if (
+            not staff_user.is_superuser
+            and getattr(staff_user, "hospital_staff_profile", None) is None
+        ):
+            messages.error(request, "บัญชีนี้ไม่ใช่บุคลากรหรือผู้ดูแลระบบที่จัดเวรได้")
+            return redirect(f"{request.path}?day={return_day}")
 
         valid_statuses = {value for value, _label in ShiftSchedule.Status.choices}
         status = request.POST.get("status", ShiftSchedule.Status.SCHEDULED)
@@ -140,7 +147,8 @@ def shift_schedule(request):
     next_week = week_start + timedelta(days=7)
 
     role_filter = (request.GET.get("role") or "").strip()
-    valid_roles = {value for value, _label in StaffProfile.Role.choices}
+    schedule_role_choices = [(ADMIN_ROLE, ADMIN_ROLE_LABEL), *StaffProfile.Role.choices]
+    valid_roles = {value for value, _label in schedule_role_choices}
     if role_filter not in valid_roles:
         role_filter = ""
     search_query = (request.GET.get("q") or "").strip()[:80]
@@ -152,26 +160,57 @@ def shift_schedule(request):
         .order_by("hospital_staff_profile__role", "first_name", "last_name", "username")
     )
     users = list(user_qs)
+    admin_users = list(
+        user_model.objects.filter(is_active=True, is_superuser=True)
+        .select_related("hospital_staff_profile")
+        .order_by("first_name", "last_name", "username")
+    )
+    schedulable_users = admin_users + users
 
-    board_user_qs = user_qs
-    if role_filter:
-        board_user_qs = board_user_qs.filter(hospital_staff_profile__role=role_filter)
-    if search_query:
-        board_user_qs = board_user_qs.filter(
-            Q(first_name__icontains=search_query)
-            | Q(last_name__icontains=search_query)
-            | Q(username__icontains=search_query)
-        )
-    board_users = list(board_user_qs)
+    def matches_search(person):
+        if not search_query:
+            return True
+        needle = search_query.casefold()
+        return needle in " ".join(
+            filter(None, [person.first_name, person.last_name, person.username])
+        ).casefold()
+
+    def user_role_key(person):
+        if person.is_superuser:
+            return ADMIN_ROLE
+        profile = getattr(person, "hospital_staff_profile", None)
+        return profile.role if profile else ""
+
+    def user_role_label(person):
+        if person.is_superuser:
+            return ADMIN_ROLE_LABEL
+        profile = getattr(person, "hospital_staff_profile", None)
+        return profile.get_role_display() if profile else "บุคลากร"
+
+    if role_filter == ADMIN_ROLE:
+        board_users = [person for person in admin_users if matches_search(person)]
+    elif role_filter:
+        board_users = [
+            person for person in users
+            if person.hospital_staff_profile.role == role_filter and matches_search(person)
+        ]
+    else:
+        board_users = [
+            person for person in schedulable_users if matches_search(person)
+        ]
 
     schedules = list(
         ShiftSchedule.objects.filter(shift_date=selected, user__in=board_users)
         .select_related("user", "user__hospital_staff_profile")
-        .order_by("start_time", "user__hospital_staff_profile__role", "user__first_name", "user__username")
+        .order_by("start_time", "user__first_name", "user__username")
     )
 
     all_week_schedules = list(
-        ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
+        ShiftSchedule.objects.filter(
+            shift_date__range=(week_start, week_end),
+            user__is_superuser=False,
+            user__hospital_staff_profile__isnull=False,
+        )
         .select_related("user", "user__hospital_staff_profile")
         .order_by(
             "user__hospital_staff_profile__role",
@@ -180,6 +219,15 @@ def shift_schedule(request):
             "user__first_name",
             "user__username",
         )
+    )
+
+    admin_week_schedules = list(
+        ShiftSchedule.objects.filter(
+            shift_date__range=(week_start, week_end),
+            user__is_superuser=True,
+        )
+        .select_related("user", "user__hospital_staff_profile")
+        .order_by("shift_date", "start_time", "user__first_name", "user__username")
     )
 
     week_schedules = list(
@@ -199,7 +247,7 @@ def shift_schedule(request):
 
     duties = {
         (duty.user_id, duty.duty_date): duty
-        for duty in StaffDuty.objects.filter(duty_date=selected, user__in=users)
+        for duty in StaffDuty.objects.filter(duty_date=selected, user__in=schedulable_users)
     }
     active_case_counts = dict(
         NurseCareAssignment.objects.filter(is_active=True)
@@ -254,7 +302,9 @@ def shift_schedule(request):
     role_sections_map = {}
     role_section_order = []
     for person in board_users:
-        profile = person.hospital_staff_profile
+        profile = getattr(person, "hospital_staff_profile", None)
+        person_role = user_role_key(person)
+        person_role_label = user_role_label(person)
         cells = [
             {
                 "date": day,
@@ -267,6 +317,8 @@ def shift_schedule(request):
         row = {
             "user": person,
             "profile": profile,
+            "role": person_role,
+            "role_label": person_role_label,
             "cells": cells,
             "is_current_user": person.id == request.user.id,
             "initials": (
@@ -274,14 +326,14 @@ def shift_schedule(request):
                 + ((person.last_name or "")[:1])
             ).upper(),
         }
-        if profile.role not in role_sections_map:
-            role_sections_map[profile.role] = {
-                "role": profile.role,
-                "label": profile.get_role_display(),
+        if person_role not in role_sections_map:
+            role_sections_map[person_role] = {
+                "role": person_role,
+                "label": person_role_label,
                 "rows": [],
             }
-            role_section_order.append(profile.role)
-        role_sections_map[profile.role]["rows"].append(row)
+            role_section_order.append(person_role)
+        role_sections_map[person_role]["rows"].append(row)
         board_rows.append(row)
     role_sections = [role_sections_map[role] for role in role_section_order]
 
@@ -314,7 +366,7 @@ def shift_schedule(request):
         "total": 0,
     })
     for shift in all_week_schedules:
-        role = shift.user.hospital_staff_profile.role
+        role = user_role_key(shift.user)
         cell = role_day_summary[(role, shift.shift_date)]
         cell["total"] += 1
         if shift.status == ShiftSchedule.Status.LEAVE:
@@ -381,11 +433,10 @@ def shift_schedule(request):
 
             role_summary_map = defaultdict(list)
             for shift in scheduled_shifts:
-                profile = shift.user.hospital_staff_profile
-                role_summary_map[profile.role].append(shift)
+                role_summary_map[user_role_key(shift.user)].append(shift)
 
             role_summaries = []
-            for role, label in StaffProfile.Role.choices:
+            for role, label in schedule_role_choices:
                 role_shifts = role_summary_map.get(role, [])
                 if not role_shifts:
                     continue
@@ -409,7 +460,7 @@ def shift_schedule(request):
                 "people": [
                     {
                         "name": shift.user.get_full_name() or shift.user.username,
-                        "role": shift.user.hospital_staff_profile.get_role_display(),
+                        "role": user_role_label(shift.user),
                         "duty": shift.note,
                     }
                     for shift in scheduled_shifts
@@ -429,11 +480,11 @@ def shift_schedule(request):
             "label": label,
             "is_selected": role == role_filter,
         }
-        for role, label in StaffProfile.Role.choices
+        for role, label in schedule_role_choices
     ]
     # The main roster must always show every hospital position. Filters only
     # narrow the detail section below the timetable, never remove columns.
-    matrix_source = all_week_schedules
+    matrix_source = all_week_schedules + admin_week_schedules
     role_day_shifts = defaultdict(lambda: {"night": [], "morning": [], "evening": [], "leave": []})
     for shift in matrix_source:
         if shift.status == ShiftSchedule.Status.CANCELLED:
@@ -471,15 +522,14 @@ def shift_schedule(request):
             "cells": cells,
         })
 
-    role_counts = list(
-        ShiftSchedule.objects.filter(shift_date=selected)
-        .values("user__hospital_staff_profile__role")
-        .annotate(total=Count("id"))
-        .order_by("user__hospital_staff_profile__role")
-    )
-    role_labels = dict(StaffProfile.Role.choices)
-    for row in role_counts:
-        row["label"] = role_labels.get(row["user__hospital_staff_profile__role"], "บุคลากร")
+    role_count_map = defaultdict(int)
+    for shift in schedules:
+        role_count_map[user_role_key(shift.user)] += 1
+    role_counts = [
+        {"role": role, "label": label, "total": role_count_map.get(role, 0)}
+        for role, label in schedule_role_choices
+        if role_count_map.get(role, 0)
+    ]
 
     today = timezone.localdate()
     today_planned = {}
@@ -492,13 +542,14 @@ def shift_schedule(request):
 
     on_duty_now = []
     for duty in (
-        StaffDuty.objects.filter(duty_date=today, is_present=True, user__in=users)
+        StaffDuty.objects.filter(duty_date=today, is_present=True, user__in=schedulable_users)
         .select_related("user", "user__hospital_staff_profile")
     ):
         planned = today_planned.get(duty.user_id)
         on_duty_now.append({
             "user": duty.user,
-            "profile": duty.user.hospital_staff_profile,
+            "profile": getattr(duty.user, "hospital_staff_profile", None),
+            "role_label": user_role_label(duty.user),
             "case_count": active_case_counts.get(duty.user_id, 0),
             "planned_duty": planned.note if planned and planned.note else "ยังไม่ได้กำหนดหน้าที่",
             "is_current_user": duty.user_id == request.user.id,
@@ -506,7 +557,8 @@ def shift_schedule(request):
 
     return render(request, "queues/shift_schedule_roles.html", {
         "can_manage": can_manage,
-        "users": users,
+        "users": schedulable_users,
+        "admin_users": admin_users,
         "selected_day": selected,
         "selected_day_label": THAI_WEEKDAYS[selected.weekday()],
         "selected_shifts": schedules,
@@ -515,7 +567,7 @@ def shift_schedule(request):
         "board_rows": board_rows,
         "role_sections": role_sections,
         "role_counts": role_counts,
-        "role_choices": StaffProfile.Role.choices,
+        "role_choices": schedule_role_choices,
         "role_filter": role_filter,
         "search_query": search_query,
         "selected_shift_summary": selected_shift_summary,
