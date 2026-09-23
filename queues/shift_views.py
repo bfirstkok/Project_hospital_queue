@@ -489,7 +489,7 @@ def shift_schedule(request):
     for shift in matrix_source:
         if shift.status == ShiftSchedule.Status.CANCELLED:
             continue
-        role = shift.user.hospital_staff_profile.role
+        role = user_role_key(shift.user)
         if shift.status == ShiftSchedule.Status.LEAVE:
             role_day_shifts[(shift.shift_date, role)]["leave"].append(shift)
             continue
