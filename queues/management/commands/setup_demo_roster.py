@@ -66,7 +66,7 @@ SHIFT_ROLE_COVERAGE = {
     },
     "MORNING": {
         StaffProfile.Role.DOCTOR: 3,
-        StaffProfile.Role.NURSE: 4,
+        StaffProfile.Role.NURSE: 3,
         StaffProfile.Role.NURSE_ASSISTANT: 2,
         StaffProfile.Role.EMERGENCY: 2,
         StaffProfile.Role.STAFF: 2,
@@ -77,7 +77,7 @@ SHIFT_ROLE_COVERAGE = {
     },
     "EVENING": {
         StaffProfile.Role.DOCTOR: 2,
-        StaffProfile.Role.NURSE: 3,
+        StaffProfile.Role.NURSE: 2,
         StaffProfile.Role.NURSE_ASSISTANT: 2,
         StaffProfile.Role.EMERGENCY: 2,
         StaffProfile.Role.STAFF: 1,
