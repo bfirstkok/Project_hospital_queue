@@ -421,6 +421,51 @@ def shift_schedule(request):
             "cells": cells,
         })
 
+    # Doctor-roster style matrix: rows are weekdays, columns are staff roles.
+    # Each cell shows the real staff names grouped by night/morning/evening.
+    role_columns = [
+        {"role": role, "label": label}
+        for role, label in StaffProfile.Role.choices
+        if not role_filter or role == role_filter
+    ]
+    matrix_source = week_schedules if detailed_mode else all_week_schedules
+    role_day_shifts = defaultdict(lambda: {"night": [], "morning": [], "evening": [], "leave": []})
+    for shift in matrix_source:
+        if shift.status == ShiftSchedule.Status.CANCELLED:
+            continue
+        role = shift.user.hospital_staff_profile.role
+        if shift.status == ShiftSchedule.Status.LEAVE:
+            role_day_shifts[(shift.shift_date, role)]["leave"].append(shift)
+            continue
+        if shift.start_time.hour == 0:
+            bucket = "night"
+        elif shift.start_time.hour == 8:
+            bucket = "morning"
+        elif shift.start_time.hour == 16:
+            bucket = "evening"
+        else:
+            continue
+        role_day_shifts[(shift.shift_date, role)][bucket].append(shift)
+
+    role_timetable_rows = []
+    for day_info in week_days:
+        cells = []
+        for role_column in role_columns:
+            grouped = role_day_shifts[(day_info["date"], role_column["role"])]
+            cells.append({
+                "role": role_column["role"],
+                "label": role_column["label"],
+                "night": grouped["night"],
+                "morning": grouped["morning"],
+                "evening": grouped["evening"],
+                "leave": grouped["leave"],
+                "has_any": any(grouped[key] for key in ("night", "morning", "evening", "leave")),
+            })
+        role_timetable_rows.append({
+            **day_info,
+            "cells": cells,
+        })
+
     role_counts = list(
         ShiftSchedule.objects.filter(shift_date=selected)
         .values("user__hospital_staff_profile__role")
@@ -473,6 +518,8 @@ def shift_schedule(request):
         "detailed_mode": detailed_mode,
         "timetable_shift_defs": timetable_shift_defs,
         "timetable_rows": timetable_rows,
+        "role_columns": role_columns,
+        "role_timetable_rows": role_timetable_rows,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
