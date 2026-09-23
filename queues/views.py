@@ -1851,14 +1851,19 @@ def my_critical_alerts(request):
             visit__nurse_care_assignments__nurse=request.user,
             visit__nurse_care_assignments__is_active=True,
         )
-    alerts = (
+    alerts = alerts.distinct()
+    total_count = alerts.count()
+    patient_count = alerts.values("visit_id").distinct().count()
+    alerts = list(
         alerts.select_related("visit", "visit__patient", "visit__queue")
-        .distinct()
-        .order_by("-created_at")[:20]
+        .order_by("-created_at")[:50]
     )
     return JsonResponse({
         "ok": True,
-        "count": alerts.count(),
+        "count": total_count,
+        "patient_count": patient_count,
+        "returned_count": len(alerts),
+        "truncated": total_count > len(alerts),
         "alerts": [
             {
                 "id": alert.id,
