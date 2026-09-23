@@ -32,6 +32,21 @@ class ShiftDutyAssignmentTests(TestCase):
         self.assertContains(response, "คัดกรองผู้ป่วย")
         self.assertContains(response, "ประจำห้องตรวจ 2")
 
+    def test_shift_timetable_keeps_every_role_column_visible_when_filtered(self):
+        response = self.client.get(
+            reverse("shift_schedule"),
+            {"role": StaffProfile.Role.NURSE},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["role_columns"]), len(StaffProfile.Role.choices))
+        self.assertEqual(
+            [row["role"] for row in response.context["role_columns"]],
+            list(StaffProfile.Role.values),
+        )
+        for _value, label in StaffProfile.Role.choices:
+            self.assertContains(response, label)
+
     def test_scheduled_shift_requires_duty_assignment(self):
         response = self.client.post(reverse("shift_schedule"), {
             "action": "save_shift",
