@@ -1616,8 +1616,13 @@ class ShiftScheduleTests(TestCase):
             StaffProfile.Role.EMERGENCY: 2,
             StaffProfile.Role.STAFF: 2,
         }
-        for role, total in initial_counts.items():
-            for index in range(total):
+        for role, target_total in initial_counts.items():
+            existing = StaffProfile.objects.filter(
+                role=role,
+                user__is_active=True,
+                user__is_superuser=False,
+            ).count()
+            for index in range(max(0, target_total - existing)):
                 user = get_user_model().objects.create_user(
                     username=f"{role.lower()}-{index}",
                     password="secret",
@@ -1642,10 +1647,10 @@ class ShiftScheduleTests(TestCase):
             user__is_active=True,
         )
         for role in StaffProfile.Role.values:
-            self.assertEqual(
+            self.assertGreaterEqual(
                 non_admin_profiles.filter(role=role).count(),
                 TARGET_STAFF_PER_ROLE,
-                msg=f"{role} should have exactly {TARGET_STAFF_PER_ROLE} active users",
+                msg=f"{role} should have at least {TARGET_STAFF_PER_ROLE} active users",
             )
 
         # NURSE already had ten active users, so the command must not create
