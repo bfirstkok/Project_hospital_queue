@@ -46,19 +46,26 @@ body {
 }
 
 .logo-icon {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  background: var(--register-primary);
+  flex: 0 0 48px;
+  padding: 4px;
+  border: 1px solid #9dd9d1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #25c6b1 0%, #0b8f82 48%, #086c62 100%);
   color: #fff;
-  font-size: 20px;
-  box-shadow: 0 6px 14px rgba(13, 138, 125, 0.22);
+  box-shadow: 0 8px 18px rgba(13, 138, 125, 0.18);
 }
-
-.logo-text { color: var(--register-ink); font-size: 16px; font-weight: 800; }
-.logo-sub { margin-top: 2px; color: var(--register-muted); font-size: 12px; }
+.opd-queue-icon {
+  display: block;
+  width: 38px;
+  height: 38px;
+}
+.logo-copy { min-width: 0; line-height: 1.2; }
+.logo-text { color: var(--register-ink); font-size: 17px; font-weight: 900; letter-spacing: -.01em; }
+.logo-sub { margin-top: 4px; color: var(--register-muted); font-size: 12px; font-weight: 600; line-height: 1.45; }
 
 .content {
   padding: 30px 20px 64px;
