@@ -424,11 +424,16 @@ def shift_schedule(request):
     # Doctor-roster style matrix: rows are weekdays, columns are staff roles.
     # Each cell shows the real staff names grouped by night/morning/evening.
     role_columns = [
-        {"role": role, "label": label}
+        {
+            "role": role,
+            "label": label,
+            "is_selected": role == role_filter,
+        }
         for role, label in StaffProfile.Role.choices
-        if not role_filter or role == role_filter
     ]
-    matrix_source = week_schedules if detailed_mode else all_week_schedules
+    # The main roster must always show every hospital position. Filters only
+    # narrow the detail section below the timetable, never remove columns.
+    matrix_source = all_week_schedules
     role_day_shifts = defaultdict(lambda: {"night": [], "morning": [], "evening": [], "leave": []})
     for shift in matrix_source:
         if shift.status == ShiftSchedule.Status.CANCELLED:
