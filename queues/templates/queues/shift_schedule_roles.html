@@ -183,7 +183,7 @@
           </td>
           {% for cell in row.cells %}
           <td class="shift-cell">
-            {% if cell.count %}
+            {% if cell.count or cell.leave_count %}
             <a class="cell-link" href="?day={{ row.date|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">
               <div class="shift-box {{ cell.key }}">
                 <div class="shift-box-head"><strong>{{ cell.label }}</strong><span class="people-count">{{ cell.count }} คน</span></div>
