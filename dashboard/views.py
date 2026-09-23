@@ -5,9 +5,13 @@ from django.shortcuts import render
 from django.utils import timezone
 import csv
 from pathlib import Path
+from io import BytesIO
 from queues.models import ConfirmedTriageCase, CriticalAlert, Queue, TriageResult, Visit
 from queues.triage import SEVERITY_LEVELS
 from ai_triage.services import localize_ai_reason
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.colors import HexColor, white
 
 
 SEVERITY_LABELS = {
@@ -644,84 +648,340 @@ def waiting_time_report_xls(request):
     return response
 
 
-def _simple_pdf(lines):
-    escaped = []
-    for line in lines:
-        safe = str(line).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-        escaped.append(safe.encode("latin-1", "replace").decode("latin-1"))
-    text = ["BT", "/F1 12 Tf", "50 790 Td"]
-    for idx, line in enumerate(escaped[:45]):
-        if idx:
-            text.append("0 -16 Td")
-        text.append(f"({line}) Tj")
-    text.append("ET")
-    stream = "\n".join(text).encode("latin-1", "replace")
-    objects = []
-    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    objects.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
-    objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>")
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    objects.append(b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream")
-    pdf = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(pdf))
-        pdf.extend(f"{index} 0 obj\n".encode("ascii"))
-        pdf.extend(obj)
-        pdf.extend(b"\nendobj\n")
-    xref = len(pdf)
-    pdf.extend(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode("ascii"))
-    for offset in offsets[1:]:
-        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
-    pdf.extend(f"trailer << /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode("ascii"))
-    return bytes(pdf)
+def _format_pdf_duration(minutes):
+    if minutes is None:
+        return "-"
+    total = max(0, int(round(minutes)))
+    days, remainder = divmod(total, 1440)
+    hours, mins = divmod(remainder, 60)
+    if days:
+        return f"{days}d {hours}h {mins}m"
+    if hours:
+        return f"{hours}h {mins}m"
+    return f"{mins}m"
 
 
-@login_required
-def waiting_time_report_pdf(request):
-    summary = _waiting_report_summary_data()
-    severity_line = " / ".join(
-        f"{severity} {summary['severity_counts'].get(severity, 0)}"
-        for severity in SEVERITY_LEVELS
+def _waiting_time_summary_pdf(summary):
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    navy = HexColor("#17324D")
+    teal = HexColor("#087F75")
+    teal_light = HexColor("#2DB8A7")
+    bg = HexColor("#F3F8F9")
+    line = HexColor("#D8E6E9")
+    muted = HexColor("#667F89")
+    severity_colors = {
+        "RED": HexColor("#DC2626"),
+        "PINK": HexColor("#DB2777"),
+        "YELLOW": HexColor("#EAB308"),
+        "GREEN": HexColor("#16A34A"),
+        "WHITE": HexColor("#94A3B8"),
+    }
+    amber = HexColor("#A66C00")
+
+    margin = 36
+    content_width = width - (margin * 2)
+    y = height - margin
+
+    pdf.setTitle("Hospital Service Summary Report")
+    pdf.setAuthor("Hospital Queue & Critical Patient Monitoring System")
+    pdf.setFillColor(bg)
+    pdf.rect(0, 0, width, height, fill=1, stroke=0)
+
+    # Header
+    header_height = 88
+    pdf.setFillColor(navy)
+    pdf.roundRect(margin, y - header_height, content_width, header_height, 16, fill=1, stroke=0)
+
+    pdf.setFillColor(teal)
+    pdf.roundRect(
+        margin + content_width - 118,
+        y - header_height + 12,
+        106,
+        64,
+        12,
+        fill=1,
+        stroke=0,
     )
-    bottleneck_english = {
+
+    pdf.setFillColor(white)
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(margin + 20, y - 30, "Hospital Service Summary")
+    pdf.setFont("Helvetica", 9.5)
+    pdf.setFillColor(HexColor("#D8F4F0"))
+    pdf.drawString(margin + 20, y - 48, "OPD performance snapshot")
+    pdf.drawString(
+        margin + 20,
+        y - 69,
+        f"Generated {timezone.localtime(summary['generated_at']):%Y-%m-%d %H:%M}",
+    )
+
+    pdf.setFillColor(white)
+    pdf.setFont("Helvetica-Bold", 24)
+    pdf.drawCentredString(
+        margin + content_width - 65,
+        y - 39,
+        str(summary["total"]),
+    )
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawCentredString(
+        margin + content_width - 65,
+        y - 55,
+        "TOTAL VISITS",
+    )
+
+    y -= header_height + 17
+
+    # Overview section
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, y, "OVERVIEW")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 8.5)
+    pdf.drawString(margin, y - 12, "Average waiting times across the latest visits")
+    y -= 28
+
+    card_gap = 10
+    card_width = (content_width - card_gap) / 2
+    card_height = 52
+    cards = [
+        (
+            "REGISTRATION TO TRIAGE",
+            _format_pdf_duration(summary["avg_triage"]),
+            "Before triage begins",
+            teal,
+        ),
+        (
+            "TRIAGE TO CONFIRMATION",
+            _format_pdf_duration(summary["avg_confirmation"]),
+            "Until nurse confirmation",
+            teal_light,
+        ),
+        (
+            "REGISTRATION TO CALL",
+            _format_pdf_duration(summary["avg_called"]),
+            "Total wait until queue call",
+            navy,
+        ),
+        (
+            "DATA QUALITY",
+            str(summary["invalid_intervals"]),
+            "invalid intervals excluded",
+            amber,
+        ),
+    ]
+
+    for index, (label, value, help_text, accent) in enumerate(cards):
+        row = index // 2
+        column = index % 2
+        x = margin + column * (card_width + card_gap)
+        card_y = y - row * (card_height + 8) - card_height
+
+        pdf.setFillColor(white)
+        pdf.setStrokeColor(line)
+        pdf.setLineWidth(0.7)
+        pdf.roundRect(x, card_y, card_width, card_height, 10, fill=1, stroke=1)
+
+        pdf.setFillColor(accent)
+        pdf.roundRect(x, card_y, 4, card_height, 2, fill=1, stroke=0)
+
+        pdf.setFillColor(muted)
+        pdf.setFont("Helvetica-Bold", 7.5)
+        pdf.drawString(x + 14, card_y + 35, label)
+
+        pdf.setFillColor(accent if label == "DATA QUALITY" else navy)
+        pdf.setFont("Helvetica-Bold", 15)
+        pdf.drawString(x + 14, card_y + 17, value)
+
+        pdf.setFillColor(muted)
+        pdf.setFont("Helvetica", 7.4)
+        pdf.drawRightString(x + card_width - 12, card_y + 18, help_text)
+
+    y -= 2 * (card_height + 8) + 8
+
+    # Severity distribution
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, y, "PATIENT SEVERITY")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 8.5)
+    pdf.drawString(margin, y - 12, "Case distribution by triage level")
+    y -= 29
+
+    max_severity = max(summary["severity_counts"].values()) if summary["severity_counts"] else 0
+    max_severity = max(max_severity, 1)
+
+    for severity in SEVERITY_LEVELS:
+        count = summary["severity_counts"].get(severity, 0)
+        color = severity_colors.get(severity, HexColor("#94A3B8"))
+
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 8.5)
+        pdf.drawString(margin, y, severity)
+
+        bar_x = margin + 66
+        bar_width = content_width - 128
+        bar_height = 8
+
+        pdf.setFillColor(HexColor("#E7EFF1"))
+        pdf.roundRect(bar_x, y - 1, bar_width, bar_height, 4, fill=1, stroke=0)
+
+        if count:
+            pdf.setFillColor(color)
+            pdf.roundRect(
+                bar_x,
+                y - 1,
+                max(4, bar_width * count / max_severity),
+                bar_height,
+                4,
+                fill=1,
+                stroke=0,
+            )
+
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 8.5)
+        pdf.drawRightString(
+            margin + content_width,
+            y,
+            f"{count} case{'s' if count != 1 else ''}",
+        )
+        y -= 20
+
+    y -= 3
+
+    # Bottlenecks
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, y, "SERVICE BOTTLENECKS")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 8.5)
+    pdf.drawString(margin, y - 12, "Longer bars indicate longer average service time")
+    y -= 29
+
+    bottleneck_labels = {
         "registration_to_triage": "Registration to triage",
         "triage_to_confirmation": "Triage to nurse confirmation",
         "confirmation_to_call": "Confirmation to queue call",
         "call_to_now_or_done": "Queue call to current stage",
     }
-    def minutes_text(value):
-        return f"{value:.2f} min" if value is not None else "-"
+    max_bottleneck = max(
+        (row["avg"] or 0 for row in summary["bottlenecks"]),
+        default=1,
+    ) or 1
 
-    lines = [
-        "Hospital Service Summary Report",
-        f"Generated: {timezone.localtime(summary['generated_at']):%Y-%m-%d %H:%M}",
-        "",
-        "OVERVIEW",
-        f"Total visits: {summary['total']}",
-        f"Average registration-to-triage: {minutes_text(summary['avg_triage'])}",
-        f"Average triage-to-confirmation: {minutes_text(summary['avg_confirmation'])}",
-        f"Average registration-to-call: {minutes_text(summary['avg_called'])}",
-        f"Invalid timestamp intervals excluded: {summary['invalid_intervals']}",
-        "",
-        "PATIENT SEVERITY TOTALS",
-        severity_line,
-        "",
-        "SERVICE BOTTLENECKS",
-    ]
     for row in summary["bottlenecks"]:
-        lines.append(
-            f"{bottleneck_english.get(row['name'], row['name'])}: "
-            f"{minutes_text(row['avg'])} ({row['count']} samples)"
+        label = bottleneck_labels.get(row["name"], row["name"])
+
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 8)
+        pdf.drawString(margin, y, label[:36])
+
+        bar_x = margin + 170
+        bar_width = content_width - 262
+
+        pdf.setFillColor(HexColor("#E7EFF1"))
+        pdf.roundRect(bar_x, y - 1, bar_width, 7, 3.5, fill=1, stroke=0)
+
+        if row["avg"]:
+            pdf.setFillColor(teal)
+            pdf.roundRect(
+                bar_x,
+                y - 1,
+                max(3, bar_width * row["avg"] / max_bottleneck),
+                7,
+                3.5,
+                fill=1,
+                stroke=0,
+            )
+
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 8)
+        pdf.drawRightString(
+            margin + content_width,
+            y,
+            _format_pdf_duration(row["avg"]),
         )
-    lines.extend(["", "MONTHLY WAITING-TIME TREND"])
+        pdf.setFillColor(muted)
+        pdf.setFont("Helvetica", 6.8)
+        pdf.drawRightString(
+            margin + content_width,
+            y - 9,
+            f"{row['count']} samples",
+        )
+        y -= 24
+
+    y -= 2
+
+    # Monthly trend
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, y, "MONTHLY WAITING-TIME TREND")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 8.5)
+    pdf.drawString(margin, y - 12, "Registration to queue call")
+    y -= 29
+
+    pdf.setFillColor(HexColor("#F6FAFB"))
+    pdf.roundRect(margin, y - 16, content_width, 18, 7, fill=1, stroke=0)
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica-Bold", 7)
+    pdf.drawString(margin + 10, y - 9, "MONTH")
+    pdf.drawString(margin + 150, y - 9, "AVG WAIT")
+    pdf.drawRightString(margin + content_width - 10, y - 9, "VISITS")
+    y -= 25
+
     for row in summary["monthly_rows"][:6]:
-        lines.append(
-            f"{row['period']}: {minutes_text(row['avg_called'])} "
-            f"({row['count']} visits)"
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 8.5)
+        pdf.drawString(margin + 10, y, row["period"])
+
+        pdf.setFont("Helvetica", 8.5)
+        pdf.drawString(
+            margin + 150,
+            y,
+            _format_pdf_duration(row["avg_called"]),
         )
 
-    response = HttpResponse(_simple_pdf(lines), content_type="application/pdf")
+        pdf.setFont("Helvetica-Bold", 8.5)
+        pdf.drawRightString(
+            margin + content_width - 10,
+            y,
+            str(row["count"]),
+        )
+
+        pdf.setStrokeColor(line)
+        pdf.setLineWidth(0.4)
+        pdf.line(margin + 8, y - 7, margin + content_width - 8, y - 7)
+        y -= 18
+
+    # Footer
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 6.8)
+    pdf.drawString(
+        margin,
+        24,
+        "Generated by Hospital Queue & Critical Patient Monitoring System",
+    )
+    pdf.drawRightString(
+        width - margin,
+        24,
+        "Invalid negative timestamp intervals are excluded from averages.",
+    )
+
+    pdf.save()
+    return buffer.getvalue()
+
+
+@login_required
+def waiting_time_report_pdf(request):
+    summary = _waiting_report_summary_data()
+    response = HttpResponse(
+        _waiting_time_summary_pdf(summary),
+        content_type="application/pdf",
+    )
     response["Content-Disposition"] = 'attachment; filename="hospital_summary_report.pdf"'
     return response
 
