@@ -103,6 +103,74 @@ class DashboardPresentationTests(TestCase):
         self.assertEqual(alert.status, CriticalAlert.Status.IN_REVIEW)
         self.assertEqual(queue.status, Queue.Status.OBSERVATION_MONITORING)
 
+    def test_live_summary_supports_alerts_from_multiple_patients(self):
+        patient_a = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="หนึ่ง",
+            national_id="2444444444441",
+        )
+        visit_a = Visit.objects.create(
+            patient=patient_a,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=visit_a,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+        patient_b = Patient.objects.create(
+            first_name="ผู้ป่วย",
+            last_name="สอง",
+            national_id="2444444444442",
+        )
+        visit_b = Visit.objects.create(
+            patient=patient_b,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=visit_b,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+
+        CriticalAlert.objects.create(
+            visit=visit_a,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำ",
+            value=90,
+            threshold="< 95",
+            source="system_test_iot",
+        )
+        CriticalAlert.objects.create(
+            visit=visit_a,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
+            message="ชีพจรสูง",
+            value=130,
+            threshold=">= 120",
+            source="system_test_iot",
+        )
+        CriticalAlert.objects.create(
+            visit=visit_b,
+            alert_type=CriticalAlert.AlertType.HIGH_TEMPERATURE,
+            message="อุณหภูมิสูง",
+            value=39.2,
+            threshold=">= 39",
+            source="system_test_iot",
+        )
+
+        response = self.client.get(reverse("dashboard:live_summary_api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["new_alert_total"], 3)
+        self.assertEqual(payload["alert_patient_total"], 2)
+        self.assertEqual(payload["alerts_returned"], 3)
+        self.assertFalse(payload["alerts_truncated"])
+        self.assertEqual(
+            {item["visit_id"] for item in payload["alerts"]},
+            {visit_a.id, visit_b.id},
+        )
+
     def test_ai_learning_dashboard_uses_confirmed_snapshots(self):
         patient = Patient.objects.create(
             first_name="Test",
