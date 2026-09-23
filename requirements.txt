@@ -7,6 +7,7 @@ pandas==2.3.3
 psycopg[binary]==3.3.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
+reportlab==4.4.9
 scikit-learn==1.8.0
 scipy==1.16.3
 six==1.17.0
