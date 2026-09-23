@@ -165,9 +165,21 @@ def shift_schedule(request):
     board_users = list(board_user_qs)
 
     schedules = list(
-        ShiftSchedule.objects.filter(shift_date=selected)
+        ShiftSchedule.objects.filter(shift_date=selected, user__in=board_users)
         .select_related("user", "user__hospital_staff_profile")
         .order_by("start_time", "user__hospital_staff_profile__role", "user__first_name", "user__username")
+    )
+
+    all_week_schedules = list(
+        ShiftSchedule.objects.filter(shift_date__range=(week_start, week_end))
+        .select_related("user", "user__hospital_staff_profile")
+        .order_by(
+            "user__hospital_staff_profile__role",
+            "shift_date",
+            "start_time",
+            "user__first_name",
+            "user__username",
+        )
     )
 
     week_schedules = list(
@@ -289,6 +301,51 @@ def shift_schedule(request):
         "leave": sum(1 for shift in schedules if shift.status == ShiftSchedule.Status.LEAVE),
     }
 
+    # Compact overview: one row per role instead of showing all 90 personnel at once.
+    active_role_counts = defaultdict(int)
+    for person in users:
+        active_role_counts[person.hospital_staff_profile.role] += 1
+
+    role_day_summary = defaultdict(lambda: {
+        "night": 0,
+        "morning": 0,
+        "evening": 0,
+        "leave": 0,
+        "total": 0,
+    })
+    for shift in all_week_schedules:
+        role = shift.user.hospital_staff_profile.role
+        cell = role_day_summary[(role, shift.shift_date)]
+        cell["total"] += 1
+        if shift.status == ShiftSchedule.Status.LEAVE:
+            cell["leave"] += 1
+        elif shift.status == ShiftSchedule.Status.SCHEDULED:
+            if shift.start_time.hour == 0:
+                cell["night"] += 1
+            elif shift.start_time.hour == 8:
+                cell["morning"] += 1
+            elif shift.start_time.hour == 16:
+                cell["evening"] += 1
+
+    overview_role_rows = []
+    for role, label in StaffProfile.Role.choices:
+        overview_role_rows.append({
+            "role": role,
+            "label": label,
+            "people_count": active_role_counts.get(role, 0),
+            "cells": [
+                {
+                    "date": day,
+                    **role_day_summary[(role, day)],
+                    "is_today": day == timezone.localdate(),
+                    "is_selected": day == selected,
+                }
+                for day in week_dates
+            ],
+        })
+
+    detailed_mode = bool(role_filter or search_query)
+
     role_counts = list(
         ShiftSchedule.objects.filter(shift_date=selected)
         .values("user__hospital_staff_profile__role")
@@ -337,6 +394,8 @@ def shift_schedule(request):
         "role_filter": role_filter,
         "search_query": search_query,
         "selected_shift_summary": selected_shift_summary,
+        "overview_role_rows": overview_role_rows,
+        "detailed_mode": detailed_mode,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
