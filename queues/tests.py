@@ -17,7 +17,11 @@ from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
 from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 from queues.training_cases import capture_confirmed_triage_case
-from queues.management.commands.setup_demo_roster import ROLE_COVERAGE, SHIFT_TEMPLATES
+from queues.management.commands.setup_demo_roster import (
+    SHIFT_ROLE_COVERAGE,
+    SHIFT_TEMPLATES,
+    TARGET_STAFF_PER_ROLE,
+)
 
 
 class QueueDisplayNumberTests(TestCase):
@@ -1603,14 +1607,16 @@ class ShiftScheduleTests(TestCase):
             html=False,
         )
 
-    def test_setup_demo_roster_adds_low_count_roles_and_weekly_coverage(self):
-        for role, total in {
+    def test_setup_demo_roster_fills_every_role_to_ten_and_builds_hospital_shifts(self):
+        initial_counts = {
             StaffProfile.Role.DOCTOR: 5,
-            StaffProfile.Role.NURSE: 9,
+            # This role is already at target and must not be over-provisioned.
+            StaffProfile.Role.NURSE: TARGET_STAFF_PER_ROLE,
             StaffProfile.Role.NURSE_ASSISTANT: 2,
             StaffProfile.Role.EMERGENCY: 2,
             StaffProfile.Role.STAFF: 2,
-        }.items():
+        }
+        for role, total in initial_counts.items():
             for index in range(total):
                 user = get_user_model().objects.create_user(
                     username=f"{role.lower()}-{index}",
@@ -1625,31 +1631,77 @@ class ShiftScheduleTests(TestCase):
                 "setup_demo_roster",
                 week=selected_week.isoformat(),
                 credentials_file=str(credentials),
+                replace_week=True,
             )
             self.assertTrue(credentials.exists())
+            with credentials.open(encoding="utf-8-sig", newline="") as handle:
+                created_rows = list(csv.DictReader(handle))
 
-        non_admin_profiles = StaffProfile.objects.filter(user__is_superuser=False)
-        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.NURSE_ASSISTANT).count(), 4)
-        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.EMERGENCY).count(), 4)
-        self.assertEqual(non_admin_profiles.filter(role=StaffProfile.Role.STAFF).count(), 4)
-        # Calculate the expected weekly coverage from the command's actual
-        # role/shift configuration instead of hard-coding 119. This keeps the
-        # test valid when operational roles (for example Pharmacy/Cashier) are
-        # intentionally added to the roster.
-        daily_expected = 0
-        for shift_index, _shift in enumerate(SHIFT_TEMPLATES):
-            for role, coverage in ROLE_COVERAGE.items():
-                if role == StaffProfile.Role.STAFF and shift_index == 0:
-                    continue
-                daily_expected += coverage
-        expected_weekly_shifts = daily_expected * 7
-
-        self.assertEqual(
-            ShiftSchedule.objects.filter(
-                shift_date__range=(selected_week, selected_week + timedelta(days=6)),
-            ).count(),
-            expected_weekly_shifts,
+        non_admin_profiles = StaffProfile.objects.filter(
+            user__is_superuser=False,
+            user__is_active=True,
         )
+        for role in StaffProfile.Role.values:
+            self.assertEqual(
+                non_admin_profiles.filter(role=role).count(),
+                TARGET_STAFF_PER_ROLE,
+                msg=f"{role} should have exactly {TARGET_STAFF_PER_ROLE} active users",
+            )
+
+        # NURSE already had ten active users, so the command must not create
+        # any additional nurse credentials.
+        self.assertFalse(any(row["role"] == StaffProfile.Role.NURSE.label for row in created_rows))
+
+        expected_daily = sum(
+            sum(role_coverage.values())
+            for role_coverage in SHIFT_ROLE_COVERAGE.values()
+        )
+        expected_weekly_shifts = expected_daily * 7
+        week_shifts = ShiftSchedule.objects.filter(
+            shift_date__range=(selected_week, selected_week + timedelta(days=6)),
+            status=ShiftSchedule.Status.SCHEDULED,
+        )
+        self.assertEqual(week_shifts.count(), expected_weekly_shifts)
+
+        # Coverage on the first day must match the role-specific hospital
+        # staffing plan for all three shifts.
+        for shift_code, start_time, _end_time, _label in SHIFT_TEMPLATES:
+            for role, expected_count in SHIFT_ROLE_COVERAGE[shift_code].items():
+                actual_count = week_shifts.filter(
+                    shift_date=selected_week,
+                    start_time=start_time,
+                    user__hospital_staff_profile__role=role,
+                ).count()
+                self.assertEqual(
+                    actual_count,
+                    expected_count,
+                    msg=f"{shift_code} {role} coverage mismatch",
+                )
+
+        # One person must not be assigned to two 8-hour shifts on the same day.
+        seen_user_days = set()
+        for user_id, shift_date in week_shifts.values_list("user_id", "shift_date"):
+            key = (user_id, shift_date)
+            self.assertNotIn(key, seen_user_days)
+            seen_user_days.add(key)
+
+        # An evening shift may not run directly into the next day's night shift.
+        for day_offset in range(6):
+            current_day = selected_week + timedelta(days=day_offset)
+            next_day = current_day + timedelta(days=1)
+            evening_users = set(
+                week_shifts.filter(
+                    shift_date=current_day,
+                    start_time=time(16, 0),
+                ).values_list("user_id", flat=True)
+            )
+            next_night_users = set(
+                week_shifts.filter(
+                    shift_date=next_day,
+                    start_time=time(0, 0),
+                ).values_list("user_id", flat=True)
+            )
+            self.assertFalse(evening_users & next_night_users)
 
 
 
