@@ -294,7 +294,7 @@
       <div class="card-head"><h2>กำลังขึ้นเวรตอนนี้</h2><p>บุคลากรที่กดเริ่มเวรแล้ว</p></div>
       <div class="on-duty">
         {% for row in on_duty_now %}
-        <div class="duty-person"><b>{{ row.user.get_full_name|default:row.user.username }}{% if row.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ row.profile.get_role_display }}</small><div class="duty">หน้าที่: {{ row.planned_duty }}</div><small class="live">● ONLINE</small></div>
+        <div class="duty-person"><b>{{ row.user.get_full_name|default:row.user.username }}{% if row.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ row.role_label }}</small><div class="duty">หน้าที่: {{ row.planned_duty }}</div><small class="live">● ONLINE</small></div>
         {% empty %}<div class="empty-state">ยังไม่มีบุคลากรกดเริ่มเวร</div>{% endfor %}
       </div>
     </aside>
@@ -304,7 +304,7 @@
       <div class="detail-list">
         {% for shift in selected_shifts %}
         <article class="shift-row{% if shift.is_current_user %} current-user{% endif %}">
-          <div><span class="detail-name">{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</span><span class="detail-role">{{ shift.user.hospital_staff_profile.get_role_display }}</span></div>
+          <div><span class="detail-name">{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</span><span class="detail-role">{% if shift.user.is_superuser %}ผู้ดูแลระบบ{% else %}{{ shift.user.hospital_staff_profile.get_role_display }}{% endif %}</span></div>
           <div><span class="label">เวลาเวร</span><span class="detail-time">{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</span></div>
           <div class="duty-box"><span class="label">หน้าที่ประจำเวร</span>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</div>
           <div class="badges"><span class="badge">{{ shift.get_status_display }}</span>{% if shift.actual_duty and shift.actual_duty.is_present %}<span class="badge">ขึ้นเวรจริง</span>{% endif %}{% if shift.active_case_count %}<span class="badge">{{ shift.active_case_count }} เคส</span>{% endif %}</div>
@@ -334,7 +334,7 @@
     <summary>+ เพิ่มเวรและกำหนดหน้าที่</summary>
     <form class="create" method="post">
       {% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
-      <label>บุคลากร<select name="user_id" required><option value="">เลือกบุคลากร</option>{% for user in users %}<option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} · {{ user.hospital_staff_profile.get_role_display }}</option>{% endfor %}</select></label>
+      <label>บุคลากร<select name="user_id" required><option value="">เลือกบุคลากร</option>{% for user in users %}<option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} · {% if user.is_superuser %}ผู้ดูแลระบบ{% else %}{{ user.hospital_staff_profile.get_role_display }}{% endif %}</option>{% endfor %}</select></label>
       <label>หน้าที่ประจำเวร<input name="duty_assignment" list="duty-options" maxlength="200" placeholder="เช่น คัดกรองผู้ป่วย / ประจำห้องตรวจ 2" required></label>
       <datalist id="duty-options">{% for duty in duty_suggestions %}<option value="{{ duty }}">{% endfor %}</datalist>
       <label>วันที่<input type="date" name="shift_date" value="{{ selected_day|date:'Y-m-d' }}" required></label>
