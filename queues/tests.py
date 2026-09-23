@@ -18,6 +18,7 @@ from queues.forms import DeviceManagementPairForm, DevicePairingForm
 from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 from queues.training_cases import capture_confirmed_triage_case
 from queues.management.commands.setup_demo_roster import (
+    ADMIN_MORNING_COVERAGE,
     SHIFT_ROLE_COVERAGE,
     SHIFT_TEMPLATES,
     TARGET_STAFF_PER_ROLE,
@@ -1661,12 +1662,18 @@ class ShiftScheduleTests(TestCase):
             sum(role_coverage.values())
             for role_coverage in SHIFT_ROLE_COVERAGE.values()
         )
-        expected_weekly_shifts = expected_daily * 7
+        expected_weekly_shifts = (expected_daily + ADMIN_MORNING_COVERAGE) * 7
         week_shifts = ShiftSchedule.objects.filter(
             shift_date__range=(selected_week, selected_week + timedelta(days=6)),
             status=ShiftSchedule.Status.SCHEDULED,
         )
         self.assertEqual(week_shifts.count(), expected_weekly_shifts)
+        admin_shifts = week_shifts.filter(user__is_superuser=True)
+        self.assertEqual(admin_shifts.count(), ADMIN_MORNING_COVERAGE * 7)
+        self.assertEqual(
+            admin_shifts.filter(start_time=time(8, 0)).count(),
+            ADMIN_MORNING_COVERAGE * 7,
+        )
 
         # Coverage on the first day must match the role-specific hospital
         # staffing plan for all three shifts.
