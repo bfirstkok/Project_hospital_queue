@@ -1457,6 +1457,56 @@ class DutyAndResponsibleNurseAlertTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 0)
 
+    def test_my_alert_feed_keeps_exact_totals_when_many_patients_alert(self):
+        second_patient = Patient.objects.create(
+            first_name="สมชาย",
+            last_name="เฝ้าระวัง",
+            national_id="1111111111112",
+        )
+        second_visit = Visit.objects.create(
+            patient=second_patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=second_visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=3,
+        )
+        NurseCareAssignment.objects.create(
+            nurse=self.nurse,
+            visit=second_visit,
+        )
+
+        CriticalAlert.objects.bulk_create([
+            CriticalAlert(
+                visit=self.visit,
+                alert_type=CriticalAlert.AlertType.LOW_O2,
+                message=f"Alert {index}",
+                value=90,
+                threshold="< 95",
+                source="iot_vitals",
+            )
+            for index in range(55)
+        ])
+        CriticalAlert.objects.create(
+            visit=second_visit,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
+            message="Second patient alert",
+            value=130,
+            threshold=">= 120",
+            source="system_test_iot",
+        )
+
+        response = self.client.get(reverse("my_critical_alerts"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["count"], 56)
+        self.assertEqual(payload["patient_count"], 2)
+        self.assertEqual(payload["returned_count"], 50)
+        self.assertTrue(payload["truncated"])
+        self.assertEqual(len(payload["alerts"]), 50)
+
     def test_wearable_creates_pulse_and_temperature_alerts(self):
         vitals = VitalSign.objects.create(visit=self.visit, pr=128, bt=39.4)
         alerts = queue_views.create_critical_alerts_for_visit(self.visit, vitals, source="iot_vitals")
