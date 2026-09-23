@@ -1,9 +1,10 @@
+from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -135,17 +136,53 @@ def shift_schedule(request):
     week_end = week_start + timedelta(days=6)
     previous_day = selected - timedelta(days=1)
     next_day = selected + timedelta(days=1)
+    previous_week = week_start - timedelta(days=7)
+    next_week = week_start + timedelta(days=7)
 
-    users = list(
+    role_filter = (request.GET.get("role") or "").strip()
+    valid_roles = {value for value, _label in StaffProfile.Role.choices}
+    if role_filter not in valid_roles:
+        role_filter = ""
+    search_query = (request.GET.get("q") or "").strip()[:80]
+
+    user_qs = (
         user_model.objects.filter(is_active=True, hospital_staff_profile__isnull=False)
         .exclude(is_superuser=True)
         .select_related("hospital_staff_profile")
-        .order_by("hospital_staff_profile__role", "first_name", "username")
+        .order_by("hospital_staff_profile__role", "first_name", "last_name", "username")
     )
+    users = list(user_qs)
+
+    board_user_qs = user_qs
+    if role_filter:
+        board_user_qs = board_user_qs.filter(hospital_staff_profile__role=role_filter)
+    if search_query:
+        board_user_qs = board_user_qs.filter(
+            Q(first_name__icontains=search_query)
+            | Q(last_name__icontains=search_query)
+            | Q(username__icontains=search_query)
+        )
+    board_users = list(board_user_qs)
+
     schedules = list(
         ShiftSchedule.objects.filter(shift_date=selected)
         .select_related("user", "user__hospital_staff_profile")
         .order_by("start_time", "user__hospital_staff_profile__role", "user__first_name", "user__username")
+    )
+
+    week_schedules = list(
+        ShiftSchedule.objects.filter(
+            shift_date__range=(week_start, week_end),
+            user__in=board_users,
+        )
+        .select_related("user", "user__hospital_staff_profile")
+        .order_by(
+            "user__hospital_staff_profile__role",
+            "user__first_name",
+            "user__username",
+            "shift_date",
+            "start_time",
+        )
     )
 
     duties = {
@@ -170,8 +207,10 @@ def shift_schedule(request):
         .values_list("shift_date", "total")
     )
     week_days = []
+    week_dates = []
     for offset in range(7):
         day = week_start + timedelta(days=offset)
+        week_dates.append(day)
         week_days.append({
             "date": day,
             "label": THAI_WEEKDAYS[offset],
@@ -179,6 +218,76 @@ def shift_schedule(request):
             "is_today": day == timezone.localdate(),
             "shift_count": week_count_by_date.get(day, 0),
         })
+
+    def shift_ui_class(shift):
+        if shift.status == ShiftSchedule.Status.LEAVE:
+            return "leave"
+        if shift.status == ShiftSchedule.Status.CANCELLED:
+            return "cancelled"
+        if shift.start_time.hour == 0:
+            return "night"
+        if shift.start_time.hour == 8:
+            return "morning"
+        if shift.start_time.hour == 16:
+            return "evening"
+        return "custom"
+
+    schedule_map = defaultdict(list)
+    for shift in week_schedules:
+        shift.ui_class = shift_ui_class(shift)
+        shift.is_current_user = shift.user_id == request.user.id
+        schedule_map[(shift.user_id, shift.shift_date)].append(shift)
+
+    board_rows = []
+    role_sections_map = {}
+    role_section_order = []
+    for person in board_users:
+        profile = person.hospital_staff_profile
+        cells = [
+            {
+                "date": day,
+                "shifts": schedule_map.get((person.id, day), []),
+                "is_today": day == timezone.localdate(),
+                "is_selected": day == selected,
+            }
+            for day in week_dates
+        ]
+        row = {
+            "user": person,
+            "profile": profile,
+            "cells": cells,
+            "is_current_user": person.id == request.user.id,
+            "initials": (
+                ((person.first_name or person.username)[:1])
+                + ((person.last_name or "")[:1])
+            ).upper(),
+        }
+        if profile.role not in role_sections_map:
+            role_sections_map[profile.role] = {
+                "role": profile.role,
+                "label": profile.get_role_display(),
+                "rows": [],
+            }
+            role_section_order.append(profile.role)
+        role_sections_map[profile.role]["rows"].append(row)
+        board_rows.append(row)
+    role_sections = [role_sections_map[role] for role in role_section_order]
+
+    selected_shift_summary = {
+        "night": sum(
+            1 for shift in schedules
+            if shift.status == ShiftSchedule.Status.SCHEDULED and shift.start_time.hour == 0
+        ),
+        "morning": sum(
+            1 for shift in schedules
+            if shift.status == ShiftSchedule.Status.SCHEDULED and shift.start_time.hour == 8
+        ),
+        "evening": sum(
+            1 for shift in schedules
+            if shift.status == ShiftSchedule.Status.SCHEDULED and shift.start_time.hour == 16
+        ),
+        "leave": sum(1 for shift in schedules if shift.status == ShiftSchedule.Status.LEAVE),
+    }
 
     role_counts = list(
         ShiftSchedule.objects.filter(shift_date=selected)
@@ -220,12 +329,21 @@ def shift_schedule(request):
         "selected_day_label": THAI_WEEKDAYS[selected.weekday()],
         "selected_shifts": schedules,
         "week_days": week_days,
+        "week_dates": week_dates,
+        "board_rows": board_rows,
+        "role_sections": role_sections,
         "role_counts": role_counts,
+        "role_choices": StaffProfile.Role.choices,
+        "role_filter": role_filter,
+        "search_query": search_query,
+        "selected_shift_summary": selected_shift_summary,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
         "previous_day": previous_day,
         "next_day": next_day,
+        "previous_week": previous_week,
+        "next_week": next_week,
         "shift_statuses": ShiftSchedule.Status.choices,
         "duty_suggestions": DEFAULT_DUTY_SUGGESTIONS,
     })
