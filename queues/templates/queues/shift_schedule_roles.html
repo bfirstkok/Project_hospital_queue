@@ -59,29 +59,30 @@
       box-shadow:0 8px 22px rgba(21,50,75,.04)
     }
     .timetable{
-      width:100%;min-width:1680px;border-collapse:separate;border-spacing:0;table-layout:fixed
+      width:100%;min-width:1440px;border-collapse:separate;border-spacing:0;table-layout:fixed
     }
     .timetable th,.timetable td{
       border-right:1px solid var(--line);border-bottom:1px solid var(--line)
     }
     .timetable thead th{
-      position:sticky;top:0;z-index:6;height:66px;padding:8px 7px;
-      background:#dcecf8;color:#15324b;text-align:center;font-size:9px;font-weight:900
+      position:sticky;top:0;z-index:6;height:78px;padding:10px 8px;
+      background:#dcecf8;color:#15324b;text-align:center;font-size:12px;font-weight:900
     }
     .timetable thead th:first-child{
-      left:0;z-index:8;width:105px;min-width:105px;background:#cfe5f4
+      left:0;z-index:8;width:100px;min-width:100px;background:#cfe5f4
     }
-    .role-head strong{display:block;font-size:10px;line-height:1.25}
-    .role-head small{display:block;margin-top:3px;color:#667d88;font-size:7px;font-weight:700}
+    .role-head strong{display:block;font-size:13px;line-height:1.35}
+    .role-head small{display:block;margin-top:4px;color:#667d88;font-size:10px;font-weight:700}
+    .timetable thead th.selected-role{background:#bee2dc;box-shadow:inset 0 -4px 0 #087f75}
 
     .day-cell{
-      position:sticky;left:0;z-index:4;width:105px;min-width:105px;
-      padding:10px 7px;text-align:center;vertical-align:middle
+      position:sticky;left:0;z-index:4;width:100px;min-width:100px;
+      padding:12px 8px;text-align:center;vertical-align:middle
     }
     .day-link{color:var(--ink);text-decoration:none}
-    .day-link strong{display:block;font-size:11px}
-    .day-link span{display:block;margin-top:2px;font-size:8px;color:#705f59}
-    .today-tag{display:inline-flex;margin-top:4px;padding:2px 5px;border-radius:999px;background:#0a8177;color:#fff;font-size:7px;font-weight:900}
+    .day-link strong{display:block;font-size:14px}
+    .day-link span{display:block;margin-top:3px;font-size:11px;color:#705f59}
+    .today-tag{display:inline-flex;margin-top:5px;padding:3px 7px;border-radius:999px;background:#0a8177;color:#fff;font-size:9px;font-weight:900}
 
     .day-0 .day-cell,.day-0 .role-cell{background:#fff8c9}
     .day-1 .day-cell,.day-1 .role-cell{background:#ffe3ee}
@@ -94,31 +95,32 @@
     tr.selected-row td{outline:1px solid rgba(10,129,119,.16);outline-offset:-1px}
 
     .role-cell{
-      width:175px;min-width:175px;height:128px;padding:7px;vertical-align:top
+      height:154px;padding:8px;vertical-align:top
     }
+    .role-cell.selected-role{box-shadow:inset 0 0 0 2px rgba(8,127,117,.34)}
     .cell-link{display:block;height:100%;color:inherit;text-decoration:none}
     .cell-content{display:grid;gap:5px}
     .shift-group{
-      display:grid;grid-template-columns:33px 1fr;gap:5px;align-items:start;
-      padding:4px 5px;border-radius:5px;background:rgba(255,255,255,.58)
+      display:grid;grid-template-columns:42px 1fr;gap:7px;align-items:start;
+      padding:6px 7px;border-radius:6px;background:rgba(255,255,255,.72)
     }
     .shift-label{
-      display:inline-flex;align-items:center;justify-content:center;min-height:20px;
-      padding:2px 4px;border-radius:4px;font-size:7px;font-weight:900;white-space:nowrap
+      display:inline-flex;align-items:center;justify-content:center;min-height:25px;
+      padding:3px 5px;border-radius:5px;font-size:10px;font-weight:900;white-space:nowrap
     }
     .shift-label.night{background:#d6e8fb;color:#2e5f91}
     .shift-label.morning{background:#d9f1e8;color:#176d5e}
     .shift-label.evening{background:#ffe4ca;color:#98531d}
     .shift-label.leave{background:#edf0d8;color:#6f792c}
-    .name-list{display:grid;gap:2px;min-width:0}
+    .name-list{display:grid;gap:4px;min-width:0}
     .staff-name{
-      display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-      color:#17324d;font-size:8px;font-weight:800;line-height:1.35
+      display:block;white-space:normal;overflow-wrap:anywhere;
+      color:#17324d;font-size:12px;font-weight:800;line-height:1.45
     }
     .staff-name.current{color:#087f75}
     .empty-cell{
-      display:flex;align-items:center;justify-content:center;height:100%;min-height:96px;
-      color:#a5afb5;font-size:8px
+      display:flex;align-items:center;justify-content:center;height:100%;min-height:120px;
+      color:#9aa8af;font-size:12px
     }
 
     .below{display:grid;grid-template-columns:minmax(260px,310px) 1fr;gap:10px;margin-top:10px}
@@ -195,9 +197,9 @@
   </div>
 
   {% if detailed_mode %}
-  <div class="filter-note"><span>กำลังกรองรายชื่อในตารางตามเงื่อนไขที่เลือก</span><a href="?week={{ week_start|date:'Y-m-d' }}">ล้างตัวกรอง</a></div>
+  <div class="filter-note"><span>ตารางหลักยังแสดงครบทุกตำแหน่งเสมอ · ตัวกรองใช้เน้นตำแหน่งและกรองรายละเอียดด้านล่าง</span><a href="?week={{ week_start|date:'Y-m-d' }}">ล้างตัวกรอง</a></div>
   {% else %}
-  <div class="filter-note"><span>ชื่อบุคลากรแสดงในตารางโดยตรง คลิกช่องเพื่อเปิดรายละเอียดของวันและหน้าที่นั้น</span><span>ดึก 00–08 · เช้า 08–16 · บ่าย 16–00</span></div>
+  <div class="filter-note"><span>แสดงครบทุกตำแหน่งและชื่อบุคลากรในตารางโดยตรง · คลิกช่องเพื่อดูรายละเอียด</span><span>9 ตำแหน่ง · ดึก 00–08 · เช้า 08–16 · บ่าย 16–00</span></div>
   {% endif %}
 
   <section class="timetable-wrap" id="timetable">
@@ -206,7 +208,7 @@
         <tr>
           <th>วัน</th>
           {% for role in role_columns %}
-          <th>
+          <th class="{% if role.is_selected %}selected-role{% endif %}">
             <div class="role-head">
               <strong>{{ role.label }}</strong>
               <small>รายชื่อผู้ขึ้นเวร</small>
@@ -227,7 +229,7 @@
           </td>
 
           {% for cell in row.cells %}
-          <td class="role-cell">
+          <td class="role-cell {% if role_filter == cell.role %}selected-role{% endif %}">
             {% if cell.has_any %}
             <a class="cell-link" href="?day={{ row.date|date:'Y-m-d' }}&role={{ cell.role }}#day-detail">
               <div class="cell-content">
