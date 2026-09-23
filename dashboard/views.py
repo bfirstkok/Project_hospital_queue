@@ -86,6 +86,7 @@ def dashboard_view(request):
         .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
         .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
     )
+    alert_patient_total = alerts.values("visit_id").distinct().count()
     severity_totals = {
         severity: active.filter(visit__final_severity=severity).count()
         for severity in SEVERITY_LEVELS
@@ -101,7 +102,8 @@ def dashboard_view(request):
         "green_total": severity_totals["GREEN"],
         "white_total": severity_totals["WHITE"],
         "new_alert_total": alerts.count(),
-        "latest_alerts": alerts.select_related("visit", "visit__patient")[:8],
+        "alert_patient_total": alert_patient_total,
+        "latest_alerts": alerts.select_related("visit", "visit__patient").order_by("-created_at")[:20],
         "severity_groups": _severity_detail_groups(active_visits),
         "severity_context_label": "ผู้ป่วยที่ยังอยู่ในกระบวนการบริการ",
         "now": timezone.now(),
@@ -990,12 +992,19 @@ def waiting_time_report_pdf(request):
 def live_summary_api(request):
     waiting = Queue.objects.filter(status=Queue.Status.WAITING_QUEUE)
     called = Queue.objects.filter(status=Queue.Status.CALLED)
-    alerts = (
+    active_alerts = (
         CriticalAlert.objects
         .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
         .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
+    )
+    alert_total = active_alerts.count()
+    alert_patient_total = active_alerts.values("visit_id").distinct().count()
+    # Return enough rows for a busy ward while keeping polling payload bounded.
+    # Totals remain exact even if the display list is truncated.
+    alerts = list(
+        active_alerts
         .select_related("visit", "visit__patient", "visit__queue")
-        .order_by("-created_at")[:10]
+        .order_by("-created_at")[:100]
     )
     return JsonResponse({
         "ok": True,
@@ -1008,12 +1017,10 @@ def live_summary_api(request):
             ).exclude(status__in=["OPD_DONE", "DISCHARGED", "CANCELLED"]).count()
             for severity in SEVERITY_LEVELS
         },
-        "new_alert_total": (
-            CriticalAlert.objects
-            .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
-            .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
-            .count()
-        ),
+        "new_alert_total": alert_total,
+        "alert_patient_total": alert_patient_total,
+        "alerts_returned": len(alerts),
+        "alerts_truncated": alert_total > len(alerts),
         "alerts": [
             {
                 "id": alert.id,
