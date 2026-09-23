@@ -6,244 +6,237 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ตารางเวรบุคลากร</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=shift-simple-20260923">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=shift-timetable-20260923">
   <style>
     :root{
-      --ink:#17324d;--muted:#6d838c;--line:#dce7e9;--soft:#f6f9fa;
-      --teal:#087f75;--teal-dark:#075f5a;--bg:#f4f8f9;
-      --night:#3d75a7;--morning:#16816c;--evening:#b96b28;
-      --leave:#7a8f38;--danger:#a6424e
+      --ink:#15324b;--muted:#667d88;--line:#cbd7e4;--line-soft:#e6ebf1;
+      --orange:#ffbf8f;--orange-soft:#ffe0c6;--blue:#dcecfb;--blue-strong:#a9cbe9;
+      --surface:#ffffff;--row:#f6f7f9;--teal:#087f75;--green:#157357;--red:#a23b49
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:"Sarabun",sans-serif}
-    .page{width:min(1480px,calc(100% - 32px));margin:20px auto 56px}
+    body{margin:0;background:#f5f7f9;color:var(--ink);font-family:"Sarabun",sans-serif}
+    .page{width:min(1500px,calc(100% - 20px));margin:12px auto 52px}
 
-    .hero{
-      display:flex;align-items:center;justify-content:space-between;gap:20px;
-      padding:24px 26px;border-radius:20px;background:linear-gradient(125deg,#173e54,#087f75);
-      color:#fff;box-shadow:0 16px 34px rgba(23,62,84,.13)
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      padding:15px 20px;border:1px solid #f1aa77;border-radius:12px 12px 0 0;background:var(--orange)
     }
-    .hero h1{margin:0;font-size:29px;font-weight:900}.hero p{margin:6px 0 0;color:#e9fffb;font-size:12px;font-weight:600}
-    .hero-actions{display:flex;gap:7px;flex-wrap:wrap}
-    .hero-actions a{display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border:1px solid rgba(255,255,255,.35);border-radius:9px;background:rgba(255,255,255,.10);color:#fff;text-decoration:none;font-size:11px;font-weight:800}
-    .hero-actions a.primary{background:#fff;color:var(--teal-dark)}
+    .topbar h1{margin:0;font-size:20px;font-weight:900}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .top-actions button,.top-actions a{
+      display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 12px;
+      border:1px solid #e7edf3;border-radius:8px;background:#fff;color:#28506e;
+      text-decoration:none;font:800 11px "Sarabun",sans-serif;cursor:pointer
+    }
+    .top-actions .primary{border-color:#0a8177;background:#0a8177;color:#fff}
 
-    .messages{margin:12px 0}.message{padding:11px 13px;border:1px solid #b8dfcf;border-radius:10px;background:#eef9f4;color:#176846;font-size:11px;font-weight:700}.message.error{border-color:#efc2c6;background:#fff1f2;color:#98333e}
+    .messages{margin:10px 0}.message{padding:10px 12px;border:1px solid #b9dfd0;border-radius:9px;background:#eef9f4;color:#176846;font-size:11px;font-weight:700}.message.error{border-color:#efc0c5;background:#fff1f2;color:#9b3340}
 
     .toolbar{
-      display:grid;grid-template-columns:1fr 220px 175px auto;gap:9px;align-items:end;
-      margin-top:14px;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fff
+      display:grid;grid-template-columns:1fr 250px 180px auto;gap:8px;align-items:end;
+      padding:12px;border:1px solid var(--line);border-top:0;background:#fff
     }
-    .field{display:grid;gap:4px}.field label{color:#687f89;font-size:9px;font-weight:900}
-    .field input,.field select{height:40px;width:100%;padding:0 11px;border:1px solid #cbdadd;border-radius:9px;background:#fff;color:var(--ink);font:600 11px "Sarabun",sans-serif}
-    .toolbar button{height:40px;padding:0 15px;border:0;border-radius:9px;background:var(--teal);color:#fff;font:900 11px "Sarabun",sans-serif;cursor:pointer}
+    .field{display:grid;gap:4px}.field label{font-size:9px;font-weight:900;color:#667b86}
+    .field input,.field select{height:38px;width:100%;padding:0 10px;border:1px solid #c8d5df;border-radius:7px;background:#fff;color:var(--ink);font:600 11px "Sarabun",sans-serif}
+    .toolbar button{height:38px;padding:0 14px;border:0;border-radius:7px;background:#0a8177;color:#fff;font:900 11px "Sarabun",sans-serif;cursor:pointer}
 
-    .week-row{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:18px 2px 10px}
-    .week-row h2{margin:0;font-size:21px}.week-row p{margin:4px 0 0;color:var(--muted);font-size:10px}
-    .pager{display:flex;gap:6px}.pager a{display:inline-flex;align-items:center;height:35px;padding:0 10px;border:1px solid #ccdade;border-radius:8px;background:#fff;color:var(--ink);text-decoration:none;font-size:10px;font-weight:800}
-
-    .mode-note{
+    .weekbar{
       display:flex;align-items:center;justify-content:space-between;gap:12px;
-      margin-bottom:10px;padding:10px 12px;border:1px solid #d7e6e4;border-radius:11px;background:#f4fbf9;color:#4f6f6a;font-size:10px;font-weight:700
+      padding:12px 14px;border:1px solid var(--line);border-top:0;background:#fff
     }
-    .mode-note a{color:var(--teal-dark);font-weight:900;text-decoration:none}
+    .weekbar strong{font-size:14px}.weekbar small{display:block;margin-top:2px;color:var(--muted);font-size:9px}
+    .pager{display:flex;gap:6px}.pager a{display:inline-flex;align-items:center;height:32px;padding:0 9px;border:1px solid #c8d5df;border-radius:7px;background:#fff;color:var(--ink);text-decoration:none;font-size:9px;font-weight:800}
 
-    .board{
-      overflow:auto;border:1px solid #cfdee1;border-radius:15px;background:#fff;
-      box-shadow:0 8px 22px rgba(23,50,77,.04)
+    .filter-note{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:8px 12px;border:1px solid var(--line);border-top:0;background:#f8fbfd;
+      color:#607681;font-size:9px;font-weight:700
     }
-    table.roster{width:100%;min-width:1080px;border-collapse:separate;border-spacing:0;table-layout:fixed}
-    .roster th,.roster td{border-right:1px solid #edf2f3;border-bottom:1px solid #edf2f3}
-    .roster th{height:58px;padding:9px;background:#f8fbfb;color:#657b84;text-align:center;font-size:9px;font-weight:900}
-    .roster th:first-child{width:230px;text-align:left;padding-left:16px}
-    .day-title{display:block;color:var(--ink);font-size:11px}.day-date{display:block;margin-top:2px;color:#85969d;font-size:8px}
-    .today{box-shadow:inset 0 3px 0 var(--teal)}.selected{background:#f3faf8!important}
+    .filter-note a{color:#0b7068;text-decoration:none;font-weight:900}
 
-    /* 9-row role overview */
-    .role-cell{padding:11px 14px}.role-link{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);text-decoration:none}
-    .role-link strong{display:block;font-size:11px;line-height:1.4}.role-link small{display:block;margin-top:2px;color:#84969d;font-size:8px}
-    .role-open{flex:0 0 auto;padding:4px 7px;border-radius:7px;background:#eef6f5;color:var(--teal-dark);font-size:8px;font-weight:900}
-    .overview-cell{height:60px;padding:8px;text-align:center;vertical-align:middle}
-    .counts{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
-    .count{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border-radius:7px;background:#f3f6f7;color:#607781;font-size:8px;font-weight:800}
-    .count b{font-size:10px}.count.night b{color:var(--night)}.count.morning b{color:var(--morning)}.count.evening b{color:var(--evening)}.count.leave b{color:var(--leave)}
-    .zero{color:#d4dee1;font-size:12px}
+    .timetable-wrap{
+      overflow:auto;border:1px solid var(--line);border-top:0;background:#fff;
+      box-shadow:0 8px 22px rgba(21,50,75,.04)
+    }
+    .timetable{width:100%;min-width:980px;border-collapse:collapse;table-layout:fixed}
+    .timetable th,.timetable td{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .timetable thead th{height:54px;padding:8px 10px;background:var(--orange-soft);text-align:center;font-size:10px;font-weight:900}
+    .timetable thead th:first-child{width:110px}
+    .shift-title{display:block;font-size:11px}.shift-time{display:block;margin-top:2px;color:#6b7780;font-size:9px}
+    .day-cell{padding:10px;background:#fff0e3;text-align:center;vertical-align:middle}
+    .day-link{color:var(--ink);text-decoration:none}.day-link strong{display:block;font-size:11px}.day-link span{display:block;margin-top:2px;color:#7e6f67;font-size:8px}
+    tr.today-row .day-cell{box-shadow:inset 4px 0 0 #0a8177}.today-tag{display:inline-flex;margin-top:4px;padding:2px 5px;border-radius:999px;background:#0a8177;color:#fff;font-size:7px;font-weight:900}
+    tr.selected-row td{background-color:#fbfdff}.shift-cell{padding:8px;vertical-align:top;background:var(--row);min-height:100px}
+    .shift-box{
+      min-height:92px;padding:9px 10px;border:1px solid #b9cfe5;border-radius:6px;
+      background:var(--blue);color:#173f62
+    }
+    .shift-box.morning{background:#d4e7f7}.shift-box.evening{background:#c5ddf2}.shift-box.empty{display:flex;align-items:center;justify-content:center;background:#fafbfc;border-style:dashed;color:#a4afb8}
+    .shift-box-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+    .shift-box-head strong{font-size:10px}.people-count{display:inline-flex;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.7);font-size:8px;font-weight:900}
 
-    /* Person detail only after role/search filter */
-    .person-cell{padding:9px 12px}.person{display:flex;align-items:center;gap:9px;min-width:0}
-    .avatar{width:32px;height:32px;display:grid;place-items:center;flex:0 0 32px;border-radius:50%;background:#e7f3f1;color:var(--teal-dark);font-size:9px;font-weight:900}
-    .person-copy{min-width:0}.person-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:900}
-    .person-role{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#85969d;font-size:8px}
-    .you-badge{display:inline-flex;margin-left:4px;padding:1px 5px;border-radius:999px;background:var(--teal);color:#fff;font-size:7px;font-weight:900}
-    .person-shift-cell{height:58px;padding:7px;text-align:center;vertical-align:middle}
-    .shift-stack{display:grid;gap:3px}
-    .shift-chip{display:flex;align-items:center;justify-content:center;min-height:28px;padding:4px 6px;border-radius:7px;background:#f4f7f8;color:#526b75;text-decoration:none;font-size:8px;font-weight:900}
-    .shift-chip.night{border-left:3px solid var(--night)}.shift-chip.morning{border-left:3px solid var(--morning)}.shift-chip.evening{border-left:3px solid var(--evening)}
-    .shift-chip.leave{border-left:3px solid var(--leave);color:#63772e}.shift-chip.cancelled{border-left:3px solid var(--danger);color:#99404b;text-decoration:line-through}
+    .role-lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px}
+    .role-line{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.46);font-size:8px}
+    .role-line b{font-size:9px}.role-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .person-lines{display:grid;gap:4px}
+    .person-line{padding:4px 6px;border-radius:4px;background:rgba(255,255,255,.56)}
+    .person-line b{display:block;font-size:9px}.person-line small{display:block;margin-top:1px;color:#52718a;font-size:7px}
+    .more-note{margin-top:6px;color:#56718a;font-size:7px;font-weight:800}
+    .cell-link{display:block;color:inherit;text-decoration:none}
 
-    .section-grid{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:12px;margin-top:14px}
-    .card{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
-    .card-head{padding:14px 16px;border-bottom:1px solid #eaf0f2}.card-head h2{margin:0;font-size:15px}.card-head p{margin:4px 0 0;color:var(--muted);font-size:9px}
-    .on-duty{display:grid;gap:6px;padding:9px}.duty-person{padding:9px;border:1px solid #e0eaec;border-radius:9px;background:#fbfdfd}.duty-person b{font-size:10px}.duty-person small{display:block;margin-top:2px;color:#82949b;font-size:8px}.duty-person .duty{margin-top:5px;color:#0b6b60;font-size:8px;font-weight:800}.live{color:#157357!important;font-weight:900}.empty{padding:23px;text-align:center;color:#83969e;font-size:10px}
+    .below{display:grid;grid-template-columns:minmax(260px,310px) 1fr;gap:10px;margin-top:10px}
+    .card{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+    .card-head{padding:12px 14px;border-bottom:1px solid var(--line-soft);background:#fbfcfd}.card-head h2{margin:0;font-size:14px}.card-head p{margin:3px 0 0;color:var(--muted);font-size:8px}
+    .on-duty{display:grid;gap:6px;padding:8px}.duty-person{padding:8px;border:1px solid #e0e8ee;border-radius:7px;background:#fbfdfe}.duty-person b{font-size:9px}.duty-person small{display:block;margin-top:2px;color:#7b9099;font-size:8px}.duty{margin-top:4px;color:#0a6d64;font-size:8px;font-weight:800}.live{color:var(--green)!important;font-weight:900}
+    .empty-state{padding:24px;text-align:center;color:#8d9aa2;font-size:9px}
 
-    .day-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #eaf0f2}
-    .day-head h2{margin:0;font-size:15px}.day-head p{margin:4px 0 0;color:var(--muted);font-size:9px}
-    .detail-list{display:grid;gap:6px;padding:9px;background:#f8fafb}
+    .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+    .detail-head h2{margin:0;font-size:14px}.detail-head p{margin:3px 0 0;color:var(--muted);font-size:8px}
+    .detail-list{display:grid;gap:5px;padding:8px;background:#f7f9fb}
     .shift-row{
-      display:grid;grid-template-columns:minmax(150px,1.2fr) 95px minmax(150px,1fr) minmax(110px,.7fr) 70px;
-      gap:8px;align-items:center;padding:10px 11px;border:1px solid #dce7e9;border-radius:9px;background:#fff
+      display:grid;grid-template-columns:minmax(140px,1.1fr) 90px minmax(150px,1fr) minmax(100px,.75fr) 65px;
+      gap:7px;align-items:center;padding:9px 10px;border:1px solid #dae4ea;border-radius:7px;background:#fff
     }
-    .shift-row.current-user{border-color:#80cfc3;background:#f5fbfa}.detail-name{font-size:10px;font-weight:900}.detail-role{display:block;margin-top:2px;color:#83959c;font-size:8px}
-    .label{display:block;margin-bottom:2px;color:#8a9ba1;font-size:7px;font-weight:900}.detail-time{font-size:10px;font-weight:900}
-    .duty-box{padding:6px 7px;border-radius:7px;background:#f0f7f6;color:#176c62;font-size:9px;font-weight:800}
-    .badges{display:flex;gap:3px;flex-wrap:wrap}.badge{padding:3px 5px;border-radius:999px;background:#eef3f4;color:#607781;font-size:7px;font-weight:900}
-    .edit>summary{padding:6px;border:1px solid #c8d8dc;border-radius:7px;color:var(--teal-dark);font-size:8px;font-weight:900;text-align:center;cursor:pointer;list-style:none}
-    .edit[open]{grid-column:1/-1;border-top:1px dashed #dae4e6;padding-top:7px}
-    .edit-form{display:grid;grid-template-columns:1.2fr 1fr .8fr .8fr 1.4fr 1fr auto;gap:6px}
+    .shift-row.current-user{border-color:#7ec9bf;background:#f4fbf9}.detail-name{font-size:9px;font-weight:900}.detail-role{display:block;margin-top:2px;color:#83959d;font-size:7px}
+    .label{display:block;margin-bottom:2px;color:#8b99a0;font-size:7px;font-weight:900}.detail-time{font-size:9px;font-weight:900}
+    .duty-box{padding:5px 6px;border-radius:6px;background:#eef6f5;color:#176b62;font-size:8px;font-weight:800}
+    .badges{display:flex;gap:3px;flex-wrap:wrap}.badge{padding:3px 5px;border-radius:999px;background:#edf2f4;color:#617781;font-size:7px;font-weight:900}
+    .you-badge{display:inline-flex;margin-left:4px;padding:1px 5px;border-radius:999px;background:#0a8177;color:#fff;font-size:7px;font-weight:900}
+    .edit>summary{padding:5px;border:1px solid #c7d5dd;border-radius:6px;color:#0b7169;font-size:8px;font-weight:900;text-align:center;cursor:pointer;list-style:none}
+    .edit[open]{grid-column:1/-1;border-top:1px dashed #d7e1e6;padding-top:6px}
+    .edit-form{display:grid;grid-template-columns:1.2fr 1fr .8fr .8fr 1.4fr 1fr auto;gap:5px}
     .edit-form label,.create label{display:grid;gap:3px;color:#607781;font-size:8px;font-weight:800}
-    .edit-form input,.edit-form select,.create input,.create select{height:34px;width:100%;padding:0 7px;border:1px solid #cad9dc;border-radius:7px;background:#fff;color:var(--ink);font:600 9px "Sarabun",sans-serif}
-    .delete-form{display:flex;justify-content:flex-end;margin-top:6px}
-    .btn{height:34px;padding:0 9px;border:1px solid #c8d8dc;border-radius:7px;background:#fff;color:var(--ink);font:800 9px "Sarabun",sans-serif;cursor:pointer}
-    .btn.primary{border-color:var(--teal);background:var(--teal);color:#fff}.btn.danger{border-color:#efc4c8;background:#fff3f4;color:#9b3742}
+    .edit-form input,.edit-form select,.create input,.create select{height:32px;width:100%;padding:0 6px;border:1px solid #cad7df;border-radius:6px;background:#fff;color:var(--ink);font:600 8px "Sarabun",sans-serif}
+    .delete-form{display:flex;justify-content:flex-end;margin-top:5px}
+    .btn{height:32px;padding:0 8px;border:1px solid #c8d6de;border-radius:6px;background:#fff;color:var(--ink);font:800 8px "Sarabun",sans-serif;cursor:pointer}
+    .btn.primary{border-color:#0a8177;background:#0a8177;color:#fff}.btn.danger{border-color:#efc4c8;background:#fff3f4;color:var(--red)}
 
-    .add-shift{margin-top:12px}.add-shift>summary{padding:13px 15px;cursor:pointer;list-style:none;font-size:11px;font-weight:900}
-    .add-shift[open]>summary{border-bottom:1px solid #eaf0f2}
-    .create{display:grid;grid-template-columns:1.4fr 1.3fr 1fr .7fr .7fr 1fr auto;gap:7px;align-items:end;padding:11px}
+    .add-shift{margin-top:10px}.add-shift>summary{padding:12px 14px;cursor:pointer;list-style:none;font-size:10px;font-weight:900}
+    .add-shift[open]>summary{border-bottom:1px solid var(--line-soft)}
+    .create{display:grid;grid-template-columns:1.4fr 1.3fr 1fr .7fr .7fr 1fr auto;gap:6px;align-items:end;padding:10px}
 
-    @media(max-width:1000px){.toolbar{grid-template-columns:1fr 1fr}.section-grid{grid-template-columns:1fr}.edit-form,.create{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:700px){.page{width:calc(100% - 18px);margin-top:10px}.hero{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.week-row{align-items:flex-start;flex-direction:column}.pager{overflow:auto;max-width:100%}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
+    @media(max-width:1000px){.toolbar{grid-template-columns:1fr 1fr}.below{grid-template-columns:1fr}.edit-form,.create{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:700px){.page{width:calc(100% - 10px);margin-top:5px}.topbar{align-items:flex-start;flex-direction:column}.toolbar{grid-template-columns:1fr}.weekbar{align-items:flex-start;flex-direction:column}.pager{overflow:auto;max-width:100%}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}.role-lines{grid-template-columns:1fr}}
+
+    @media print{
+      body{background:#fff}.page{width:100%;margin:0}.main-nav,.toolbar,.pager,.messages,.below,.add-shift,.top-actions{display:none!important}
+      .topbar{border-radius:0}.timetable-wrap{box-shadow:none}.timetable{min-width:0}.shift-box{break-inside:avoid}
+    }
   </style>
 </head>
 <body>
 {% include "includes/main_nav.html" %}
-<main class="page">
-  <header class="hero">
+<main class="page" id="schedule-page">
+  <header class="topbar">
     <div>
       <h1>ตารางเวรบุคลากร</h1>
-      <p>เริ่มจากภาพรวมแต่ละหน้าที่ แล้วค่อยเปิดดูรายชื่อเฉพาะทีมที่ต้องการ เพื่อลดความลายตา</p>
     </div>
-    <div class="hero-actions">
+    <div class="top-actions">
+      <button type="button" onclick="window.print()">🖨 พิมพ์</button>
+      <button type="button" onclick="toggleFullscreen()">⛶ Fullscreen</button>
       <a href="?day={% now 'Y-m-d' %}">วันนี้</a>
-      {% if detailed_mode %}<a href="?week={{ week_start|date:'Y-m-d' }}">ภาพรวมทุกหน้าที่</a>{% endif %}
-      {% if can_manage %}<a class="primary" href="#add-shift">+ บันทึกเวร</a>{% endif %}
+      {% if can_manage %}<a class="primary" href="#add-shift">+ เพิ่มเวร</a>{% endif %}
     </div>
   </header>
 
   {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
   <form class="toolbar" method="get">
-    <div class="field"><label>ค้นหาบุคลากร</label><input type="search" name="q" value="{{ search_query }}" placeholder="พิมพ์ชื่อหรือนามสกุล"></div>
-    <div class="field"><label>หน้าที่</label><select name="role"><option value="">ภาพรวมทุกหน้าที่</option>{% for value,label in role_choices %}<option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="field"><label>ค้นหาบุคลากร</label><input type="search" name="q" value="{{ search_query }}" placeholder="ชื่อหรือนามสกุล"></div>
+    <div class="field"><label>หน้าที่</label><select name="role"><option value="">ทุกหน้าที่</option>{% for value,label in role_choices %}<option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div class="field"><label>สัปดาห์</label><input type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"></div>
-    <button type="submit">แสดง</button>
+    <button type="submit">แสดงตาราง</button>
   </form>
 
-  <div class="week-row">
-    <div><h2>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }}</h2><p>{% if detailed_mode %}กำลังดูรายชื่อเฉพาะที่เลือก{% else %}ภาพรวมกำลังคนแยกตามหน้าที่{% endif %}</p></div>
+  <div class="weekbar">
+    <div><strong>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }}</strong><small>{% if detailed_mode %}แสดงรายชื่อเฉพาะตัวกรองที่เลือก{% else %}แสดงจำนวนบุคลากรแยกตามหน้าที่ในแต่ละเวร{% endif %}</small></div>
     <nav class="pager">
-      <a href="?week={{ previous_week|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">← ก่อนหน้า</a>
+      <a href="?week={{ previous_week|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">← สัปดาห์ก่อน</a>
       <a href="?week={% now 'Y-m-d' %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">สัปดาห์นี้</a>
-      <a href="?week={{ next_week|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">ถัดไป →</a>
+      <a href="?week={{ next_week|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">สัปดาห์ถัดไป →</a>
     </nav>
   </div>
 
   {% if detailed_mode %}
-  <div class="mode-note"><span>แสดงเฉพาะ {% if role_filter %}{% for value,label in role_choices %}{% if value == role_filter %}<b>{{ label }}</b>{% endif %}{% endfor %}{% else %}ผลการค้นหา{% endif %} เพื่อให้ตารางอ่านง่ายขึ้น</span><a href="?week={{ week_start|date:'Y-m-d' }}">กลับภาพรวม</a></div>
+  <div class="filter-note"><span>โหมดรายชื่อ: ตารางจะแสดงเฉพาะบุคลากรที่ตรงกับตัวกรอง</span><a href="?week={{ week_start|date:'Y-m-d' }}">ล้างตัวกรอง</a></div>
   {% else %}
-  <div class="mode-note"><span>แต่ละช่องแสดงจำนวน <b>ดึก · เช้า · บ่าย</b> ของหน้าที่นั้น คลิกชื่อหน้าที่เพื่อดูรายบุคคล</span><span>มีทั้งหมด {{ overview_role_rows|length }} หน้าที่</span></div>
+  <div class="filter-note"><span>คลิกช่องเวรเพื่อเลือกวัน และดูรายชื่อ/แก้ไขด้านล่าง</span><span>ดึก 00–08 · เช้า 08–16 · บ่าย 16–00</span></div>
   {% endif %}
 
-  <section class="board">
-    <table class="roster">
+  <section class="timetable-wrap" id="timetable">
+    <table class="timetable">
       <thead>
         <tr>
-          <th>{% if detailed_mode %}บุคลากร{% else %}หน้าที่{% endif %}</th>
-          {% for day in week_days %}
-          <th class="{% if day.is_today %}today{% endif %} {% if day.is_selected %}selected{% endif %}">
-            <a href="?day={{ day.date|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" style="color:inherit;text-decoration:none">
-              <span class="day-title">{{ day.label }}</span><span class="day-date">{{ day.date|date:"d/m" }}{% if day.is_today %} · วันนี้{% endif %}</span>
-            </a>
-          </th>
+          <th>วัน</th>
+          {% for key,label,time_label,hour in timetable_shift_defs %}
+          <th><span class="shift-title">{{ label }}</span><span class="shift-time">{{ time_label }}</span></th>
           {% endfor %}
         </tr>
       </thead>
-
-      {% if detailed_mode %}
       <tbody>
-        {% for row in board_rows %}
-        <tr>
-          <td class="person-cell">
-            <div class="person">
-              <span class="avatar">{{ row.initials }}</span>
-              <span class="person-copy"><span class="person-name">{{ row.user.get_full_name|default:row.user.username }}{% if row.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</span><span class="person-role">{{ row.profile.get_role_display }}</span></span>
-            </div>
-          </td>
-          {% for cell in row.cells %}
-          <td class="person-shift-cell {% if cell.is_today %}today{% endif %} {% if cell.is_selected %}selected{% endif %}">
-            <div class="shift-stack">
-              {% for shift in cell.shifts %}
-              <a class="shift-chip {{ shift.ui_class }}" href="?day={{ cell.date|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">
-                {% if shift.status == 'LEAVE' %}ลา{% elif shift.status == 'CANCELLED' %}ยกเลิก{% else %}{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}{% endif %}
-              </a>
-              {% empty %}<span class="zero">·</span>{% endfor %}
-            </div>
-          </td>
-          {% endfor %}
-        </tr>
-        {% empty %}<tr><td colspan="8" class="empty">ไม่พบบุคลากรตามเงื่อนไข</td></tr>{% endfor %}
-      </tbody>
-      {% else %}
-      <tbody>
-        {% for row in overview_role_rows %}
-        <tr>
-          <td class="role-cell">
-            <a class="role-link" href="?week={{ week_start|date:'Y-m-d' }}&role={{ row.role }}">
-              <span><strong>{{ row.label }}</strong><small>{{ row.people_count }} คน</small></span><span class="role-open">ดูรายชื่อ →</span>
+        {% for row in timetable_rows %}
+        <tr class="{% if row.is_today %}today-row{% endif %} {% if row.is_selected %}selected-row{% endif %}">
+          <td class="day-cell">
+            <a class="day-link" href="?day={{ row.date|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">
+              <strong>{{ row.label }}</strong><span>{{ row.date|date:"d/m/Y" }}</span>{% if row.is_today %}<em class="today-tag">วันนี้</em>{% endif %}
             </a>
           </td>
           {% for cell in row.cells %}
-          <td class="overview-cell {% if cell.is_today %}today{% endif %} {% if cell.is_selected %}selected{% endif %}">
-            {% if cell.total %}
-            <div class="counts">
-              {% if cell.night %}<span class="count night">ดึก <b>{{ cell.night }}</b></span>{% endif %}
-              {% if cell.morning %}<span class="count morning">เช้า <b>{{ cell.morning }}</b></span>{% endif %}
-              {% if cell.evening %}<span class="count evening">บ่าย <b>{{ cell.evening }}</b></span>{% endif %}
-              {% if cell.leave %}<span class="count leave">ลา <b>{{ cell.leave }}</b></span>{% endif %}
-            </div>
-            {% else %}<span class="zero">–</span>{% endif %}
+          <td class="shift-cell">
+            {% if cell.count %}
+            <a class="cell-link" href="?day={{ row.date|date:'Y-m-d' }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">
+              <div class="shift-box {{ cell.key }}">
+                <div class="shift-box-head"><strong>{{ cell.label }}</strong><span class="people-count">{{ cell.count }} คน</span></div>
+                {% if detailed_mode %}
+                <div class="person-lines">
+                  {% for person in cell.people %}
+                  <div class="person-line"><b>{{ person.name }}</b><small>{{ person.role }}{% if person.duty %} · {{ person.duty }}{% endif %}</small></div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="role-lines">
+                  {% for summary in cell.role_summaries %}
+                  <div class="role-line"><span>{{ summary.label }}</span><b>{{ summary.count }}</b></div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% if cell.leave_count %}<div class="more-note">ลา {{ cell.leave_count }} รายการ</div>{% endif %}
+              </div>
+            </a>
+            {% else %}
+            <div class="shift-box empty">ไม่มีเวร</div>
+            {% endif %}
           </td>
           {% endfor %}
         </tr>
         {% endfor %}
       </tbody>
-      {% endif %}
     </table>
   </section>
 
-  <div class="section-grid">
+  <div class="below">
     <aside class="card">
-      <div class="card-head"><h2>กำลังขึ้นเวรตอนนี้</h2><p>คนที่กดเริ่มเวรแล้ว</p></div>
+      <div class="card-head"><h2>กำลังขึ้นเวรตอนนี้</h2><p>บุคลากรที่กดเริ่มเวรแล้ว</p></div>
       <div class="on-duty">
         {% for row in on_duty_now %}
         <div class="duty-person"><b>{{ row.user.get_full_name|default:row.user.username }}{% if row.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ row.profile.get_role_display }}</small><div class="duty">หน้าที่: {{ row.planned_duty }}</div><small class="live">● ONLINE</small></div>
-        {% empty %}<div class="empty">ยังไม่มีบุคลากรกดเริ่มเวร</div>{% endfor %}
+        {% empty %}<div class="empty-state">ยังไม่มีบุคลากรกดเริ่มเวร</div>{% endfor %}
       </div>
     </aside>
 
     <section class="card" id="day-detail">
-      <div class="day-head">
-        <div><h2>เวรวันที่เลือก · วัน{{ selected_day_label }} {{ selected_day|date:"d/m/Y" }}</h2><p>{{ selected_shifts|length }} เวร{% if role_filter %} ในหน้าที่ที่เลือก{% endif %}</p></div>
-      </div>
+      <div class="detail-head"><div><h2>วัน{{ selected_day_label }}ที่ {{ selected_day|date:"d/m/Y" }}</h2><p>{{ selected_shifts|length }} เวรในวันที่เลือก{% if role_filter %} · ตามหน้าที่ที่กรอง{% endif %}</p></div></div>
       <div class="detail-list">
         {% for shift in selected_shifts %}
         <article class="shift-row{% if shift.is_current_user %} current-user{% endif %}">
           <div><span class="detail-name">{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.is_current_user %}<span class="you-badge">คุณ</span>{% endif %}</span><span class="detail-role">{{ shift.user.hospital_staff_profile.get_role_display }}</span></div>
-          <div><span class="label">เวลา</span><span class="detail-time">{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</span></div>
+          <div><span class="label">เวลาเวร</span><span class="detail-time">{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</span></div>
           <div class="duty-box"><span class="label">หน้าที่ประจำเวร</span>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</div>
           <div class="badges"><span class="badge">{{ shift.get_status_display }}</span>{% if shift.actual_duty and shift.actual_duty.is_present %}<span class="badge">ขึ้นเวรจริง</span>{% endif %}{% if shift.active_case_count %}<span class="badge">{{ shift.active_case_count }} เคส</span>{% endif %}</div>
           {% if can_manage %}
           <details class="edit"><summary>แก้ไข</summary>
-            <form class="edit-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
+            <form class="edit-form" method="post">
+              {% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="shift_id" value="{{ shift.id }}"><input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
               <label>บุคลากร<select name="user_id" required>{% for user in users %}<option value="{{ user.id }}" {% if user.id == shift.user_id %}selected{% endif %}>{{ user.get_full_name|default:user.username }}</option>{% endfor %}</select></label>
               <label>วันที่<input type="date" name="shift_date" value="{{ shift.shift_date|date:'Y-m-d' }}" required></label>
               <label>เริ่ม<input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label>
@@ -256,7 +249,7 @@
           </details>
           {% endif %}
         </article>
-        {% empty %}<div class="empty">ยังไม่มีเวรในวันที่เลือก</div>{% endfor %}
+        {% empty %}<div class="empty-state">ยังไม่มีเวรในวันที่เลือก</div>{% endfor %}
       </div>
     </section>
   </div>
@@ -264,7 +257,8 @@
   {% if can_manage %}
   <details class="card add-shift" id="add-shift">
     <summary>+ เพิ่มเวรและกำหนดหน้าที่</summary>
-    <form class="create" method="post">{% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
+    <form class="create" method="post">
+      {% csrf_token %}<input type="hidden" name="action" value="save_shift"><input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
       <label>บุคลากร<select name="user_id" required><option value="">เลือกบุคลากร</option>{% for user in users %}<option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} · {{ user.hospital_staff_profile.get_role_display }}</option>{% endfor %}</select></label>
       <label>หน้าที่ประจำเวร<input name="duty_assignment" list="duty-options" maxlength="200" placeholder="เช่น คัดกรองผู้ป่วย / ประจำห้องตรวจ 2" required></label>
       <datalist id="duty-options">{% for duty in duty_suggestions %}<option value="{{ duty }}">{% endfor %}</datalist>
@@ -277,5 +271,12 @@
   </details>
   {% endif %}
 </main>
+
+<script>
+function toggleFullscreen(){
+  const el=document.getElementById("schedule-page");
+  if(!document.fullscreenElement){el.requestFullscreen?.();}else{document.exitFullscreen?.();}
+}
+</script>
 </body>
 </html>
