@@ -39,13 +39,35 @@ class ShiftDutyAssignmentTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["role_columns"]), len(StaffProfile.Role.choices))
+        self.assertEqual(
+            len(response.context["role_columns"]),
+            len(StaffProfile.Role.choices) + 1,
+        )
         self.assertEqual(
             [row["role"] for row in response.context["role_columns"]],
-            list(StaffProfile.Role.values),
+            ["ADMIN", *list(StaffProfile.Role.values)],
         )
+        self.assertContains(response, "ผู้ดูแลระบบ")
         for _value, label in StaffProfile.Role.choices:
             self.assertContains(response, label)
+
+    def test_manager_superuser_can_be_scheduled_as_system_administrator(self):
+        response = self.client.post(reverse("shift_schedule"), {
+            "action": "save_shift",
+            "day": timezone.localdate().isoformat(),
+            "user_id": self.manager.id,
+            "shift_date": timezone.localdate().isoformat(),
+            "start_time": "08:00",
+            "end_time": "16:00",
+            "status": ShiftSchedule.Status.SCHEDULED,
+            "duty_assignment": "ดูแลระบบและประสานงาน",
+        }, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        shift = ShiftSchedule.objects.get(user=self.manager)
+        self.assertEqual(shift.note, "ดูแลระบบและประสานงาน")
+        self.assertContains(response, "ผู้ดูแลระบบ")
+        self.assertContains(response, "duty-manager")
 
     def test_scheduled_shift_requires_duty_assignment(self):
         response = self.client.post(reverse("shift_schedule"), {
