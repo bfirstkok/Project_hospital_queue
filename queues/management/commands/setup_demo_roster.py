@@ -13,6 +13,7 @@ from queues.models import ShiftSchedule, StaffProfile
 
 
 TARGET_STAFF_PER_ROLE = 10
+ADMIN_MORNING_COVERAGE = 1
 AUTO_ROSTER_MARKER = "AUTO_ROSTER"
 
 ROLE_USERNAME_PREFIX = {
@@ -92,7 +93,7 @@ SHIFT_ROLE_COVERAGE = {
 class Command(BaseCommand):
     help = (
         "Ensure every hospital role has at least 10 active demo users and build "
-        "a balanced hospital-style weekly roster."
+        "a balanced hospital-style weekly roster, including active system administrators."
     )
 
     def add_arguments(self, parser):
@@ -109,8 +110,8 @@ class Command(BaseCommand):
             "--replace-week",
             action="store_true",
             help=(
-                "Delete existing SCHEDULED shifts for non-admin personnel in the "
-                "selected week before rebuilding. LEAVE/CANCELLED records are preserved."
+                "Delete existing SCHEDULED shifts in the selected week before rebuilding. "
+                "LEAVE/CANCELLED records are preserved."
             ),
         )
 
@@ -130,10 +131,13 @@ class Command(BaseCommand):
             ShiftSchedule.objects.filter(
                 shift_date__range=(week_start, week_end),
                 status=ShiftSchedule.Status.SCHEDULED,
-                user__is_superuser=False,
             ).delete()
 
         staff_by_role = self._active_staff_by_role()
+        active_admins = list(
+            get_user_model().objects.filter(is_active=True, is_superuser=True)
+            .order_by("first_name", "last_name", "username")
+        )
         missing_roles = [
             role
             for role in ROLE_USERNAME_PREFIX
@@ -148,6 +152,7 @@ class Command(BaseCommand):
         created_shifts = self._build_weekly_roster(
             week_start=week_start,
             staff_by_role=staff_by_role,
+            active_admins=active_admins,
         )
 
         self.stdout.write(
@@ -164,6 +169,13 @@ class Command(BaseCommand):
                 for role in ROLE_USERNAME_PREFIX
             )
         )
+        self.stdout.write(f"Active system administrators={len(active_admins)}")
+        if not active_admins:
+            self.stdout.write(
+                self.style.WARNING(
+                    "No active superuser found; administrator column will remain empty."
+                )
+            )
         self.stdout.write(f"Credentials written to: {credentials_path}")
 
     def _ensure_minimum_staff(self):
@@ -251,7 +263,7 @@ class Command(BaseCommand):
             staff_by_role[profile.role].append(profile.user)
         return staff_by_role
 
-    def _build_weekly_roster(self, *, week_start, staff_by_role):
+    def _build_weekly_roster(self, *, week_start, staff_by_role, active_admins):
         created_shifts = 0
         weekly_assignments = defaultdict(int)
         last_assigned_date = {}
@@ -273,6 +285,35 @@ class Command(BaseCommand):
 
             for shift_code, start_time, end_time, shift_label in SHIFT_TEMPLATES:
                 coverage_map = SHIFT_ROLE_COVERAGE[shift_code]
+
+                if shift_code == "MORNING" and active_admins:
+                    admin_candidates = [
+                        admin
+                        for admin in active_admins
+                        if admin.id not in leave_by_day[shift_date]
+                    ]
+                    admin_candidates.sort(
+                        key=lambda admin: (
+                            weekly_assignments[admin.id],
+                            last_assigned_date.get(admin.id, date.min),
+                            admin.username,
+                        )
+                    )
+                    for admin in admin_candidates[:ADMIN_MORNING_COVERAGE]:
+                        _shift, created = ShiftSchedule.objects.get_or_create(
+                            user=admin,
+                            shift_date=shift_date,
+                            start_time=start_time,
+                            defaults={
+                                "end_time": end_time,
+                                "status": ShiftSchedule.Status.SCHEDULED,
+                                "note": f"{shift_label} · ดูแลระบบ · {AUTO_ROSTER_MARKER}",
+                            },
+                        )
+                        if created:
+                            created_shifts += 1
+                            weekly_assignments[admin.id] += 1
+                            last_assigned_date[admin.id] = shift_date
 
                 for role, coverage in coverage_map.items():
                     if coverage <= 0:
