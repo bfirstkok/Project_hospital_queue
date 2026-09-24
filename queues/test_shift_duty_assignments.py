@@ -51,6 +51,15 @@ class ShiftDutyAssignmentTests(TestCase):
         for _value, label in StaffProfile.Role.choices:
             self.assertContains(response, label)
 
+    def test_shift_role_cards_open_popup_tables(self):
+        response = self.client.get(reverse("shift_schedule"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="rosterModal"', html=False)
+        self.assertContains(response, 'data-roster-role="DOCTOR"', html=False)
+        self.assertContains(response, 'data-role-panel="DOCTOR"', html=False)
+        self.assertContains(response, "Popup จะแสดงตารางเวรของตำแหน่งนั้นทันที")
+
     def test_manager_superuser_can_be_scheduled_as_system_administrator(self):
         response = self.client.post(reverse("shift_schedule"), {
             "action": "save_shift",
