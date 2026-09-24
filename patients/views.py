@@ -67,11 +67,256 @@ PUBLIC_STATUS = {
     Queue.Status.OBSERVATION_MONITORING: ("กำลังเฝ้าระวัง", "กำลังติดตามสัญญาณชีพด้วยอุปกรณ์"),
     Queue.Status.REASSESSMENT_REQUIRED: ("รอพยาบาลประเมินซ้ำ", "อุปกรณ์พบค่าที่ต้องตรวจสอบ กรุณารอพยาบาล"),
     Queue.Status.EMERGENCY_TRANSFER: ("ส่งต่อฉุกเฉิน", "กรุณาปฏิบัติตามคำแนะนำของบุคลากรทันที"),
-    Queue.Status.OPD_DONE: ("เสร็จสิ้นการรับบริการ", "การตรวจ OPD เสร็จสิ้นแล้ว"),
+    Queue.Status.OPD_DONE: ("แพทย์ตรวจเสร็จ", "กรุณาดำเนินการตามขั้นตอนหลังตรวจ เช่น ห้องยา/การเงิน หากมี"),
     Queue.Status.FOLLOWUP: ("นัดติดตามอาการ", "กรุณาตรวจสอบวันนัดกับเจ้าหน้าที่"),
     Queue.Status.DISCHARGED: ("เสร็จสิ้นการรับบริการ", "สามารถกลับบ้านได้ตามคำแนะนำของเจ้าหน้าที่"),
     Queue.Status.CANCELLED: ("ยกเลิกคิวแล้ว", "หากต้องการรับบริการ กรุณาติดต่อเจ้าหน้าที่"),
 }
+
+
+def _patient_journey_for_visit(visit, workflow_logs=None):
+    """Build one cross-department patient journey from the evidence stored on a Visit.
+
+    OPD_DONE means the doctor's examination is finished; it is intentionally not
+    treated as the end of the whole hospital journey when pharmacy/billing work
+    remains.
+    """
+    workflow_logs = list(workflow_logs or [])
+
+    try:
+        queue = visit.queue
+    except ObjectDoesNotExist:
+        queue = None
+    try:
+        triage = visit.triage_result
+    except ObjectDoesNotExist:
+        triage = None
+    try:
+        assessment = visit.opd_assessment
+    except ObjectDoesNotExist:
+        assessment = None
+    try:
+        prescription = visit.prescription
+    except ObjectDoesNotExist:
+        prescription = None
+    try:
+        bill = visit.bill
+    except ObjectDoesNotExist:
+        bill = None
+
+    queue_status = getattr(queue, "status", "")
+    logged_events = {log.event_type for log in workflow_logs}
+
+    def step(key, label, state, detail):
+        return {
+            "key": key,
+            "label": label,
+            "state": state,
+            "detail": detail,
+        }
+
+    beyond_vitals = queue_status not in {"", Queue.Status.WAITING_VITALS}
+    vitals_done = (
+        VisitWorkflowLog.EventType.VITALS_RECORDED in logged_events
+        or bool(visit.triaged_at)
+        or beyond_vitals
+    )
+
+    triage_done = bool(
+        visit.confirmed_at
+        or visit.final_severity
+        or getattr(triage, "nurse_severity", None)
+    )
+
+    queue_done = bool(
+        visit.called_at
+        or queue_status in {
+            Queue.Status.CALLED,
+            Queue.Status.MONITORING,
+            Queue.Status.OBSERVATION_MONITORING,
+            Queue.Status.REASSESSMENT_REQUIRED,
+            Queue.Status.EMERGENCY_TRANSFER,
+            Queue.Status.OPD_DONE,
+            Queue.Status.FOLLOWUP,
+            Queue.Status.DISCHARGED,
+        }
+    )
+
+    doctor_done = assessment is not None
+
+    prescription_status = getattr(prescription, "status", "")
+    pharmacy_done = prescription_status == "DISPENSED"
+    pharmacy_skipped = prescription_status == "CANCELLED" or (
+        prescription is None and bill is not None and doctor_done
+    )
+    pharmacy_started = prescription_status in {"DRAFT", "SENT", "PREPARING", "READY"}
+
+    bill_status = getattr(bill, "status", "")
+    billing_done = bill_status in {"PAID", "WAIVED"}
+    billing_cancelled = bill_status == "CANCELLED"
+    billing_started = bill_status in {"DRAFT", "READY"}
+
+    terminal_cancelled = queue_status == Queue.Status.CANCELLED
+    emergency_transfer = queue_status == Queue.Status.EMERGENCY_TRANSFER
+    downstream_complete = (
+        doctor_done
+        and (pharmacy_done or pharmacy_skipped)
+        and billing_done
+    )
+    completed = queue_status == Queue.Status.DISCHARGED or downstream_complete
+
+    steps = [
+        step(
+            "registration",
+            "ลงทะเบียน",
+            "done",
+            f"ลงทะเบียน {timezone.localtime(visit.registered_at).strftime('%d/%m/%Y %H:%M')}" if visit.registered_at else "ลงทะเบียนแล้ว",
+        ),
+        step(
+            "vitals",
+            "วัดสัญญาณชีพ",
+            "done" if vitals_done else ("current" if queue_status == Queue.Status.WAITING_VITALS else "pending"),
+            "บันทึกสัญญาณชีพแล้ว" if vitals_done else "รอวัดและบันทึกสัญญาณชีพ",
+        ),
+        step(
+            "triage",
+            "คัดกรอง",
+            "done" if triage_done else ("current" if queue_status == Queue.Status.WAITING_CONFIRMATION else "pending"),
+            (
+                f"ยืนยันระดับ {visit.get_final_severity_display()}"
+                if triage_done and visit.final_severity
+                else ("รอพยาบาลยืนยันผลคัดกรอง" if not triage_done else "คัดกรองแล้ว")
+            ),
+        ),
+        step(
+            "queue",
+            "รอ/เรียกคิว",
+            "done" if queue_done else ("current" if queue_status in {Queue.Status.WAITING_QUEUE, Queue.Status.WAITING} else "pending"),
+            (
+                f"เรียกคิวแล้ว · {queue.display_number}" if queue_done and queue
+                else (f"กำลังรอเรียก · {queue.display_number}" if queue else "รอเข้าคิวบริการ")
+            ),
+        ),
+        step(
+            "doctor",
+            "ห้องตรวจ",
+            "done" if doctor_done else ("current" if queue_status == Queue.Status.CALLED else "pending"),
+            (
+                f"แพทย์ตรวจแล้ว · {assessment.examiner.get_full_name() or assessment.examiner.username}"
+                if doctor_done and getattr(assessment, "examiner", None)
+                else ("แพทย์บันทึกผลตรวจแล้ว" if doctor_done else "รอเข้าห้องตรวจ")
+            ),
+        ),
+        step(
+            "pharmacy",
+            "ห้องยา",
+            "done" if pharmacy_done else (
+                "skipped" if pharmacy_skipped else (
+                    "current" if pharmacy_started and doctor_done else "pending"
+                )
+            ),
+            (
+                "จ่ายยาแล้ว"
+                if pharmacy_done else (
+                    "ไม่มีรายการยาที่ต้องรับ" if pharmacy_skipped else (
+                        prescription.get_status_display() if prescription else "รอแผนหลังตรวจ/ใบสั่งยา"
+                    )
+                )
+            ),
+        ),
+        step(
+            "billing",
+            "การเงิน",
+            "done" if billing_done else (
+                "skipped" if billing_cancelled else (
+                    "current" if billing_started and doctor_done else "pending"
+                )
+            ),
+            (
+                bill.get_status_display()
+                if bill else "รอสรุปค่าใช้จ่ายหลังตรวจ"
+            ),
+        ),
+        step(
+            "complete",
+            "เสร็จสิ้น",
+            "done" if completed else (
+                "cancelled" if terminal_cancelled else (
+                    "current" if emergency_transfer else "pending"
+                )
+            ),
+            (
+                "กระบวนการบริการเสร็จสิ้นแล้ว"
+                if completed else (
+                    "ยกเลิกคิว/การรับบริการ"
+                    if terminal_cancelled else (
+                        "อยู่ระหว่างส่งต่อฉุกเฉิน"
+                        if emergency_transfer else "ยังมีขั้นตอนที่ต้องดำเนินการต่อ"
+                    )
+                )
+            ),
+        ),
+    ]
+
+    if terminal_cancelled:
+        current_label = "ยกเลิกการรับบริการ"
+        current_detail = "คิวนี้ถูกยกเลิก"
+        current_class = "cancelled"
+    elif emergency_transfer:
+        current_label = "ส่งต่อฉุกเฉิน"
+        current_detail = "ผู้ป่วยอยู่ในกระบวนการดูแลฉุกเฉิน"
+        current_class = "urgent"
+    elif completed:
+        current_label = "เสร็จสิ้นการรับบริการ"
+        current_detail = "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว"
+        current_class = "done"
+    elif billing_started:
+        current_label = "การเงิน"
+        current_detail = bill.get_status_display() if bill else "กำลังดำเนินการ"
+        current_class = "current"
+    elif pharmacy_started:
+        current_label = "ห้องยา"
+        current_detail = prescription.get_status_display() if prescription else "กำลังดำเนินการ"
+        current_class = "current"
+    elif doctor_done:
+        current_label = "ขั้นตอนหลังตรวจ"
+        if prescription is None and bill is None:
+            current_detail = "แพทย์ตรวจเสร็จแล้ว · รอส่งต่อห้องยา/การเงินตามแผนการรักษา"
+        else:
+            current_detail = "แพทย์ตรวจเสร็จแล้ว · กำลังดำเนินการหลังตรวจ"
+        current_class = "current"
+    elif queue_status == Queue.Status.CALLED:
+        current_label = "ห้องตรวจ"
+        current_detail = "ถึงคิวแล้ว · รอแพทย์ตรวจ"
+        current_class = "current"
+    elif queue_status in {Queue.Status.OBSERVATION_MONITORING, Queue.Status.REASSESSMENT_REQUIRED}:
+        current_label = "เฝ้าระวัง"
+        current_detail = "กำลังติดตามสัญญาณชีพ/ตรวจอาการระหว่างรอ"
+        current_class = "current"
+    elif queue_status in {Queue.Status.WAITING_QUEUE, Queue.Status.WAITING}:
+        current_label = "รอเรียกคิว"
+        current_detail = queue.display_number if queue else "กำลังรอ"
+        current_class = "current"
+    elif queue_status == Queue.Status.WAITING_CONFIRMATION:
+        current_label = "คัดกรอง"
+        current_detail = "รอพยาบาลยืนยันผล"
+        current_class = "current"
+    else:
+        current_label = "วัดสัญญาณชีพ"
+        current_detail = "รอบันทึกข้อมูลก่อนคัดกรอง"
+        current_class = "current"
+
+    return {
+        "steps": steps,
+        "current_label": current_label,
+        "current_detail": current_detail,
+        "current_class": current_class,
+        "queue_status": queue_status,
+        "queue_status_label": (
+            PUBLIC_STATUS.get(queue_status, (queue.get_status_display(), ""))[0]
+            if queue else "ไม่พบข้อมูลคิว"
+        ),
+    }
 
 
 def _cors_json(request, payload, status=200):
@@ -1851,7 +2096,15 @@ def patient_history(request, patient_id: int):
     visits = list(
         Visit.objects
         .filter(patient=patient)
-        .select_related("queue", "triage_result", "opd_assessment", "vitals")
+        .select_related(
+            "queue",
+            "triage_result",
+            "opd_assessment",
+            "opd_assessment__examiner",
+            "vitals",
+            "prescription",
+            "bill",
+        )
         .prefetch_related(
             "critical_alerts",
             Prefetch(
@@ -1872,6 +2125,7 @@ def patient_history(request, patient_id: int):
             (log for log in logs if log.event_type == VisitWorkflowLog.EventType.TRIAGE_CONFIRMED),
             None,
         )
+        visit.patient_journey = _patient_journey_for_visit(visit, logs)
     appointments = patient.appointments.order_by("-date", "-time", "-created_at")
 
     return render(request, "patients/history.html", {
