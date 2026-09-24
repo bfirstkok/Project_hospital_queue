@@ -27,6 +27,29 @@ class ReadOnlySecurityAdmin(admin.ModelAdmin):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
+    # Patient portal credentials are intentionally read-only when opened
+    # directly in Django Admin. They still use CASCADE back to Patient,
+    # however, so blocking their individual delete permission must not make a
+    # legitimate Patient deletion impossible. Allow those security records to
+    # be removed only as part of the Patient cascade.
+    _cascade_security_models = (PatientAccessToken, PatientPin)
+
+    def get_deleted_objects(self, objs, request):
+        deleted_objects, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs,
+            request,
+        )
+        cascade_labels = {
+            model._meta.verbose_name
+            for model in self._cascade_security_models
+        }
+        perms_needed = {
+            permission
+            for permission in perms_needed
+            if permission not in cascade_labels
+        }
+        return deleted_objects, model_count, perms_needed, protected
+
     list_display = (
         "id",
         "hn",
