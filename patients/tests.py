@@ -9,7 +9,92 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from queues.models import Queue, Visit, VisitWorkflowLog, VitalSign
+from opd.models import Bill, Prescription, VisitAssessment
 from .models import Patient
+
+
+class PatientJourneyTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser(
+            username="journey-admin",
+            email="journey@example.test",
+            password="secret",
+        )
+        self.client.force_login(self.user)
+        self.patient = Patient.objects.create(
+            first_name="ทดสอบ",
+            last_name="เส้นทางผู้ป่วย",
+            national_id="9222222222222",
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        self.queue = Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.OPD_DONE,
+            priority=4,
+        )
+        VisitAssessment.objects.create(
+            visit=self.visit,
+            examiner=self.user,
+            diagnosis="ทดสอบ",
+            treatment="ติดตามอาการ",
+        )
+
+    def history(self):
+        return self.client.get(reverse("patient_history", args=[self.patient.id]))
+
+    def test_opd_done_is_doctor_complete_not_whole_visit_complete(self):
+        response = self.history()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "สถานะปัจจุบันของผู้ป่วย")
+        self.assertContains(response, "ขั้นตอนหลังตรวจ")
+        self.assertContains(response, "แพทย์ตรวจเสร็จ")
+        self.assertContains(response, "รอแผนหลังตรวจ/ใบสั่งยา")
+        self.assertNotContains(response, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
+
+    def test_no_prescription_can_skip_pharmacy_after_bill_exists_and_finish_after_payment(self):
+        bill = Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.READY,
+        )
+
+        before = self.history()
+        self.assertContains(before, "ไม่มีรายการยาที่ต้องรับ")
+        self.assertContains(before, "การเงิน")
+        self.assertContains(before, "รอชำระเงิน")
+
+        bill.status = Bill.Status.PAID
+        bill.save(update_fields=["status", "updated_at"])
+
+        after = self.history()
+        self.assertContains(after, "เสร็จสิ้นการรับบริการ")
+        self.assertContains(after, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
+
+    def test_prescription_must_be_dispensed_even_when_bill_is_paid(self):
+        prescription = Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=self.user,
+            status=Prescription.Status.SENT,
+        )
+        Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.PAID,
+        )
+
+        waiting = self.history()
+        self.assertContains(waiting, "ห้องยา")
+        self.assertContains(waiting, "รอห้องยา")
+        self.assertNotContains(waiting, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
+
+        prescription.status = Prescription.Status.DISPENSED
+        prescription.save(update_fields=["status", "updated_at"])
+
+        done = self.history()
+        self.assertContains(done, "เสร็จสิ้นการรับบริการ")
+        self.assertContains(done, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
 
 
 class PatientAgeDisplayTests(TestCase):
