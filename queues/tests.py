@@ -623,6 +623,47 @@ class PersonnelDashboardTests(TestCase):
         self.assertTrue(duty.is_present)
         self.assertTrue(duty.is_available)
 
+    def test_superuser_can_edit_own_name_and_photo_from_personnel_page(self):
+        StaffProfile.objects.get_or_create(
+            user=self.manager,
+            defaults={"role": StaffProfile.Role.STAFF},
+        )
+
+        page = self.client.get(reverse("personnel_dashboard"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "แก้ไขชื่อและรูปผู้ดูแลระบบ")
+        self.assertContains(page, "บันทึกชื่อและรูปผู้ดูแลระบบ")
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            photo = SimpleUploadedFile(
+                "admin.webp",
+                b"RIFF0000WEBPVP8 admin-profile",
+                content_type="image/webp",
+            )
+            response = self.client.post(reverse("personnel_dashboard"), {
+                "action": "update_staff_identity",
+                "user_id": self.manager.id,
+                "first_name": "ผู้ดูแล",
+                "last_name": "ระบบ",
+                "photo": photo,
+            })
+
+            self.assertRedirects(response, reverse("personnel_dashboard"))
+            self.manager.refresh_from_db()
+            self.manager.hospital_staff_profile.refresh_from_db()
+            self.assertEqual(self.manager.get_full_name(), "ผู้ดูแล ระบบ")
+            self.assertTrue(self.manager.hospital_staff_profile.photo.name)
+
+            photo_response = self.client.get(reverse(
+                "staff_photo",
+                args=[self.manager.hospital_staff_profile.id],
+            ))
+            self.assertEqual(photo_response.status_code, 200)
+            self.assertIn("no-cache", photo_response["Cache-Control"])
+            for closer in photo_response._resource_closers:
+                closer()
+            photo_response._resource_closers.clear()
+
     def test_manager_can_set_real_name_and_private_staff_photo(self):
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
             photo = SimpleUploadedFile(
@@ -650,6 +691,7 @@ class PersonnelDashboardTests(TestCase):
             ))
             self.assertEqual(photo_response.status_code, 200)
             self.assertEqual(photo_response["Content-Type"], "image/png")
+            self.assertIn("no-cache", photo_response["Cache-Control"])
             # Close only the streamed file. Calling response.close() also emits
             # request_finished and closes PostgreSQL during this TestCase.
             for closer in photo_response._resource_closers:
