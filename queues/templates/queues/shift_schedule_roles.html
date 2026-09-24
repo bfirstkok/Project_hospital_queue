@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ตารางเวรบุคลากร</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=shift-timetable-20260923">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=shift-timetable-20260924b">
   <style>
     :root{
       --ink:#15324b;--muted:#667d88;--line:#cbd7e4;--line-soft:#e6ebf1;
@@ -49,79 +49,110 @@
 
     .filter-note{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:8px 12px;border:1px solid var(--line);border-top:0;background:#f8fbfd;
-      color:#607681;font-size:9px;font-weight:700
+      padding:9px 12px;border-bottom:1px solid var(--line);background:#f8fbfd;
+      color:#607681;font-size:10px;font-weight:700
     }
     .filter-note a{color:#0b7068;text-decoration:none;font-weight:900}
 
+    .roster-board{
+      margin-top:0;border:1px solid var(--line);border-top:0;background:#fff;
+      box-shadow:0 8px 22px rgba(21,50,75,.05)
+    }
+    .roster-board-head{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:10px 12px;border-bottom:1px solid var(--line-soft);background:#fff
+    }
+    .roster-board-head strong{font-size:13px}
+    .roster-board-head span{color:var(--muted);font-size:10px;font-weight:700}
+    .roster-fullscreen-exit{
+      display:none;height:34px;padding:0 11px;border:1px solid #c8d5df;border-radius:7px;
+      background:#fff;color:#28506e;font:800 10px "Sarabun",sans-serif;cursor:pointer
+    }
     .timetable-wrap{
-      overflow:auto;border:1px solid var(--line);border-top:0;background:#fff;
-      box-shadow:0 8px 22px rgba(21,50,75,.04)
+      overflow:auto;max-height:72vh;background:#fff;overscroll-behavior:contain;
+      scrollbar-width:thin;scrollbar-color:#b8c8cf #f5f7f9
     }
     .timetable{
-      width:100%;min-width:1440px;border-collapse:separate;border-spacing:0;table-layout:fixed
+      width:100%;min-width:1920px;border-collapse:separate;border-spacing:0;table-layout:fixed;background:#fff
     }
     .timetable th,.timetable td{
-      border-right:1px solid var(--line);border-bottom:1px solid var(--line)
+      border-right:1px solid #dce5e9;border-bottom:1px solid #dce5e9
     }
     .timetable thead th{
-      position:sticky;top:0;z-index:6;height:78px;padding:10px 8px;
-      background:#dcecf8;color:#15324b;text-align:center;font-size:12px;font-weight:900
+      position:sticky;top:0;z-index:6;height:72px;padding:9px 8px;
+      background:#edf5f8;color:#15324b;text-align:center;font-size:12px;font-weight:900
     }
     .timetable thead th:first-child{
-      left:0;z-index:8;width:100px;min-width:100px;background:#cfe5f4
+      left:0;z-index:8;width:112px;min-width:112px;background:#e2eff4
     }
     .role-head strong{display:block;font-size:13px;line-height:1.35}
-    .role-head small{display:block;margin-top:4px;color:#667d88;font-size:10px;font-weight:700}
-    .timetable thead th.selected-role{background:#bee2dc;box-shadow:inset 0 -4px 0 #087f75}
+    .role-head small{display:block;margin-top:3px;color:#738892;font-size:9px;font-weight:700}
+    .timetable thead th.selected-role{background:#d8efea;box-shadow:inset 0 -4px 0 #087f75}
 
     .day-cell{
-      position:sticky;left:0;z-index:4;width:100px;min-width:100px;
-      padding:12px 8px;text-align:center;vertical-align:middle
+      position:sticky;left:0;z-index:4;width:112px;min-width:112px;
+      padding:12px 8px;text-align:center;vertical-align:middle;border-right:2px solid #cbd9de!important
     }
     .day-link{color:var(--ink);text-decoration:none}
-    .day-link strong{display:block;font-size:14px}
-    .day-link span{display:block;margin-top:3px;font-size:11px;color:#705f59}
-    .today-tag{display:inline-flex;margin-top:5px;padding:3px 7px;border-radius:999px;background:#0a8177;color:#fff;font-size:9px;font-weight:900}
+    .day-link strong{display:block;font-size:15px}
+    .day-link span{display:block;margin-top:3px;font-size:10px;color:#6d7f87}
+    .today-tag{display:inline-flex;margin-top:6px;padding:3px 8px;border-radius:999px;background:#0a8177;color:#fff;font-size:9px;font-weight:900}
 
-    .day-0 .day-cell,.day-0 .role-cell{background:#fff8c9}
-    .day-1 .day-cell,.day-1 .role-cell{background:#ffe3ee}
-    .day-2 .day-cell,.day-2 .role-cell{background:#dff5e4}
-    .day-3 .day-cell,.day-3 .role-cell{background:#ffe6d3}
-    .day-4 .day-cell,.day-4 .role-cell{background:#dceefe}
-    .day-5 .day-cell,.day-5 .role-cell{background:#eadffd}
-    .day-6 .day-cell,.day-6 .role-cell{background:#ffe0e0}
+    .day-0 .day-cell{background:#fff4bd}
+    .day-1 .day-cell{background:#ffe0ec}
+    .day-2 .day-cell{background:#dff4e5}
+    .day-3 .day-cell{background:#ffe5d2}
+    .day-4 .day-cell{background:#deedfb}
+    .day-5 .day-cell{background:#e9e0f8}
+    .day-6 .day-cell{background:#ffe3e3}
     tr.today-row .day-cell{box-shadow:inset 5px 0 0 #0a8177}
-    tr.selected-row td{outline:1px solid rgba(10,129,119,.16);outline-offset:-1px}
+    tr.today-row .role-cell{background:#fbfffe}
+    tr.selected-row .role-cell{background:#f7fbfb}
 
     .role-cell{
-      height:154px;padding:8px;vertical-align:top
+      height:158px;padding:7px;vertical-align:top;background:#fff
     }
-    .role-cell.selected-role{box-shadow:inset 0 0 0 2px rgba(8,127,117,.34)}
+    .role-cell.selected-role{box-shadow:inset 0 0 0 2px rgba(8,127,117,.28)}
     .cell-link{display:block;height:100%;color:inherit;text-decoration:none}
-    .cell-content{display:grid;gap:5px}
+    .cell-content{display:grid;gap:6px}
     .shift-group{
-      display:grid;grid-template-columns:42px 1fr;gap:7px;align-items:start;
-      padding:6px 7px;border-radius:6px;background:rgba(255,255,255,.72)
+      display:grid;grid-template-columns:44px minmax(0,1fr);gap:7px;align-items:start;
+      padding:7px;border:1px solid #e8eef1;border-radius:8px;background:#fbfdfd
     }
     .shift-label{
-      display:inline-flex;align-items:center;justify-content:center;min-height:25px;
-      padding:3px 5px;border-radius:5px;font-size:10px;font-weight:900;white-space:nowrap
+      display:inline-flex;align-items:center;justify-content:center;min-height:27px;
+      padding:3px 5px;border-radius:6px;font-size:10px;font-weight:900;white-space:nowrap
     }
-    .shift-label.night{background:#d6e8fb;color:#2e5f91}
-    .shift-label.morning{background:#d9f1e8;color:#176d5e}
-    .shift-label.evening{background:#ffe4ca;color:#98531d}
-    .shift-label.leave{background:#edf0d8;color:#6f792c}
-    .name-list{display:grid;gap:4px;min-width:0}
+    .shift-label.night{background:#dceafb;color:#2e5f91}
+    .shift-label.morning{background:#ddf3ea;color:#176d5e}
+    .shift-label.evening{background:#ffe8d2;color:#98531d}
+    .shift-label.leave{background:#eef1dd;color:#6f792c}
+    .name-list{display:grid;gap:3px;min-width:0}
     .staff-name{
-      display:block;white-space:normal;overflow-wrap:anywhere;
-      color:#17324d;font-size:12px;font-weight:800;line-height:1.45
+      display:block;color:#17324d;font-size:12px;font-weight:800;line-height:1.45;
+      white-space:normal;overflow-wrap:break-word
     }
     .staff-name.current{color:#087f75}
     .empty-cell{
       display:flex;align-items:center;justify-content:center;height:100%;min-height:120px;
-      color:#9aa8af;font-size:12px
+      color:#a0adb3;font-size:13px
     }
+
+    .roster-board:fullscreen{
+      width:100vw;height:100dvh;margin:0;border:0;background:#fff;box-shadow:none;
+      display:flex;flex-direction:column;padding:0
+    }
+    .roster-board:fullscreen .roster-board-head{flex:0 0 auto;padding:10px 14px;background:#f7fafb}
+    .roster-board:fullscreen .roster-fullscreen-exit{display:inline-flex;align-items:center;justify-content:center}
+    .roster-board:fullscreen .filter-note{flex:0 0 auto}
+    .roster-board:fullscreen .timetable-wrap{flex:1 1 auto;max-height:none;min-height:0;overflow:auto}
+    .roster-board:fullscreen .timetable{min-width:1920px}
+    .roster-board:fullscreen .timetable thead th{top:0}
+    .roster-board:-webkit-full-screen{
+      width:100vw;height:100vh;margin:0;border:0;background:#fff;display:flex;flex-direction:column
+    }
+    .roster-board:-webkit-full-screen .timetable-wrap{flex:1 1 auto;max-height:none;min-height:0;overflow:auto}
+    .roster-board:-webkit-full-screen .roster-fullscreen-exit{display:inline-flex;align-items:center;justify-content:center}
 
     .below{display:grid;grid-template-columns:minmax(260px,310px) 1fr;gap:10px;margin-top:10px}
     .card{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
@@ -196,6 +227,11 @@
     </nav>
   </div>
 
+  <section class="roster-board" id="roster-board">
+    <div class="roster-board-head">
+      <div><strong>ตารางเวรรายสัปดาห์</strong><span> · เลื่อนซ้าย–ขวาเพื่อดูทุกตำแหน่ง</span></div>
+      <button class="roster-fullscreen-exit" type="button" onclick="toggleFullscreen()">ออกจาก Fullscreen</button>
+    </div>
   {% if detailed_mode %}
   <div class="filter-note"><span>ตารางหลักยังแสดงครบทุกตำแหน่งเสมอ · ตัวกรองใช้เน้นตำแหน่งและกรองรายละเอียดด้านล่าง</span><a href="?week={{ week_start|date:'Y-m-d' }}">ล้างตัวกรอง</a></div>
   {% else %}
@@ -238,7 +274,7 @@
                   <span class="shift-label night">ดึก</span>
                   <span class="name-list">
                     {% for shift in cell.night %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{{ shift.user.get_full_name|default:shift.user.username }}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -249,7 +285,7 @@
                   <span class="shift-label morning">เช้า</span>
                   <span class="name-list">
                     {% for shift in cell.morning %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{{ shift.user.get_full_name|default:shift.user.username }}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -260,7 +296,7 @@
                   <span class="shift-label evening">บ่าย</span>
                   <span class="name-list">
                     {% for shift in cell.evening %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{{ shift.user.get_full_name|default:shift.user.username }}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -271,7 +307,7 @@
                   <span class="shift-label leave">ลา</span>
                   <span class="name-list">
                     {% for shift in cell.leave %}
-                    <span class="staff-name">{{ shift.user.get_full_name|default:shift.user.username }}</span>
+                    <span class="staff-name">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -287,6 +323,7 @@
         {% endfor %}
       </tbody>
     </table>
+  </section>
   </section>
 
   <div class="below">
@@ -348,10 +385,27 @@
 </main>
 
 <script>
-function toggleFullscreen(){
-  const el=document.getElementById("schedule-page");
-  if(!document.fullscreenElement){el.requestFullscreen?.();}else{document.exitFullscreen?.();}
+async function toggleFullscreen(){
+  const board=document.getElementById("roster-board");
+  if(!board)return;
+  try{
+    if(document.fullscreenElement){
+      await document.exitFullscreen();
+      return;
+    }
+    if(board.requestFullscreen){
+      await board.requestFullscreen();
+    }else if(board.webkitRequestFullscreen){
+      board.webkitRequestFullscreen();
+    }
+  }catch(error){
+    console.error("Fullscreen error:",error);
+  }
 }
+document.addEventListener("fullscreenchange",()=>{
+  const board=document.getElementById("roster-board");
+  if(board)board.classList.toggle("is-fullscreen",Boolean(document.fullscreenElement));
+});
 </script>
 </body>
 </html>
