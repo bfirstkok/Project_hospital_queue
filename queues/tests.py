@@ -1611,9 +1611,9 @@ class ShiftScheduleTests(TestCase):
         self.assertContains(response, '<span class="you-badge">คุณ</span>', html=False)
         self.assertContains(response, "shift-nurse")
 
-    def test_schedule_can_be_viewed_one_selected_day_at_a_time(self):
+    def test_selected_day_detail_is_scoped_while_weekly_roster_spans_the_week(self):
         selected = date(2026, 9, 16)
-        ShiftSchedule.objects.create(
+        selected_shift = ShiftSchedule.objects.create(
             user=self.nurse,
             shift_date=selected,
             start_time=time(8, 0),
@@ -1621,7 +1621,7 @@ class ShiftScheduleTests(TestCase):
             note="เวรวันที่เลือก",
             created_by=self.manager,
         )
-        ShiftSchedule.objects.create(
+        next_day_shift = ShiftSchedule.objects.create(
             user=self.doctor,
             shift_date=selected + timedelta(days=1),
             start_time=time(8, 0),
@@ -1636,8 +1636,23 @@ class ShiftScheduleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_day"], selected)
         self.assertEqual(response.context["selected_day_label"], "พุธ")
+
+        # The detail panel remains scoped to the selected day.
+        self.assertEqual(
+            [shift.id for shift in response.context["selected_shifts"]],
+            [selected_shift.id],
+        )
+
+        # The redesigned role-focused weekly table intentionally spans all
+        # seven days, so a later shift in the same week can also be rendered.
         self.assertContains(response, "เวรวันที่เลือก")
-        self.assertNotContains(response, "เวรวันถัดไป")
+        self.assertContains(response, "เวรวันถัดไป")
+        self.assertTrue(
+            any(
+                next_day_shift in row["morning"]
+                for row in response.context["role_week_rows"]
+            )
+        )
         self.assertContains(response, "จันทร์")
         self.assertContains(response, "อาทิตย์")
 
