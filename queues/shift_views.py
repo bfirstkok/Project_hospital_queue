@@ -528,10 +528,48 @@ def shift_schedule(request):
     # ten roles side by side.
     selected_roster_role = role_filter or StaffProfile.Role.DOCTOR
     role_label_map = dict(schedule_role_choices)
+    role_icon_map = {
+        ADMIN_ROLE: "icon-settings",
+        StaffProfile.Role.DOCTOR: "icon-stethoscope",
+        StaffProfile.Role.NURSE: "icon-activity",
+        StaffProfile.Role.NURSE_ASSISTANT: "icon-users",
+        StaffProfile.Role.EMERGENCY: "icon-alert",
+        StaffProfile.Role.STAFF: "icon-user-plus",
+        StaffProfile.Role.QUEUE_OPERATOR: "icon-ticket",
+        StaffProfile.Role.BIOMEDICAL: "icon-watch",
+        StaffProfile.Role.PHARMACIST: "icon-hospital",
+        StaffProfile.Role.CASHIER: "icon-chart",
+    }
     selected_roster_role_label = role_label_map.get(
         selected_roster_role,
         selected_roster_role,
     )
+
+    weekly_role_stats = defaultdict(lambda: {"shift_count": 0, "staff_ids": set()})
+    for shift in matrix_source:
+        if shift.status == ShiftSchedule.Status.CANCELLED:
+            continue
+        role = user_role_key(shift.user)
+        weekly_role_stats[role]["shift_count"] += 1
+        weekly_role_stats[role]["staff_ids"].add(shift.user_id)
+
+    active_people_by_role = defaultdict(int)
+    for person in users:
+        active_people_by_role[user_role_key(person)] += 1
+    active_people_by_role[ADMIN_ROLE] = len(admin_users)
+
+    role_cards = []
+    for role, label in schedule_role_choices:
+        stats = weekly_role_stats[role]
+        role_cards.append({
+            "role": role,
+            "label": label,
+            "icon": role_icon_map.get(role, "icon-users"),
+            "people_count": active_people_by_role.get(role, 0),
+            "scheduled_people_count": len(stats["staff_ids"]),
+            "shift_count": stats["shift_count"],
+            "is_selected": role == selected_roster_role,
+        })
 
     def roster_visible(shifts):
         visible = []
@@ -656,6 +694,7 @@ def shift_schedule(request):
         "role_timetable_rows": role_timetable_rows,
         "selected_roster_role": selected_roster_role,
         "selected_roster_role_label": selected_roster_role_label,
+        "role_cards": role_cards,
         "role_week_rows": role_week_rows,
         "selected_day_shift_cards": selected_day_shift_cards,
         "selected_day_shift_totals": selected_day_shift_totals,
