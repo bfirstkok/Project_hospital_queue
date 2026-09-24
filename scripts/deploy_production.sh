@@ -34,6 +34,17 @@ log "Checking patient portal static export"
 log "Building and starting the production services"
 docker compose up -d --build
 
+# The patient portal build performs a clean export by deleting and recreating
+# /opt/hospital-patient/dist. A long-running Caddy bind mount can remain pinned
+# to the old directory inode and return 404 even though the new dist/index.html
+# exists on the host. Recreate Caddy so the bind mount resolves the current
+# export directory before running public smoke tests.
+log "Refreshing Caddy patient portal bind mount"
+docker compose up -d --force-recreate --no-deps caddy
+
+docker exec hospital-caddy test -f /srv/patient/index.html \
+    || fail "patient portal index is not visible inside Caddy at /srv/patient/index.html"
+
 log "Waiting for database and web health checks"
 deadline=$((SECONDS + 180))
 while (( SECONDS < deadline )); do
