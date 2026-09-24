@@ -22,7 +22,18 @@ log "Checking repository state"
 [[ -z "$(git status --porcelain)" ]] || fail "working tree is not clean; commit or resolve local files first"
 
 log "Pulling origin/$BRANCH with fast-forward only"
+before_pull_sha="$(git rev-parse HEAD)"
 git pull --ff-only origin "$BRANCH"
+after_pull_sha="$(git rev-parse HEAD)"
+
+# If this deployment started from an older checkout, git pull may have updated
+# this script while the current shell process is still executing the old copy.
+# Restart once so every remaining deployment step comes from the newly pulled
+# version, including Caddy/static-mount fixes.
+if [[ "$before_pull_sha" != "$after_pull_sha" && "${HOSPITAL_DEPLOY_REEXEC:-0}" != "1" ]]; then
+    log "Repository updated; restarting deployment with the latest script"
+    exec env HOSPITAL_DEPLOY_REEXEC=1 bash "$0" "$@"
+fi
 
 log "Building a temporary image, collecting static assets, and running application tests"
 docker compose run --rm --build web /bin/sh -c \
