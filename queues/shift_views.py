@@ -72,16 +72,23 @@ def shift_schedule(request):
 
         action = request.POST.get("action")
         return_day = _posted_return_day(request)
+        return_role = (request.POST.get("return_role") or "").strip()
+        valid_return_roles = {ADMIN_ROLE, *StaffProfile.Role.values}
+        if return_role not in valid_return_roles:
+            return_role = ""
+        return_url = f"{request.path}?day={return_day}"
+        if return_role:
+            return_url += f"&role={return_role}"
 
         if action == "delete_shift":
             shift = get_object_or_404(ShiftSchedule, pk=request.POST.get("shift_id"))
             shift.delete()
             messages.success(request, "ลบเวรที่วางไว้แล้ว")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         if action != "save_shift":
             messages.error(request, "คำสั่งไม่ถูกต้อง")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         try:
             shift_date = date.fromisoformat(request.POST.get("shift_date", ""))
@@ -89,11 +96,11 @@ def shift_schedule(request):
             end_time = timezone.datetime.strptime(request.POST.get("end_time", ""), "%H:%M").time()
         except (TypeError, ValueError):
             messages.error(request, "วันที่หรือเวลาเวรไม่ถูกต้อง")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         if start_time == end_time:
             messages.error(request, "เวลาเริ่มและสิ้นสุดเวรต้องไม่เท่ากัน")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         staff_user = get_object_or_404(
             user_model.objects.select_related("hospital_staff_profile"),
@@ -105,7 +112,7 @@ def shift_schedule(request):
             and getattr(staff_user, "hospital_staff_profile", None) is None
         ):
             messages.error(request, "บัญชีนี้ไม่ใช่บุคลากรหรือผู้ดูแลระบบที่จัดเวรได้")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         valid_statuses = {value for value, _label in ShiftSchedule.Status.choices}
         status = request.POST.get("status", ShiftSchedule.Status.SCHEDULED)
@@ -119,7 +126,7 @@ def shift_schedule(request):
         )[:200]
         if status == ShiftSchedule.Status.SCHEDULED and len(duty_assignment) < 2:
             messages.error(request, "กรุณากำหนดหน้าที่ประจำเวร เช่น คัดกรองผู้ป่วย หรือ ประจำห้องตรวจ 1")
-            return redirect(f"{request.path}?day={return_day}")
+            return redirect(return_url)
 
         shift_id = request.POST.get("shift_id")
         shift = get_object_or_404(ShiftSchedule, pk=shift_id) if shift_id else ShiftSchedule()
@@ -136,7 +143,7 @@ def shift_schedule(request):
             messages.error(request, "บุคลากรคนนี้มีเวรที่เริ่มเวลาเดียวกันอยู่แล้ว")
         else:
             messages.success(request, f"บันทึกเวรและหน้าที่ของ {staff_user.get_full_name() or staff_user.username} แล้ว")
-        return redirect(f"{request.path}?day={return_day}")
+        return redirect(return_url)
 
     selected = _selected_date(request)
     week_start = selected - timedelta(days=selected.weekday())
