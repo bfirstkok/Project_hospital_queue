@@ -1698,8 +1698,8 @@ class ShiftScheduleTests(TestCase):
         self.assertContains(response, "จันทร์")
         self.assertContains(response, "อาทิตย์")
 
-    def test_superuser_with_staff_profile_is_visible_as_system_admin(self):
-        StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.STAFF)
+    def test_superuser_with_staff_profile_is_visible_and_identity_editable_but_role_locked(self):
+        profile = StaffProfile.objects.create(user=self.manager, role=StaffProfile.Role.STAFF)
         self.manager.first_name = "สว่าง"
         self.manager.last_name = "ขจรกิจ"
         self.manager.save(update_fields=["first_name", "last_name"])
@@ -1709,11 +1709,23 @@ class ShiftScheduleTests(TestCase):
 
         self.assertContains(response, "สว่าง ขจรกิจ")
         self.assertContains(response, "ผู้ดูแลระบบสูงสุด")
-        self.assertNotContains(
+        self.assertContains(response, "แก้ไขชื่อและรูปผู้ดูแลระบบ")
+        self.assertContains(response, "บันทึกชื่อและรูปผู้ดูแลระบบ")
+        self.assertContains(
             response,
             f'<input type="hidden" name="user_id" value="{self.manager.id}">',
             html=False,
         )
+
+        response = self.client.post(reverse("personnel_dashboard"), {
+            "action": "set_staff_role",
+            "user_id": self.manager.id,
+            "role": StaffProfile.Role.DOCTOR,
+        })
+
+        self.assertRedirects(response, reverse("personnel_dashboard"))
+        profile.refresh_from_db()
+        self.assertEqual(profile.role, StaffProfile.Role.STAFF)
 
     def test_setup_demo_roster_fills_every_role_to_ten_and_builds_hospital_shifts(self):
         initial_counts = {
