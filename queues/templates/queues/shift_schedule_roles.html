@@ -28,6 +28,20 @@
     .controls{display:grid;grid-template-columns:minmax(230px,1fr) 180px auto;gap:9px;align-items:end;margin-top:12px;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#fff}
     .field{display:grid;gap:5px}.field label{color:#71868e;font-size:9px;font-weight:900}.field input{width:100%;height:39px;padding:0 11px;border:1px solid #cbd9de;border-radius:8px;background:#fff;color:var(--ink);font-size:11px;font-weight:600}.controls button{height:39px;padding:0 16px;border:0;border-radius:8px;background:var(--navy);color:#fff;font-size:10px;font-weight:900;cursor:pointer}
 
+    .role-picker{margin-top:16px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(25,68,82,.04)}
+    .role-picker-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:13px}
+    .role-picker-head h2{margin:0;font-size:18px}.role-picker-head p{margin:4px 0 0;color:var(--muted);font-size:10px}.role-picker-head span{color:#82959d;font-size:9px;font-weight:800}
+    .role-card-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .role-card{position:relative;display:grid;grid-template-columns:52px 1fr;gap:11px;align-items:center;min-height:104px;padding:14px;border:1px solid #dce6e9;border-radius:13px;background:#fbfdfd;color:var(--ink);text-decoration:none;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease,background .14s ease}
+    .role-card:hover{transform:translateY(-2px);border-color:#99cfc8;background:#f5fbfa;box-shadow:0 9px 20px rgba(12,143,131,.10)}
+    .role-card.active{border-color:var(--teal);background:#edf9f7;box-shadow:inset 0 0 0 1px var(--teal),0 8px 20px rgba(12,143,131,.10)}
+    .role-card-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#e9f5f4;color:var(--teal-dark)}
+    .role-card.active .role-card-icon{background:var(--teal);color:#fff}
+    .role-card-icon .ui-icon{width:27px;height:27px}
+    .role-card-copy{min-width:0}.role-card-copy strong{display:block;font-size:13px;line-height:1.35}.role-card-copy small{display:block;margin-top:3px;color:#7b9099;font-size:8px;line-height:1.4}
+    .role-card-stats{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.role-card-stat{display:inline-flex;padding:3px 6px;border-radius:999px;background:#eef3f4;color:#5f7680;font-size:7px;font-weight:900}.role-card.active .role-card-stat{background:#d9efeb;color:#08736b}
+    .role-card-arrow{position:absolute;right:10px;top:9px;color:#9aabb1;font-size:14px;font-weight:900}.role-card.active .role-card-arrow{color:var(--teal-dark)}
+
     .summary-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:22px 2px 10px}.summary-title h2{margin:0;font-size:17px}.summary-title span{color:var(--muted);font-size:10px}
     .summary-grid{display:grid;grid-template-columns:1.25fr repeat(3,1fr);gap:10px}.metric{min-height:100px;padding:16px 17px;border:1px solid var(--line);border-radius:14px;background:#fff}.metric-label{color:#748891;font-size:10px;font-weight:800}.metric-value{margin-top:5px;color:var(--ink);font-size:30px;font-weight:900;line-height:1}.metric-sub{margin-top:7px;color:#8a9aa1;font-size:9px}.metric.total{border-top:4px solid var(--teal)}.metric.morning{border-top:4px solid #53b99d}.metric.evening{border-top:4px solid #e9a65e}.metric.night{border-top:4px solid #6d9ed0}
 
@@ -50,8 +64,9 @@
 
     .add-shift{margin-top:14px}.add-shift>summary{padding:13px 15px;cursor:pointer;list-style:none;font-size:11px;font-weight:900}.add-shift[open]>summary{border-bottom:1px solid var(--line)}.create{display:grid;grid-template-columns:1.4fr 1.4fr 1fr .7fr .7fr 1fr auto;gap:7px;align-items:end;padding:12px}
 
+    @media(max-width:1100px){.role-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:1000px){.summary-grid{grid-template-columns:repeat(2,1fr)}.shift-columns{grid-template-columns:1fr}.lower{grid-template-columns:1fr}.edit-form,.create{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:700px){.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
+    @media(max-width:700px){.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.role-picker{padding:13px}.role-picker-head{align-items:flex-start;flex-direction:column}.role-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role-card{grid-template-columns:43px 1fr;min-height:92px;padding:11px}.role-card-icon{width:43px;height:43px}.role-card-icon .ui-icon{width:23px;height:23px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
     @media print{body{background:#fff}.main-nav,.hero-actions,.controls,.weekly-tools,.lower,.add-shift{display:none!important}.page{width:100%;margin:0}.hero,.today-section,.weekly{box-shadow:none}.weekly-scroll{max-height:none;overflow:visible}.role-table{min-width:0}}
   </style>
 </head>
@@ -62,7 +77,7 @@
     <div class="hero-copy">
       <small>STAFF ROSTER</small>
       <h1>ตารางเวรบุคลากร</h1>
-      <p>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }} · ดูภาพรวมวันนี้และเลือกตำแหน่งเพื่อดูเวรรายสัปดาห์</p>
+      <p>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }} · เลือกการ์ดตำแหน่ง แล้วดูเวรของตำแหน่งนั้นได้ทันที</p>
     </div>
     <div class="hero-actions">
       <a href="?week={{ previous_week|date:'Y-m-d' }}&role={{ selected_roster_role }}">← สัปดาห์ก่อน</a>
@@ -82,48 +97,28 @@
     <button type="submit">แสดงผล</button>
   </form>
 
-  <div class="summary-title">
-    <div><h2>ภาพรวมวันที่เลือก</h2><span>วัน{{ selected_day_label }} · {{ selected_day|date:"d/m/Y" }}</span></div>
-    <span>{{ selected_day_role_total }} ตำแหน่งที่มีเวร</span>
-  </div>
-  <section class="summary-grid">
-    <article class="metric total"><div class="metric-label">บุคลากรที่มีเวร</div><div class="metric-value">{{ selected_day_staff_total }}</div><div class="metric-sub">คนไม่ซ้ำในวันที่เลือก</div></article>
-    <article class="metric morning"><div class="metric-label">เวรเช้า · 08:00–16:00</div><div class="metric-value">{{ selected_day_shift_totals.morning }}</div><div class="metric-sub">รายการเวรที่จัดไว้</div></article>
-    <article class="metric evening"><div class="metric-label">เวรบ่าย · 16:00–00:00</div><div class="metric-value">{{ selected_day_shift_totals.evening }}</div><div class="metric-sub">รายการเวรที่จัดไว้</div></article>
-    <article class="metric night"><div class="metric-label">เวรดึก · 00:00–08:00</div><div class="metric-value">{{ selected_day_shift_totals.night }}</div><div class="metric-sub">รายการเวรที่จัดไว้</div></article>
-  </section>
-
-  <section class="today-section">
-    <div class="section-head">
-      <div><h2>เวรวันที่เลือก</h2><p>ดูว่าแต่ละกะมีตำแหน่งใดและใครรับผิดชอบบ้าง โดยไม่ต้องไล่ตารางกว้าง</p></div>
+  <section class="role-picker" aria-labelledby="role-picker-title">
+    <div class="role-picker-head">
+      <div>
+        <h2 id="role-picker-title">เลือกหน้าที่เพื่อดูตารางเวร</h2>
+        <p>กดการ์ดของตำแหน่งที่ต้องการ แล้วตารางด้านล่างจะแสดงเฉพาะเวรของตำแหน่งนั้น</p>
+      </div>
+      <span>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }}</span>
     </div>
-    <div class="shift-columns">
-      {% for shift_card in selected_day_shift_cards %}
-      <article class="shift-card {{ shift_card.key }}">
-        <div class="shift-card-head">
-          <div><strong>{{ shift_card.label }}</strong><small>{{ shift_card.time_label }}</small></div>
-          <span class="shift-count">{{ shift_card.total }} คน</span>
-        </div>
-        {% if shift_card.role_groups %}
-        <div class="role-groups">
-          {% for group in shift_card.role_groups %}
-          <div class="role-group">
-            <div class="role-group-title">{{ group.label }}<span>{{ group.count }} คน</span></div>
-            <div class="people">
-              {% for shift in group.shifts %}
-              <div class="person">
-                <b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b>
-                <small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="shift-empty">ยังไม่มีบุคลากรในกะนี้</div>
-        {% endif %}
-      </article>
+    <div class="role-card-grid">
+      {% for card in role_cards %}
+      <a class="role-card{% if card.is_selected %} active{% endif %}" href="?day={{ selected_day|date:'Y-m-d' }}&role={{ card.role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#weekly-roster">
+        <span class="role-card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#{{ card.icon }}"></use></svg></span>
+        <span class="role-card-copy">
+          <strong>{{ card.label }}</strong>
+          <small>บุคลากรในตำแหน่ง {{ card.people_count }} คน</small>
+          <span class="role-card-stats">
+            <span class="role-card-stat">ขึ้นเวรสัปดาห์นี้ {{ card.scheduled_people_count }} คน</span>
+            <span class="role-card-stat">{{ card.shift_count }} เวร</span>
+          </span>
+        </span>
+        <span class="role-card-arrow" aria-hidden="true">›</span>
+      </a>
       {% endfor %}
     </div>
   </section>
@@ -131,20 +126,14 @@
   <section class="weekly" id="weekly-roster">
     <div class="weekly-head">
       <div>
-        <h2>ตารางรายสัปดาห์ · {{ selected_roster_role_label }}</h2>
-        <p>เลือกตำแหน่งด้านล่าง แล้วดูเพียง 7 วัน × 3 กะ เพื่ออ่านตารางได้ชัดเจน</p>
+        <h2>เวรของ{{ selected_roster_role_label }} · รายสัปดาห์</h2>
+        <p>แต่ละแถวคือวัน · แต่ละคอลัมน์คือกะ · รายชื่อภายในช่องคือผู้ที่เข้าเวรในวันและกะนั้น</p>
       </div>
       <div class="weekly-tools">
         <button class="fullscreen-enter" type="button" onclick="toggleRosterFullscreen()">⛶ Fullscreen ตารางนี้</button>
         <button class="fullscreen-exit" type="button" onclick="toggleRosterFullscreen()">ออกจาก Fullscreen</button>
       </div>
     </div>
-
-    <nav class="role-tabs" aria-label="เลือกตำแหน่ง">
-      {% for value,label in role_choices %}
-      <a class="role-tab{% if value == selected_roster_role %} active{% endif %}" href="?day={{ selected_day|date:'Y-m-d' }}&role={{ value }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#weekly-roster">{{ label }}</a>
-      {% endfor %}
-    </nav>
 
     <div class="weekly-scroll">
       <table class="role-table">
