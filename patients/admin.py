@@ -39,9 +39,26 @@ class PatientAdmin(admin.ModelAdmin):
             objs,
             request,
         )
+        # Operational audit/training records under Visit are also
+        # intentionally read-only when opened directly in Admin. They must not
+        # block deletion of the owning Patient when Patient deletion itself is
+        # authorized.
+        from queues.models import (
+            ConfirmedTriageCase,
+            CriticalAlert,
+            TelemetryLog,
+            VisitWorkflowLog,
+        )
+
+        cascade_models = self._cascade_security_models + (
+            ConfirmedTriageCase,
+            TelemetryLog,
+            CriticalAlert,
+            VisitWorkflowLog,
+        )
         cascade_labels = {
             model._meta.verbose_name
-            for model in self._cascade_security_models
+            for model in cascade_models
         }
         perms_needed = {
             permission
