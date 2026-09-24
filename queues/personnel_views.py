@@ -153,7 +153,7 @@ def staff_photo(request, profile_id):
         raise Http404("Staff photo not found")
     content_type = mimetypes.guess_type(profile.photo.name)[0] or "application/octet-stream"
     response = FileResponse(profile.photo.open("rb"), content_type=content_type)
-    response["Cache-Control"] = "private, max-age=3600"
+    response["Cache-Control"] = "private, no-cache, max-age=0, must-revalidate"
     response["X-Content-Type-Options"] = "nosniff"
     return response
 
@@ -454,6 +454,9 @@ def personnel_dashboard(request):
 
         elif action == "update_staff_identity":
             staff_user = get_object_or_404(user_model, pk=request.POST.get("user_id"), is_active=True)
+            if staff_user.is_superuser and not request.user.is_superuser:
+                messages.error(request, "เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่แก้ไขชื่อหรือรูปของผู้ดูแลระบบได้")
+                return redirect("personnel_dashboard")
             first_name = request.POST.get("first_name", "").strip()
             last_name = request.POST.get("last_name", "").strip()
             if not first_name or not last_name:
