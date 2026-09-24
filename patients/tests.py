@@ -1,16 +1,17 @@
 import json
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from queues.models import Queue, Visit, VisitWorkflowLog, VitalSign
 from opd.models import Bill, Prescription, VisitAssessment
-from .models import Patient
+from .models import Patient, PatientAccessToken, PatientPin
 
 
 class PatientJourneyTests(TestCase):
@@ -476,3 +477,45 @@ class PatientWorkflowHistoryTests(TestCase):
         self.assertContains(response, "ประวัติการดำเนินการ (Audit Log)")
         self.assertContains(response, "ผู้ตรวจ ระบบ")
         self.assertContains(response, "ตรวจสัญญาณชีพครบถ้วน")
+
+
+class PatientAdminCascadeDeleteTests(TestCase):
+    def setUp(self):
+        self.admin_user = get_user_model().objects.create_superuser(
+            username="patient-delete-admin",
+            email="patient-delete@example.test",
+            password="secret",
+        )
+        self.client.force_login(self.admin_user)
+        self.patient = Patient.objects.create(
+            first_name="Delete",
+            last_name="Cascade",
+            national_id="9333333333333",
+        )
+        PatientAccessToken.objects.create(
+            patient=self.patient,
+            token_hash="a" * 64,
+            token_version=self.patient.token_version,
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        PatientPin.objects.create(
+            patient=self.patient,
+            pin_hash="test-pin-hash",
+        )
+
+    def test_admin_can_delete_patient_with_read_only_portal_credentials(self):
+        delete_url = reverse("admin:patients_patient_delete", args=[self.patient.id])
+
+        confirm = self.client.get(delete_url)
+
+        self.assertEqual(confirm.status_code, 200)
+        self.assertNotContains(confirm, "ไม่สามารถลบ")
+        self.assertNotContains(confirm, "patient access token")
+        self.assertNotContains(confirm, "patient pin")
+
+        response = self.client.post(delete_url, {"post": "yes"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Patient.objects.filter(pk=self.patient.pk).exists())
+        self.assertFalse(PatientAccessToken.objects.filter(patient_id=self.patient.pk).exists())
+        self.assertFalse(PatientPin.objects.filter(patient_id=self.patient.pk).exists())
