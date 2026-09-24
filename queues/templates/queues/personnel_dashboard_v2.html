@@ -88,17 +88,38 @@
               {% if row.active_cases %}<ul class="cases">{% for a in row.active_cases %}<li><span><b>{{ a.visit.queue.display_number }}</b> {{ a.visit.patient.first_name }} {{ a.visit.patient.last_name }}</span><span>{{ a.visit.queue.get_status_display }}</span></li>{% endfor %}</ul>{% else %}<div class="hint" style="margin-top:7px">ยังไม่มีผู้ป่วยในความดูแล</div>{% endif %}
             </div>
           {% endif %}
-          {% if 'manage_personnel' in access_capabilities and not row.is_system_admin %}
-          {% if row.is_account_active %}<div class="staff-actions">
-            <form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_present" value="{% if row.is_present %}0{% else %}1{% endif %}"><button class="btn" type="submit">{% if row.is_present %}ลงเวร{% else %}ขึ้นเวร{% endif %}</button></form>
-            {% if row.profile.role == 'NURSE' and row.is_present %}<form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_available" value="{% if row.is_available %}0{% else %}1{% endif %}"><button class="btn {% if not row.is_available %}primary{% endif %}" type="submit">{% if row.is_available %}พักรับผู้ป่วย{% else %}พร้อมรับผู้ป่วย{% endif %}</button></form>{% endif %}
-          </div>
-          <details class="edit"><summary>แก้ไขชื่อ รูป และประเภท</summary><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="update_staff_identity"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง" required><input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล" required><input class="wide" type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="btn primary wide" type="submit">บันทึกชื่อและรูป</button></form><form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><select name="role" style="height:35px;border:1px solid #c9dade;border-radius:7px">{% for role,label in staff_role_choices %}<option value="{{ role }}" {% if row.profile.role == role %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn" type="submit">เปลี่ยนประเภท</button></form></details>
-          {% endif %}
-          <details class="edit"><summary>{% if row.is_account_active %}ระงับบัญชี{% else %}เปิดใช้งานบัญชี{% endif %}</summary>
-            {% if row.latest_account_status %}<div class="account-audit">รายการล่าสุด: {{ row.latest_account_status.get_action_display }} · {{ row.latest_account_status.created_at|date:"d/m/Y H:i" }}{% if row.latest_account_status.actor %} · โดย {{ row.latest_account_status.actor.get_full_name|default:row.latest_account_status.actor.username }}{% endif %}<br>เหตุผล: {{ row.latest_account_status.reason }}</div>{% endif %}
-            <form method="post" onsubmit="return confirm('{% if row.is_account_active %}ยืนยันระงับบัญชีนี้? ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้{% else %}ยืนยันเปิดใช้งานบัญชีนี้อีกครั้ง?{% endif %}');">{% csrf_token %}<input type="hidden" name="action" value="set_account_status"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_active" value="{% if row.is_account_active %}0{% else %}1{% endif %}"><input class="wide" name="reason" minlength="3" placeholder="{% if row.is_account_active %}เหตุผลการระงับบัญชี{% else %}เหตุผลการเปิดใช้งานบัญชี{% endif %}" required><button class="btn {% if row.is_account_active %}danger{% else %}primary{% endif %} wide" type="submit">{% if row.is_account_active %}ระงับบัญชี (ไม่ลบข้อมูล){% else %}เปิดใช้งานบัญชี{% endif %}</button></form>
-          </details>
+          {% if 'manage_personnel' in access_capabilities %}
+            {% if not row.is_system_admin and row.is_account_active %}<div class="staff-actions">
+              <form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_attendance"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_present" value="{% if row.is_present %}0{% else %}1{% endif %}"><button class="btn" type="submit">{% if row.is_present %}ลงเวร{% else %}ขึ้นเวร{% endif %}</button></form>
+              {% if row.profile.role == 'NURSE' and row.is_present %}<form class="quick" method="post">{% csrf_token %}<input type="hidden" name="action" value="set_availability"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_available" value="{% if row.is_available %}0{% else %}1{% endif %}"><button class="btn {% if not row.is_available %}primary{% endif %}" type="submit">{% if row.is_available %}พักรับผู้ป่วย{% else %}พร้อมรับผู้ป่วย{% endif %}</button></form>{% endif %}
+            </div>{% endif %}
+
+            {% if not row.is_system_admin or request.user.is_superuser %}
+            <details class="edit">
+              <summary>{% if row.is_system_admin %}แก้ไขชื่อและรูปผู้ดูแลระบบ{% else %}แก้ไขชื่อ รูป และประเภท{% endif %}</summary>
+              <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_staff_identity">
+                <input type="hidden" name="user_id" value="{{ row.user.id }}">
+                <input name="first_name" value="{{ row.user.first_name }}" placeholder="ชื่อจริง" required>
+                <input name="last_name" value="{{ row.user.last_name }}" placeholder="นามสกุล" required>
+                <input class="wide" type="file" name="photo" accept="image/jpeg,image/png,image/webp">
+                <button class="btn primary wide" type="submit">{% if row.is_system_admin %}บันทึกชื่อและรูปผู้ดูแลระบบ{% else %}บันทึกชื่อและรูป{% endif %}</button>
+              </form>
+              {% if not row.is_system_admin %}
+              <form method="post" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role"><input type="hidden" name="user_id" value="{{ row.user.id }}"><select name="role" style="height:35px;border:1px solid #c9dade;border-radius:7px">{% for role,label in staff_role_choices %}<option value="{{ role }}" {% if row.profile.role == role %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn" type="submit">เปลี่ยนประเภท</button></form>
+              {% else %}
+              <div class="hint" style="margin-top:7px">บัญชีผู้ดูแลระบบสูงสุดยังคงสิทธิ์เดิม ไม่สามารถเปลี่ยนประเภทหรือระงับบัญชีจากหน้านี้</div>
+              {% endif %}
+            </details>
+            {% endif %}
+
+            {% if not row.is_system_admin %}
+            <details class="edit"><summary>{% if row.is_account_active %}ระงับบัญชี{% else %}เปิดใช้งานบัญชี{% endif %}</summary>
+              {% if row.latest_account_status %}<div class="account-audit">รายการล่าสุด: {{ row.latest_account_status.get_action_display }} · {{ row.latest_account_status.created_at|date:"d/m/Y H:i" }}{% if row.latest_account_status.actor %} · โดย {{ row.latest_account_status.actor.get_full_name|default:row.latest_account_status.actor.username }}{% endif %}<br>เหตุผล: {{ row.latest_account_status.reason }}</div>{% endif %}
+              <form method="post" onsubmit="return confirm('{% if row.is_account_active %}ยืนยันระงับบัญชีนี้? ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้{% else %}ยืนยันเปิดใช้งานบัญชีนี้อีกครั้ง?{% endif %}');">{% csrf_token %}<input type="hidden" name="action" value="set_account_status"><input type="hidden" name="user_id" value="{{ row.user.id }}"><input type="hidden" name="is_active" value="{% if row.is_account_active %}0{% else %}1{% endif %}"><input class="wide" name="reason" minlength="3" placeholder="{% if row.is_account_active %}เหตุผลการระงับบัญชี{% else %}เหตุผลการเปิดใช้งานบัญชี{% endif %}" required><button class="btn {% if row.is_account_active %}danger{% else %}primary{% endif %} wide" type="submit">{% if row.is_account_active %}ระงับบัญชี (ไม่ลบข้อมูล){% else %}เปิดใช้งานบัญชี{% endif %}</button></form>
+            </details>
+            {% endif %}
           {% endif %}
         </article>
         {% empty %}<div class="empty">ยังไม่มีบุคลากร</div>{% endfor %}
