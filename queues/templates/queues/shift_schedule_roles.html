@@ -41,7 +41,18 @@
     .role-card-copy{min-width:0}.role-card-copy strong{display:block;font-size:13px;line-height:1.35}.role-card-copy small{display:block;margin-top:3px;color:#7b9099;font-size:8px;line-height:1.4}
     .role-card-stats{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.role-card-stat{display:inline-flex;padding:3px 6px;border-radius:999px;background:#eef3f4;color:#5f7680;font-size:7px;font-weight:900}.role-card.active .role-card-stat{background:#d9efeb;color:#08736b}
     .role-card-arrow{position:absolute;right:10px;top:9px;color:#9aabb1;font-size:14px;font-weight:900}.role-card.active .role-card-arrow{color:var(--teal-dark)}
-
+    button.role-card{width:100%;font-family:"Sarabun",sans-serif;text-align:left;cursor:pointer}
+    body.roster-modal-open{overflow:hidden}
+    .roster-modal{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;padding:26px;background:rgba(18,39,49,.58);backdrop-filter:blur(3px)}
+    .roster-modal.open{display:flex}
+    .roster-dialog{display:flex;flex-direction:column;width:min(1180px,96vw);max-height:90dvh;overflow:hidden;border:1px solid #cfdde1;border-radius:18px;background:#fff;box-shadow:0 28px 80px rgba(7,34,45,.30)}
+    .roster-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line);background:#f8fbfb}
+    .roster-dialog-title{display:flex;align-items:center;gap:11px;min-width:0}.roster-dialog-icon{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:12px;background:#e6f5f2;color:var(--teal-dark)}.roster-dialog-icon .ui-icon{width:23px;height:23px}.roster-dialog-title h2{margin:0;font-size:18px}.roster-dialog-title p{margin:3px 0 0;color:var(--muted);font-size:10px}
+    .roster-dialog-actions{display:flex;align-items:center;gap:7px}.modal-action,.modal-close{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 10px;border:1px solid #cedbdf;border-radius:9px;background:#fff;color:#365867;font-size:9px;font-weight:900;cursor:pointer}.modal-close{width:36px;padding:0;font-size:20px;line-height:1}
+    .roster-dialog-body{overflow:auto;min-height:0;padding:0;background:#fff;scrollbar-width:thin}.roster-panel{display:none}.roster-panel.active{display:block}
+    .popup-table{width:100%;min-width:820px;border-collapse:separate;border-spacing:0;table-layout:fixed}.popup-table th,.popup-table td{border-right:1px solid #e1e9ec;border-bottom:1px solid #e1e9ec}.popup-table thead th{position:sticky;top:0;z-index:3;padding:12px 10px;background:#edf5f7;color:#365766;font-size:11px;font-weight:900}.popup-table thead th:first-child{width:138px;background:#e4f0f3}.popup-table td{padding:10px;vertical-align:top;background:#fff}.popup-table .popup-day{text-align:center;background:#fafcfc}.popup-day a{color:var(--ink);text-decoration:none}.popup-day b{display:block;font-size:12px}.popup-day span{display:block;margin-top:3px;color:#82959c;font-size:9px}.popup-table tr.today td{background:#fbfffe}.popup-table tr.today .popup-day{box-shadow:inset 4px 0 0 var(--teal);background:#eef9f7}
+    .popup-shift-list{display:grid;gap:6px}.popup-person{padding:8px 9px;border:1px solid #e1eaed;border-radius:8px;background:#fbfdfd}.popup-person b{display:block;font-size:11px}.popup-person small{display:block;margin-top:3px;color:#748b94;font-size:8px;line-height:1.45}.popup-person.current{border-color:#7ec9bf;background:#eff9f6}.popup-empty{display:grid;min-height:58px;place-items:center;color:#a2b0b5;font-size:10px}.popup-leave{display:inline-flex;margin-top:7px;padding:3px 7px;border-radius:999px;background:#f2f2e4;color:#737a3c;font-size:8px;font-weight:900}
+    .roster-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--line);background:#fafcfc;color:#7a8f97;font-size:9px}.roster-dialog-footer a{color:var(--teal-dark);font-weight:900;text-decoration:none}
     .summary-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:22px 2px 10px}.summary-title h2{margin:0;font-size:17px}.summary-title span{color:var(--muted);font-size:10px}
     .summary-grid{display:grid;grid-template-columns:1.25fr repeat(3,1fr);gap:10px}.metric{min-height:100px;padding:16px 17px;border:1px solid var(--line);border-radius:14px;background:#fff}.metric-label{color:#748891;font-size:10px;font-weight:800}.metric-value{margin-top:5px;color:var(--ink);font-size:30px;font-weight:900;line-height:1}.metric-sub{margin-top:7px;color:#8a9aa1;font-size:9px}.metric.total{border-top:4px solid var(--teal)}.metric.morning{border-top:4px solid #53b99d}.metric.evening{border-top:4px solid #e9a65e}.metric.night{border-top:4px solid #6d9ed0}
 
@@ -66,7 +77,7 @@
 
     @media(max-width:1100px){.role-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:1000px){.summary-grid{grid-template-columns:repeat(2,1fr)}.shift-columns{grid-template-columns:1fr}.lower{grid-template-columns:1fr}.edit-form,.create{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:700px){.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.role-picker{padding:13px}.role-picker-head{align-items:flex-start;flex-direction:column}.role-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role-card{grid-template-columns:43px 1fr;min-height:92px;padding:11px}.role-card-icon{width:43px;height:43px}.role-card-icon .ui-icon{width:23px;height:23px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
+    @media(max-width:700px){.roster-modal{padding:8px}.roster-dialog{width:100%;max-height:94dvh;border-radius:13px}.roster-dialog-head{padding:12px}.roster-dialog-title h2{font-size:15px}.roster-dialog-icon{width:38px;height:38px;flex-basis:38px}.modal-action{display:none}.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.role-picker{padding:13px}.role-picker-head{align-items:flex-start;flex-direction:column}.role-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role-card{grid-template-columns:43px 1fr;min-height:92px;padding:11px}.role-card-icon{width:43px;height:43px}.role-card-icon .ui-icon{width:23px;height:23px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
     @media print{body{background:#fff}.main-nav,.hero-actions,.controls,.weekly-tools,.lower,.add-shift{display:none!important}.page{width:100%;margin:0}.hero,.today-section,.weekly{box-shadow:none}.weekly-scroll{max-height:none;overflow:visible}.role-table{min-width:0}}
   </style>
 </head>
@@ -107,7 +118,7 @@
     </div>
     <div class="role-card-grid">
       {% for card in role_cards %}
-      <a class="role-card{% if card.is_selected %} active{% endif %}" href="?day={{ selected_day|date:'Y-m-d' }}&role={{ card.role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#weekly-roster">
+      <button class="role-card" type="button" data-roster-role="{{ card.role }}" data-roster-label="{{ card.label }}">
         <span class="role-card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#{{ card.icon }}"></use></svg></span>
         <span class="role-card-copy">
           <strong>{{ card.label }}</strong>
@@ -118,57 +129,101 @@
           </span>
         </span>
         <span class="role-card-arrow" aria-hidden="true">›</span>
-      </a>
+      </button>
       {% endfor %}
     </div>
   </section>
 
-  <section class="weekly" id="weekly-roster">
-    <div class="weekly-head">
-      <div>
-        <h2>เวรของ{{ selected_roster_role_label }} · รายสัปดาห์</h2>
-        <p>แต่ละแถวคือวัน · แต่ละคอลัมน์คือกะ · รายชื่อภายในช่องคือผู้ที่เข้าเวรในวันและกะนั้น</p>
+  <div class="roster-modal" id="rosterModal" aria-hidden="true">
+    <section class="roster-dialog" role="dialog" aria-modal="true" aria-labelledby="rosterModalTitle">
+      <header class="roster-dialog-head">
+        <div class="roster-dialog-title">
+          <span class="roster-dialog-icon" id="rosterModalIcon" aria-hidden="true"><svg class="ui-icon"><use href="#icon-users"></use></svg></span>
+          <div>
+            <h2 id="rosterModalTitle">ตารางเวร</h2>
+            <p>{{ week_start|date:"d/m/Y" }} – {{ week_end|date:"d/m/Y" }} · คลิกวันที่เพื่อดูและแก้รายละเอียดเวร</p>
+          </div>
+        </div>
+        <div class="roster-dialog-actions">
+          <button class="modal-action" type="button" id="rosterModalFullscreen">⛶ เต็มจอ</button>
+          <button class="modal-close" type="button" id="rosterModalClose" aria-label="ปิด">×</button>
+        </div>
+      </header>
+      <div class="roster-dialog-body">
+        {% for card in role_cards %}
+        <div class="roster-panel" data-role-panel="{{ card.role }}" data-role-label="{{ card.label }}" data-role-icon="{{ card.icon }}">
+          <table class="popup-table">
+            <thead>
+              <tr>
+                <th>วัน</th>
+                <th>เวรดึก<br><small>00:00–08:00</small></th>
+                <th>เวรเช้า<br><small>08:00–16:00</small></th>
+                <th>เวรบ่าย<br><small>16:00–00:00</small></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in role_timetable_rows %}
+              {% for cell in row.cells %}
+              {% if cell.role == card.role %}
+              <tr{% if row.is_today %} class="today"{% endif %}>
+                <td class="popup-day">
+                  <a href="?day={{ row.date|date:'Y-m-d' }}&role={{ card.role }}#day-detail">
+                    <b>{{ row.label }}</b>
+                    <span>{{ row.date|date:"d/m/Y" }}</span>
+                  </a>
+                  {% if cell.leave %}<span class="popup-leave">ลา {{ cell.leave|length }} คน</span>{% endif %}
+                </td>
+                <td>
+                  {% if cell.night %}
+                  <div class="popup-shift-list">
+                    {% for shift in cell.night %}
+                    <div class="popup-person{% if shift.user_id == request.user.id %} current{% endif %}">
+                      <b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b>
+                      <small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% else %}<div class="popup-empty">— ไม่มีเวร —</div>{% endif %}
+                </td>
+                <td>
+                  {% if cell.morning %}
+                  <div class="popup-shift-list">
+                    {% for shift in cell.morning %}
+                    <div class="popup-person{% if shift.user_id == request.user.id %} current{% endif %}">
+                      <b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b>
+                      <small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% else %}<div class="popup-empty">— ไม่มีเวร —</div>{% endif %}
+                </td>
+                <td>
+                  {% if cell.evening %}
+                  <div class="popup-shift-list">
+                    {% for shift in cell.evening %}
+                    <div class="popup-person{% if shift.user_id == request.user.id %} current{% endif %}">
+                      <b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b>
+                      <small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% else %}<div class="popup-empty">— ไม่มีเวร —</div>{% endif %}
+                </td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
       </div>
-      <div class="weekly-tools">
-        <button class="fullscreen-enter" type="button" onclick="toggleRosterFullscreen()">⛶ Fullscreen ตารางนี้</button>
-        <button class="fullscreen-exit" type="button" onclick="toggleRosterFullscreen()">ออกจาก Fullscreen</button>
-      </div>
-    </div>
-
-    <div class="weekly-scroll">
-      <table class="role-table">
-        <thead>
-          <tr>
-            <th>วัน</th>
-            <th>เวรดึก<br><small>00:00–08:00</small></th>
-            <th>เวรเช้า<br><small>08:00–16:00</small></th>
-            <th>เวรบ่าย<br><small>16:00–00:00</small></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in role_week_rows %}
-          <tr{% if row.is_today %} class="today"{% endif %}>
-            <td class="day">
-              <a class="day-link" href="?day={{ row.date|date:'Y-m-d' }}&role={{ selected_roster_role }}#day-detail">
-                <b>{{ row.label }}</b><span>{{ row.date|date:"d/m/Y" }}</span>
-              </a>
-              {% if row.leave %}<span class="leave-note">ลา {{ row.leave|length }} คน</span>{% endif %}
-            </td>
-            <td>
-              {% if row.night %}<div class="week-shift-list">{% for shift in row.night %}<div class="week-person{% if shift.user_id == request.user.id %} current-person{% endif %}"><b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small></div>{% endfor %}</div>{% else %}<div class="cell-none">— ไม่มีเวร —</div>{% endif %}
-            </td>
-            <td>
-              {% if row.morning %}<div class="week-shift-list">{% for shift in row.morning %}<div class="week-person{% if shift.user_id == request.user.id %} current-person{% endif %}"><b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small></div>{% endfor %}</div>{% else %}<div class="cell-none">— ไม่มีเวร —</div>{% endif %}
-            </td>
-            <td>
-              {% if row.evening %}<div class="week-shift-list">{% for shift in row.evening %}<div class="week-person{% if shift.user_id == request.user.id %} current-person{% endif %}"><b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b><small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small></div>{% endfor %}</div>{% else %}<div class="cell-none">— ไม่มีเวร —</div>{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
+      <footer class="roster-dialog-footer">
+        <span>กด Esc หรือคลิกพื้นที่ด้านนอกเพื่อปิด</span>
+        {% if can_manage %}<a href="#add-shift" id="modalAddShift">+ เพิ่มเวรใหม่</a>{% endif %}
+      </footer>
+    </section>
+  </div>
 
   <div class="lower">
     <aside class="card">
@@ -229,14 +284,67 @@
 </main>
 
 <script>
-async function toggleRosterFullscreen(){
-  const el=document.getElementById("weekly-roster");
-  if(!el)return;
-  try{
-    if(document.fullscreenElement){await document.exitFullscreen();}
-    else if(el.requestFullscreen){await el.requestFullscreen();}
-  }catch(error){console.error("Fullscreen error:",error);}
-}
+(()=>{
+  const modal=document.getElementById("rosterModal");
+  const dialog=modal?.querySelector(".roster-dialog");
+  const closeButton=document.getElementById("rosterModalClose");
+  const fullscreenButton=document.getElementById("rosterModalFullscreen");
+  const title=document.getElementById("rosterModalTitle");
+  const iconUse=document.querySelector("#rosterModalIcon use");
+  const panels=[...(modal?.querySelectorAll(".roster-panel")||[])];
+  const cards=[...document.querySelectorAll("[data-roster-role]")];
+  let lastTrigger=null;
+
+  const openRole=(role,trigger)=>{
+    const panel=panels.find(item=>item.dataset.rolePanel===role);
+    if(!panel||!modal)return;
+    panels.forEach(item=>item.classList.toggle("active",item===panel));
+    cards.forEach(card=>card.classList.toggle("active",card.dataset.rosterRole===role));
+    if(title)title.textContent=`ตารางเวร · ${panel.dataset.roleLabel||""}`;
+    if(iconUse)iconUse.setAttribute("href","#"+(panel.dataset.roleIcon||"icon-users"));
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("roster-modal-open");
+    lastTrigger=trigger||null;
+    closeButton?.focus();
+  };
+
+  const closeModal=async()=>{
+    if(document.fullscreenElement===dialog){
+      await document.exitFullscreen().catch(()=>{});
+    }
+    modal?.classList.remove("open");
+    modal?.setAttribute("aria-hidden","true");
+    document.body.classList.remove("roster-modal-open");
+    cards.forEach(card=>card.classList.remove("active"));
+    lastTrigger?.focus();
+  };
+
+  cards.forEach(card=>card.addEventListener("click",()=>openRole(card.dataset.rosterRole,card)));
+  closeButton?.addEventListener("click",closeModal);
+  modal?.addEventListener("click",event=>{if(event.target===modal)closeModal();});
+  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&modal?.classList.contains("open"))closeModal();});
+
+  fullscreenButton?.addEventListener("click",async()=>{
+    if(!dialog)return;
+    try{
+      if(document.fullscreenElement===dialog)await document.exitFullscreen();
+      else await dialog.requestFullscreen();
+    }catch(error){console.error("Fullscreen error:",error);}
+  });
+  document.addEventListener("fullscreenchange",()=>{
+    if(fullscreenButton)fullscreenButton.textContent=document.fullscreenElement===dialog?"ออกจากเต็มจอ":"⛶ เต็มจอ";
+  });
+
+  document.getElementById("modalAddShift")?.addEventListener("click",()=>closeModal());
+
+  const params=new URLSearchParams(window.location.search);
+  if(params.has("role")){
+    const role=params.get("role");
+    const card=cards.find(item=>item.dataset.rosterRole===role);
+    if(card)openRole(role,card);
+  }
+})();
 </script>
 </body>
 </html>
