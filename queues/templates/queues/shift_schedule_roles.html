@@ -274,7 +274,7 @@
                   <span class="shift-label night">ดึก</span>
                   <span class="name-list">
                     {% for shift in cell.night %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}" title="{{ shift.user.get_full_name|default:shift.user.username }}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -285,7 +285,7 @@
                   <span class="shift-label morning">เช้า</span>
                   <span class="name-list">
                     {% for shift in cell.morning %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}" title="{{ shift.user.get_full_name|default:shift.user.username }}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -296,7 +296,7 @@
                   <span class="shift-label evening">บ่าย</span>
                   <span class="name-list">
                     {% for shift in cell.evening %}
-                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
+                    <span class="staff-name{% if shift.user_id == request.user.id %} current{% endif %}" title="{{ shift.user.get_full_name|default:shift.user.username }}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
@@ -307,7 +307,7 @@
                   <span class="shift-label leave">ลา</span>
                   <span class="name-list">
                     {% for shift in cell.leave %}
-                    <span class="staff-name">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
+                    <span class="staff-name" title="{{ shift.user.get_full_name|default:shift.user.username }}">{% if shift.user.first_name %}{{ shift.user.first_name }}{% if shift.user.last_name %} {{ shift.user.last_name|slice:":1" }}.{% endif %}{% else %}{{ shift.user.username }}{% endif %}</span>
                     {% endfor %}
                   </span>
                 </div>
