@@ -436,6 +436,9 @@ def personnel_dashboard(request):
 
         elif action == "set_staff_role":
             staff_user = get_object_or_404(user_model, pk=request.POST.get("user_id"), is_active=True)
+            if staff_user.is_superuser:
+                messages.error(request, "ไม่อนุญาตให้เปลี่ยนประเภทของผู้ดูแลระบบสูงสุดจากหน้านี้")
+                return redirect("personnel_dashboard")
             role = request.POST.get("role", "")
             valid_roles = {value for value, _label in StaffProfile.Role.choices}
             if role not in valid_roles:
