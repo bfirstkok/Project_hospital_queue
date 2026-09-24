@@ -76,7 +76,6 @@
   {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
   <form class="controls" method="get">
-    <input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}">
     <input type="hidden" name="role" value="{{ selected_roster_role }}">
     <div class="field"><label>ค้นหาบุคลากรในมุมมองนี้</label><input type="search" name="q" value="{{ search_query }}" placeholder="ชื่อหรือนามสกุล"></div>
     <div class="field"><label>สัปดาห์</label><input type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"></div>
