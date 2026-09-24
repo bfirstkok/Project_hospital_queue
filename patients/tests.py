@@ -503,6 +503,39 @@ class PatientAdminCascadeDeleteTests(TestCase):
             pin_hash="test-pin-hash",
         )
 
+        from queues.models import (
+            ConfirmedTriageCase,
+            CriticalAlert,
+            TelemetryLog,
+            Visit,
+            VisitWorkflowLog,
+        )
+
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        ConfirmedTriageCase.objects.create(
+            visit=self.visit,
+            nurse_severity=Visit.Severity.YELLOW,
+        )
+        TelemetryLog.objects.create(
+            visit=self.visit,
+            bpm=92,
+        )
+        CriticalAlert.objects.create(
+            visit=self.visit,
+            alert_type=CriticalAlert.AlertType.HIGH_HEART_RATE,
+            message="test alert",
+        )
+        VisitWorkflowLog.objects.create(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.TRIAGE_CONFIRMED,
+            actor_name="ระบบทดสอบ",
+            actor_role="ระบบ",
+            description="test workflow log",
+        )
+
     def test_admin_can_delete_patient_with_read_only_portal_credentials(self):
         delete_url = reverse("admin:patients_patient_delete", args=[self.patient.id])
 
@@ -512,6 +545,10 @@ class PatientAdminCascadeDeleteTests(TestCase):
         self.assertNotContains(confirm, "ไม่สามารถลบ")
         self.assertNotContains(confirm, "patient access token")
         self.assertNotContains(confirm, "patient pin")
+        self.assertNotContains(confirm, "confirmed triage case")
+        self.assertNotContains(confirm, "telemetry log")
+        self.assertNotContains(confirm, "critical alert")
+        self.assertNotContains(confirm, "visit workflow log")
 
         response = self.client.post(delete_url, {"post": "yes"})
 
@@ -519,3 +556,14 @@ class PatientAdminCascadeDeleteTests(TestCase):
         self.assertFalse(Patient.objects.filter(pk=self.patient.pk).exists())
         self.assertFalse(PatientAccessToken.objects.filter(patient_id=self.patient.pk).exists())
         self.assertFalse(PatientPin.objects.filter(patient_id=self.patient.pk).exists())
+
+        from queues.models import (
+            ConfirmedTriageCase,
+            CriticalAlert,
+            TelemetryLog,
+            VisitWorkflowLog,
+        )
+        self.assertFalse(ConfirmedTriageCase.objects.filter(visit_id=self.visit.id).exists())
+        self.assertFalse(TelemetryLog.objects.filter(visit_id=self.visit.id).exists())
+        self.assertFalse(CriticalAlert.objects.filter(visit_id=self.visit.id).exists())
+        self.assertFalse(VisitWorkflowLog.objects.filter(visit_id=self.visit.id).exists())
