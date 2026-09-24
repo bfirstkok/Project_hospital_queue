@@ -522,6 +522,83 @@ def shift_schedule(request):
             "cells": cells,
         })
 
+    # New roster presentation: a compact selected-day overview plus a
+    # role-focused 7-day x 3-shift table. Keep the old matrix context above
+    # for backwards compatibility/tests, but the UI no longer renders all
+    # ten roles side by side.
+    selected_roster_role = role_filter or StaffProfile.Role.DOCTOR
+    role_label_map = dict(schedule_role_choices)
+    selected_roster_role_label = role_label_map.get(
+        selected_roster_role,
+        selected_roster_role,
+    )
+
+    def roster_visible(shifts):
+        visible = []
+        for shift in shifts:
+            if search_query and not matches_search(shift.user):
+                continue
+            visible.append(shift)
+        return visible
+
+    role_week_rows = []
+    for day_info in week_days:
+        grouped = role_day_shifts[(day_info["date"], selected_roster_role)]
+        role_week_rows.append({
+            **day_info,
+            "night": roster_visible(grouped["night"]),
+            "morning": roster_visible(grouped["morning"]),
+            "evening": roster_visible(grouped["evening"]),
+            "leave": roster_visible(grouped["leave"]),
+        })
+
+    selected_day_scheduled = [
+        shift
+        for shift in matrix_source
+        if shift.shift_date == selected
+        and shift.status == ShiftSchedule.Status.SCHEDULED
+        and (not search_query or matches_search(shift.user))
+    ]
+    selected_day_shift_cards = []
+    selected_day_shift_totals = {"night": 0, "morning": 0, "evening": 0}
+    for shift_key, shift_label, time_label, shift_hour in timetable_shift_defs:
+        shift_people = [
+            shift for shift in selected_day_scheduled
+            if shift.start_time.hour == shift_hour
+        ]
+        selected_day_shift_totals[shift_key] = len(shift_people)
+
+        by_role = defaultdict(list)
+        for shift in shift_people:
+            by_role[user_role_key(shift.user)].append(shift)
+
+        role_groups = []
+        for role, label in schedule_role_choices:
+            role_shifts = by_role.get(role, [])
+            if not role_shifts:
+                continue
+            role_groups.append({
+                "role": role,
+                "label": label,
+                "shifts": role_shifts,
+                "count": len(role_shifts),
+            })
+
+        selected_day_shift_cards.append({
+            "key": shift_key,
+            "label": shift_label,
+            "time_label": time_label,
+            "total": len(shift_people),
+            "role_groups": role_groups,
+        })
+
+    selected_day_staff_total = len({
+        shift.user_id for shift in selected_day_scheduled
+    })
+    selected_day_role_total = len({
+        user_role_key(shift.user) for shift in selected_day_scheduled
+    })
+
     role_count_map = defaultdict(int)
     for shift in schedules:
         role_count_map[user_role_key(shift.user)] += 1
@@ -577,6 +654,13 @@ def shift_schedule(request):
         "timetable_rows": timetable_rows,
         "role_columns": role_columns,
         "role_timetable_rows": role_timetable_rows,
+        "selected_roster_role": selected_roster_role,
+        "selected_roster_role_label": selected_roster_role_label,
+        "role_week_rows": role_week_rows,
+        "selected_day_shift_cards": selected_day_shift_cards,
+        "selected_day_shift_totals": selected_day_shift_totals,
+        "selected_day_staff_total": selected_day_staff_total,
+        "selected_day_role_total": selected_day_role_total,
         "on_duty_now": on_duty_now,
         "week_start": week_start,
         "week_end": week_end,
