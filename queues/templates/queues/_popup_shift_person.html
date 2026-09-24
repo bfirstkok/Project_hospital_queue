@@ -1,0 +1,57 @@
+<div class="popup-person{% if shift.user_id == request.user.id %} current{% endif %}">
+  <div class="popup-person-main">
+    <div class="popup-person-copy">
+      <b>{{ shift.user.get_full_name|default:shift.user.username }}{% if shift.user_id == request.user.id %}<span class="you-badge">คุณ</span>{% endif %}</b>
+      <small>{{ shift.note|default:"ยังไม่ได้กำหนดหน้าที่" }}</small>
+    </div>
+    {% if can_manage %}
+    <details class="popup-edit">
+      <summary>แก้ไขเวร</summary>
+      <div class="popup-edit-panel">
+        <form class="popup-edit-form" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_shift">
+          <input type="hidden" name="shift_id" value="{{ shift.id }}">
+          <input type="hidden" name="day" value="{{ shift.shift_date|date:'Y-m-d' }}">
+          <input type="hidden" name="return_role" value="{{ role }}">
+          <label>บุคลากร
+            <select name="user_id" required>
+              {% for user in users %}
+              <option value="{{ user.id }}" {% if user.id == shift.user_id %}selected{% endif %}>{{ user.get_full_name|default:user.username }}{% if user.is_superuser %} · ผู้ดูแลระบบ{% endif %}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>วันที่
+            <input type="date" name="shift_date" value="{{ shift.shift_date|date:'Y-m-d' }}" required>
+          </label>
+          <label>เริ่ม
+            <input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required>
+          </label>
+          <label>สิ้นสุด
+            <input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required>
+          </label>
+          <label class="popup-duty-field">หน้าที่ประจำเวร
+            <input name="duty_assignment" list="duty-options" maxlength="200" value="{{ shift.note }}" required>
+          </label>
+          <label>สถานะ
+            <select name="status">
+              {% for value,label in shift_statuses %}
+              <option value="{{ value }}" {% if value == shift.status %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button class="popup-save" type="submit">บันทึกการแก้ไข</button>
+        </form>
+        <form class="popup-delete-form" method="post" onsubmit="return confirm('ยืนยันลบเวรของ {{ shift.user.get_full_name|default:shift.user.username }} วันที่ {{ shift.shift_date|date:"d/m/Y" }}?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_shift">
+          <input type="hidden" name="shift_id" value="{{ shift.id }}">
+          <input type="hidden" name="day" value="{{ shift.shift_date|date:'Y-m-d' }}">
+          <input type="hidden" name="return_role" value="{{ role }}">
+          <button type="submit">ลบเวรนี้</button>
+        </form>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+</div>
