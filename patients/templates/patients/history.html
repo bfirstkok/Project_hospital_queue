@@ -38,6 +38,27 @@
     .operator-name { margin-top: 7px; font-size: 15px; font-weight: 700; color: #274755; }
     .operator-meta { margin-top: 4px; color: #607783; font-size: 12px; line-height: 1.45; }
     .legacy-note { color: #b7791f; }
+    .journey-shell { margin: 15px 0 18px; border: 1px solid #d6e5e7; border-radius: 14px; overflow: hidden; background: #fbfdfd; }
+    .journey-status { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #e2ecee; background: #f4faf9; }
+    .journey-status-copy small { display: block; color: #6b828b; font-size: 11px; font-weight: 700; }
+    .journey-status-copy strong { display: block; margin-top: 3px; color: #173f4d; font-size: 19px; line-height: 1.3; }
+    .journey-status-copy span { display: block; margin-top: 3px; color: #607983; font-size: 11px; }
+    .journey-state-badge { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; background: #e7f5f2; color: #087467; font-size: 10px; font-weight: 900; }
+    .journey-status.urgent { background: #fff3f4; }.journey-status.urgent .journey-state-badge { background: #fde2e5; color: #a32939; }
+    .journey-status.cancelled { background: #f5f6f7; }.journey-status.cancelled .journey-state-badge { background: #e8ecee; color: #60727a; }
+    .journey-status.done { background: #eff9f4; }.journey-status.done .journey-state-badge { background: #d9f2e6; color: #126c50; }
+    .journey { display: grid; grid-template-columns: repeat(8, minmax(118px, 1fr)); overflow-x: auto; padding: 14px; gap: 0; }
+    .journey-step { position: relative; min-width: 118px; padding: 0 8px; text-align: center; }
+    .journey-step:not(:last-child)::after { content: ""; position: absolute; top: 14px; left: calc(50% + 16px); width: calc(100% - 32px); height: 2px; background: #d7e2e5; z-index: 0; }
+    .journey-step.done:not(:last-child)::after { background: #52ad9f; }
+    .journey-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 30px; height: 30px; margin: 0 auto 7px; border: 2px solid #cedcdf; border-radius: 50%; background: #fff; color: #8b9ba2; font-size: 11px; font-weight: 900; }
+    .journey-step.done .journey-dot { border-color: #18877a; background: #18877a; color: #fff; }
+    .journey-step.current .journey-dot { border-color: #e69a20; background: #fff5db; color: #9a6500; box-shadow: 0 0 0 4px rgba(230,154,32,.12); }
+    .journey-step.skipped .journey-dot { border-color: #a8b7bd; background: #edf2f3; color: #657980; }
+    .journey-step.cancelled .journey-dot { border-color: #b64b58; background: #fff0f2; color: #a12c3b; }
+    .journey-step b { display: block; color: #274755; font-size: 10px; line-height: 1.35; }
+    .journey-step span { display: block; margin-top: 4px; color: #758b94; font-size: 8px; line-height: 1.45; }
+    .visit-latest { display: inline-flex; margin-left: 7px; padding: 3px 7px; border-radius: 999px; background: #e8f6f3; color: #087467; font-size: 9px; font-weight: 900; vertical-align: middle; }
     .audit-timeline { position: relative; display: grid; gap: 0; margin: 2px 0 16px 7px; padding-left: 23px; border-left: 2px solid #55aaa2; }
     .audit-entry { position: relative; padding: 3px 0 15px; }
     .audit-entry::before { content: ""; position: absolute; top: 7px; left: -29px; width: 10px; height: 10px; border: 2px solid #ffffff; border-radius: 50%; background: #087f75; box-shadow: 0 0 0 2px #55aaa2; }
@@ -45,7 +66,7 @@
     .audit-meta { margin-top: 3px; color: #607783; font-size: 12px; }
     .audit-description { margin-top: 4px; color: #405d6b; font-size: 13px; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .top { flex-direction: column; } }
-    @media (max-width: 650px) { .accountability { grid-template-columns: 1fr; } }
+    @media (max-width: 650px) { .accountability { grid-template-columns: 1fr; } .journey-status { align-items: flex-start; flex-direction: column; } .journey { grid-template-columns: repeat(8, 128px); } }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
@@ -106,13 +127,33 @@
       <main>
         {% for visit in visits %}
           <section class="visit">
-            <h2>Visit #{{ visit.id }} <span class="badge {{ visit.final_severity }}">{{ visit.final_severity|default:"ยังไม่สรุป" }}</span></h2>
+            <h2>Visit #{{ visit.id }} <span class="badge {{ visit.final_severity }}">{{ visit.final_severity|default:"ยังไม่สรุป" }}</span>{% if forloop.first %}<span class="visit-latest">Visit ล่าสุด</span>{% endif %}</h2>
             <div class="muted">
               ลงทะเบียน {{ visit.registered_at|date:"Y-m-d H:i" }} |
               คัดกรอง {{ visit.triaged_at|date:"Y-m-d H:i"|default:"-" }} |
               เรียกคิว {{ visit.called_at|date:"Y-m-d H:i"|default:"-" }} |
-              สถานะ {{ visit.queue.status|default:"-" }}
+              Queue {{ visit.patient_journey.queue_status_label }}
             </div>
+
+            <section class="journey-shell" aria-label="เส้นทางการรับบริการของ Visit {{ visit.id }}">
+              <div class="journey-status {{ visit.patient_journey.current_class }}">
+                <div class="journey-status-copy">
+                  <small>สถานะปัจจุบันของผู้ป่วย</small>
+                  <strong>{{ visit.patient_journey.current_label }}</strong>
+                  <span>{{ visit.patient_journey.current_detail }}</span>
+                </div>
+                <span class="journey-state-badge">{{ visit.patient_journey.queue_status_label }}</span>
+              </div>
+              <div class="journey">
+                {% for step in visit.patient_journey.steps %}
+                <div class="journey-step {{ step.state }}">
+                  <span class="journey-dot">{% if step.state == "done" %}✓{% elif step.state == "current" %}●{% elif step.state == "skipped" %}–{% elif step.state == "cancelled" %}×{% else %}{{ forloop.counter }}{% endif %}</span>
+                  <b>{{ step.label }}</b>
+                  <span>{{ step.detail }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </section>
 
             <h3 class="section-title">ผู้รับผิดชอบในกระบวนการ</h3>
             <div class="accountability">
