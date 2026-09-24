@@ -60,6 +60,32 @@ class ShiftDutyAssignmentTests(TestCase):
         self.assertContains(response, 'data-role-panel="DOCTOR"', html=False)
         self.assertContains(response, "Popup จะแสดงตารางเวรของตำแหน่งนั้นทันที")
 
+    def test_popup_shift_entry_has_inline_edit_controls(self):
+        ShiftSchedule.objects.create(
+            user=self.nurse,
+            shift_date=timezone.localdate(),
+            start_time=timezone.datetime.strptime("08:00", "%H:%M").time(),
+            end_time=timezone.datetime.strptime("16:00", "%H:%M").time(),
+            status=ShiftSchedule.Status.SCHEDULED,
+            note="คัดกรองผู้ป่วย",
+            created_by=self.manager,
+        )
+
+        response = self.client.get(
+            reverse("shift_schedule"),
+            {"role": StaffProfile.Role.NURSE},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "แก้ไขเวร")
+        self.assertContains(response, 'class="popup-edit-form"', html=False)
+        self.assertContains(
+            response,
+            f'name="return_role" value="{StaffProfile.Role.NURSE}"',
+            html=False,
+        )
+        self.assertContains(response, "บันทึกการแก้ไข")
+
     def test_manager_superuser_can_be_scheduled_as_system_administrator(self):
         response = self.client.post(reverse("shift_schedule"), {
             "action": "save_shift",
