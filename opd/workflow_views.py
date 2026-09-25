@@ -166,12 +166,76 @@ def opd_care_plan(request, visit_id):
 
         return HttpResponseBadRequest("Unknown action")
 
+    prescription_has_items = bool(
+        prescription and any(True for _ in prescription.items.all())
+    )
+    billing_done = bool(
+        bill and bill.status in {Bill.Status.PAID, Bill.Status.WAIVED}
+    )
+    pharmacy_done = bool(
+        prescription and prescription.status == Prescription.Status.DISPENSED
+    )
+    pharmacy_skipped = bool(
+        billing_done
+        and (
+            prescription is None
+            or not prescription_has_items
+            or prescription.status == Prescription.Status.CANCELLED
+        )
+    )
+    visit_complete = bool(
+        billing_done and (pharmacy_done or pharmacy_skipped)
+    )
+    prescription_locked = bool(
+        billing_done
+        and not (
+            prescription
+            and prescription.status == Prescription.Status.DRAFT
+            and prescription_has_items
+        )
+    )
+
+    if visit_complete:
+        next_action_label = "เสร็จสิ้นการรับบริการ"
+        next_action_detail = (
+            "ไม่มีรายการยาที่ต้องรับ · การเงินเสร็จแล้ว · ผู้ป่วยสามารถกลับบ้านได้"
+            if pharmacy_skipped
+            else "จ่ายยาและดำเนินการการเงินเรียบร้อยแล้ว · ผู้ป่วยสามารถกลับบ้านได้"
+        )
+    elif prescription and prescription.status == Prescription.Status.DRAFT and prescription_has_items:
+        next_action_label = "ส่งใบสั่งยาไปห้องยา"
+        next_action_detail = "มีรายการยาแล้ว กรุณาส่งใบสั่งยาให้ห้องยาดำเนินการ"
+    elif prescription and prescription.status in {
+        Prescription.Status.SENT,
+        Prescription.Status.PREPARING,
+        Prescription.Status.READY,
+    }:
+        next_action_label = "รอห้องยา"
+        next_action_detail = prescription.get_status_display()
+    elif not billing_done and not bill:
+        next_action_label = "เลือกขั้นตอนหลังตรวจ"
+        next_action_detail = "หากมียาให้เพิ่มรายการและส่งห้องยา หากไม่มียาให้ส่งค่าใช้จ่ายไปการเงิน"
+    elif not billing_done:
+        next_action_label = "รอการเงิน"
+        next_action_detail = bill.get_status_display() if bill else "รอดำเนินการ"
+    else:
+        next_action_label = "ดำเนินการต่อ"
+        next_action_detail = "ยังมีขั้นตอนหลังตรวจที่ต้องดำเนินการ"
+
     return render(request, "opd_care_plan.html", {
         "visit": visit,
         "assessment": assessment,
         "prescription": prescription,
         "certificate": certificate,
         "bill": bill,
+        "prescription_has_items": prescription_has_items,
+        "billing_done": billing_done,
+        "pharmacy_done": pharmacy_done,
+        "pharmacy_skipped": pharmacy_skipped,
+        "visit_complete": visit_complete,
+        "prescription_locked": prescription_locked,
+        "next_action_label": next_action_label,
+        "next_action_detail": next_action_detail,
     })
 
 
