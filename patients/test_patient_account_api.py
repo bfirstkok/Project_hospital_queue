@@ -228,6 +228,29 @@ class PatientAccountApiTests(TestCase):
         self.assertTrue(response.json()["ok"])
         self.assertIsNone(response.json()["masked_target"])
 
+    @patch("patients.views._verify_google_access_token")
+    def test_google_oauth_popup_access_token_is_accepted(self, verify_google_access):
+        patient = self.create_account(google_id=None, email_verified=False)
+        verify_google_access.return_value = {
+            "sub": "google-popup-sub-123",
+            "email": patient.email,
+            "email_verified": True,
+            "given_name": "สมชาย",
+            "family_name": "ป๊อปอัป",
+        }
+
+        response = self.post_json(
+            "patient_google_auth",
+            {"access_token": "google-oauth-access-token"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["access_token"])
+        verify_google_access.assert_called_once_with("google-oauth-access-token")
+        patient.refresh_from_db()
+        self.assertEqual(patient.google_id, "google-popup-sub-123")
+        self.assertTrue(patient.email_verified)
+
     @patch("patients.views._verify_google_credential")
     def test_google_auth_auto_links_by_verified_email(self, verify_google):
         patient = self.create_account(google_id=None, email_verified=False)
