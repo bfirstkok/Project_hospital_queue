@@ -12,6 +12,8 @@ from .models import OtpChallenge, Patient, PatientAccessToken
 
 @override_settings(
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    RESEND_API_KEY="",
+    RESEND_FROM_EMAIL="",
     DEFAULT_FROM_EMAIL="Hospital <noreply@example.com>",
     PATIENT_APP_ORIGINS={"https://hospital.bfirstkok.me"},
     PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"],
