@@ -377,6 +377,29 @@ class OpdDownstreamWorkflowTests(TestCase):
         bill.refresh_from_db()
         self.assertEqual(bill.status, Bill.Status.WAIVED)
 
+    def test_aftercare_marks_no-medication_paid_visit_complete(self):
+        Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.PAID,
+            consultation_fee="200.00",
+            subtotal="200.00",
+            patient_due="200.00",
+            received_by=self.cashier,
+            paid_at=timezone.now(),
+        )
+        self.client.force_login(self.doctor)
+
+        response = self.client.get(reverse("opd_care_plan", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["visit_complete"])
+        self.assertTrue(response.context["pharmacy_skipped"])
+        self.assertContains(response, "เสร็จสิ้นการรับบริการ")
+        self.assertContains(response, "ไม่มีการสั่งยา · ข้ามขั้นตอน")
+        self.assertContains(response, "ไม่ต้องเข้าห้องยา")
+        self.assertContains(response, "ผู้ป่วยสามารถกลับบ้านได้")
+        self.assertNotContains(response, "ส่งค่าใช้จ่ายไปการเงิน")
+
     def test_doctor_can_issue_medical_certificate(self):
         self.client.force_login(self.doctor)
         response = self.client.post(
