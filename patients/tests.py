@@ -308,6 +308,47 @@ class PublicPatientApiTests(TestCase):
         self.assertContains(response, 'data-target="allergies"')
         self.assertContains(response, 'data-target="medications"')
         self.assertContains(response, 'const isEditMode = false')
+        self.assertContains(response, "รับคิวด่วน")
+        self.assertContains(response, 'class="optional-register-panel"')
+        self.assertContains(response, reverse("role_landing"))
+        self.assertNotContains(response, 'name="email" type="email" maxlength="254" autocomplete="email" placeholder="patient@example.com" required')
+
+    def test_staff_can_register_with_only_fast_registration_fields(self):
+        user = get_user_model().objects.create_user(username="fast-registration", password="test-only-password")
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("register_patient"), {
+            "first_name": "ทดสอบ",
+            "last_name": "รับคิวด่วน",
+            "national_id": "4777777777777",
+            "gender": "UNKNOWN",
+            "phone": "0812345678",
+            "blood_type": "UNKNOWN",
+            "note": "เวียนศีรษะและอ่อนเพลีย",
+            "consent": "on",
+        })
+
+        patient = Patient.objects.get(national_id="4777777777777")
+        self.assertRedirects(response, reverse("patient_history", args=[patient.id]))
+        self.assertEqual(patient.email, None)
+        self.assertEqual(patient.chronic_diseases, "")
+        self.assertEqual(patient.visits.get().queue.status, Queue.Status.WAITING_VITALS)
+
+    def test_staff_fast_registration_requires_chief_complaint(self):
+        user = get_user_model().objects.create_user(username="missing-complaint", password="test-only-password")
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("register_patient"), {
+            "first_name": "ทดสอบ",
+            "last_name": "ไม่มีอาการ",
+            "national_id": "4666666666666",
+            "phone": "0812345678",
+            "consent": "on",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "กรุณาระบุอาการสำคัญหรือเหตุผลที่มารับบริการ")
+        self.assertFalse(Patient.objects.filter(national_id="4666666666666").exists())
 
     def test_staff_registration_saves_up_to_three_emergency_contacts_like_patient_portal(self):
         user = get_user_model().objects.create_user(username="multi-contact", password="test-only-password")

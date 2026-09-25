@@ -48,6 +48,16 @@
         <li><span>3</span>รอเรียกคิว</li>
       </ol>
 
+      {% if not is_edit %}
+      <section class="quick-register-guide" aria-label="คำแนะนำการลงทะเบียนด่วน">
+        <div class="quick-register-guide__icon">1</div>
+        <div>
+          <strong>รับคิวด่วน: กรอกเฉพาะข้อมูลที่มีเครื่องหมาย *</strong>
+          <span>ข้อมูลสุขภาพ ที่อยู่ และผู้ติดต่อฉุกเฉินสามารถเปิดกรอกเพิ่มเติมได้ โดยไม่ขวางการรับคิว</span>
+        </div>
+      </section>
+      {% endif %}
+
       <div class="card">
 
         {% if is_edit %}
@@ -154,12 +164,11 @@
             </div>
 
             <div class="field full">
-              <label>อีเมล {% if not is_edit %}<span class="required-mark">*</span>{% endif %}</label>
+              <label>อีเมล <span class="optional-mark">ไม่บังคับ</span></label>
               <input name="email" type="email" maxlength="254" autocomplete="email" placeholder="patient@example.com"
-                     {% if not is_edit %}required{% endif %}
                      class="{% if form.email.errors %}has-error{% endif %}"
                      value="{{ form.email.value|default:'' }}">
-              <div class="hint">ใช้ยืนยันตัวตนและกู้คืนรหัสผ่าน/PIN ใน Patient Portal</div>
+              <div class="hint">กรอกเมื่อผู้ป่วยต้องการใช้ Patient Portal หรือกู้คืนรหัสผ่าน/PIN</div>
               {% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
             </div>
 
@@ -185,9 +194,16 @@
             {% if form.note.errors %}<div class="field-error">{{ form.note.errors.0 }}</div>{% endif %}
           </div>
 
+          <details class="optional-register-panel" {% if open_optional_details %}open{% endif %}>
+            <summary>
+              <span><strong>ข้อมูลเพิ่มเติม</strong><small>ข้อมูลสุขภาพ ที่อยู่ และผู้ติดต่อฉุกเฉิน</small></span>
+              <em>{% if is_edit %}เปิดอยู่{% else %}เปิดกรอกเมื่อมีเวลา{% endif %}</em>
+            </summary>
+            <div class="optional-register-panel__body">
+
           <!-- ================= SECTION 3: สุขภาพ ================= -->
           <h3>ข้อมูลสุขภาพและประวัติการแพ้</h3>
-          <p class="section-help">ข้อมูลเบื้องต้นเพื่อความปลอดภัยในการตรวจรักษา</p>
+          <p class="section-help">กรอกเท่าที่ผู้ป่วยยืนยันได้ หากยังไม่ทราบ พยาบาลสามารถตรวจสอบเพิ่มเติมในขั้นคัดกรอง</p>
           <div class="health-notice">สัญญาณชีพ เช่น ความดันโลหิต ชีพจร อุณหภูมิ และออกซิเจนในเลือด จะได้รับการตรวจวัด ณ จุดคัดกรอง</div>
 
           <div class="grid three-column">
@@ -227,8 +243,8 @@
 
           <div class="portal-choice-field {% if form.chronic_diseases.errors %}has-error{% endif %}"
                data-choice-field data-target="chronic_diseases" data-none="ไม่มีโรคประจำตัว">
-            <div class="field-group-title">🩺 โรคประจำตัว {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
-              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มีโรคประจำตัว”</small>
+            <div class="field-group-title">🩺 โรคประจำตัว
+              <small>เลือกเมื่อผู้ป่วยยืนยันข้อมูลได้ หากไม่มีให้เลือก “ไม่มีโรคประจำตัว”</small>
             </div>
             <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มีโรคประจำตัว">ไม่มีโรคประจำตัว</button>
@@ -246,8 +262,8 @@
 
           <div class="portal-choice-field {% if form.allergies.errors %}has-error{% endif %}"
                data-choice-field data-target="allergies" data-none="ไม่มีประวัติแพ้ยา">
-            <div class="field-group-title">⚠️ ประวัติแพ้ยาและอาหาร {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
-              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มีประวัติแพ้ยา”</small>
+            <div class="field-group-title">⚠️ ประวัติแพ้ยาและอาหาร
+              <small>เลือกเมื่อผู้ป่วยยืนยันข้อมูลได้ หากไม่มีให้เลือก “ไม่มีประวัติแพ้ยา”</small>
             </div>
             <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มีประวัติแพ้ยา">ไม่มีประวัติแพ้ยา</button>
@@ -263,8 +279,8 @@
 
           <div class="portal-choice-field {% if form.medications.errors %}has-error{% endif %}"
                data-choice-field data-target="medications" data-none="ไม่มียาที่ใช้ประจำ">
-            <div class="field-group-title">💊 ยาที่ใช้ประจำ {% if not is_edit %}<span class="required-mark">*</span>{% endif %}
-              <small>เลือกอย่างน้อย 1 รายการ หรือระบุเพิ่มเติม หากไม่มีให้เลือก “ไม่มียาที่ใช้ประจำ”</small>
+            <div class="field-group-title">💊 ยาที่ใช้ประจำ
+              <small>เลือกเมื่อผู้ป่วยยืนยันข้อมูลได้ หากไม่มีให้เลือก “ไม่มียาที่ใช้ประจำ”</small>
             </div>
             <div class="choice-chips">
               <button type="button" class="choice-chip" data-value="ไม่มียาที่ใช้ประจำ">ไม่มียาที่ใช้ประจำ</button>
@@ -391,6 +407,9 @@
             </div>
           </template>
 
+            </div>
+          </details>
+
           {% if not is_edit %}
           <label class="consent-box">
             <input type="checkbox" name="consent" required>
@@ -401,7 +420,7 @@
           <!-- ================= FOOTER ================= -->
           <div class="footer">
             <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}บันทึกการแก้ไข →{% else %}ยืนยันลงทะเบียน →{% endif %}</button>
-            <a class="btn ghost" href="{% if is_edit %}{% url 'waiting_vitals' %}{% else %}{% url 'queue_list' %}{% endif %}">ยกเลิก</a>
+            <a class="btn ghost" href="{% url 'role_landing' %}">ยกเลิก</a>
           </div>
 
         </form>
@@ -761,7 +780,7 @@
     })
     .catch(err => console.error("Failed to load th_address.json", err));
 
-  // ===== Validate fields that are satisfied by chips before submit =====
+  // ===== Sync optional chip fields before submit =====
   const registerForm = document.getElementById("patientRegisterForm");
   const submitPatientBtn = document.getElementById("submitPatientBtn");
   registerForm?.addEventListener("submit", event => {
@@ -769,20 +788,6 @@
       if (typeof group._syncChoiceField === "function") group._syncChoiceField();
     });
     syncPrimaryEmergencyContact();
-
-    if (!isEditMode) {
-      const missingGroup = Array.from(document.querySelectorAll("[data-choice-field]")).find(group => {
-        const target = document.getElementById(group.dataset.target);
-        return !target?.value.trim();
-      });
-      if (missingGroup) {
-        event.preventDefault();
-        missingGroup.classList.add("has-error");
-        missingGroup.scrollIntoView({ behavior: "smooth", block: "center" });
-        missingGroup.querySelector("[data-custom-input]")?.focus();
-        return;
-      }
-    }
 
     if (submitPatientBtn) {
       submitPatientBtn.disabled = true;

@@ -24,7 +24,10 @@ from .access import (
 def role_landing(request):
     """Send each account to the first page that matches its effective duty."""
     if is_effective_superuser(request.user):
-        return redirect("system_test:index")
+        # The admin control center mixes operational, diagnostic, database and
+        # test tools.  It remains available from the Admin navigation item, but
+        # the calmer operational dashboard is a better default after login.
+        return redirect("dashboard:home")
     if has_capability(request.user, Capability.DOCTOR_ASSESSMENT):
         return redirect("opd_room_select")
     if has_capability(request.user, Capability.VIEW_PHARMACY):

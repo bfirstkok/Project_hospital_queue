@@ -961,6 +961,19 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "ยังไม่มีข้อมูลวันเดือนปีเกิด")
         self.assertContains(response, reverse("update_patient_birth_date", args=[patient.id]))
 
+    def test_waiting_vitals_hides_registration_shortcut_without_permission(self):
+        assistant = get_user_model().objects.create_user(
+            username="vitals-only-assistant",
+            password="secret",
+        )
+        StaffProfile.objects.create(user=assistant, role=StaffProfile.Role.NURSE_ASSISTANT)
+        self.client.force_login(assistant)
+
+        response = self.client.get(reverse("waiting_vitals"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, ">+ ลงทะเบียนผู้ป่วย</a>", html=False)
+
     def test_waiting_vitals_is_paginated_searchable_and_supports_page_sizes(self):
         for index in range(25):
             patient = Patient.objects.create(

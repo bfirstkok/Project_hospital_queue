@@ -106,6 +106,21 @@ class RoleAccessTests(TestCase):
         self.assertEqual(self.client.get(reverse("system_test:index")).status_code, 200)
         self.assertEqual(self.client.get(reverse("database_index")).status_code, 200)
 
+    def test_superuser_lands_on_operational_dashboard_not_test_control_center(self):
+        admin = self.make_user("landing-admin", StaffProfile.Role.STAFF, superuser=True)
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse("role_landing"))
+
+        self.assertRedirects(response, reverse("dashboard:home"))
+
+    def test_login_page_describes_all_hospital_staff(self):
+        response = self.client.get(reverse("login"))
+
+        self.assertContains(response, "เข้าสู่ระบบบุคลากร")
+        self.assertContains(response, "สำหรับบุคลากรโรงพยาบาล")
+        self.assertNotContains(response, "เข้าสู่ระบบ (พยาบาล)")
+
     def test_personnel_changes_are_superuser_only(self):
         nurse = self.make_user("viewer", StaffProfile.Role.NURSE)
         target = self.make_user("target", StaffProfile.Role.NURSE)

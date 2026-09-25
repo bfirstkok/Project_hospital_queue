@@ -276,7 +276,9 @@
         <div class="waiting-count">กำลังรอ {{ waiting_total }} ราย</div>
       </div>
       {% include "includes/main_nav.html" %}
-      <a class="btn primary" href="/patients/register/">+ ลงทะเบียนผู้ป่วย</a>
+      {% if 'register_patient' in access_capabilities %}
+        <a class="btn primary" href="{% url 'register_patient' %}">+ ลงทะเบียนผู้ป่วย</a>
+      {% endif %}
     </div>
 
     <section class="waiting-board">

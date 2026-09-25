@@ -180,6 +180,93 @@ form { counter-reset: register-section; }
   line-height: 1.5;
 }
 .required-mark { color: var(--register-danger); font-weight: 800; }
+.optional-mark {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #edf4f5;
+  color: #607983;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.quick-register-guide {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: -8px 0 18px;
+  padding: 14px 17px;
+  border: 1px solid #a8ddd5;
+  border-radius: 13px;
+  background: #effbf8;
+  color: #235d5a;
+}
+.quick-register-guide__icon {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--register-primary);
+  color: #fff;
+  font-weight: 900;
+}
+.quick-register-guide strong,
+.quick-register-guide span { display: block; }
+.quick-register-guide span { margin-top: 2px; font-size: 13px; line-height: 1.45; }
+
+.optional-register-panel {
+  margin: 25px 0 8px;
+  border: 1px solid #c9dfe0;
+  border-radius: 15px;
+  background: #f8fbfb;
+  overflow: hidden;
+}
+.optional-register-panel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 19px;
+  color: #244b55;
+  cursor: pointer;
+  list-style: none;
+}
+.optional-register-panel > summary::-webkit-details-marker { display: none; }
+.optional-register-panel > summary::after {
+  content: "+";
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e1f2ef;
+  color: var(--register-primary-dark);
+  font-size: 20px;
+  font-weight: 800;
+}
+.optional-register-panel[open] > summary::after { content: "−"; }
+.optional-register-panel > summary span { min-width: 0; }
+.optional-register-panel > summary strong,
+.optional-register-panel > summary small { display: block; }
+.optional-register-panel > summary strong { font-size: 17px; }
+.optional-register-panel > summary small { margin-top: 3px; color: var(--register-muted); font-size: 12px; }
+.optional-register-panel > summary em {
+  margin-left: auto;
+  color: #6b8189;
+  font-size: 12px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.optional-register-panel__body {
+  padding: 0 19px 20px;
+  border-top: 1px solid #dce9e9;
+  background: #fff;
+}
 
 .health-notice {
   margin: 0 0 18px;
@@ -520,4 +607,8 @@ form { counter-reset: register-section; }
   .portal-choice-field { padding: 14px; }
   .emergency-entry-card { padding: 14px; }
   .footer { grid-template-columns: 1fr; }
+  .quick-register-guide { align-items: flex-start; }
+  .optional-register-panel > summary { align-items: flex-start; padding: 15px; }
+  .optional-register-panel > summary em { display: none; }
+  .optional-register-panel__body { padding: 0 15px 16px; }
 }

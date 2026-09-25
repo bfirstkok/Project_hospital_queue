@@ -2019,11 +2019,19 @@ def _registration_context(form, *, is_edit=False, patient=None, emergency_contac
             if patient
             else [{"id": "staff-1", "name": "", "relationship": "", "phone": ""}]
         )
+    optional_fields = {
+        "height_cm", "weight_kg", "bp_sys", "bp_dia", "blood_type",
+        "chronic_diseases", "allergies", "medications", "address",
+        "province", "district", "subdistrict", "postal_code",
+        "emergency_name", "emergency_relationship", "emergency_phone",
+    }
     return {
         "form": form,
         "is_edit": is_edit,
         "patient": patient,
         "emergency_contacts": emergency_contacts,
+        # Do not hide validation feedback inside a collapsed optional section.
+        "open_optional_details": is_edit or bool(optional_fields.intersection(form.errors)),
     }
 
 

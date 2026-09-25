@@ -417,7 +417,7 @@ class OpdDownstreamWorkflowTests(TestCase):
         bill.refresh_from_db()
         self.assertEqual(bill.status, Bill.Status.WAIVED)
 
-    def test_aftercare_marks_no-medication_paid_visit_complete(self):
+    def test_aftercare_marks_no_medication_paid_visit_complete(self):
         Bill.objects.create(
             visit=self.visit,
             status=Bill.Status.PAID,

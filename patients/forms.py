@@ -69,6 +69,12 @@ class PatientForm(BirthDateValidationMixin, forms.ModelForm):
                 raise forms.ValidationError("อีเมลนี้ถูกใช้กับผู้ป่วยรายอื่นแล้ว")
         return email
 
+    def clean_note(self):
+        note = (self.cleaned_data.get("note") or "").strip()
+        if self.allow_existing and not note:
+            raise forms.ValidationError("กรุณาระบุอาการสำคัญหรือเหตุผลที่มารับบริการ")
+        return note
+
     def validate_unique(self):
         # หน้าลงทะเบียนรับบริการต้องค้นหาผู้ป่วยเดิมด้วยเลขบัตรก่อน
         # ส่วนหน้าแก้ไขข้อมูลยังคงตรวจ unique ตามปกติ
