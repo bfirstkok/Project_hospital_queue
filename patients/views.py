@@ -1194,6 +1194,14 @@ def patient_password_reset_request(request):
     except Exception:
         OtpChallenge.objects.filter(pk=challenge.pk).update(consumed_at=timezone.now())
         security_logger.exception("patient_password_reset_email_delivery_failed")
+        return _cors_json(
+            request,
+            {
+                "ok": False,
+                "error": "ไม่สามารถส่งอีเมล OTP ได้ กรุณาติดต่อเจ้าหน้าที่หรือลองใหม่ภายหลัง",
+            },
+            status=503,
+        )
     return _cors_json(request, generic)
 
 
@@ -1573,6 +1581,14 @@ def patient_pin_reset_request(request):
     except Exception:
         OtpChallenge.objects.filter(pk=challenge.pk).update(consumed_at=timezone.now())
         security_logger.exception("patient_pin_reset_email_delivery_failed")
+        return _cors_json(
+            request,
+            {
+                "ok": False,
+                "error": "ไม่สามารถส่งอีเมล OTP ได้ กรุณาติดต่อเจ้าหน้าที่หรือลองใหม่ภายหลัง",
+            },
+            status=503,
+        )
     return _cors_json(request, generic_response)
 
 
