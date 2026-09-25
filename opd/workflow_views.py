@@ -135,8 +135,29 @@ def opd_care_plan(request, visit_id):
             return redirect("opd_care_plan", visit_id=visit.id)
 
         if action == "send_billing":
+            prescription = Prescription.objects.filter(visit=visit).prefetch_related("items").first()
+            if (
+                prescription
+                and prescription.status == Prescription.Status.DRAFT
+                and prescription.items.exists()
+            ):
+                messages.error(
+                    request,
+                    "มีรายการยาที่ยังไม่ได้ส่ง กรุณากด “ส่งใบสั่งยาไปห้องยา” ก่อนส่งการเงิน",
+                )
+                return redirect("opd_care_plan", visit_id=visit.id)
+
             bill = _ensure_bill(visit, request.user)
-            messages.success(request, f"ส่งรายการค่าใช้จ่ายไปการเงินแล้ว · ยอดปัจจุบัน {bill.subtotal:.2f} บาท")
+            if prescription and prescription.items.exists():
+                messages.success(
+                    request,
+                    f"รายการการเงินพร้อมแล้ว · ยอดปัจจุบัน {bill.subtotal:.2f} บาท",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"ยืนยันไม่มีรายการยาและส่งค่าใช้จ่ายไปการเงินแล้ว · ยอดปัจจุบัน {bill.subtotal:.2f} บาท",
+                )
             return redirect("opd_care_plan", visit_id=visit.id)
 
         if action == "issue_certificate":
