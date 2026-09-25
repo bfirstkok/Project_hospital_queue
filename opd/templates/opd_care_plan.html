@@ -73,7 +73,13 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px
 {% elif not billing_done and can_edit_prescription %}
 <button class="btn" type="button" disabled title="กรุณากดเพิ่มรายการยาก่อน">ส่งใบสั่งยาไปห้องยา →</button>
 {% endif %}
-{% if not bill %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ไม่มี/สรุปรายการยาแล้ว · ส่งค่าใช้จ่ายไปการเงิน</button></form>{% elif not billing_done %}<span class="badge warn">ส่งการเงินแล้ว · {{ bill.get_status_display }}</span>{% else %}<span class="badge">การเงินเสร็จแล้ว</span>{% endif %}
+{% if not bill %}
+  {% if prescription_has_items %}
+    <button class="btn secondary" type="button" disabled title="ส่งใบสั่งยาไปห้องยาก่อน ระบบจะสร้างรายการการเงินให้อัตโนมัติ">การเงินจะถูกสร้างหลังส่งใบสั่งยา</button>
+  {% else %}
+    <form method="post" onsubmit="return confirm('ยืนยันว่าเคสนี้ไม่มีรายการยา และต้องการส่งค่าใช้จ่ายไปการเงินใช่หรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ยืนยันว่าไม่มียา · ส่งค่าใช้จ่ายไปการเงิน</button></form>
+  {% endif %}
+{% elif not billing_done %}<span class="badge warn">รายการการเงินพร้อม · {{ bill.get_status_display }}</span>{% else %}<span class="badge">การเงินเสร็จแล้ว</span>{% endif %}
 <a class="btn secondary" href="{% url 'opd_visit_detail' visit.id %}">ดูข้อมูล Visit</a>
 </div>
 {% if not prescription_has_items and not billing_done %}<div class="helper-note">ปุ่มส่งห้องยาจะเปิดใช้งานหลังจากมีรายการยาอย่างน้อย 1 รายการ</div>{% endif %}
