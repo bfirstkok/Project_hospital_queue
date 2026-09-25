@@ -24,6 +24,8 @@ import json
 import logging
 import re
 import secrets
+from urllib.parse import urlencode
+from urllib.request import Request as UrlRequest, urlopen
 
 from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm, normalize_thai_phone
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
@@ -506,6 +508,65 @@ def _verify_google_credential(credential):
     return claims
 
 
+def _google_json_request(url, *, headers=None):
+    request = UrlRequest(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "hospital-patient-google-auth/1.0",
+            **(headers or {}),
+        },
+    )
+    with urlopen(request, timeout=8) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _verify_google_access_token(access_token):
+    """Verify an OAuth access token issued to this web client and return user claims.
+
+    The browser token-client flow gives us a real popup UX. The backend still
+    validates that the token was issued to our configured client before using
+    Google's UserInfo response as an identity assertion.
+    """
+    client_id = str(getattr(settings, "GOOGLE_CLIENT_ID", "") or "").strip()
+    if not client_id:
+        raise RuntimeError("google_not_configured")
+
+    token_info = _google_json_request(
+        "https://oauth2.googleapis.com/tokeninfo?"
+        + urlencode({"access_token": access_token})
+    )
+    audience = str(
+        token_info.get("aud")
+        or token_info.get("audience")
+        or token_info.get("issued_to")
+        or ""
+    ).strip()
+    if audience != client_id:
+        raise ValueError("invalid_audience")
+
+    scopes = set(str(token_info.get("scope") or "").split())
+    if "openid" not in scopes or "email" not in scopes:
+        raise ValueError("missing_identity_scope")
+
+    claims = _google_json_request(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    token_subject = str(
+        token_info.get("sub") or token_info.get("user_id") or ""
+    ).strip()
+    claim_subject = str(claims.get("sub") or "").strip()
+    if not claim_subject or (token_subject and token_subject != claim_subject):
+        raise ValueError("subject_mismatch")
+
+    verified = claims.get("email_verified")
+    claims["email_verified"] = (
+        verified is True or str(verified).strip().lower() == "true"
+    )
+    return claims
+
+
 def _lookup_patient_by_identifier(identifier):
     value = str(identifier or "").strip()
     if not value:
@@ -969,11 +1030,16 @@ def patient_google_auth(request):
     if error:
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     credential = str(payload.get("credential") or "").strip()
-    if not credential:
+    google_access_token = str(payload.get("access_token") or "").strip()
+    if not credential and not google_access_token:
         return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลยืนยันจาก Google"}, status=400)
 
     try:
-        claims = _verify_google_credential(credential)
+        claims = (
+            _verify_google_access_token(google_access_token)
+            if google_access_token
+            else _verify_google_credential(credential)
+        )
     except RuntimeError:
         return _cors_json(request, {"ok": False, "error": "ระบบ Google Sign-In ยังไม่ได้ตั้งค่า"}, status=503)
     except Exception:
