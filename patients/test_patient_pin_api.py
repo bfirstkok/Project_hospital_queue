@@ -167,6 +167,15 @@ class PatientPinApiTests(TestCase):
         self.assertEqual(changed.status_code, 200)
         self.assertTrue(check_password("778899", PatientPin.objects.get(patient=self.patient).pin_hash))
 
+    @patch("patients.views.send_mail", side_effect=RuntimeError("smtp down"))
+    def test_otp_request_reports_email_delivery_failure(self, _send_mail):
+        response = self.request_otp()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("ไม่สามารถส่งอีเมล OTP", response.json()["error"])
+        self.assertIsNotNone(OtpChallenge.objects.get().consumed_at)
+
     @patch("patients.views.secrets.randbelow", return_value=123456)
     def test_otp_request_uses_database_email_and_stores_only_hash(self, _randbelow):
         response = self.request_otp()
