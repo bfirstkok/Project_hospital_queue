@@ -13,7 +13,7 @@
 .messages{display:grid;gap:8px;margin-top:13px}.messages div{padding:11px 13px;border-radius:10px;background:#eaf7f4;color:#087467;font-size:11px;font-weight:800}.messages .error{background:#fff0f2;color:#a51d30}
 .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:13px;margin-top:14px}.card{overflow:hidden;border:1px solid #d7e5e8;border-radius:18px;background:#fff;box-shadow:0 8px 22px rgba(31,67,78,.05)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #e7eef0}.head h2{margin:0;font-size:17px}.head p{margin:4px 0 0;color:#6d838c;font-size:11px;line-height:1.5}.body{padding:18px 20px}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.summary div{padding:11px 12px;border-radius:10px;background:#f7fafb}.summary small{display:block;color:#7b9098;font-size:9px}.summary b{display:block;margin-top:3px;font-size:12px}
 .form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px;margin-top:12px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#5f7781}.field input,.field textarea,.field select{width:100%;min-height:40px;padding:9px 10px;border:1px solid #cbdadd;border-radius:9px;background:#fff;font:700 11px "Sarabun",Tahoma,sans-serif}.field textarea{min-height:70px;resize:vertical}.span2{grid-column:span 2}.span3{grid-column:1/-1}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn.secondary{border:1px solid #cbdadd;background:#fff;color:#3c5e69!important}.btn.danger{border:1px solid #efc6cb;background:#fff2f3;color:#a51d30!important}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn.secondary{border:1px solid #cbdadd;background:#fff;color:#3c5e69!important}.btn.danger{border:1px solid #efc6cb;background:#fff2f3;color:#a51d30!important}.btn[disabled]{cursor:not-allowed;opacity:.5}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.helper-note{margin-top:10px;padding:10px 12px;border-radius:9px;background:#fff7df;color:#745600;font-size:10px;font-weight:800}
 table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px;border-bottom:1px solid #e8eff1;text-align:left;vertical-align:top}th{background:#f7fafb;color:#627a84;font-size:9px}.money{text-align:right;white-space:nowrap}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e8f6f3;color:#087467;font-size:9px;font-weight:900}.badge.warn{background:#fff3d6;color:#805e00}.muted{color:#7b9098}.total{display:flex;justify-content:space-between;margin-top:12px;padding:12px 13px;border-radius:11px;background:#f1f8f7;font-size:12px}.total strong{font-size:16px;color:#087f75}
 @media(max-width:850px){.grid,.steps,.form-grid,.summary{grid-template-columns:1fr}.span2,.span3{grid-column:auto}.page{width:calc(100% - 18px)}}
 </style></head>
@@ -58,7 +58,7 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px
 <div class="field"><label>หน่วย</label><input name="unit" value="เม็ด"></div>
 <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input name="unit_price" type="number" step="0.01" min="0" value="0"></div>
 <div class="field span3"><label>วิธีใช้ / หมายเหตุ</label><input name="instructions" placeholder="หลังอาหาร / ก่อนนอน / เมื่อมีอาการ"></div>
-</div><div class="actions"><button class="btn" type="submit">+ เพิ่มรายการ</button></div></form>
+</div><div class="actions"><button class="btn" type="submit">+ เพิ่มรายการยา</button></div><div class="helper-note">กรอกข้อมูลอย่างเดียวยังไม่ถือว่าสั่งยา · ต้องกด “+ เพิ่มรายการยา” ก่อน แล้วจึงส่งใบสั่งยาไปห้องยาได้</div></form>
 {% endif %}
 
 {% if prescription and prescription.items.all %}
@@ -68,10 +68,15 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px
 {% else %}<p class="muted">ยังไม่มีรายการยา/เวชภัณฑ์</p>{% endif %}
 
 <div class="actions">
-{% if prescription and prescription.status == 'DRAFT' and prescription_has_items %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ส่งใบสั่งยาไปห้องยา</button></form>{% endif %}
+{% if prescription and prescription.status == 'DRAFT' and prescription_has_items %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ส่งใบสั่งยาไปห้องยา →</button></form>
+{% elif not billing_done and can_edit_prescription %}
+<button class="btn" type="button" disabled title="กรุณากดเพิ่มรายการยาก่อน">ส่งใบสั่งยาไปห้องยา →</button>
+{% endif %}
 {% if not bill %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ไม่มี/สรุปรายการยาแล้ว · ส่งค่าใช้จ่ายไปการเงิน</button></form>{% elif not billing_done %}<span class="badge warn">ส่งการเงินแล้ว · {{ bill.get_status_display }}</span>{% else %}<span class="badge">การเงินเสร็จแล้ว</span>{% endif %}
 <a class="btn secondary" href="{% url 'opd_visit_detail' visit.id %}">ดูข้อมูล Visit</a>
 </div>
+{% if not prescription_has_items and not billing_done %}<div class="helper-note">ปุ่มส่งห้องยาจะเปิดใช้งานหลังจากมีรายการยาอย่างน้อย 1 รายการ</div>{% endif %}
 {% if bill %}<div class="total"><span>ยอดค่าใช้จ่ายปัจจุบัน</span><strong>{{ bill.subtotal|floatformat:2 }} บาท</strong></div>{% endif %}
 </div></section>
 
