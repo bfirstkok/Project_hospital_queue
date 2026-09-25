@@ -163,6 +163,23 @@ class PatientAccountApiTests(TestCase):
         self.assertFalse(patient.email_verified)
         self.assertEqual(patient.phone_normalized, "0899998888")
 
+    @patch("patients.views.send_mail", side_effect=RuntimeError("smtp down"))
+    def test_password_reset_request_reports_email_delivery_failure(self, _send_mail):
+        patient = self.create_account()
+
+        response = self.post_json(
+            "patient_password_reset_request",
+            {"identifier": patient.email, "channel": "email"},
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("ไม่สามารถส่งอีเมล OTP", response.json()["error"])
+        challenge = OtpChallenge.objects.get(
+            patient__isnull=True,
+        ) if False else OtpChallenge.objects.get()
+        self.assertIsNotNone(challenge.consumed_at)
+
     @patch("patients.views.secrets.randbelow", return_value=123456)
     def test_password_reset_otp_changes_password_and_revokes_old_tokens(self, _randbelow):
         patient = self.create_account()
