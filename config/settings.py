@@ -254,6 +254,13 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes", "on")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "โรงพยาบาล <noreply@hospital.example>")
 
+# Transactional email provider. When RESEND_API_KEY is set, patient-facing
+# security emails are delivered over HTTPS instead of SMTP.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "").strip()
+RESEND_API_URL = os.getenv("RESEND_API_URL", "https://api.resend.com/emails").strip()
+RESEND_TIMEOUT_SECONDS = int(os.getenv("RESEND_TIMEOUT_SECONDS", "10"))
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
