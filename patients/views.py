@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core import signing
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import validate_email
-from django.core.mail import send_mail
 from django.db.models import Prefetch, Q
 from django.db import transaction
 from django.http import JsonResponse
@@ -27,6 +26,7 @@ import secrets
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 
+from .email_delivery import send_transactional_email as send_mail
 from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationForm, normalize_thai_phone
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
 from .security import rate_limited, rate_limited_by_identifier
