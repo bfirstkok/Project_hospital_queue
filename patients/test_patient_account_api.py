@@ -175,9 +175,7 @@ class PatientAccountApiTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertFalse(response.json()["ok"])
         self.assertIn("ไม่สามารถส่งอีเมล OTP", response.json()["error"])
-        challenge = OtpChallenge.objects.get(
-            patient__isnull=True,
-        ) if False else OtpChallenge.objects.get()
+        challenge = OtpChallenge.objects.get()
         self.assertIsNotNone(challenge.consumed_at)
 
     @patch("patients.views.secrets.randbelow", return_value=123456)
