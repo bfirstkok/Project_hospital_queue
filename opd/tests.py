@@ -333,6 +333,31 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertEqual(prescription.status, Prescription.Status.SENT)
         self.assertTrue(Bill.objects.filter(visit=self.visit).exists())
 
+    def test_doctor_cannot_send_billing_before_draft_prescription_is_sent(self):
+        prescription = Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.DRAFT,
+        )
+        PrescriptionItem.objects.create(
+            prescription=prescription,
+            medication_name="Paracetamol",
+            quantity=10,
+            unit="เม็ด",
+            unit_price="2.00",
+        )
+        self.client.force_login(self.doctor)
+
+        response = self.client.post(
+            reverse("opd_care_plan", args=[self.visit.id]),
+            {"action": "send_billing"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "กรุณากด “ส่งใบสั่งยาไปห้องยา” ก่อนส่งการเงิน")
+        self.assertFalse(Bill.objects.filter(visit=self.visit).exists())
+
     def test_pharmacist_can_dispense_and_cashier_can_apply_coverage_and_pay(self):
         prescription = Prescription.objects.create(
             visit=self.visit,
