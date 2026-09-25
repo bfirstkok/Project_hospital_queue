@@ -194,6 +194,13 @@ def opd_care_plan(request, visit_id):
             and prescription_has_items
         )
     )
+    can_edit_prescription = bool(
+        not billing_done
+        and (
+            prescription is None
+            or prescription.status == Prescription.Status.DRAFT
+        )
+    )
 
     if visit_complete:
         next_action_label = "เสร็จสิ้นการรับบริการ"
@@ -234,6 +241,7 @@ def opd_care_plan(request, visit_id):
         "pharmacy_skipped": pharmacy_skipped,
         "visit_complete": visit_complete,
         "prescription_locked": prescription_locked,
+        "can_edit_prescription": can_edit_prescription,
         "next_action_label": next_action_label,
         "next_action_detail": next_action_detail,
     })
