@@ -14,7 +14,7 @@ from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visi
 from accounts.access import is_effective_superuser, user_role
 from queues.room_assignment import active_doctor_room_assignment
 from queues.triage import SEVERITY_LEVELS
-from .models import VisitAssessment
+from .models import Bill, Prescription, VisitAssessment
 from .forms import VisitAssessmentForm
 
 EXAM_ROOMS = (1, 2, 3)
@@ -124,6 +124,101 @@ def _opd_queue_queryset(selected_room):
     )
 
 
+def _opd_aftercare_rows(selected_room):
+    """Keep today's examined patients visible after they leave the active OPD queue."""
+    assessments = (
+        VisitAssessment.objects
+        .select_related(
+            "visit",
+            "visit__patient",
+            "visit__queue",
+            "visit__prescription",
+            "visit__bill",
+        )
+        .prefetch_related("visit__prescription__items")
+        .filter(
+            updated_at__date=timezone.localdate(),
+            visit__queue__exam_room=selected_room,
+            visit__queue__status__in=[
+                Queue.Status.OPD_DONE,
+                Queue.Status.FOLLOWUP,
+            ],
+        )
+        .order_by("-updated_at", "-visit_id")
+    )
+
+    rows = []
+    for assessment in assessments:
+        visit = assessment.visit
+        try:
+            prescription = visit.prescription
+        except Prescription.DoesNotExist:
+            prescription = None
+        try:
+            bill = visit.bill
+        except Bill.DoesNotExist:
+            bill = None
+
+        prescription_has_items = bool(
+            prescription and len(list(prescription.items.all())) > 0
+        )
+        pharmacy_done = bool(
+            prescription and prescription.status == Prescription.Status.DISPENSED
+        )
+        pharmacy_skipped = bool(
+            prescription is None
+            or not prescription_has_items
+            or prescription.status == Prescription.Status.CANCELLED
+        )
+        billing_done = bool(
+            bill and bill.status in {Bill.Status.PAID, Bill.Status.WAIVED}
+        )
+        complete = bool(
+            billing_done and (pharmacy_done or pharmacy_skipped)
+        )
+
+        if complete:
+            status_label = "เสร็จสิ้น"
+            status_detail = "ห้องยา/การเงินครบแล้ว" if pharmacy_done else "ไม่มียา · การเงินครบแล้ว"
+            status_class = "done"
+        elif prescription and prescription.status == Prescription.Status.DRAFT and prescription_has_items:
+            status_label = "รอหมอส่งห้องยา"
+            status_detail = "มีรายการยาแบบฉบับร่าง"
+            status_class = "warning"
+        elif prescription and prescription.status in {
+            Prescription.Status.SENT,
+            Prescription.Status.PREPARING,
+            Prescription.Status.READY,
+        }:
+            status_label = "อยู่ระหว่างห้องยา"
+            status_detail = prescription.get_status_display()
+            status_class = "current"
+        elif bill and not billing_done:
+            status_label = "รอการเงิน"
+            status_detail = bill.get_status_display()
+            status_class = "current"
+        elif visit.queue.status == Queue.Status.FOLLOWUP:
+            status_label = "มีนัดติดตาม"
+            status_detail = assessment.next_appointment_at.strftime("%d/%m/%Y %H:%M") if assessment.next_appointment_at else "ตรวจสอบวันนัด"
+            status_class = "followup"
+        else:
+            status_label = "รอแผนหลังตรวจ"
+            status_detail = "กรุณาระบุยา/ส่งการเงินให้ครบ"
+            status_class = "warning"
+
+        rows.append({
+            "visit": visit,
+            "assessment": assessment,
+            "prescription": prescription,
+            "bill": bill,
+            "complete": complete,
+            "status_label": status_label,
+            "status_detail": status_detail,
+            "status_class": status_class,
+        })
+    return rows
+
+
 def _opd_queue_payload(q_items):
     rows = []
     counts = {severity: 0 for severity in SEVERITY_LEVELS}
@@ -177,6 +272,7 @@ def opd_list(request):
             return redirect("opd_room_select")
 
     q_items = _opd_queue_queryset(selected_room)
+    aftercare_rows = _opd_aftercare_rows(selected_room)
     
     # Count by severity
     severity_counts = {
@@ -186,6 +282,7 @@ def opd_list(request):
     
     return render(request, "opd_list.html", {
         "q_items": q_items,
+        "aftercare_rows": aftercare_rows,
         "severity_counts": severity_counts,
         "red_count": severity_counts["RED"],
         "pink_count": severity_counts["PINK"],
