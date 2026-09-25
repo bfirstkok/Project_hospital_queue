@@ -358,6 +358,21 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertContains(response, "กรุณากด “ส่งใบสั่งยาไปห้องยา” ก่อนส่งการเงิน")
         self.assertFalse(Bill.objects.filter(visit=self.visit).exists())
 
+    def test_opd_room_keeps_examined_patient_in_aftercare_worklist(self):
+        self.client.force_login(self.doctor)
+        session = self.client.session
+        session["opd_exam_room"] = 1
+        session.save()
+
+        response = self.client.get(reverse("opd_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "งานหลังตรวจวันนี้")
+        self.assertContains(response, "ผู้ป่วย ปลายทาง")
+        self.assertContains(response, "เปิดแผนหลังตรวจ")
+        self.assertEqual(len(response.context["q_items"]), 0)
+        self.assertEqual(len(response.context["aftercare_rows"]), 1)
+
     def test_pharmacist_can_dispense_and_cashier_can_apply_coverage_and_pay(self):
         prescription = Prescription.objects.create(
             visit=self.visit,
