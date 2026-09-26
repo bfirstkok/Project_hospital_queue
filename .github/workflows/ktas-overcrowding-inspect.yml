@@ -1,0 +1,57 @@
+name: Public 73k KTAS vital-sign benchmark
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ktas-overcrowding-inspect.yml"
+      - "ai_triage/ml/import_ktas_overcrowding.py"
+      - "ai_triage/ml/benchmark_ktas_overcrowding_augmentation.py"
+      - "ai_triage/ml/test_import_ktas_overcrowding.py"
+  workflow_dispatch:
+
+jobs:
+  ktas-vitals-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install openpyxl
+
+      - name: Test KTAS vital-sign importer
+        run: python -m unittest ai_triage.ml.test_import_ktas_overcrowding
+
+      - name: Download public 73k KTAS S1 data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ktas-overcrowding
+          curl --fail --location --retry 4 --retry-delay 2             "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0247042.s001&type=supplementary"             --output /tmp/ktas-overcrowding/data.xlsx
+          test -s /tmp/ktas-overcrowding/data.xlsx
+
+      - name: Convert KTAS cohort to project runtime schema
+        run: |
+          python -m ai_triage.ml.import_ktas_overcrowding             --input /tmp/ktas-overcrowding/data.xlsx             --output /tmp/ktas-overcrowding/ktas_runtime.csv
+
+      - name: Benchmark project-only validation with KTAS augmentation
+        run: |
+          python -m ai_triage.ml.benchmark_ktas_overcrowding_augmentation             --ktas-csv /tmp/ktas-overcrowding/ktas_runtime.csv             --max-external-per-class 5000             --weights 0.01,0.025,0.05,0.10,0.25,0.50             --output-dir ai_triage/reports/ktas_overcrowding_benchmark
+
+      - name: Print benchmark report
+        run: cat ai_triage/reports/ktas_overcrowding_benchmark/README.md
+
+      - name: Upload aggregate benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktas-73k-vitals-benchmark
+          path: ai_triage/reports/ktas_overcrowding_benchmark/
+          if-no-files-found: error
