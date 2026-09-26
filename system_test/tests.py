@@ -22,13 +22,13 @@ class SystemTestConsoleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Admin Control Center")
         self.assertContains(response, "System Health")
-        self.assertContains(response, "Admin shortcuts")
+        self.assertContains(response, "งานผู้ดูแลที่ใช้บ่อย")
         self.assertContains(response, "Quick scenarios")
         self.assertContains(response, "Sensor Simulator")
         self.assertContains(response, "Operational activity")
         self.assertContains(response, "Audit Log การทำงานของบุคลากร")
-        self.assertContains(response, "Database Explorer")
-        self.assertContains(response, "AI Learning")
+        self.assertContains(response, "ฐานข้อมูล")
+        self.assertContains(response, "ประเมิน AI")
 
     def test_admin_control_center_shows_live_staff_presence_and_latest_action(self):
         nurse = get_user_model().objects.create_user(

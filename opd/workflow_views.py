@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Case, IntegerField, When
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -36,22 +37,29 @@ def _visit_with_patient(visit_id):
     )
 
 
-def _ensure_bill(visit, actor=None):
+def _ensure_bill(visit, actor=None, pharmacy_skipped=False):
     coverage = PatientCoverage.objects.filter(patient=visit.patient, is_active=True).first()
     bill, created = Bill.objects.get_or_create(
         visit=visit,
-        defaults={"coverage": coverage},
+        defaults={"coverage": coverage, "pharmacy_skipped": pharmacy_skipped},
     )
+    decision_changed = pharmacy_skipped and not bill.pharmacy_skipped
+    if decision_changed:
+        bill.pharmacy_skipped = True
     if coverage and bill.coverage_id != coverage.id and bill.status != Bill.Status.PAID:
         bill.coverage = coverage
     bill.recalculate()
-    if created:
+    if created or decision_changed:
         VisitWorkflowLog.record(
             visit=visit,
             event_type=VisitWorkflowLog.EventType.BILL_CREATED,
             actor=actor,
-            description="สร้างรายการค่าใช้จ่ายหลังการตรวจ OPD",
-            details={"bill_id": bill.id},
+            description=(
+                "แพทย์ยืนยันไม่มีรายการยากลับบ้านและส่งเคสให้การเงิน"
+                if pharmacy_skipped
+                else "สร้างรายการค่าใช้จ่ายหลังการตรวจ OPD"
+            ),
+            details={"bill_id": bill.id, "pharmacy_skipped": bill.pharmacy_skipped},
         )
     return bill
 
@@ -71,6 +79,10 @@ def opd_care_plan(request, visit_id):
         action = request.POST.get("action", "").strip()
 
         if action == "add_medication":
+            existing_bill = Bill.objects.filter(visit=visit).first()
+            if existing_bill and existing_bill.pharmacy_skipped:
+                messages.error(request, "เคสนี้ส่งการเงินในฐานะไม่มีรายการยาแล้ว หากต้องเพิ่มยาให้ติดต่อเจ้าหน้าที่การเงินเพื่อดำเนินการแก้ไข")
+                return redirect("opd_care_plan", visit_id=visit.id)
             medication_name = request.POST.get("medication_name", "").strip()
             if not medication_name:
                 messages.error(request, "กรุณาระบุชื่อยา/เวชภัณฑ์")
@@ -147,7 +159,12 @@ def opd_care_plan(request, visit_id):
                 )
                 return redirect("opd_care_plan", visit_id=visit.id)
 
-            bill = _ensure_bill(visit, request.user)
+            no_medication_ordered = not (prescription and prescription.items.exists())
+            bill = _ensure_bill(
+                visit,
+                request.user,
+                pharmacy_skipped=no_medication_ordered,
+            )
             if prescription and prescription.items.exists():
                 messages.success(
                     request,
@@ -204,6 +221,28 @@ def opd_care_plan(request, visit_id):
             or prescription.status == Prescription.Status.CANCELLED
         )
     )
+    no_medication_path = bool(
+        bill
+        and (
+            bill.pharmacy_skipped
+            or (
+                billing_done
+                and (
+                    prescription is None
+                    or not prescription_has_items
+                    or prescription.status == Prescription.Status.CANCELLED
+                )
+            )
+        )
+    )
+    medication_decision_done = bool(prescription_has_items or no_medication_path)
+    handoff_started = bool(
+        no_medication_path
+        or (
+            prescription
+            and prescription.status != Prescription.Status.DRAFT
+        )
+    )
     visit_complete = bool(
         billing_done and (pharmacy_done or pharmacy_skipped)
     )
@@ -217,6 +256,7 @@ def opd_care_plan(request, visit_id):
     )
     can_edit_prescription = bool(
         not billing_done
+        and not no_medication_path
         and (
             prescription is None
             or prescription.status == Prescription.Status.DRAFT
@@ -260,6 +300,9 @@ def opd_care_plan(request, visit_id):
         "billing_done": billing_done,
         "pharmacy_done": pharmacy_done,
         "pharmacy_skipped": pharmacy_skipped,
+        "no_medication_path": no_medication_path,
+        "medication_decision_done": medication_decision_done,
+        "handoff_started": handoff_started,
         "visit_complete": visit_complete,
         "prescription_locked": prescription_locked,
         "can_edit_prescription": can_edit_prescription,
@@ -294,7 +337,15 @@ def pharmacy_worklist(request):
         .prefetch_related("items")
         .exclude(status=Prescription.Status.DRAFT)
         .order_by(
-            "status",
+            Case(
+                When(status=Prescription.Status.READY, then=0),
+                When(status=Prescription.Status.PREPARING, then=1),
+                When(status=Prescription.Status.SENT, then=2),
+                When(status=Prescription.Status.DISPENSED, then=3),
+                When(status=Prescription.Status.CANCELLED, then=4),
+                default=5,
+                output_field=IntegerField(),
+            ),
             "sent_at",
             "created_at",
         )
@@ -348,7 +399,18 @@ def billing_worklist(request):
     bills = (
         Bill.objects
         .select_related("visit", "visit__patient", "coverage", "received_by")
-        .order_by("status", "created_at")
+        .order_by(
+            Case(
+                When(status=Bill.Status.READY, then=0),
+                When(status=Bill.Status.DRAFT, then=1),
+                When(status=Bill.Status.PAID, then=2),
+                When(status=Bill.Status.WAIVED, then=3),
+                When(status=Bill.Status.CANCELLED, then=4),
+                default=5,
+                output_field=IntegerField(),
+            ),
+            "created_at",
+        )
     )
     return render(request, "billing_worklist.html", {"bills": bills})
 

@@ -3,103 +3,93 @@
 <head>
 {% load static %}
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>แผนหลังตรวจ OPD</title>
-<link rel="stylesheet" href="{% static 'css/app.css' %}?v=opd-aftercare-20260923">
+<title>ส่งต่อหลังตรวจ OPD</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v=opd-handoff-20260926">
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1280px,calc(100% - 36px));margin:24px auto 70px}
-.hero{padding:24px 26px;border-radius:20px;background:linear-gradient(135deg,#173e54,#087f75)!important;color:#fff}.hero h1{margin:4px 0 7px;color:#fff!important;font-size:29px}.hero p{margin:0;color:#e8fffb!important;font-size:13px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.1em}
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.step{padding:13px 14px;border:1px solid #d8e6e9;border-radius:13px;background:#fff}.step b{display:block;font-size:12px}.step span{display:block;margin-top:3px;color:#728790;font-size:10px}.step.done{border-color:#a9d8d0;background:#f1faf8}.step.current{border-color:#79bdb3;box-shadow:0 0 0 3px rgba(8,127,117,.08)}.step.skipped{border-style:dashed;background:#f7fafb;color:#6f858d}
-.flow-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;padding:14px 16px;border:1px solid #c9dde1;border-radius:13px;background:#fff}.flow-banner b{font-size:13px}.flow-banner span{color:#657d86;font-size:11px}.flow-banner.complete{border-color:#9fd7ca;background:#eaf8f4}.flow-banner.complete b{color:#087467}
-.messages{display:grid;gap:8px;margin-top:13px}.messages div{padding:11px 13px;border-radius:10px;background:#eaf7f4;color:#087467;font-size:11px;font-weight:800}.messages .error{background:#fff0f2;color:#a51d30}
-.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:13px;margin-top:14px}.card{overflow:hidden;border:1px solid #d7e5e8;border-radius:18px;background:#fff;box-shadow:0 8px 22px rgba(31,67,78,.05)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #e7eef0}.head h2{margin:0;font-size:17px}.head p{margin:4px 0 0;color:#6d838c;font-size:11px;line-height:1.5}.body{padding:18px 20px}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.summary div{padding:11px 12px;border-radius:10px;background:#f7fafb}.summary small{display:block;color:#7b9098;font-size:9px}.summary b{display:block;margin-top:3px;font-size:12px}
-.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px;margin-top:12px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#5f7781}.field input,.field textarea,.field select{width:100%;min-height:40px;padding:9px 10px;border:1px solid #cbdadd;border-radius:9px;background:#fff;font:700 11px "Sarabun",Tahoma,sans-serif}.field textarea{min-height:70px;resize:vertical}.span2{grid-column:span 2}.span3{grid-column:1/-1}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn.secondary{border:1px solid #cbdadd;background:#fff;color:#3c5e69!important}.btn.danger{border:1px solid #efc6cb;background:#fff2f3;color:#a51d30!important}.btn[disabled]{cursor:not-allowed;opacity:.5}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.helper-note{margin-top:10px;padding:10px 12px;border-radius:9px;background:#fff7df;color:#745600;font-size:10px;font-weight:800}
-table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:11px 10px;border-bottom:1px solid #e8eff1;text-align:left;vertical-align:top}th{background:#f7fafb;color:#627a84;font-size:9px}.money{text-align:right;white-space:nowrap}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e8f6f3;color:#087467;font-size:9px;font-weight:900}.badge.warn{background:#fff3d6;color:#805e00}.muted{color:#7b9098}.total{display:flex;justify-content:space-between;margin-top:12px;padding:12px 13px;border-radius:11px;background:#f1f8f7;font-size:12px}.total strong{font-size:16px;color:#087f75}
-@media(max-width:850px){.grid,.steps,.form-grid,.summary{grid-template-columns:1fr}.span2,.span3{grid-column:auto}.page{width:calc(100% - 18px)}}
+*{box-sizing:border-box}body{margin:0;background:#f3f7f8;color:#183247;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1180px,calc(100% - 32px));margin:24px auto 72px}.hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:24px 26px;border-radius:20px;background:linear-gradient(135deg,#123d52,#087f75);color:#fff;box-shadow:0 16px 36px rgba(18,61,82,.16)}.hero h1{margin:4px 0 6px;color:#fff;font-size:28px}.hero p{margin:0;color:#dff8f5;font-size:13px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.12em}.patient-id{text-align:right}.patient-id b{display:block;font-size:15px}.patient-id span{font-size:11px;color:#dff8f5}
+.doctor-scope{display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border:1px solid #c7e3de;border-radius:12px;background:#eef9f7;color:#315f60;font-size:12px}.doctor-scope strong{color:#087467}.scope-icon{display:grid;place-items:center;min-width:27px;height:27px;border-radius:8px;background:#d5f1eb;color:#087467;font-weight:900}
+.progress{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.progress-step{display:flex;align-items:center;gap:10px;padding:13px 14px;border:1px solid #d5e3e6;border-radius:13px;background:#fff}.progress-step .number{display:grid;place-items:center;min-width:30px;height:30px;border-radius:50%;background:#e8eff1;color:#71858d;font-weight:900}.progress-step b{display:block;font-size:12px}.progress-step small{display:block;margin-top:2px;color:#72858d;font-size:10px}.progress-step.done{border-color:#addbd2;background:#f1faf8}.progress-step.done .number{background:#087f75;color:#fff}.progress-step.current{border-color:#e3bc5d;background:#fffaf0;box-shadow:0 0 0 3px rgba(227,188,93,.12)}.progress-step.current .number{background:#f2b84b;color:#402d00}
+.next-action{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px;padding:14px 16px;border:1px solid #d7e3e5;border-radius:13px;background:#fff}.next-action strong{display:block;font-size:14px}.next-action span{display:block;margin-top:3px;color:#6d8189;font-size:11px}.next-action.complete{border-color:#9fd7ca;background:#eaf8f4}.next-action.complete strong{color:#087467}.status-pill{padding:6px 10px;border-radius:999px;background:#e9f3f2;color:#087467;font-size:10px;font-weight:900;white-space:nowrap}
+.messages{display:grid;gap:8px;margin-top:12px}.messages div{padding:11px 13px;border-radius:10px;background:#eaf7f4;color:#087467;font-size:12px;font-weight:800}.messages .error{background:#fff0f2;color:#a51d30}
+.workspace{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);gap:14px;margin-top:14px}.card{overflow:hidden;border:1px solid #d7e4e6;border-radius:17px;background:#fff;box-shadow:0 8px 24px rgba(27,67,78,.05)}.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px;border-bottom:1px solid #e6edef}.card-head h2{margin:0;font-size:18px}.card-head p{margin:4px 0 0;color:#71858d;font-size:11px;line-height:1.55}.card-body{padding:19px 20px}.decision-title{margin:0 0 12px;font-size:14px}.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.decision{padding:15px;border:1px solid #d5e3e6;border-radius:13px;background:#f9fbfc}.decision.active{border-color:#88cbbf;background:#f0faf8}.decision.no-med{border-color:#d9dfe3;background:#fbfcfc}.decision h3{margin:0 0 5px;font-size:14px}.decision p{min-height:34px;margin:0 0 12px;color:#6d8189;font-size:11px;line-height:1.5}.decision .btn{width:100%}
+.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px;margin-top:15px;padding-top:15px;border-top:1px dashed #d8e3e5}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#58717a}.field input,.field textarea,.field select{width:100%;min-height:41px;padding:9px 10px;border:1px solid #c8d8dc;border-radius:9px;background:#fff;color:#183247;font:700 11px "Sarabun",Tahoma,sans-serif}.field textarea{min-height:76px;resize:vertical}.span3{grid-column:1/-1}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font:800 11px "Sarabun",Tahoma,sans-serif;cursor:pointer}.btn.secondary{border:1px solid #c7d8dc;background:#fff;color:#385c67!important}.btn.danger{border:1px solid #efc6cb;background:#fff2f3;color:#a51d30!important}.btn[disabled]{cursor:not-allowed;opacity:.45}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.helper{margin-top:10px;padding:10px 12px;border-radius:9px;background:#fff6dd;color:#765700;font-size:10px;font-weight:800;line-height:1.5}
+.items{margin-top:15px;border-top:1px solid #e5edef}.items-head{display:flex;align-items:center;justify-content:space-between;padding:14px 0 7px}.items-head h3{margin:0;font-size:13px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:10px 8px;border-bottom:1px solid #e8eff1;text-align:left;vertical-align:top}th{color:#647b84;background:#f8fafb;font-size:9px}.money{text-align:right;white-space:nowrap}.muted{color:#7b9098}.handoff{margin-top:14px;padding:14px;border:1px solid #a7d9d0;border-radius:12px;background:#edf9f6}.handoff h3{margin:0 0 4px;color:#087467;font-size:14px}.handoff p{margin:0;color:#56757a;font-size:11px}.handoff .btn{min-height:44px;font-size:12px}.locked-note{padding:14px;border-radius:11px;background:#f2f6f7;color:#5f767e;font-size:11px}
+.summary{display:grid;gap:8px}.summary-row{padding:11px 12px;border-radius:10px;background:#f6f9fa}.summary-row small{display:block;color:#7a8e96;font-size:9px}.summary-row b{display:block;margin-top:3px;font-size:12px;line-height:1.45}.total{display:flex;justify-content:space-between;align-items:center;margin-top:11px;padding:12px;border-radius:10px;background:#edf8f6}.total strong{font-size:16px;color:#087467}.details-card{margin-top:12px}.details-card summary{padding:15px 17px;cursor:pointer;font-size:12px;font-weight:900}.details-content{padding:0 17px 17px}.details-content .form-grid{grid-template-columns:1fr 1fr;margin-top:10px}.side-actions{display:grid;gap:8px;margin-top:12px}.side-actions .btn{width:100%}
+@media(max-width:900px){.workspace,.progress,.decision-grid,.form-grid{grid-template-columns:1fr}.span3{grid-column:auto}.page{width:calc(100% - 18px);margin-top:12px}.hero{flex-direction:column}.patient-id{text-align:left}.next-action{align-items:flex-start;flex-direction:column}}
 </style></head>
 <body>
 {% include "includes/main_nav.html" %}
 <main class="page">
-<section class="hero"><div class="eyebrow">OPD AFTERCARE</div><h1>แผนหลังตรวจ · Visit #{{ visit.id }}</h1><p>{{ visit.patient.first_name }} {{ visit.patient.last_name }} · HN {{ visit.patient.hn }} · แพทย์ {{ assessment.examiner.get_full_name|default:assessment.examiner.username }}</p></section>
-<div class="steps">
-  <div class="step done"><b>1 · แพทย์ตรวจ</b><span>บันทึก Diagnosis / Treatment แล้ว</span></div>
-  <div class="step {% if pharmacy_skipped %}skipped{% elif prescription_has_items and prescription.status != 'DRAFT' %}done{% else %}current{% endif %}">
-    <b>2 · ใบสั่งยา</b>
-    <span>{% if pharmacy_skipped %}ไม่มีการสั่งยา · ข้ามขั้นตอน{% elif prescription_has_items %}{{ prescription.get_status_display }}{% else %}ยังไม่มีใบสั่งยา{% endif %}</span>
+  <section class="hero">
+    <div><div class="eyebrow">OPD · DOCTOR HANDOFF</div><h1>สรุปและส่งต่อหลังตรวจ</h1><p>ผลตรวจถูกบันทึกแล้ว ขั้นตอนนี้ให้แพทย์เลือกเพียงว่า “มียา” หรือ “ไม่มียา”</p></div>
+    <div class="patient-id"><b>{{ visit.patient.first_name }} {{ visit.patient.last_name }}</b><span>HN {{ visit.patient.hn }} · Visit #{{ visit.id }} · ห้อง {{ visit.queue.exam_room|default:"-" }}</span></div>
+  </section>
+
+  <div class="doctor-scope"><span class="scope-icon">i</span><span><strong>ขอบเขตงานแพทย์:</strong> ตรวจ วินิจฉัย สั่งยา และส่งคำสั่งต่อเท่านั้น · เภสัชกรเป็นผู้จัด/จ่ายยา และเจ้าหน้าที่การเงินเป็นผู้ตรวจสิทธิ์ รับชำระ และออกใบเสร็จ</span></div>
+
+  <section class="progress" aria-label="ขั้นตอนหลังตรวจ">
+    <div class="progress-step done"><span class="number">✓</span><div><b>1 · บันทึกผลตรวจ</b><small>Diagnosis และ Treatment เรียบร้อย</small></div></div>
+    <div class="progress-step {% if medication_decision_done %}done{% else %}current{% endif %}"><span class="number">{% if medication_decision_done %}✓{% else %}2{% endif %}</span><div><b>2 · เลือกแผนยา</b><small>{% if no_medication_path %}ไม่มีการสั่งยา · ข้ามขั้นตอน{% elif prescription_has_items %}มี {{ prescription.items.count }} รายการ{% else %}รอแพทย์เลือก{% endif %}</small></div></div>
+    <div class="progress-step {% if visit_complete %}done{% elif handoff_started %}current{% endif %}"><span class="number">{% if visit_complete %}✓{% else %}3{% endif %}</span><div><b>3 · ส่งต่อหน่วยงาน</b><small>{% if visit_complete %}เสร็จสิ้น{% elif no_medication_path %}ส่งการเงินแล้ว{% elif handoff_started %}ส่งห้องยาแล้ว{% else %}ยังไม่ส่งต่อ{% endif %}</small></div></div>
+  </section>
+
+  <div class="next-action {% if visit_complete %}complete{% endif %}"><div><strong>{{ next_action_label }}</strong><span>{{ next_action_detail }}</span></div><span class="status-pill">ขั้นตอนที่ต้องทำตอนนี้</span></div>
+  {% if messages %}<div class="messages">{% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <div class="workspace">
+    <section class="card">
+      <div class="card-head"><div><h2>2 · เลือกแผนยาและส่งต่อ</h2><p>เลือกตามผลตรวจของผู้ป่วย ระบบจะเปิดเฉพาะคำสั่งที่ทำได้ในสถานะปัจจุบัน</p></div>{% if prescription %}<span class="status-pill">{{ prescription.get_status_display }}</span>{% endif %}</div>
+      <div class="card-body">
+        {% if visit_complete %}
+          <div class="locked-note"><b>เคสนี้เสร็จสิ้นแล้ว</b><br>{% if pharmacy_skipped %}ไม่ต้องเข้าห้องยา · การเงินดำเนินการครบแล้ว{% else %}ห้องยาจ่ายยาและการเงินดำเนินการครบแล้ว{% endif %} · ผู้ป่วยสามารถกลับบ้านได้</div>
+        {% elif not can_edit_prescription %}
+          {% if no_medication_path %}<div class="locked-note"><b>แพทย์ยืนยันแล้วว่าไม่มียากลับบ้าน</b><br>ส่งรายการค่าใช้จ่ายให้การเงินแล้ว · เภสัชกรไม่ต้องดำเนินการเคสนี้ · ติดตามสถานะการชำระเงินได้จากแถบด้านบน</div>{% else %}<div class="locked-note"><b>ส่งใบสั่งยาไปห้องยาแล้ว</b><br>แพทย์แก้รายการจากหน้านี้ไม่ได้ กรุณาติดตามสถานะการจัดยาและการเงินจากแถบด้านบน</div>{% endif %}
+        {% else %}
+          <h3 class="decision-title">ผู้ป่วยต้องรับยากลับบ้านหรือไม่?</h3>
+          <div class="decision-grid">
+            <article class="decision active"><h3>มียา / เวชภัณฑ์</h3><p>เพิ่มรายการด้านล่างให้ครบ ตรวจทาน แล้วกดส่งใบสั่งยาไปห้องยา</p><button class="btn" type="button" onclick="document.getElementById('medication-name').focus()">เพิ่มรายการยา ↓</button></article>
+            <article class="decision no-med"><h3>ไม่มียากลับบ้าน</h3><p>ข้ามห้องยาและส่งเคสให้เจ้าหน้าที่การเงินตรวจสิทธิ์/ค่าใช้จ่ายต่อ</p>{% if not prescription_has_items and not bill %}<form method="post" onsubmit="return confirm('ยืนยันว่าไม่มีรายการยากลับบ้าน และส่งเคสให้เจ้าหน้าที่การเงินใช่หรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ยืนยัน “ไม่มียา” และส่งต่อ</button></form>{% else %}<button class="btn secondary" type="button" disabled>มีรายการหรือส่งต่อแล้ว</button>{% endif %}</article>
+          </div>
+
+          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_medication">
+            <div class="form-grid">
+              <div class="field"><label>ชื่อยา / เวชภัณฑ์ *</label><input id="medication-name" name="medication_name" required placeholder="เช่น Paracetamol"></div>
+              <div class="field"><label>ความแรง</label><input name="strength" placeholder="500 mg"></div>
+              <div class="field"><label>จำนวน *</label><input name="quantity" type="number" min="1" value="1"></div>
+              <div class="field"><label>ขนาดรับประทาน</label><input name="dosage" placeholder="ครั้งละ 1 เม็ด"></div>
+              <div class="field"><label>ความถี่</label><input name="frequency" placeholder="วันละ 3 ครั้ง"></div>
+              <div class="field"><label>จำนวนวัน</label><input name="duration_days" type="number" min="1" placeholder="5"></div>
+              <div class="field"><label>หน่วย</label><input name="unit" value="เม็ด"></div>
+              <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input name="unit_price" type="number" step="0.01" min="0" value="0"></div>
+              <div class="field span3"><label>วิธีใช้ / หมายเหตุ</label><input name="instructions" placeholder="หลังอาหาร / ก่อนนอน / เมื่อมีอาการ"></div>
+            </div>
+            <div class="actions"><button class="btn secondary" type="submit">+ บันทึกรายการนี้</button></div>
+            <div class="helper">หากมีหลายรายการ ให้บันทึกทีละรายการ เมื่อครบแล้วตรวจทานตารางด้านล่างและกด “ยืนยันและส่งใบสั่งยา” เพียงครั้งเดียว</div>
+          </form>
+        {% endif %}
+
+        {% if prescription_has_items %}
+          <div class="items"><div class="items-head"><h3>รายการยาที่แพทย์สั่ง ({{ prescription.items.count }})</h3><span class="status-pill">ตรวจทานก่อนส่ง</span></div>
+          <table><thead><tr><th>ยา / ความแรง</th><th>วิธีใช้</th><th>จำนวน</th><th class="money">ราคา</th>{% if can_edit_prescription and prescription.status == 'DRAFT' %}<th></th>{% endif %}</tr></thead><tbody>
+          {% for item in prescription.items.all %}<tr><td><b>{{ item.medication_name }}</b><div class="muted">{{ item.strength }}</div></td><td>{{ item.dosage }} {{ item.frequency }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}<div class="muted">{{ item.instructions }}</div></td><td>{{ item.quantity }} {{ item.unit }}</td><td class="money">{{ item.line_total|floatformat:2 }}</td>{% if can_edit_prescription and prescription.status == 'DRAFT' %}<td><form method="post" action="{% url 'delete_prescription_item' item.id %}">{% csrf_token %}<button class="btn danger" type="submit">ลบ</button></form></td>{% endif %}</tr>{% endfor %}
+          </tbody></table></div>
+        {% endif %}
+
+        {% if prescription and prescription.status == 'DRAFT' and prescription_has_items %}
+          <div class="handoff"><h3>รายการครบแล้วใช่หรือไม่?</h3><p>หลังส่งแล้ว แพทย์จะแก้รายการจากหน้านี้ไม่ได้ และเคสจะปรากฏในหน้าของเภสัชกร</p><form method="post" class="actions">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ยืนยันและส่งใบสั่งยาไปห้องยา →</button></form></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <aside>
+      <section class="card"><div class="card-head"><div><h2>สรุปผลตรวจ</h2><p>ใช้ตรวจทานก่อนส่งต่อ</p></div></div><div class="card-body">
+        <div class="summary"><div class="summary-row"><small>แพทย์ผู้ตรวจ</small><b>{{ assessment.examiner.get_full_name|default:assessment.examiner.username }}</b></div><div class="summary-row"><small>Diagnosis</small><b>{{ assessment.diagnosis|default:"-" }}</b></div><div class="summary-row"><small>Treatment / Plan</small><b>{{ assessment.treatment|default:"-" }}</b></div><div class="summary-row"><small>นัดครั้งต่อไป</small><b>{{ assessment.next_appointment_at|date:"d/m/Y H:i"|default:"ไม่มีนัด" }}</b></div></div>
+        {% if bill %}<div class="total"><span>ยอดปัจจุบัน</span><strong>{{ bill.subtotal|floatformat:2 }} บาท</strong></div>{% endif %}
+        <div class="side-actions"><a class="btn secondary" href="{% url 'opd_visit_detail' visit.id %}">ดูข้อมูล Visit</a><a class="btn secondary" target="_blank" href="{% url 'clinical_summary_print' visit.id %}">พิมพ์สรุปผลตรวจ</a><a class="btn secondary" href="{% url 'opd_list' %}">กลับรายการห้องตรวจ</a></div>
+      </div></section>
+
+      <details class="card details-card"><summary>ใบรับรองแพทย์ (ถ้าผู้ป่วยร้องขอ)</summary><div class="details-content"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="issue_certificate"><div class="field"><label>ความเห็น / คำแนะนำแพทย์</label><textarea name="recommendation" placeholder="เช่น ควรพักรักษาตัว">{{ certificate.recommendation|default:"" }}</textarea></div><div class="form-grid"><div class="field"><label>พักตั้งแต่</label><input type="date" name="rest_from" value="{{ certificate.rest_from|date:'Y-m-d' }}"></div><div class="field"><label>ถึงวันที่</label><input type="date" name="rest_to" value="{{ certificate.rest_to|date:'Y-m-d' }}"></div></div><div class="actions"><button class="btn secondary" type="submit">{% if certificate %}อัปเดตใบรับรอง{% else %}สร้างใบรับรอง{% endif %}</button>{% if certificate %}<a class="btn" target="_blank" href="{% url 'medical_certificate_print' certificate.id %}">เปิดเอกสาร</a>{% endif %}</div></form></div></details>
+    </aside>
   </div>
-  <div class="step {% if pharmacy_done %}done{% elif pharmacy_skipped %}skipped{% elif prescription and prescription.status != 'DRAFT' %}current{% endif %}">
-    <b>3 · ห้องยา</b>
-    <span>{% if pharmacy_done %}จ่ายยาแล้ว{% elif pharmacy_skipped %}ไม่ต้องเข้าห้องยา{% elif prescription %}{{ prescription.get_status_display }}{% else %}รอการตัดสินใจจากแพทย์{% endif %}</span>
-  </div>
-  <div class="step {% if billing_done %}done{% elif bill %}current{% endif %}">
-    <b>4 · การเงิน</b>
-    <span>{% if bill %}{{ bill.get_status_display }}{% else %}ยังไม่ส่งการเงิน{% endif %}</span>
-  </div>
-</div>
-<div class="flow-banner {% if visit_complete %}complete{% endif %}">
-  <b>{{ next_action_label }}</b>
-  <span>{{ next_action_detail }}</span>
-</div>
-{% if messages %}<div class="messages">{% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
-
-<div class="grid">
-<section class="card">
-<div class="head"><div><h2>ใบสั่งยาและเวชภัณฑ์</h2><p>{% if visit_complete %}เคสนี้ดำเนินการหลังตรวจครบแล้ว{% elif billing_done %}การเงินเสร็จแล้ว จึงไม่อนุญาตให้เพิ่มรายการยาใหม่{% else %}ถ้ามียาให้เพิ่มรายการและส่งห้องยา ถ้าไม่มียาให้ส่งค่าใช้จ่ายไปการเงินได้เลย{% endif %}</p></div>{% if prescription %}<span class="badge {% if prescription.status == 'DRAFT' %}warn{% endif %}">{{ prescription.get_status_display }}</span>{% endif %}</div>
-<div class="body">
-{% if can_edit_prescription %}
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_medication">
-<div class="form-grid">
-<div class="field"><label>ชื่อยา / เวชภัณฑ์</label><input name="medication_name" required placeholder="เช่น Paracetamol"></div>
-<div class="field"><label>ความแรง</label><input name="strength" placeholder="500 mg"></div>
-<div class="field"><label>จำนวน</label><input name="quantity" type="number" min="1" value="1"></div>
-<div class="field"><label>ขนาดรับประทาน</label><input name="dosage" placeholder="ครั้งละ 1 เม็ด"></div>
-<div class="field"><label>ความถี่</label><input name="frequency" placeholder="วันละ 3 ครั้ง"></div>
-<div class="field"><label>จำนวนวัน</label><input name="duration_days" type="number" min="1" placeholder="5"></div>
-<div class="field"><label>หน่วย</label><input name="unit" value="เม็ด"></div>
-<div class="field"><label>ราคาต่อหน่วย (บาท)</label><input name="unit_price" type="number" step="0.01" min="0" value="0"></div>
-<div class="field span3"><label>วิธีใช้ / หมายเหตุ</label><input name="instructions" placeholder="หลังอาหาร / ก่อนนอน / เมื่อมีอาการ"></div>
-</div><div class="actions"><button class="btn" type="submit">+ เพิ่มรายการยา</button></div><div class="helper-note">กรอกข้อมูลอย่างเดียวยังไม่ถือว่าสั่งยา · ต้องกด “+ เพิ่มรายการยา” ก่อน แล้วจึงส่งใบสั่งยาไปห้องยาได้</div></form>
-{% endif %}
-
-{% if prescription and prescription.items.all %}
-<table><thead><tr><th>รายการ</th><th>วิธีใช้</th><th>จำนวน</th><th class="money">ราคา</th>{% if can_edit_prescription and prescription.status == 'DRAFT' %}<th></th>{% endif %}</tr></thead><tbody>
-{% for item in prescription.items.all %}<tr><td><b>{{ item.medication_name }}</b><div class="muted">{{ item.strength }}</div></td><td>{{ item.dosage }} {{ item.frequency }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}<div class="muted">{{ item.instructions }}</div></td><td>{{ item.quantity }} {{ item.unit }}</td><td class="money">{{ item.line_total|floatformat:2 }}</td>{% if can_edit_prescription and prescription.status == 'DRAFT' %}<td><form method="post" action="{% url 'delete_prescription_item' item.id %}">{% csrf_token %}<button class="btn danger" type="submit">ลบ</button></form></td>{% endif %}</tr>{% endfor %}
-</tbody></table>
-{% else %}<p class="muted">ยังไม่มีรายการยา/เวชภัณฑ์</p>{% endif %}
-
-<div class="actions">
-{% if prescription and prescription.status == 'DRAFT' and prescription_has_items %}
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ส่งใบสั่งยาไปห้องยา →</button></form>
-{% elif not billing_done and can_edit_prescription %}
-<button class="btn" type="button" disabled title="กรุณากดเพิ่มรายการยาก่อน">ส่งใบสั่งยาไปห้องยา →</button>
-{% endif %}
-{% if not bill %}
-  {% if prescription_has_items %}
-    <button class="btn secondary" type="button" disabled title="ส่งใบสั่งยาไปห้องยาก่อน ระบบจะสร้างรายการการเงินให้อัตโนมัติ">การเงินจะถูกสร้างหลังส่งใบสั่งยา</button>
-  {% else %}
-    <form method="post" onsubmit="return confirm('ยืนยันว่าเคสนี้ไม่มีรายการยา และต้องการส่งค่าใช้จ่ายไปการเงินใช่หรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="send_billing"><button class="btn secondary" type="submit">ยืนยันว่าไม่มียา · ส่งค่าใช้จ่ายไปการเงิน</button></form>
-  {% endif %}
-{% elif not billing_done %}<span class="badge warn">รายการการเงินพร้อม · {{ bill.get_status_display }}</span>{% else %}<span class="badge">การเงินเสร็จแล้ว</span>{% endif %}
-<a class="btn secondary" href="{% url 'opd_visit_detail' visit.id %}">ดูข้อมูล Visit</a>
-</div>
-{% if not prescription_has_items and not billing_done %}<div class="helper-note">ปุ่มส่งห้องยาจะเปิดใช้งานหลังจากมีรายการยาอย่างน้อย 1 รายการ</div>{% endif %}
-{% if bill %}<div class="total"><span>ยอดค่าใช้จ่ายปัจจุบัน</span><strong>{{ bill.subtotal|floatformat:2 }} บาท</strong></div>{% endif %}
-</div></section>
-
-<aside>
-<section class="card">
-<div class="head"><div><h2>สรุปการตรวจ</h2><p>ข้อมูลจาก VisitAssessment</p></div></div>
-<div class="body"><div class="summary"><div><small>Diagnosis</small><b>{{ assessment.diagnosis|default:"-" }}</b></div><div><small>Treatment</small><b>{{ assessment.treatment|default:"-" }}</b></div><div><small>OPD urgency</small><b>{{ assessment.opd_urgency }}</b></div><div><small>นัดครั้งต่อไป</small><b>{{ assessment.next_appointment_at|date:"d/m/Y H:i"|default:"-" }}</b></div></div><div class="actions"><a class="btn secondary" target="_blank" href="{% url 'clinical_summary_print' visit.id %}">สรุปผลการตรวจ / ใบรายงานผล</a></div></div>
-</section>
-
-<section class="card" style="margin-top:13px">
-<div class="head"><div><h2>ใบรับรองแพทย์</h2><p>ดึง Diagnosis และข้อมูลผู้ป่วยจาก Visit นี้อัตโนมัติ</p></div></div>
-<div class="body">
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="issue_certificate">
-<div class="field"><label>ความเห็น / คำแนะนำแพทย์</label><textarea name="recommendation" placeholder="เช่น ควรพักรักษาตัวและหลีกเลี่ยงการทำงานหนัก">{{ certificate.recommendation|default:"" }}</textarea></div>
-<div class="form-grid" style="grid-template-columns:1fr 1fr"><div class="field"><label>พักตั้งแต่</label><input type="date" name="rest_from" value="{{ certificate.rest_from|date:'Y-m-d' }}"></div><div class="field"><label>ถึงวันที่</label><input type="date" name="rest_to" value="{{ certificate.rest_to|date:'Y-m-d' }}"></div></div>
-<div class="actions"><button class="btn secondary" type="submit">{% if certificate %}อัปเดตใบรับรอง{% else %}สร้างใบรับรอง{% endif %}</button>{% if certificate %}<a class="btn" target="_blank" href="{% url 'medical_certificate_print' certificate.id %}">เปิดเอกสารสำหรับพิมพ์</a>{% endif %}</div>
-</form></div></section>
-</aside>
-</div>
-</main></body></html>
+</main>
+</body></html>

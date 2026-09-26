@@ -1,7 +1,122 @@
-<!doctype html><html lang="th"><head>{% load static %}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ห้องยา</title><link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-20260923b"><style>
-*{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1280px,calc(100% - 36px));margin:24px auto 70px}.hero{padding:27px 28px;border-radius:20px;background:linear-gradient(135deg,#173e54,#087f75)!important;color:#fff!important;box-shadow:0 10px 28px rgba(23,62,84,.10)}.hero .hero-kicker{color:#dffff9!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;line-height:1.4;text-shadow:0 1px 1px rgba(0,0,0,.08)}.hero h1{margin:7px 0 8px;color:#fff!important;font-size:30px!important;font-weight:900!important;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.12)}.hero p{margin:0;color:rgba(255,255,255,.96)!important;font-size:15px!important;font-weight:650!important;line-height:1.7!important;text-shadow:0 1px 1px rgba(0,0,0,.08)}.cards{display:grid;gap:12px;margin-top:14px}.card{border:1px solid #d7e5e8;border-radius:18px;background:#fff;overflow:hidden}.head{display:flex;justify-content:space-between;gap:14px;padding:17px 19px;border-bottom:1px solid #e7eef0}.head h2{margin:0;font-size:16px}.meta{margin-top:4px;color:#748991;font-size:10px}.badge{display:inline-flex;height:max-content;padding:5px 8px;border-radius:999px;background:#e9f6f3;color:#087467;font-size:9px;font-weight:900}.body{padding:16px 19px}.items{display:grid;gap:7px}.item{display:grid;grid-template-columns:1.2fr 1fr auto;gap:12px;padding:10px 12px;border-radius:10px;background:#f7fafb;font-size:11px}.item small{color:#748991}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:13px}.actions select{min-height:39px;padding:0 10px;border:1px solid #cbdadd;border-radius:9px;background:#fff}.btn{min-height:39px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff;font-weight:800;cursor:pointer}.empty{padding:35px;text-align:center;color:#748991}@media(max-width:700px){.item{grid-template-columns:1fr}.page{width:calc(100% - 18px)}}</style></head><body>
-{% include "includes/main_nav.html" %}<main class="page"><section class="hero"><div class="hero-kicker">PHARMACY WORKLIST</div><h1>ห้องยา</h1><p>รับใบสั่งยาจากแพทย์ → จัดยา → พร้อมจ่าย → ยืนยันจ่ายยา</p></section>
-{% if messages %}<div style="margin-top:12px">{% for message in messages %}<div style="padding:10px 12px;border-radius:9px;background:#eaf7f4;color:#087467;font-size:11px;font-weight:800">{{ message }}</div>{% endfor %}</div>{% endif %}
-<div class="cards">{% for rx in prescriptions %}<article class="card"><div class="head"><div><h2>Visit #{{ rx.visit_id }} · {{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</h2><div class="meta">HN {{ rx.visit.patient.hn }} · แพทย์ {{ rx.prescribed_by.get_full_name|default:rx.prescribed_by.username }} · ส่ง {{ rx.sent_at|date:"d/m/Y H:i"|default:"-" }}</div></div><span class="badge">{{ rx.get_status_display }}</span></div><div class="body"><div class="items">{% for item in rx.items.all %}<div class="item"><div><b>{{ item.medication_name }} {{ item.strength }}</b><br><small>{{ item.instructions }}</small></div><div>{{ item.dosage }} · {{ item.frequency }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}</div><div><b>{{ item.quantity }} {{ item.unit }}</b></div></div>{% endfor %}</div>
-<form class="actions" method="post" action="{% url 'pharmacy_update_status' rx.id %}">{% csrf_token %}<select name="status"><option value="SENT" {% if rx.status == 'SENT' %}selected{% endif %}>รอห้องยา</option><option value="PREPARING" {% if rx.status == 'PREPARING' %}selected{% endif %}>กำลังจัดยา</option><option value="READY" {% if rx.status == 'READY' %}selected{% endif %}>พร้อมจ่ายยา</option><option value="DISPENSED" {% if rx.status == 'DISPENSED' %}selected{% endif %}>จ่ายยาแล้ว</option><option value="CANCELLED" {% if rx.status == 'CANCELLED' %}selected{% endif %}>ยกเลิก</option></select><button class="btn" type="submit">บันทึกสถานะ</button></form></div></article>{% empty %}<div class="empty">ยังไม่มีใบสั่งยาที่ส่งมาห้องยา</div>{% endfor %}</div>
-</main></body></html>
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ห้องยา · ระบบผู้ป่วย</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-clean-20260926">
+  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=1">
+</head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="ow-page pharmacy-page">
+  <header class="ow-hero">
+    <div class="ow-hero__copy">
+      <div class="ow-eyebrow"><span class="ow-eyebrow__mark" aria-hidden="true">Rx</span> งานบริการ OPD · ห้องยา</div>
+      <h1>จัดการใบสั่งยา</h1>
+      <p>ตรวจรายการจากแพทย์ → จัดยาให้ครบ → เปลี่ยนสถานะเมื่อพร้อมจ่ายหรือจ่ายยาแล้ว</p>
+    </div>
+    <div class="ow-hero__side"><span>งานที่ยังดำเนินการ</span><strong id="pharmacyPendingCount">—</strong></div>
+  </header>
+
+  {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="ow-summary" aria-label="สรุปสถานะใบสั่งยา">
+    <article class="ow-summary-card warn"><span class="ow-summary-icon" aria-hidden="true">↓</span><div class="ow-summary-copy"><span>รอรับใบสั่งยา</span><strong data-status-count="SENT">0</strong></div></article>
+    <article class="ow-summary-card info"><span class="ow-summary-icon" aria-hidden="true">◷</span><div class="ow-summary-copy"><span>กำลังจัดยา</span><strong data-status-count="PREPARING">0</strong></div></article>
+    <article class="ow-summary-card"><span class="ow-summary-icon" aria-hidden="true">✓</span><div class="ow-summary-copy"><span>พร้อมจ่ายยา</span><strong data-status-count="READY">0</strong></div></article>
+    <article class="ow-summary-card muted"><span class="ow-summary-icon" aria-hidden="true">↗</span><div class="ow-summary-copy"><span>จ่ายแล้ว / ยกเลิก</span><strong data-status-count="DONE">0</strong></div></article>
+  </section>
+
+  <section class="ow-panel" aria-label="รายการใบสั่งยา">
+    <div class="ow-toolbar">
+      <label class="ow-search"><span class="ow-search__icon" aria-hidden="true">⌕</span><input id="pharmacySearch" type="search" placeholder="ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา" autocomplete="off" aria-label="ค้นหาใบสั่งยา"></label>
+      <div class="ow-filters" role="group" aria-label="กรองสถานะใบสั่งยา">
+        <button class="ow-filter active" type="button" data-filter="ALL">ทั้งหมด <span class="ow-filter-count" data-filter-count="ALL">0</span></button>
+        <button class="ow-filter" type="button" data-filter="SENT">รอรับยา <span class="ow-filter-count" data-filter-count="SENT">0</span></button>
+        <button class="ow-filter" type="button" data-filter="PREPARING">กำลังจัด <span class="ow-filter-count" data-filter-count="PREPARING">0</span></button>
+        <button class="ow-filter" type="button" data-filter="READY">พร้อมจ่าย <span class="ow-filter-count" data-filter-count="READY">0</span></button>
+        <button class="ow-filter" type="button" data-filter="DONE">เสร็จแล้ว <span class="ow-filter-count" data-filter-count="DONE">0</span></button>
+      </div>
+    </div>
+
+    <div class="ow-list" id="pharmacyList">
+      {% for rx in prescriptions %}
+      <article class="ow-record pharmacy-record" data-status="{{ rx.status }}" data-search="{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }} {{ rx.visit.patient.hn }} {{ rx.visit_id }} {% for item in rx.items.all %}{{ item.medication_name }} {{ item.strength }} {% endfor %}">
+        <div class="ow-record__top">
+          <div class="ow-patient">
+            <span class="ow-avatar" aria-hidden="true">{{ rx.visit.patient.first_name|slice:":1" }}</span>
+            <div class="ow-patient__copy">
+              <h2>{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</h2>
+              <p><strong>HN {{ rx.visit.patient.hn }}</strong> · Visit #{{ rx.visit_id }} · แพทย์ {{ rx.prescribed_by.get_full_name|default:rx.prescribed_by.username }}</p>
+            </div>
+          </div>
+          <span class="ow-status {% if rx.status == 'SENT' %}sent{% elif rx.status == 'PREPARING' %}preparing{% elif rx.status == 'READY' %}ready{% elif rx.status == 'DISPENSED' %}dispensed{% elif rx.status == 'CANCELLED' %}cancelled{% endif %}">{{ rx.get_status_display }}</span>
+        </div>
+        <div class="ow-record__body">
+          <div class="ow-meta-grid">
+            <div class="ow-meta-cell"><span>รับใบสั่งยา</span><b>{{ rx.sent_at|date:"d/m/Y H:i"|default:"ยังไม่ระบุเวลา" }}</b></div>
+            <div class="ow-meta-cell"><span>รายการยา</span><b>{{ rx.items.count }} รายการ</b></div>
+            <div class="ow-meta-cell"><span>สถานะปัจจุบัน</span><b>{{ rx.get_status_display }}</b></div>
+          </div>
+
+          <div class="ow-items" aria-label="รายการยา">
+            {% for item in rx.items.all %}
+            <div class="ow-item">
+              <div class="ow-item__name">{{ item.medication_name }}{% if item.strength %} {{ item.strength }}{% endif %}<small>{{ item.instructions|default:"ไม่มีคำแนะนำเพิ่มเติม" }}</small></div>
+              <div class="ow-item__sig">{{ item.dosage|default:"-" }} · {{ item.frequency|default:"-" }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}</div>
+              <div class="ow-item__qty">{{ item.quantity }} {{ item.unit }}</div>
+            </div>
+            {% empty %}<div class="ow-no-meds">ใบสั่งยานี้ไม่มีรายการยา กรุณาตรวจสอบกับผู้สั่งก่อนดำเนินการ</div>{% endfor %}
+          </div>
+
+          <div class="ow-actions">
+            <span class="ow-actions__hint">อัปเดตสถานะตามขั้นตอนที่ทำจริง เพื่อให้หน้าการเงินและประวัติผู้ป่วยตรงกัน</span>
+            <form class="ow-action-form" method="post" action="{% url 'pharmacy_update_status' rx.id %}">
+              {% csrf_token %}
+              <label class="sr-only" for="rx-status-{{ rx.id }}">สถานะใบสั่งยา</label>
+              <select class="ow-select" id="rx-status-{{ rx.id }}" name="status">
+                <option value="SENT" {% if rx.status == 'SENT' %}selected{% endif %}>รอห้องยา</option>
+                <option value="PREPARING" {% if rx.status == 'PREPARING' %}selected{% endif %}>กำลังจัดยา</option>
+                <option value="READY" {% if rx.status == 'READY' %}selected{% endif %}>พร้อมจ่ายยา</option>
+                <option value="DISPENSED" {% if rx.status == 'DISPENSED' %}selected{% endif %}>จ่ายยาแล้ว</option>
+                <option value="CANCELLED" {% if rx.status == 'CANCELLED' %}selected{% endif %}>ยกเลิก</option>
+              </select>
+              <button class="ow-button" type="submit">บันทึกสถานะ <span aria-hidden="true">→</span></button>
+            </form>
+          </div>
+        </div>
+      </article>
+      {% empty %}
+      <div class="ow-empty"><span class="ow-empty__icon" aria-hidden="true">Rx</span><strong>ยังไม่มีใบสั่งยารอห้องยา</strong><span>เมื่อแพทย์ส่งใบสั่งยา รายการจะปรากฏที่หน้านี้</span></div>
+      {% endfor %}
+    </div>
+    <div class="ow-no-results" id="pharmacyNoResults">ไม่พบใบสั่งยาตามคำค้นหาหรือตัวกรองนี้</div>
+  </section>
+</main>
+<script>
+(()=>{
+  const cards=[...document.querySelectorAll('.pharmacy-record')];
+  const search=document.getElementById('pharmacySearch');
+  const filters=[...document.querySelectorAll('[data-filter]')];
+  const noResults=document.getElementById('pharmacyNoResults');
+  const done=status=>['DISPENSED','CANCELLED'].includes(status)?'DONE':status;
+  let active='ALL';
+  const counts={SENT:0,PREPARING:0,READY:0,DONE:0};
+  cards.forEach(card=>{const group=done(card.dataset.status);if(group in counts)counts[group]++;});
+  Object.entries(counts).forEach(([key,value])=>{document.querySelectorAll(`[data-status-count="${key}"],[data-filter-count="${key}"]`).forEach(node=>node.textContent=value);});
+  document.querySelector('[data-filter-count="ALL"]').textContent=cards.length;
+  const pending=counts.SENT+counts.PREPARING+counts.READY;
+  document.getElementById('pharmacyPendingCount').textContent=pending;
+  function update(){
+    const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;
+    cards.forEach(card=>{const group=done(card.dataset.status);const matchesStatus=active==='ALL'||active===group;const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});
+    noResults.classList.toggle('visible',cards.length>0&&visible===0);
+  }
+  filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.filter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
+  search.addEventListener('input',update);
+})();
+</script>
+</body>
+</html>

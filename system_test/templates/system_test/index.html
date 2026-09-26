@@ -56,6 +56,44 @@
     @media(max-width:1250px){.stats{grid-template-columns:repeat(3,1fr)}.health-grid,.launcher{grid-template-columns:repeat(2,1fr)}.role-grid{grid-template-columns:repeat(2,1fr)}.live-grid{grid-template-columns:1fr}.audit-filter{grid-template-columns:1fr 1fr 1fr 120px}.audit-filter>div:last-child{grid-column:1/-1}}
     @media(max-width:900px){.page{width:min(100% - 24px,1360px)}.hero,.section-title{align-items:flex-start;flex-direction:column}.admin-box{min-width:0;width:100%}.grid,.grid.wide-left,.grid.thirds,.live-grid{grid-template-columns:1fr}.scenario-grid{grid-template-columns:1fr}.sensor-form,.danger-form{grid-template-columns:1fr}.section-nav{position:static}.launcher{grid-template-columns:1fr 1fr}.audit-filter{grid-template-columns:1fr 1fr}.audit-filter>div:last-child{grid-column:auto}.panel-head,.panel-body{padding-left:18px;padding-right:18px}.table-wrap{padding:0 12px 14px}}
     @media(max-width:600px){.page{width:min(100% - 16px,1360px)}.stats,.health-grid,.launcher,.role-grid,.audit-filter{grid-template-columns:1fr}.list-row{align-items:flex-start;flex-direction:column}.run-actions{justify-content:flex-start}.random-card{align-items:stretch;flex-direction:column}.hero h1{font-size:28px}.audit-filter>div:last-child{grid-column:auto}.audit-meta{align-items:flex-start;flex-direction:column}.section-title{padding:0 2px}}
+    /* Admin should read like a control center, not a dense settings dump. */
+    body{background:linear-gradient(180deg,#edf4f5 0,#f5f8f9 340px,var(--bg) 100%)}
+    .page{width:min(1320px,calc(100% - 40px));margin-top:22px}
+    .hero{padding:30px 32px;border-radius:22px}
+    .hero h1{font-size:36px;line-height:1.18}
+    .hero p{max-width:760px;font-size:15px;line-height:1.75}
+    .section-nav{padding:9px;gap:6px;border-radius:15px}
+    .section-nav a{padding:9px 12px;font-size:12px}
+    .section{margin-top:24px}
+    .section-title h2{font-size:22px}
+    .section-title p{font-size:13px}
+    .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .stat{min-height:128px;padding:21px 20px;border-radius:17px}
+    .stat-label{font-size:11px}
+    .stat strong{font-size:38px}
+    .stat small{font-size:12px}
+    .admin-actions-section .launcher{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .admin-actions-section .launch{min-height:112px;padding:17px;border-radius:16px}
+    .launch b{font-size:15px}
+    .launch span{font-size:12px;line-height:1.55}
+    .panel{border-radius:18px;box-shadow:0 10px 25px rgba(31,67,78,.05)}
+    .panel-head{padding:20px 22px 17px}
+    .panel-head h3{font-size:18px}
+    .panel-head p{font-size:13px}
+    .table{font-size:13px}
+    .table th{font-size:12px}
+    .table th,.table td{padding:15px 14px}
+    .health{padding:17px;border-radius:14px}
+    .health b{font-size:14px}
+    .health span{font-size:11px}
+    .scenario{min-height:215px;padding:19px;border-radius:16px}
+    .scenario h4{font-size:16px}
+    .scenario p{font-size:12px}
+    .empty{font-size:12px}
+    .role p{font-size:11px}
+    .right{font-size:9px}
+    @media(max-width:1100px){.admin-actions-section .launcher{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:600px){.page{width:min(100% - 16px,1320px)}.hero{padding:22px}.hero h1{font-size:29px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-height:112px;padding:16px}.admin-actions-section .launcher{grid-template-columns:1fr}.admin-actions-section .launch{min-height:90px}.section{margin-top:20px}}
   </style>
 </head>
 <body>
@@ -89,6 +127,20 @@
       <div class="stat alert"><div class="stat-label">Critical Alerts</div><strong>{{ system_summary.critical_alerts }}</strong><small>รายการที่ยังต้องดำเนินการ</small></div>
       <div class="stat info"><div class="stat-label">อุปกรณ์ Active</div><strong>{{ system_summary.devices_active }}</strong><small>จับคู่อยู่ {{ system_summary.active_pairings }}</small></div>
       <div class="stat good"><div class="stat-label">Audit วันนี้</div><strong>{{ system_summary.logs_today }}</strong><small>Training ready {{ system_summary.training_ready }} เคส</small></div>
+    </div>
+  </section>
+
+  <section id="operations" class="section admin-actions-section">
+    <div class="section-title"><div><h2>งานผู้ดูแลที่ใช้บ่อย</h2><p>เลือกเครื่องมือที่ต้องการได้ทันที โดยแยกงานระบบ ฐานข้อมูล และงานปฏิบัติการให้ชัดเจน</p></div></div>
+    <div class="launcher">
+      <a class="launch" href="{% url 'personnel_dashboard' %}"><span class="launch-mark">HR</span><b>บุคลากรและเวร</b><span>จัดเวร บัญชี และผู้รับผิดชอบผู้ป่วย</span></a>
+      <a class="launch" href="{% url 'queue_list' %}"><span class="launch-mark">Q</span><b>จัดการคิว</b><span>ติดตามคิวและสถานะผู้ป่วยที่กำลังรับบริการ</span></a>
+      <a class="launch" href="{% url 'database_index' %}"><span class="launch-mark">DB</span><b>ฐานข้อมูล</b><span>{{ system_summary.tables }} ตาราง · ค้นหาและแก้ข้อมูลที่อนุญาต</span></a>
+      <a class="launch" href="{% url 'device_management' %}"><span class="launch-mark">IoT</span><b>อุปกรณ์เฝ้าระวัง</b><span>ดูอุปกรณ์และการจับคู่กับ Visit</span></a>
+      <a class="launch" href="{% url 'patient_search' %}"><span class="launch-mark">PT</span><b>ค้นหาผู้ป่วย</b><span>ค้นข้อมูลและประวัติ Visit</span></a>
+      <a class="launch" href="{% url 'dashboard:waiting_time_report' %}"><span class="launch-mark">RP</span><b>รายงานระบบ</b><span>เวลารอและเส้นทางการให้บริการ</span></a>
+      <a class="launch" href="{% url 'dashboard:ai_evaluation' %}"><span class="launch-mark">AI</span><b>ประเมิน AI</b><span>ผล AI เทียบกับพยาบาลและเหตุผล override</span></a>
+      <a class="launch" href="/admin/"><span class="launch-mark">DJ</span><b>Django Admin</b><span>เครื่องมือจัดการโมเดลระดับระบบ</span></a>
     </div>
   </section>
 
@@ -181,20 +233,6 @@
       <div class="health{% if item.ok %} ok{% endif %}"><span class="health-dot"></span><div><b>{{ item.name }}</b><span>{{ item.detail }}</span></div><div class="health-state">{{ item.status }}</div></div>
       {% endfor %}
     </div></div></div>
-  </section>
-
-  <section id="operations" class="section">
-    <div class="section-title"><div><h2>Admin shortcuts</h2><p>รวมหน้าที่ผู้ดูแลระบบใช้บ่อยไว้จุดเดียว</p></div></div>
-    <div class="launcher">
-      <a class="launch" href="{% url 'database_index' %}"><span class="launch-mark">DB</span><b>Database Explorer</b><span>{{ system_summary.tables }} ตาราง · ดู ค้นหา และแก้ฟิลด์ที่อนุญาต</span></a>
-      <a class="launch" href="/admin/"><span class="launch-mark">DJ</span><b>Django Admin</b><span>จัดการ model ระดับ framework และข้อมูลที่ลงทะเบียนใน admin</span></a>
-      <a class="launch" href="{% url 'personnel_dashboard' %}"><span class="launch-mark">HR</span><b>บุคลากรและเวร</b><span>จัด role, สถานะบุคลากร และการมอบหมายผู้ดูแล</span></a>
-      <a class="launch" href="{% url 'device_management' %}"><span class="launch-mark">IoT</span><b>อุปกรณ์ IoT</b><span>ดูอุปกรณ์ จับคู่ Device กับ Visit และสถานะการใช้งาน</span></a>
-      <a class="launch" href="{% url 'dashboard:ai_evaluation' %}"><span class="launch-mark">AI</span><b>AI Learning</b><span>ดู AI vs Nurse, override และ training-ready cases</span></a>
-      <a class="launch" href="{% url 'dashboard:waiting_time_report' %}"><span class="launch-mark">RP</span><b>รายงานระบบ</b><span>เวลารอ เส้นทางบริการ และตัวชี้วัดการปฏิบัติงาน</span></a>
-      <a class="launch" href="{% url 'queue_list' %}"><span class="launch-mark">Q</span><b>จัดการคิว</b><span>เปิด workflow คิวจริงเพื่อเช็กสถานะผู้ป่วยที่กำลังให้บริการ</span></a>
-      <a class="launch" href="{% url 'patient_search' %}"><span class="launch-mark">PT</span><b>ค้นหาผู้ป่วย</b><span>ค้นข้อมูลผู้ป่วยและเปิดประวัติ Visit ที่ต้องตรวจสอบ</span></a>
-    </div>
   </section>
 
   <section id="test-lab" class="section">

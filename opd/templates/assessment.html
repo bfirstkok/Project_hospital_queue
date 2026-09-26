@@ -628,6 +628,48 @@
       border: 1px solid rgba(245,158,11,.36);
     }
 
+    .doctor-flow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .doctor-flow__step {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 13px;
+      border: 1px solid #d2e1e5;
+      border-radius: 11px;
+      background: #fff;
+      color: #6c8189;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .doctor-flow__step b {
+      display: grid;
+      place-items: center;
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      background: #e8eff1;
+      color: #5f747c;
+    }
+
+    .doctor-flow__step.current {
+      border-color: #80c7bb;
+      background: #effaf8;
+      color: #087467;
+      box-shadow: 0 0 0 3px rgba(8,127,117,.08);
+    }
+
+    .doctor-flow__step.current b {
+      background: #087f75;
+      color: #fff;
+    }
+
     @media (max-width: 920px) {
       .assessment-header,
       .summary-card {
@@ -659,12 +701,21 @@
       .info-row {
         grid-template-columns: 112px minmax(0, 1fr);
       }
+
+      .doctor-flow {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
 <body>
 <main class="assessment-page">
+  <nav class="doctor-flow" aria-label="ขั้นตอนการตรวจ OPD">
+    <div class="doctor-flow__step current"><b>1</b><span>ตรวจและบันทึกผล</span></div>
+    <div class="doctor-flow__step"><b>2</b><span>เลือกแผนยา</span></div>
+    <div class="doctor-flow__step"><b>3</b><span>ส่งต่อห้องยา / การเงิน</span></div>
+  </nav>
   <header class="assessment-header">
     <div class="title-lockup">
       <div class="title-icon">OPD</div>
@@ -958,7 +1009,7 @@
 
       <div class="form-actions section full">
         <a class="btn ghost" href="{% url 'opd_list' %}">ยกเลิก</a>
-        <button class="btn primary save" type="submit">บันทึก</button>
+        <button class="btn primary save" type="submit">บันทึกผลตรวจและไปขั้นตอนยา →</button>
       </div>
     </div>
   </form>

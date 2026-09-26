@@ -1,7 +1,105 @@
-<!doctype html><html lang="th"><head>{% load static %}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>การเงิน OPD</title><link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-20260923b"><style>
-*{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1280px,calc(100% - 36px));margin:24px auto 70px}.hero{padding:27px 28px;border-radius:20px;background:linear-gradient(135deg,#173e54,#087f75)!important;color:#fff!important;box-shadow:0 10px 28px rgba(23,62,84,.10)}.hero .hero-kicker{color:#dffff9!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;line-height:1.4;text-shadow:0 1px 1px rgba(0,0,0,.08)}.hero h1{margin:7px 0 8px;color:#fff!important;font-size:30px!important;font-weight:900!important;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.12)}.hero p{margin:0;color:rgba(255,255,255,.96)!important;font-size:15px!important;font-weight:650!important;line-height:1.7!important;text-shadow:0 1px 1px rgba(0,0,0,.08)}.panel{margin-top:14px;border:1px solid #d7e5e8;border-radius:18px;background:#fff;overflow:hidden}.table-wrap{overflow:auto;padding:16px}table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #dce7e9;border-radius:13px;overflow:hidden;font-size:11px}th,td{padding:13px 12px;border-bottom:1px solid #e8eff1;text-align:left}th{background:#f6fafb;color:#607984;font-size:9px}tr:last-child td{border-bottom:0}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#edf4f5;color:#526d78;font-size:9px;font-weight:900}.badge.paid{background:#e8f6f1;color:#087467}.money{text-align:right}.btn{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border-radius:8px;background:#087f75;color:#fff!important;text-decoration:none;font-size:10px;font-weight:900}.muted{color:#789099}@media(max-width:700px){.page{width:calc(100% - 18px)}}</style></head><body>
-{% include "includes/main_nav.html" %}<main class="page"><section class="hero"><div class="hero-kicker">BILLING &amp; COVERAGE</div><h1>การเงิน OPD</h1><p>ตรวจสิทธิ → สรุปค่าตรวจและค่ายา → รับชำระ → ออกใบเสร็จ</p></section>
-<div class="panel"><div class="table-wrap"><table><thead><tr><th>Visit / ผู้ป่วย</th><th>สิทธิ</th><th class="money">ยอดรวม</th><th class="money">สิทธิครอบคลุม</th><th class="money">ผู้ป่วยชำระ</th><th>สถานะ</th><th></th></tr></thead><tbody>
-{% for bill in bills %}<tr><td><b>#{{ bill.visit_id }} · {{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }}</b><div class="muted">HN {{ bill.visit.patient.hn }}</div></td><td>{% if bill.coverage %}{{ bill.coverage.get_coverage_type_display }}{% else %}<span class="muted">ยังไม่ตรวจสิทธิ</span>{% endif %}</td><td class="money">{{ bill.subtotal|floatformat:2 }}</td><td class="money">{{ bill.covered_amount|floatformat:2 }}</td><td class="money"><b>{{ bill.patient_due|floatformat:2 }}</b></td><td><span class="badge {% if bill.status == 'PAID' or bill.status == 'WAIVED' %}paid{% endif %}">{{ bill.get_status_display }}</span></td><td>{% if bill.status == 'PAID' or bill.status == 'WAIVED' %}<a class="btn" href="{% url 'billing_receipt' bill.id %}">ใบเสร็จ</a>{% else %}<a class="btn" href="{% url 'billing_detail' bill.id %}">ตรวจสิทธิ/ชำระ</a>{% endif %}</td></tr>
-{% empty %}<tr><td colspan="7" style="padding:30px;text-align:center;color:#789099">ยังไม่มีรายการส่งมาการเงิน</td></tr>{% endfor %}
-</tbody></table></div></div></main></body></html>
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>การเงิน OPD · ระบบผู้ป่วย</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-clean-20260926">
+  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=1">
+</head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="ow-page billing-page">
+  <header class="ow-hero">
+    <div class="ow-hero__copy">
+      <div class="ow-eyebrow"><span class="ow-eyebrow__mark" aria-hidden="true">฿</span> งานบริการ OPD · การเงิน</div>
+      <h1>ตรวจสิทธิและรับชำระ</h1>
+      <p>ตรวจข้อมูลสิทธิและยอดค่าใช้จ่ายก่อนรับชำระ จากนั้นเปิดใบเสร็จเพื่อพิมพ์หรือบันทึก</p>
+    </div>
+    <div class="ow-hero__side"><span>ยอดที่ต้องดำเนินการ</span><strong id="billingActiveCount">—</strong></div>
+  </header>
+
+  {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="ow-summary" aria-label="สรุปงานการเงิน">
+    <article class="ow-summary-card warn"><span class="ow-summary-icon" aria-hidden="true">1</span><div class="ow-summary-copy"><span>รอตรวจยอด</span><strong data-bill-count="DRAFT">0</strong></div></article>
+    <article class="ow-summary-card info"><span class="ow-summary-icon" aria-hidden="true">2</span><div class="ow-summary-copy"><span>รอรับชำระ</span><strong data-bill-count="READY">0</strong></div></article>
+    <article class="ow-summary-card"><span class="ow-summary-icon" aria-hidden="true">✓</span><div class="ow-summary-copy"><span>ชำระแล้ว / ปิดยอด</span><strong data-bill-count="DONE">0</strong></div></article>
+    <article class="ow-summary-card muted"><span class="ow-summary-icon" aria-hidden="true">×</span><div class="ow-summary-copy"><span>ยกเลิก</span><strong data-bill-count="CANCELLED">0</strong></div></article>
+  </section>
+
+  <section class="ow-panel" aria-label="รายการส่งการเงิน">
+    <div class="ow-toolbar">
+      <label class="ow-search"><span class="ow-search__icon" aria-hidden="true">⌕</span><input id="billingSearch" type="search" placeholder="ค้นชื่อผู้ป่วย, HN หรือเลข Visit" autocomplete="off" aria-label="ค้นหารายการการเงิน"></label>
+      <div class="ow-filters" role="group" aria-label="กรองรายการการเงิน">
+        <button class="ow-filter active" type="button" data-bill-filter="ALL">ทั้งหมด <span class="ow-filter-count" data-bill-filter-count="ALL">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="DRAFT">รอตรวจยอด <span class="ow-filter-count" data-bill-filter-count="DRAFT">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="READY">รอชำระ <span class="ow-filter-count" data-bill-filter-count="READY">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="DONE">เสร็จแล้ว <span class="ow-filter-count" data-bill-filter-count="DONE">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="CANCELLED">ยกเลิก <span class="ow-filter-count" data-bill-filter-count="CANCELLED">0</span></button>
+      </div>
+    </div>
+
+    <div class="ow-list" id="billingList">
+      {% for bill in bills %}
+      <article class="ow-record billing-record" data-status="{{ bill.status }}" data-search="{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }} {{ bill.visit.patient.hn }} {{ bill.visit_id }}">
+        <div class="ow-record__top">
+          <div class="ow-patient">
+            <span class="ow-avatar" aria-hidden="true">{{ bill.visit.patient.first_name|slice:":1" }}</span>
+            <div class="ow-patient__copy">
+              <h2>{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }}</h2>
+              <p><strong>HN {{ bill.visit.patient.hn }}</strong> · Visit #{{ bill.visit_id }}{% if bill.coverage %} · {{ bill.coverage.get_coverage_type_display }}{% else %} · ยังไม่บันทึกสิทธิ{% endif %}</p>
+              {% if bill.pharmacy_skipped %}<p><strong>ข้อมูลจากแพทย์:</strong> ยืนยันว่าไม่มีรายการยากลับบ้าน</p>{% endif %}
+            </div>
+          </div>
+          <span class="ow-status {% if bill.status == 'READY' %}ready{% elif bill.status == 'DRAFT' %}sent{% elif bill.status == 'PAID' %}paid{% elif bill.status == 'WAIVED' %}waived{% elif bill.status == 'CANCELLED' %}cancelled{% endif %}">{{ bill.get_status_display }}</span>
+        </div>
+        <div class="ow-record__body">
+          <div class="ow-bill-metrics">
+            <div class="ow-bill-metric"><span>ยอดรวม</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>
+            <div class="ow-bill-metric covered"><span>สิทธิครอบคลุม</span><b>{{ bill.covered_amount|floatformat:2 }} บาท</b></div>
+            <div class="ow-bill-metric due"><span>ผู้ป่วยชำระ</span><b>{{ bill.patient_due|floatformat:2 }} บาท</b></div>
+            <div class="ow-bill-metric"><span>สร้างรายการ</span><b>{{ bill.created_at|date:"d/m/Y H:i" }}</b></div>
+          </div>
+          <div class="ow-bill-action">
+            {% if bill.status == 'PAID' or bill.status == 'WAIVED' %}
+              <small>{% if bill.received_by %}รับรายการโดย {{ bill.received_by.get_full_name|default:bill.received_by.username }}{% endif %}{% if bill.paid_at %} · {{ bill.paid_at|date:"d/m/Y H:i" }}{% endif %}</small>
+              <a class="ow-button secondary" href="{% url 'billing_receipt' bill.id %}">เปิดใบเสร็จ <span aria-hidden="true">→</span></a>
+            {% elif bill.status == 'CANCELLED' %}
+              <small>รายการนี้ถูกยกเลิกแล้ว</small>
+              <a class="ow-button secondary" href="{% url 'billing_detail' bill.id %}">ดูรายละเอียด</a>
+            {% else %}
+              <small>{% if bill.status == 'DRAFT' %}ตรวจสอบสิทธิและคำนวณยอดก่อน{% else %}ตรวจยอดกับผู้ป่วย แล้วจึงยืนยันรับชำระ{% endif %}</small>
+              <a class="ow-button" href="{% url 'billing_detail' bill.id %}">{% if bill.status == 'DRAFT' %}ตรวจสิทธิ / คำนวณยอด{% elif bill.patient_due == 0 %}ยืนยันปิดยอด{% else %}รับชำระ{% endif %}<span aria-hidden="true">→</span></a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+      {% empty %}
+      <div class="ow-empty"><span class="ow-empty__icon" aria-hidden="true">฿</span><strong>ยังไม่มีรายการส่งมาการเงิน</strong><span>รายการจะปรากฏหลังแพทย์ส่งผู้ป่วยมาที่การเงิน</span></div>
+      {% endfor %}
+    </div>
+    <div class="ow-no-results" id="billingNoResults">ไม่พบรายการตามคำค้นหาหรือตัวกรองนี้</div>
+  </section>
+</main>
+<script>
+(()=>{
+  const cards=[...document.querySelectorAll('.billing-record')];
+  const search=document.getElementById('billingSearch');
+  const filters=[...document.querySelectorAll('[data-bill-filter]')];
+  const noResults=document.getElementById('billingNoResults');
+  const group=status=>['PAID','WAIVED'].includes(status)?'DONE':status;
+  let active='ALL';
+  const counts={DRAFT:0,READY:0,DONE:0,CANCELLED:0};
+  cards.forEach(card=>{const key=group(card.dataset.status);if(key in counts)counts[key]++;});
+  Object.entries(counts).forEach(([key,value])=>{document.querySelector(`[data-bill-count="${key}"]`).textContent=value;document.querySelector(`[data-bill-filter-count="${key}"]`).textContent=value;});
+  document.querySelector('[data-bill-filter-count="ALL"]').textContent=cards.length;
+  document.getElementById('billingActiveCount').textContent=counts.DRAFT+counts.READY;
+  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;cards.forEach(card=>{const matchesStatus=active==='ALL'||active===group(card.dataset.status);const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});noResults.classList.toggle('visible',cards.length>0&&visible===0);}
+  filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.billFilter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
+  search.addEventListener('input',update);
+})();
+</script>
+</body>
+</html>

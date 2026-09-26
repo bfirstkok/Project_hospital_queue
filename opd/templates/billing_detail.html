@@ -1,20 +1,84 @@
-<!doctype html><html lang="th"><head>{% load static %}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>สรุปค่าใช้จ่าย</title><link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-detail-20260923"><style>
-*{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.page{width:min(1050px,calc(100% - 36px));margin:24px auto 70px}.hero{padding:22px 24px;border-radius:18px;background:#fff;border:1px solid #d7e5e8}.hero h1{margin:0;font-size:25px}.hero p{margin:6px 0 0;color:#70868f;font-size:12px}.grid{display:grid;grid-template-columns:1fr .9fr;gap:13px;margin-top:13px}.card{border:1px solid #d7e5e8;border-radius:18px;background:#fff;overflow:hidden}.head{padding:17px 19px 14px;border-bottom:1px solid #e8eff1}.head h2{margin:0;font-size:16px}.body{padding:17px 19px}.field{display:grid;gap:5px;margin-bottom:10px}.field label{font-size:10px;font-weight:900;color:#617984}.field input,.field select{min-height:40px;padding:0 10px;border:1px solid #cbdadd;border-radius:9px;background:#fff}.row{display:flex;justify-content:space-between;gap:15px;padding:9px 0;border-bottom:1px solid #edf2f3;font-size:11px}.row.total{padding-top:13px;border:0;font-size:14px;font-weight:900}.row.due{margin-top:10px;padding:13px;border:0;border-radius:10px;background:#eef8f6;color:#087467;font-size:16px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 13px;border:0;border-radius:9px;background:#087f75;color:#fff!important;text-decoration:none;font-weight:900;cursor:pointer}.btn.secondary{border:1px solid #cbdadd;background:#fff;color:#3c5d68!important}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.item{font-size:10px;color:#687f88}@media(max-width:760px){.grid{grid-template-columns:1fr}.page{width:calc(100% - 18px)}}</style></head><body>
-{% include "includes/main_nav.html" %}<main class="page"><section class="hero"><h1>สรุปค่าใช้จ่าย · Visit #{{ visit.id }}</h1><p>{{ visit.patient.first_name }} {{ visit.patient.last_name }} · HN {{ visit.patient.hn }}</p></section>
-{% if messages %}{% for message in messages %}<div style="margin-top:10px;padding:10px 12px;border-radius:9px;background:#eaf7f4;color:#087467;font-size:11px;font-weight:800">{{ message }}</div>{% endfor %}{% endif %}
-<div class="grid"><section class="card"><div class="head"><h2>สิทธิการรักษา</h2></div><div class="body"><form method="post">{% csrf_token %}
-<div class="field"><label>ประเภทสิทธิ</label><select id="coverageType" name="coverage_type">{% for value,label in coverage_choices %}<option value="{{ value }}" {% if bill.coverage.coverage_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-<div class="field"><label>เลขสิทธิ / เลขกรมธรรม์</label><input name="member_no" value="{{ bill.coverage.member_no|default:'' }}"></div>
-<div class="field"><label>สิทธิครอบคลุม (%)</label><input id="coveragePercent" name="coverage_percent" type="number" min="0" max="100" value="{{ bill.coverage.coverage_percent|default:0 }}"></div>
-<div class="field"><label>หมายเหตุสิทธิ</label><input name="coverage_note" value="{{ bill.coverage.note|default:'' }}"></div>
-<div class="field"><label>ค่าใช้จ่ายอื่น (บาท)</label><input name="other_fee" type="number" min="0" step="0.01" value="{{ bill.other_fee }}"></div>
-<button class="btn" type="submit">คำนวณใหม่</button></form></div></section>
-<section class="card"><div class="head"><h2>ยอดค่าใช้จ่าย</h2></div><div class="body">
-<div class="row"><span>ค่าตรวจแพทย์</span><b>{{ bill.consultation_fee|floatformat:2 }} บาท</b></div>
-{% if prescription %}{% for item in prescription.items.all %}<div class="row item"><span>{{ item.medication_name }} × {{ item.quantity }}</span><span>{{ item.line_total|floatformat:2 }} บาท</span></div>{% endfor %}{% endif %}
-<div class="row"><span>ค่ายารวม</span><b>{{ bill.medicine_total|floatformat:2 }} บาท</b></div><div class="row"><span>ค่าใช้จ่ายอื่น</span><b>{{ bill.other_fee|floatformat:2 }} บาท</b></div>
-<div class="row total"><span>รวม</span><span>{{ bill.subtotal|floatformat:2 }} บาท</span></div><div class="row"><span>สิทธิครอบคลุม</span><b>- {{ bill.covered_amount|floatformat:2 }} บาท</b></div><div class="row due"><span>ผู้ป่วยชำระ</span><strong>{{ bill.patient_due|floatformat:2 }} บาท</strong></div>
-<div class="actions"><form method="post" action="{% url 'billing_pay' bill.id %}">{% csrf_token %}<button class="btn" type="submit">ยืนยันรับชำระ / ปิดรายการ</button></form><a class="btn secondary" href="{% url 'billing_worklist' %}">กลับรายการ</a></div>
-</div></section></div></main>
-<script>const defaults={SELF_PAY:0,UCS:100,SSS:100,CSMBS:100,PRIVATE:80,OTHER:0};const t=document.getElementById('coverageType'),p=document.getElementById('coveragePercent');t.addEventListener('change',()=>{p.value=defaults[t.value]??0});</script>
-</body></html>
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ตรวจสิทธิและชำระเงิน · Visit #{{ visit.id }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-detail-clean-20260926">
+  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=1">
+</head>
+<body>
+{% include "includes/main_nav.html" %}
+<main class="ow-page billing-detail-page">
+  <header class="ow-hero">
+    <div class="ow-hero__copy">
+      <div class="ow-eyebrow"><span class="ow-eyebrow__mark" aria-hidden="true">฿</span> งานบริการ OPD · การเงิน · Visit #{{ visit.id }}</div>
+      <h1>ตรวจยอดและรับชำระ</h1>
+      <p>{{ visit.patient.first_name }} {{ visit.patient.last_name }} · HN {{ visit.patient.hn }}</p>
+    </div>
+    <div class="ow-hero__side"><span>สถานะรายการ</span><strong style="font-size:17px">{{ bill.get_status_display }}</strong></div>
+  </header>
+
+  {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <nav class="ow-stepper" aria-label="ขั้นตอนการเงิน">
+    <div class="ow-step {% if bill.coverage %}done{% else %}active{% endif %}"><span class="ow-step__num">{% if bill.coverage %}✓{% else %}1{% endif %}</span><div><b>ตรวจสอบสิทธิ</b><small>เลือกสิทธิและบันทึกข้อมูล</small></div></div>
+    <div class="ow-step active"><span class="ow-step__num">2</span><div><b>ตรวจสอบยอด</b><small>ทบทวนรายการและยอดสุทธิ</small></div></div>
+    <div class="ow-step {% if bill.paid_at %}done{% endif %}"><span class="ow-step__num">{% if bill.paid_at %}✓{% else %}3{% endif %}</span><div><b>รับชำระ / ปิดยอด</b><small>ออกใบเสร็จเมื่อดำเนินการแล้ว</small></div></div>
+  </nav>
+
+  <div class="ow-detail-grid">
+    <section class="ow-card">
+      <div class="ow-card__head"><h2>1 · สิทธิการรักษาและค่าใช้จ่าย</h2><p>ตรวจสอบข้อมูลกับผู้ป่วยก่อนบันทึก แล้วระบบจะคำนวณยอดใหม่ให้อัตโนมัติ</p></div>
+      <div class="ow-card__body">
+        {% if bill.pharmacy_skipped %}<div class="ow-callout"><span aria-hidden="true">✓</span><div><strong>แพทย์ยืนยันว่าไม่มีรายการยากลับบ้าน</strong><br>ระบบจะแสดงค่าตรวจและค่าใช้จ่ายอื่นเท่านั้น</div></div>{% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="ow-field"><label for="coverageType">ประเภทสิทธิ</label><select class="ow-select" id="coverageType" name="coverage_type">{% for value,label in coverage_choices %}<option value="{{ value }}" {% if bill.coverage.coverage_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><span class="help">เลือกสิทธิที่ผู้ป่วยใช้สำหรับ Visit นี้</span></div>
+          <div class="ow-field-grid">
+            <div class="ow-field"><label for="memberNo">เลขสิทธิ / เลขกรมธรรม์</label><input class="ow-input" id="memberNo" name="member_no" value="{{ bill.coverage.member_no|default:'' }}" placeholder="ระบุถ้ามี"></div>
+            <div class="ow-field"><label for="coveragePercent">สิทธิครอบคลุม (%)</label><input class="ow-input" id="coveragePercent" name="coverage_percent" type="number" min="0" max="100" value="{{ bill.coverage.coverage_percent|default:0 }}"><span class="help">ปรับตามผลตรวจสอบสิทธิจริง</span></div>
+          </div>
+          <div class="ow-field"><label for="coverageNote">หมายเหตุสิทธิ</label><input class="ow-input" id="coverageNote" name="coverage_note" value="{{ bill.coverage.note|default:'' }}" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></div>
+          <div class="ow-field"><label for="otherFee">ค่าใช้จ่ายอื่น (บาท)</label><input class="ow-input" id="otherFee" name="other_fee" type="number" min="0" step="0.01" value="{{ bill.other_fee }}"><span class="help">ค่าตรวจแพทย์และค่ายาคำนวณจากรายการใน Visit</span></div>
+          <div class="ow-form-actions"><button class="ow-button" type="submit">บันทึกสิทธิและคำนวณยอดใหม่ <span aria-hidden="true">→</span></button><a class="ow-button secondary" href="{% url 'billing_worklist' %}">กลับรายการ</a></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="ow-card">
+      <div class="ow-card__head"><h2>2 · ตรวจสอบยอดค่าใช้จ่าย</h2><p>ทวนรายการและแจ้งยอดผู้ป่วยก่อนกดยืนยันรับเงิน</p></div>
+      <div class="ow-card__body">
+        <div class="ow-cost-row"><span>ค่าตรวจแพทย์</span><b>{{ bill.consultation_fee|floatformat:2 }} บาท</b></div>
+        {% if prescription %}{% for item in prescription.items.all %}<div class="ow-cost-row medicine"><span>{{ item.medication_name }}{% if item.strength %} {{ item.strength }}{% endif %} × {{ item.quantity }} {{ item.unit }}</span><b>{{ item.line_total|floatformat:2 }} บาท</b></div>{% endfor %}{% endif %}
+        <div class="ow-cost-row"><span>ค่ายารวม</span><b>{{ bill.medicine_total|floatformat:2 }} บาท</b></div>
+        <div class="ow-cost-row"><span>ค่าใช้จ่ายอื่น</span><b>{{ bill.other_fee|floatformat:2 }} บาท</b></div>
+        <div class="ow-cost-row ow-cost-total"><span>รวมค่าใช้จ่าย</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>
+        <div class="ow-cost-row"><span>สิทธิครอบคลุม</span><b>− {{ bill.covered_amount|floatformat:2 }} บาท</b></div>
+        <div class="ow-cost-due"><span>ยอดที่ผู้ป่วยต้องชำระ</span><strong>{{ bill.patient_due|floatformat:2 }}<small style="font-size:13px"> บาท</small></strong></div>
+
+        {% if bill.paid_at %}
+          <div class="ow-callout"><span aria-hidden="true">✓</span><div><strong>ปิดรายการแล้ว</strong><br>บันทึกเมื่อ {{ bill.paid_at|date:"d/m/Y H:i" }}{% if bill.received_by %} โดย {{ bill.received_by.get_full_name|default:bill.received_by.username }}{% endif %}</div></div>
+          <a class="ow-button" href="{% url 'billing_receipt' bill.id %}" style="width:100%">เปิดใบเสร็จ <span aria-hidden="true">→</span></a>
+        {% elif bill.status == 'CANCELLED' %}
+          <div class="ow-callout" style="border-color:#f0c4c8;background:#fff1f2;color:#8d3039"><span aria-hidden="true">!</span><div><strong style="color:#a51d30">รายการนี้ถูกยกเลิก</strong><br>ไม่สามารถรับชำระจากรายการนี้ได้</div></div>
+        {% else %}
+          <form class="ow-pay-form" method="post" action="{% url 'billing_pay' bill.id %}" onsubmit="return confirm('ยืนยันรับชำระยอด {{ bill.patient_due|floatformat:2 }} บาท และปิดรายการนี้หรือไม่?')">
+            {% csrf_token %}
+            <span class="ow-pay-note">{% if bill.patient_due == 0 %}ยอดผู้ป่วยเป็น 0 บาท ระบบจะปิดรายการเป็น “ไม่มีค่าใช้จ่ายผู้ป่วย”{% else %}ตรวจยอดกับผู้ป่วยแล้ว จึงกดยืนยัน ระบบจะบันทึกผู้รับชำระและเวลา พร้อมเปิดใบเสร็จ{% endif %}</span>
+            <button class="ow-button" type="submit">{% if bill.patient_due == 0 %}ยืนยันปิดยอดและออกใบเสร็จ{% else %}ยืนยันรับชำระ {{ bill.patient_due|floatformat:2 }} บาท{% endif %}</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const defaults={SELF_PAY:0,UCS:100,SSS:100,CSMBS:100,PRIVATE:80,OTHER:0};
+const coverageType=document.getElementById('coverageType');
+const coveragePercent=document.getElementById('coveragePercent');
+coverageType.addEventListener('change',()=>{coveragePercent.value=defaults[coverageType.value]??0;});
+</script>
+</body>
+</html>

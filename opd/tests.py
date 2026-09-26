@@ -333,6 +333,18 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertEqual(prescription.status, Prescription.Status.SENT)
         self.assertTrue(Bill.objects.filter(visit=self.visit).exists())
 
+    def test_doctor_handoff_page_explains_the_next_choice_and_role_boundary(self):
+        self.client.force_login(self.doctor)
+
+        response = self.client.get(reverse("opd_care_plan", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ผู้ป่วยต้องรับยากลับบ้านหรือไม่?")
+        self.assertContains(response, "ขอบเขตงานแพทย์")
+        self.assertContains(response, "มียา / เวชภัณฑ์")
+        self.assertContains(response, "ไม่มียากลับบ้าน")
+        self.assertContains(response, "ยืนยัน “ไม่มียา” และส่งต่อ")
+
     def test_doctor_cannot_send_billing_before_draft_prescription_is_sent(self):
         prescription = Prescription.objects.create(
             visit=self.visit,
@@ -357,6 +369,46 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "กรุณากด “ส่งใบสั่งยาไปห้องยา” ก่อนส่งการเงิน")
         self.assertFalse(Bill.objects.filter(visit=self.visit).exists())
+
+    def test_no_medication_handoff_locks_prescription_editing(self):
+        self.client.force_login(self.doctor)
+
+        response = self.client.post(
+            reverse("opd_care_plan", args=[self.visit.id]),
+            {"action": "send_billing"},
+        )
+
+        self.assertRedirects(response, reverse("opd_care_plan", args=[self.visit.id]))
+        response = self.client.get(reverse("opd_care_plan", args=[self.visit.id]))
+        self.assertTrue(response.context["no_medication_path"])
+        self.assertTrue(response.context["medication_decision_done"])
+        self.assertTrue(response.context["handoff_started"])
+        self.assertFalse(response.context["can_edit_prescription"])
+        self.assertContains(response, "ส่งการเงินแล้ว")
+        self.assertNotContains(response, "id=\"medication-name\"")
+        bill = Bill.objects.get(visit=self.visit)
+        self.assertTrue(bill.pharmacy_skipped)
+
+        response = self.client.post(
+            reverse("opd_care_plan", args=[self.visit.id]),
+            {"action": "add_medication", "medication_name": "Paracetamol"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ส่งการเงินในฐานะไม่มีรายการยาแล้ว")
+        self.assertFalse(Prescription.objects.filter(visit=self.visit).exists())
+
+    def test_open_empty_prescription_remains_editable_until_no_medication_is_confirmed(self):
+        Prescription.objects.create(visit=self.visit, prescribed_by=self.doctor)
+        _bill = Bill.objects.create(visit=self.visit)
+        _bill.recalculate()
+        self.client.force_login(self.doctor)
+
+        response = self.client.get(reverse("opd_care_plan", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["no_medication_path"])
+        self.assertTrue(response.context["can_edit_prescription"])
 
     def test_opd_room_keeps_examined_patient_in_aftercare_worklist(self):
         self.client.force_login(self.doctor)
@@ -389,6 +441,13 @@ class OpdDownstreamWorkflowTests(TestCase):
         )
 
         self.client.force_login(self.pharmacist)
+        response = self.client.get(reverse("pharmacy_worklist"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "จัดการใบสั่งยา")
+        self.assertContains(response, "รอรับยา")
+        self.assertContains(response, "ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา")
+        self.assertContains(response, "Paracetamol")
+
         response = self.client.post(
             reverse("pharmacy_update_status", args=[prescription.id]),
             {"status": Prescription.Status.DISPENSED},
@@ -399,6 +458,13 @@ class OpdDownstreamWorkflowTests(TestCase):
 
         bill = Bill.objects.get(visit=self.visit)
         self.client.force_login(self.cashier)
+        response = self.client.get(reverse("billing_worklist"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ตรวจสิทธิและรับชำระ")
+        self.assertContains(response, "สิทธิครอบคลุม")
+        self.assertContains(response, "ค้นชื่อผู้ป่วย, HN หรือเลข Visit")
+        self.assertContains(response, "ผู้ป่วย ปลายทาง")
+
         response = self.client.post(
             reverse("billing_detail", args=[bill.id]),
             {
@@ -411,6 +477,12 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("billing_detail", args=[bill.id]))
         bill.refresh_from_db()
         self.assertEqual(bill.patient_due, 0)
+
+        response = self.client.get(reverse("billing_detail", args=[bill.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ตรวจยอดและรับชำระ")
+        self.assertContains(response, "ยอดที่ผู้ป่วยต้องชำระ")
+        self.assertContains(response, "ยืนยันปิดยอดและออกใบเสร็จ")
 
         response = self.client.post(reverse("billing_pay", args=[bill.id]))
         self.assertRedirects(response, reverse("billing_receipt", args=[bill.id]))

@@ -165,13 +165,19 @@ def _opd_aftercare_rows(selected_room):
         pharmacy_done = bool(
             prescription and prescription.status == Prescription.Status.DISPENSED
         )
-        pharmacy_skipped = bool(
-            prescription is None
-            or not prescription_has_items
-            or prescription.status == Prescription.Status.CANCELLED
-        )
         billing_done = bool(
             bill and bill.status in {Bill.Status.PAID, Bill.Status.WAIVED}
+        )
+        pharmacy_skipped = bool(
+            (bill and bill.pharmacy_skipped)
+            or (
+                billing_done
+                and (
+                    prescription is None
+                    or not prescription_has_items
+                    or prescription.status == Prescription.Status.CANCELLED
+                )
+            )
         )
         complete = bool(
             billing_done and (pharmacy_done or pharmacy_skipped)
