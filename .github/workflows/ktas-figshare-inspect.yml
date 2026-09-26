@@ -1,0 +1,60 @@
+name: Public KTAS Figshare benchmark
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ktas-figshare-inspect.yml"
+      - "ai_triage/ml/import_ktas_figshare.py"
+      - "ai_triage/ml/benchmark_ktas_figshare_augmentation.py"
+      - "ai_triage/ml/test_import_ktas_figshare.py"
+  workflow_dispatch:
+
+jobs:
+  ktas-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install openpyxl
+
+      - name: Test KTAS importer
+        run: python -m unittest ai_triage.ml.test_import_ktas_figshare
+
+      - name: Download public KTAS dataset from PLOS Figshare
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ktas
+          curl --fail --location --retry 4 --retry-delay 2             "https://plos.figshare.com/ndownloader/articles/8044793/versions/1"             --output /tmp/ktas/ktas.zip
+
+          test -s /tmp/ktas/ktas.zip
+          unzip -q /tmp/ktas/ktas.zip -d /tmp/ktas/extracted
+          test -s "/tmp/ktas/extracted/Data sharing.xlsx"
+
+      - name: Convert larger public KTAS cohort
+        run: |
+          python -m ai_triage.ml.import_ktas_figshare             --input "/tmp/ktas/extracted/Data sharing.xlsx"             --output /tmp/ktas/ktas_runtime.csv
+
+      - name: Benchmark low-weight KTAS augmentation
+        run: |
+          python -m ai_triage.ml.benchmark_ktas_figshare_augmentation             --ktas-csv /tmp/ktas/ktas_runtime.csv             --max-external-per-class 2000             --weights 0.005,0.01,0.025,0.05,0.10             --output-dir ai_triage/reports/ktas_figshare_benchmark
+
+      - name: Print benchmark report
+        run: cat ai_triage/reports/ktas_figshare_benchmark/README.md
+
+      - name: Upload aggregate benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktas-figshare-benchmark
+          path: ai_triage/reports/ktas_figshare_benchmark/
+          if-no-files-found: error
