@@ -195,9 +195,15 @@ class PatientPinApiTests(TestCase):
     def test_correct_otp_resets_pin_is_single_use_and_issues_token(self, _randbelow):
         self.setup_pin()
         self.request_otp()
+        verified = self.post_json(
+            "patient_pin_reset_verify_otp",
+            {"national_id": self.patient.national_id, "otp": "123456"},
+        )
+        self.assertEqual(verified.status_code, 200)
+        reset_token = verified.json()["reset_token"]
         confirmed = self.post_json(
             "patient_pin_reset_confirm",
-            {"national_id": self.patient.national_id, "otp": "123456", "pin": "778899"},
+            {"reset_token": reset_token, "pin": "778899"},
         )
 
         self.assertEqual(confirmed.status_code, 200)
@@ -206,7 +212,7 @@ class PatientPinApiTests(TestCase):
         self.assertIsNotNone(OtpChallenge.objects.get().consumed_at)
         reused = self.post_json(
             "patient_pin_reset_confirm",
-            {"national_id": self.patient.national_id, "otp": "123456", "pin": "112233"},
+            {"reset_token": reset_token, "pin": "112233"},
         )
         self.assertEqual(reused.status_code, 400)
 
@@ -215,15 +221,15 @@ class PatientPinApiTests(TestCase):
         self.request_otp()
         for _ in range(5):
             response = self.post_json(
-                "patient_pin_reset_confirm",
-                {"national_id": self.patient.national_id, "otp": "000000", "pin": "778899"},
+                "patient_pin_reset_verify_otp",
+                {"national_id": self.patient.national_id, "otp": "000000"},
             )
         self.assertIn("ผิดเกินกำหนด", response.json()["error"])
         challenge = OtpChallenge.objects.get()
         self.assertEqual(challenge.attempts, 5)
         correct_after_limit = self.post_json(
-            "patient_pin_reset_confirm",
-            {"national_id": self.patient.national_id, "otp": "123456", "pin": "778899"},
+            "patient_pin_reset_verify_otp",
+            {"national_id": self.patient.national_id, "otp": "123456"},
         )
         self.assertEqual(correct_after_limit.status_code, 400)
 
@@ -232,11 +238,29 @@ class PatientPinApiTests(TestCase):
         self.request_otp()
         OtpChallenge.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
         response = self.post_json(
-            "patient_pin_reset_confirm",
-            {"national_id": self.patient.national_id, "otp": "123456", "pin": "778899"},
+            "patient_pin_reset_verify_otp",
+            {"national_id": self.patient.national_id, "otp": "123456"},
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("หมดอายุ", response.json()["error"])
+
+    @patch("patients.views.secrets.randbelow", return_value=123456)
+    def test_pin_reset_requires_short_lived_reset_token(self, _randbelow):
+        self.request_otp()
+        verified = self.post_json(
+            "patient_pin_reset_verify_otp",
+            {"national_id": self.patient.national_id, "otp": "123456"},
+        )
+        challenge = OtpChallenge.objects.get()
+        challenge.reset_token_expires_at = timezone.now() - timedelta(seconds=1)
+        challenge.save(update_fields=["reset_token_expires_at"])
+
+        response = self.post_json(
+            "patient_pin_reset_confirm",
+            {"reset_token": verified.json()["reset_token"], "pin": "778899"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Reset token", response.json()["error"])
 
     def test_otp_request_does_not_enumerate_missing_patient_or_email(self):
         missing = self.post_json(

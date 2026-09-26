@@ -1593,7 +1593,7 @@ def patient_pin_reset_request(request):
 
 
 @csrf_exempt
-def patient_pin_reset_confirm(request):
+def patient_pin_reset_verify_otp(request):
     if request.method == "OPTIONS":
         return _cors_json(request, {})
     if request.method != "POST":
@@ -1602,16 +1602,9 @@ def patient_pin_reset_confirm(request):
     if error:
         return _cors_json(request, {"ok": False, "error": error}, status=error_status)
     national_id = str(payload.get("national_id") or "").strip()
-    otp = str(payload.get("otp") or "")
-    pin = str(payload.get("pin") or payload.get("new_pin") or "")
+    otp = str(payload.get("otp") or "").strip()
     if not re.fullmatch(r"[0-9]{13}", national_id):
         return _cors_json(request, {"ok": False, "error": "ข้อมูลไม่ถูกต้อง"}, status=400)
-    if not PIN_PATTERN.fullmatch(pin):
-        return _cors_json(
-            request,
-            {"ok": False, "error": "รหัส PIN ต้องเป็นตัวเลข 6 หลัก"},
-            status=400,
-        )
 
     with transaction.atomic():
         challenge = (
@@ -1660,8 +1653,66 @@ def patient_pin_reset_confirm(request):
                 {"ok": False, "error": "ไม่สามารถยืนยันรหัส OTP ได้ กรุณาขอใหม่"},
                 status=400,
             )
+
+        reset_token = secrets.token_hex(32)
+        challenge.reset_token_hash = _token_digest(reset_token)
+        challenge.reset_token_expires_at = timezone.now() + timedelta(
+            seconds=int(getattr(settings, "PASSWORD_RESET_TOKEN_TTL_SECONDS", 900))
+        )
+        # OTP ใช้ยืนยันได้ครั้งเดียว แม้ reset token ยังไม่ถูกนำไปตั้ง PIN
+        challenge.code_hash = make_password(secrets.token_urlsafe(24))
+        challenge.save(update_fields=["reset_token_hash", "reset_token_expires_at", "code_hash"])
+
+    return _cors_json(request, {
+        "ok": True,
+        "reset_token": reset_token,
+        "message": "รหัส OTP ถูกต้อง กรุณาตั้งรหัส PIN ใหม่",
+    })
+
+
+@csrf_exempt
+def patient_pin_reset_confirm(request):
+    if request.method == "OPTIONS":
+        return _cors_json(request, {})
+    if request.method != "POST":
+        return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
+    payload, error, error_status = _json_body(request)
+    if error:
+        return _cors_json(request, {"ok": False, "error": error}, status=error_status)
+    reset_token = str(payload.get("reset_token") or "").strip()
+    pin = str(payload.get("pin") or payload.get("new_pin") or "")
+    if not reset_token:
+        return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+    if not PIN_PATTERN.fullmatch(pin):
+        return _cors_json(request, {"ok": False, "error": "รหัส PIN ต้องเป็นตัวเลข 6 หลัก"}, status=400)
+
+    with transaction.atomic():
+        challenge = (
+            OtpChallenge.objects.select_for_update()
+            .filter(
+                purpose=OtpChallenge.Purpose.PIN_RESET,
+                reset_token_hash=_token_digest(reset_token),
+                consumed_at__isnull=True,
+            )
+            .first()
+        )
+        if (
+            not challenge
+            or not challenge.reset_token_expires_at
+            or challenge.reset_token_expires_at <= timezone.now()
+        ):
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
+        patient = Patient.objects.select_for_update().filter(
+            national_id=challenge.national_id,
+            is_active=True,
+        ).first()
+        if not patient:
+            return _cors_json(request, {"ok": False, "error": "Reset token ไม่ถูกต้องหรือหมดอายุ"}, status=400)
+
         challenge.consumed_at = timezone.now()
-        challenge.save(update_fields=["consumed_at"])
+        challenge.reset_token_hash = None
+        challenge.save(update_fields=["consumed_at", "reset_token_hash"])
         pin_state, _ = PatientPin.objects.select_for_update().get_or_create(
             patient=patient,
             defaults={"pin_hash": make_password(pin)},

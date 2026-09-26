@@ -41,6 +41,7 @@ urlpatterns = [
     path("api/patient/pin/verify/", patient_views.patient_pin_verify, name="patient_pin_verify"),
     path("api/patient/pin/change/", patient_views.patient_pin_change, name="patient_pin_change"),
     path("api/patient/pin/reset/request/", patient_views.patient_pin_reset_request, name="patient_pin_reset_request"),
+    path("api/patient/pin/reset/verify-otp/", patient_views.patient_pin_reset_verify_otp, name="patient_pin_reset_verify_otp"),
     path("api/patient/pin/reset/confirm/", patient_views.patient_pin_reset_confirm, name="patient_pin_reset_confirm"),
     path("api/patient/me/", patient_views.patient_me, name="public_patient_me"),
     path("api/patient/queue/", patient_views.patient_queue, name="public_authenticated_patient_queue"),
