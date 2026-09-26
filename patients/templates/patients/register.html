@@ -38,22 +38,71 @@
     <div class="content-wrapper">
       <header class="register-intro">
         <span class="eyebrow">ระบบบริการผู้ป่วยนอก (OPD)</span>
-        <h1>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% else %}ลงทะเบียนผู้ป่วยใหม่{% endif %}</h1>
-        <p>{% if is_edit %}ปรับปรุงข้อมูลประจำตัวและข้อมูลสุขภาพ โดยไม่สร้างคิวใหม่{% else %}กรอกข้อมูลตามลำดับเดียวกับหน้าลงทะเบียนของผู้ป่วย เพื่อส่งต่อไปยังจุดวัดสัญญาณชีพ{% endif %}</p>
+        <h1>{% if is_edit %}แก้ไขข้อมูลผู้ป่วย{% elif selected_patient %}รับบริการผู้ป่วยเดิม{% else %}ลงทะเบียนผู้ป่วยใหม่{% endif %}</h1>
+        <p>{% if is_edit %}ปรับปรุงข้อมูลประจำตัวและข้อมูลสุขภาพ โดยไม่สร้างคิวใหม่{% elif selected_patient %}ตรวจสอบข้อมูลเดิม ระบุอาการครั้งนี้ แล้วส่งต่อไปยังจุดวัดสัญญาณชีพ{% else %}กรอกข้อมูลตามลำดับเดียวกับหน้าลงทะเบียนของผู้ป่วย เพื่อส่งต่อไปยังจุดวัดสัญญาณชีพ{% endif %}</p>
       </header>
 
       <ol class="service-steps" aria-label="ขั้นตอนรับบริการ">
-        <li class="active"><span>1</span>{% if is_edit %}แก้ไขข้อมูล{% else %}ลงทะเบียน{% endif %}</li>
+        <li class="active"><span>1</span>{% if is_edit %}แก้ไขข้อมูล{% elif selected_patient %}รับบริการครั้งใหม่{% else %}ลงทะเบียน{% endif %}</li>
         <li><span>2</span>วัดสัญญาณชีพ</li>
         <li><span>3</span>รอเรียกคิว</li>
       </ol>
 
       {% if not is_edit %}
+      <section class="patient-mode-card" aria-label="เลือกประเภทผู้ป่วย">
+        <div class="patient-mode-card__heading">
+          <div>
+            <strong>ผู้ป่วยมารับบริการครั้งนี้เป็นผู้ป่วยใหม่หรือผู้ป่วยเดิม?</strong>
+            <span>ค้นหาข้อมูลเดิมก่อนทุกครั้ง เพื่อไม่สร้างประวัติผู้ป่วยซ้ำ</span>
+          </div>
+          <div class="patient-mode-actions">
+            <a class="patient-mode-btn {% if not selected_patient and not existing_query %}active{% endif %}" href="{% url 'register_patient' %}">+ ผู้ป่วยใหม่</a>
+            <button class="patient-mode-btn {% if selected_patient or existing_query %}active{% endif %}" id="existingPatientToggle" type="button">ค้นหาผู้ป่วยเดิม</button>
+          </div>
+        </div>
+
+        <div class="existing-patient-panel" id="existingPatientPanel" {% if not selected_patient and not existing_query %}hidden{% endif %}>
+          <form class="existing-patient-search" method="get" action="{% url 'register_patient' %}">
+            <label class="sr-only" for="existingPatientQuery">ค้นหาผู้ป่วยเดิม</label>
+            <input id="existingPatientQuery" name="existing_q" value="{{ existing_query }}"
+                   placeholder="ค้นหาด้วย HN ชื่อ-นามสกุล เลขบัตรประชาชน หรือเบอร์โทร">
+            <button type="submit">ค้นหา</button>
+          </form>
+
+          {% if existing_query %}
+            <div class="existing-patient-results" aria-live="polite">
+              {% for existing_patient in existing_results %}
+                <article class="existing-patient-row">
+                  <div>
+                    <strong>{{ existing_patient.first_name }} {{ existing_patient.last_name }}</strong>
+                    <span>HN {{ existing_patient.hn }} · {{ existing_patient.age_display }} · {{ existing_patient.phone|default:"ไม่มีเบอร์โทร" }}</span>
+                  </div>
+                  <a href="{% url 'register_patient' %}?existing_patient={{ existing_patient.id }}#patientRegisterForm">เลือกและรับบริการครั้งใหม่</a>
+                </article>
+              {% empty %}
+                <div class="existing-patient-empty">ไม่พบผู้ป่วยเดิม กรุณาตรวจสอบคำค้นหา หรือเลือก “ผู้ป่วยใหม่”</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if selected_patient %}
+      <section class="selected-patient-banner" role="status">
+        <div class="selected-patient-banner__icon">✓</div>
+        <div>
+          <strong>เลือกผู้ป่วยเดิม: {{ selected_patient.first_name }} {{ selected_patient.last_name }}</strong>
+          <span>HN {{ selected_patient.hn }} · ระบบจะสร้าง Visit และคิวใหม่ โดยไม่สร้างผู้ป่วยซ้ำ</span>
+        </div>
+        <a href="{% url 'register_patient' %}?existing_q={{ selected_patient.hn }}">เปลี่ยนผู้ป่วย</a>
+      </section>
+      {% endif %}
+
       <section class="quick-register-guide" aria-label="คำแนะนำการลงทะเบียนด่วน">
         <div class="quick-register-guide__icon">1</div>
         <div>
-          <strong>รับคิวด่วน: กรอกเฉพาะข้อมูลที่มีเครื่องหมาย *</strong>
-          <span>ข้อมูลสุขภาพ ที่อยู่ และผู้ติดต่อฉุกเฉินสามารถเปิดกรอกเพิ่มเติมได้ โดยไม่ขวางการรับคิว</span>
+          <strong>{% if selected_patient %}ผู้ป่วยเดิม: ตรวจสอบข้อมูลและกรอกอาการครั้งนี้{% else %}รับคิวด่วน: กรอกเฉพาะข้อมูลที่มีเครื่องหมาย *{% endif %}</strong>
+          <span>{% if selected_patient %}ข้อมูลประจำตัวถูกดึงจากประวัติเดิมแล้ว กรุณาระบุอาการสำคัญที่มารับบริการครั้งนี้{% else %}ข้อมูลสุขภาพ ที่อยู่ และผู้ติดต่อฉุกเฉินสามารถเปิดกรอกเพิ่มเติมได้ โดยไม่ขวางการรับคิว{% endif %}</span>
         </div>
       </section>
       {% endif %}
@@ -74,10 +123,11 @@
 
         <form id="patientRegisterForm" method="post" autocomplete="on">
           {% csrf_token %}
+          {% if selected_patient %}<input type="hidden" name="existing_patient_id" value="{{ selected_patient.id }}">{% endif %}
 
           <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
           <h3>ข้อมูลผู้ป่วย</h3>
-          <p class="section-help">กรอกข้อมูลส่วนบุคคลให้เหมือนกับหน้าลงทะเบียนของผู้ป่วย</p>
+          <p class="section-help">{% if selected_patient %}ตรวจสอบข้อมูลเดิมและแก้ไขเฉพาะข้อมูลที่เปลี่ยนแปลง{% else %}กรอกข้อมูลส่วนบุคคลให้เหมือนกับหน้าลงทะเบียนของผู้ป่วย{% endif %}</p>
           <div class="grid">
             <div class="field">
               <label>ชื่อ <span class="required-mark">*</span></label>
@@ -99,6 +149,7 @@
               <label>เลขบัตรประชาชน <span class="required-mark">*</span></label>
               <input name="national_id" required maxlength="13" minlength="13" inputmode="numeric" pattern="[0-9]{13}"
                      autocomplete="off" placeholder="ตัวเลข 13 หลัก ไม่ต้องใส่ขีด"
+                     {% if selected_patient %}readonly aria-readonly="true"{% endif %}
                      class="{% if form.national_id.errors %}has-error{% endif %}"
                      value="{{ form.national_id.value|default:'' }}">
               <div class="hint">ใช้ตรวจสอบผู้ป่วยเดิมและป้องกันการสร้างคิวซ้ำ</div>
@@ -783,6 +834,20 @@
   // ===== Sync optional chip fields before submit =====
   const registerForm = document.getElementById("patientRegisterForm");
   const submitPatientBtn = document.getElementById("submitPatientBtn");
+  const existingPatientToggle = document.getElementById("existingPatientToggle");
+  const existingPatientPanel = document.getElementById("existingPatientPanel");
+  const existingPatientQuery = document.getElementById("existingPatientQuery");
+  existingPatientToggle?.addEventListener("click", () => {
+    const willOpen = existingPatientPanel?.hasAttribute("hidden");
+    if (willOpen) {
+      existingPatientPanel.removeAttribute("hidden");
+      existingPatientToggle.classList.add("active");
+      existingPatientQuery?.focus();
+    } else {
+      existingPatientPanel?.setAttribute("hidden", "");
+      existingPatientToggle.classList.remove("active");
+    }
+  });
   registerForm?.addEventListener("submit", event => {
     document.querySelectorAll("[data-choice-field]").forEach(group => {
       if (typeof group._syncChoiceField === "function") group._syncChoiceField();

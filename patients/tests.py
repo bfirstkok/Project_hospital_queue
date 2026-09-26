@@ -294,6 +294,53 @@ class PublicPatientApiTests(TestCase):
         self.assertNotContains(response, 'name="username"')
         self.assertNotContains(response, 'name="password"')
 
+    def test_staff_registration_can_search_and_select_existing_patient(self):
+        user = get_user_model().objects.create_user(username="existing-patient-ui", password="test-only-password")
+        self.client.force_login(user)
+        patient = Patient.objects.create(
+            first_name="สมชาย",
+            last_name="ผู้ป่วยเดิม",
+            national_id="4555555555555",
+            phone="0812345678",
+        )
+
+        search = self.client.get(reverse("register_patient"), {"existing_q": patient.hn})
+        self.assertEqual(search.status_code, 200)
+        self.assertContains(search, "สมชาย ผู้ป่วยเดิม")
+        self.assertContains(search, "เลือกและรับบริการครั้งใหม่")
+
+        selected = self.client.get(reverse("register_patient"), {"existing_patient": patient.id})
+        self.assertContains(selected, f'name="existing_patient_id" value="{patient.id}"')
+        self.assertContains(selected, "ระบบจะสร้าง Visit และคิวใหม่ โดยไม่สร้างผู้ป่วยซ้ำ")
+        self.assertContains(selected, 'readonly aria-readonly="true"')
+
+    def test_staff_registration_creates_new_visit_for_selected_existing_patient(self):
+        user = get_user_model().objects.create_user(username="existing-patient-visit", password="test-only-password")
+        self.client.force_login(user)
+        patient = Patient.objects.create(
+            first_name="สมหญิง",
+            last_name="กลับมาตรวจ",
+            national_id="4444444444444",
+            gender="F",
+            phone="0899999999",
+        )
+
+        response = self.client.post(reverse("register_patient"), {
+            "existing_patient_id": patient.id,
+            "first_name": patient.first_name,
+            "last_name": patient.last_name,
+            "national_id": patient.national_id,
+            "gender": patient.gender,
+            "phone": patient.phone,
+            "blood_type": "UNKNOWN",
+            "note": "กลับมาตรวจอาการเวียนศีรษะ",
+        })
+
+        self.assertRedirects(response, reverse("patient_history", args=[patient.id]))
+        self.assertEqual(Patient.objects.filter(national_id=patient.national_id).count(), 1)
+        self.assertEqual(patient.visits.count(), 1)
+        self.assertEqual(patient.visits.get().queue.status, Queue.Status.WAITING_VITALS)
+
     def test_staff_registration_marks_patient_portal_core_fields_in_ui(self):
         user = get_user_model().objects.create_user(username="required-fields", password="test-only-password")
         self.client.force_login(user)

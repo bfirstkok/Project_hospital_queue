@@ -2012,7 +2012,16 @@ def _apply_staff_emergency_contacts(patient, contacts):
     patient.emergency_phone = primary.get("phone", "")
 
 
-def _registration_context(form, *, is_edit=False, patient=None, emergency_contacts=None):
+def _registration_context(
+    form,
+    *,
+    is_edit=False,
+    patient=None,
+    emergency_contacts=None,
+    existing_query="",
+    existing_results=None,
+    selected_patient=None,
+):
     if emergency_contacts is None:
         emergency_contacts = (
             _staff_emergency_contacts_for_patient(patient)
@@ -2030,6 +2039,9 @@ def _registration_context(form, *, is_edit=False, patient=None, emergency_contac
         "is_edit": is_edit,
         "patient": patient,
         "emergency_contacts": emergency_contacts,
+        "existing_query": existing_query,
+        "existing_results": existing_results if existing_results is not None else [],
+        "selected_patient": selected_patient,
         # Do not hide validation feedback inside a collapsed optional section.
         "open_optional_details": is_edit or bool(optional_fields.intersection(form.errors)),
     }
@@ -2047,20 +2059,43 @@ def _after_patient_change(request, patient):
 @login_required
 def register_patient(request):
     if request.method == "POST":
-        form = PatientForm(request.POST, allow_existing=True)
+        selected_patient = None
+        selected_patient_id = str(request.POST.get("existing_patient_id") or "").strip()
+        if selected_patient_id.isdigit():
+            selected_patient = Patient.objects.filter(pk=int(selected_patient_id)).first()
+
+        form = PatientForm(request.POST, instance=selected_patient, allow_existing=True)
         emergency_contacts = _staff_emergency_contacts_from_post(request.POST)
 
         if not form.is_valid():
             return render(
                 request,
                 "patients/register.html",
-                _registration_context(form, emergency_contacts=emergency_contacts),
+                _registration_context(
+                    form,
+                    emergency_contacts=emergency_contacts,
+                    selected_patient=selected_patient,
+                ),
             )
 
         national_id = form.cleaned_data["national_id"]
+        if selected_patient and national_id != selected_patient.national_id:
+            form.add_error("national_id", "เลขบัตรประชาชนไม่ตรงกับผู้ป่วยเดิมที่เลือก")
+            return render(
+                request,
+                "patients/register.html",
+                _registration_context(
+                    form,
+                    emergency_contacts=emergency_contacts,
+                    selected_patient=selected_patient,
+                ),
+            )
 
         with transaction.atomic():
-            patient = Patient.objects.select_for_update().filter(national_id=national_id).first()
+            if selected_patient:
+                patient = Patient.objects.select_for_update().get(pk=selected_patient.pk)
+            else:
+                patient = Patient.objects.select_for_update().filter(national_id=national_id).first()
 
             if patient:
                 active_queue = (
@@ -2079,7 +2114,11 @@ def register_patient(request):
                     return render(
                         request,
                         "patients/register.html",
-                        _registration_context(form, emergency_contacts=emergency_contacts),
+                        _registration_context(
+                            form,
+                            emergency_contacts=emergency_contacts,
+                            selected_patient=patient if selected_patient else None,
+                        ),
                     )
 
                 for field, value in form.cleaned_data.items():
@@ -2110,8 +2149,41 @@ def register_patient(request):
 
         return _after_patient_change(request, patient)
 
-    form = PatientForm(allow_existing=True)
-    return render(request, "patients/register.html", _registration_context(form))
+    existing_query = request.GET.get("existing_q", "").strip()
+    selected_patient_id = request.GET.get("existing_patient", "").strip()
+    selected_patient = None
+    if selected_patient_id.isdigit():
+        selected_patient = Patient.objects.filter(pk=int(selected_patient_id)).first()
+
+    existing_results = Patient.objects.none()
+    if existing_query:
+        existing_results = (
+            Patient.objects.filter(
+                Q(hn__icontains=existing_query)
+                | Q(first_name__icontains=existing_query)
+                | Q(last_name__icontains=existing_query)
+                | Q(national_id__icontains=existing_query)
+                | Q(phone__icontains=existing_query)
+            )
+            .order_by("first_name", "last_name")[:8]
+        )
+
+    form = PatientForm(
+        instance=selected_patient,
+        initial={"note": ""} if selected_patient else None,
+        allow_existing=True,
+    )
+    return render(
+        request,
+        "patients/register.html",
+        _registration_context(
+            form,
+            patient=selected_patient,
+            existing_query=existing_query,
+            existing_results=existing_results,
+            selected_patient=selected_patient,
+        ),
+    )
 
 
 @login_required
