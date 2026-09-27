@@ -58,16 +58,28 @@ def switch_test_role(request):
     if not request.user.is_superuser:
         return HttpResponseForbidden("Superuser only")
 
+    # Role switches can pass through multiple redirects before a page renders
+    # messages. Discard stale role-switch notices so they do not pile up on a
+    # later workflow page; the selected role is already shown in the sidebar.
+    queued_messages = messages.get_messages(request)
+    for queued_message in list(queued_messages):
+        message_text = str(queued_message)
+        if message_text.startswith("กำลังทดสอบระบบในบทบาท ") or message_text == "กลับสู่สิทธิ์ผู้ดูแลระบบสูงสุดแล้ว":
+            continue
+        messages.add_message(
+            request,
+            queued_message.level,
+            queued_message.message,
+            extra_tags=queued_message.extra_tags,
+        )
+
     role = request.POST.get("role", "").strip()
     if role in {"", "ADMIN"}:
         request.session.pop(SIMULATED_ROLE_SESSION_KEY, None)
         request.user._simulated_hospital_role = None
-        messages.success(request, "กลับสู่สิทธิ์ผู้ดูแลระบบสูงสุดแล้ว")
     elif role in StaffProfile.Role.values:
         request.session[SIMULATED_ROLE_SESSION_KEY] = role
         request.user._simulated_hospital_role = role
-        label = dict(StaffProfile.Role.choices).get(role, role)
-        messages.success(request, f"กำลังทดสอบระบบในบทบาท {label}")
     else:
         messages.error(request, "บทบาทที่เลือกไม่ถูกต้อง")
 

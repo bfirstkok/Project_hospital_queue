@@ -215,11 +215,17 @@ class RoleAccessTests(TestCase):
         admin = self.make_user("role-sim-admin", StaffProfile.Role.STAFF, superuser=True)
         self.client.force_login(admin)
 
+        self.client.post(
+            reverse("switch_test_role"),
+            {"role": StaffProfile.Role.DOCTOR},
+        )
         response = self.client.post(
             reverse("switch_test_role"),
             {"role": StaffProfile.Role.NURSE},
+            follow=True,
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "กำลังทดสอบระบบในบทบาท")
 
         permissions = self.client.get(reverse("my_permissions"))
         self.assertEqual(permissions.status_code, 200)

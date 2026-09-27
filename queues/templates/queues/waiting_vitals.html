@@ -180,10 +180,12 @@
     .waiting-vitals-page .table td:nth-child(2) { font-size: 15px; font-weight: 400; }
     .queue-badge { display: inline-flex; min-width: 68px; min-height: 38px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #bcdbe7; border-radius: 11px; color: #126f99; background: linear-gradient(180deg,#f3fbfe,#eaf6fb); box-shadow: 0 2px 7px rgba(25,119,164,.08); font-size: 14px; font-weight: 900; }
     .patient-summary { display: flex; align-items: center; gap: 12px; }
+    .patient-identity { min-width: 0; }
+    .patient-name-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .patient-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border: 1px solid #c8e8e2; border-radius: 13px; color: #08766e; background: linear-gradient(145deg,#eaf8f5,#dff2ee); font-size: 17px; font-weight: 900; box-shadow: 0 3px 10px rgba(8,127,117,.07); }
     .waiting-vitals-page .patient-name { color: #17324d; font-size: 17px; line-height: 1.25; }
     .patient-meta { margin-top: 4px; color: #748993; font-size: 12px; font-weight: 500; }
-    .waiting-vitals-page .detail-box { margin-top: 6px; margin-left: 49px; }
+    .waiting-vitals-page .detail-box { margin: 0; }
     .waiting-vitals-page .patient-actions { gap: 6px; }
     .waiting-vitals-page .patient-menu-trigger {
       width: 30px;
@@ -310,30 +312,38 @@
           <tr>
             <td><span class="queue-badge">{{ q.display_number }}</span></td>
             <td>
-              <div class="patient-summary"><span class="patient-avatar">{{ p.first_name|default:"?"|slice:":1" }}</span><div><div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div><div class="patient-meta">HN {{ p.hn|default:"ยังไม่มีเลข HN" }}</div></div></div>
-              <div class="detail-box">
-                <div class="patient-actions">
-                  <button
-                    class="patient-menu-trigger js-patient-menu-trigger"
-                    type="button"
-                    aria-label="เมนูเพิ่มเติมของ {{ p.first_name|default:'ผู้ป่วย' }} {{ p.last_name|default:'' }}"
-                    aria-haspopup="menu"
-                    aria-expanded="false"
-                    data-menu-target="patient-menu-{{ q.id }}"
-                  >⋮</button>
-                  <div class="patient-menu-panel" id="patient-menu-{{ q.id }}" role="menu" hidden>
-                    <button class="patient-menu-item js-open-modal" type="button" role="menuitem" data-target="patient-modal-{{ q.id }}">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19c.9-3.4 3.2-5.2 6.5-5.2s5.6 1.8 6.5 5.2"/></svg>
-                      <span>ดูข้อมูลผู้ป่วย</span>
-                    </button>
-                    {% if 'edit_patient' in access_capabilities %}
-                      <a class="patient-menu-item edit" href="{% url 'edit_patient' p.id %}" role="menuitem">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
-                        <span>แก้ไขข้อมูลผู้ป่วย</span>
-                      </a>
-                    {% endif %}
+              <div class="patient-summary">
+                <span class="patient-avatar">{{ p.first_name|default:"?"|slice:":1" }}</span>
+                <div class="patient-identity">
+                  <div class="patient-name-line">
+                    <div class="patient-name">{{ p.first_name|default:"-" }} {{ p.last_name|default:"" }}</div>
+                    <div class="patient-actions">
+                      <button
+                        class="patient-menu-trigger js-patient-menu-trigger"
+                        type="button"
+                        aria-label="เมนูเพิ่มเติมของ {{ p.first_name|default:'ผู้ป่วย' }} {{ p.last_name|default:'' }}"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        data-menu-target="patient-menu-{{ q.id }}"
+                      >⋮</button>
+                      <div class="patient-menu-panel" id="patient-menu-{{ q.id }}" role="menu" hidden>
+                        <button class="patient-menu-item js-open-modal" type="button" role="menuitem" data-target="patient-modal-{{ q.id }}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19c.9-3.4 3.2-5.2 6.5-5.2s5.6 1.8 6.5 5.2"/></svg>
+                          <span>ดูข้อมูลผู้ป่วย</span>
+                        </button>
+                        {% if 'edit_patient' in access_capabilities %}
+                          <a class="patient-menu-item edit" href="{% url 'edit_patient' p.id %}" role="menuitem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
+                            <span>แก้ไขข้อมูลผู้ป่วย</span>
+                          </a>
+                        {% endif %}
+                      </div>
+                    </div>
                   </div>
+                  <div class="patient-meta">HN {{ p.hn|default:"ยังไม่มีเลข HN" }}</div>
                 </div>
+              </div>
+              <div class="detail-box">
                 <dialog class="patient-modal" id="patient-modal-{{ q.id }}">
                   <div class="modal-head">
                     <div>

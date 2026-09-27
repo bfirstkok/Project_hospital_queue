@@ -21,6 +21,8 @@ class SystemTestConsoleTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Admin Control Center")
+        self.assertContains(response, 'class="admin-control-page"')
+        self.assertContains(response, "-webkit-text-fill-color:#fff!important")
         self.assertContains(response, "System Health")
         self.assertContains(response, "งานผู้ดูแลที่ใช้บ่อย")
         self.assertContains(response, "Quick scenarios")

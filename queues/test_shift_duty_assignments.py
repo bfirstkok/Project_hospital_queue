@@ -31,6 +31,13 @@ class ShiftDutyAssignmentTests(TestCase):
         self.assertContains(response, 'name="duty_assignment"', html=False)
         self.assertContains(response, "คัดกรองผู้ป่วย")
         self.assertContains(response, "ประจำห้องตรวจ 2")
+        self.assertContains(response, ".detail-name{font-size:14px;line-height:1.4}")
+        self.assertContains(response, ".detail-time{font-size:14px}")
+        self.assertContains(response, ".duty-person b{font-size:14px}")
+        self.assertContains(response, 'id="shift-selected-day"')
+        self.assertContains(response, "เลือกวันแบบกดครั้งเดียว")
+        self.assertContains(response, 'aria-label="เลือกวันดูรายละเอียดเวร"')
+        self.assertContains(response, 'href="?day=')
 
     def test_shift_timetable_keeps_every_role_column_visible_when_filtered(self):
         response = self.client.get(

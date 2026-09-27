@@ -33,6 +33,9 @@ class DashboardPresentationTests(TestCase):
         self.assertEqual(response.context["overview"]["today_total"], 1)
         self.assertContains(response, "พยาบาลผู้ดูแล")
         self.assertContains(response, 'class="severity"')
+        self.assertContains(response, 'class="severity-item severity-open level-yellow"')
+        self.assertContains(response, ".severity-item span{display:block;color:#344e5a;font-size:14px;font-weight:700;line-height:1.35}")
+        self.assertContains(response, 'class="flow-step monitoring"')
         self.assertContains(response, 'id="urgent-alert-title"')
         self.assertContains(response, "แจ้งเตือนที่ยังต้องจัดการ")
         self.assertContains(response, "การแจ้งเตือนจาก Sensor")
@@ -210,6 +213,8 @@ class DashboardPresentationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "AI Learning Dashboard")
+        self.assertContains(response, 'class="ai-learning-page"')
+        self.assertContains(response, "-webkit-text-fill-color:#fff!important")
         self.assertContains(response, "TRAINING READY")
         self.assertContains(response, "NURSE OVERRIDE")
         self.assertContains(response, "เคสล่าสุด — AI แนะนำอะไร และพยาบาลยืนยันอะไร")

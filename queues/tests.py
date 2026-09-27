@@ -335,6 +335,24 @@ class IotTelemetryAssignmentTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(TelemetryLog.objects.filter(visit=self.visit, device=self.device).exists())
 
+    def test_device_pairing_history_has_status_header_and_distinct_status_badges(self):
+        admin = get_user_model().objects.create_superuser(
+            username="pairing-admin",
+            email="pairing-admin@example.test",
+            password="secret",
+        )
+        self.client.force_login(admin)
+        DeviceAssignment.objects.create(device=self.device, visit=self.visit, is_active=True)
+        DeviceAssignment.objects.create(device=self.device, visit=self.other_visit, is_active=False)
+
+        response = self.client.get(reverse("device_pairing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<table class="pairing-table">', html=False)
+        self.assertContains(response, "<th>สถานะ</th>", html=False)
+        self.assertContains(response, 'class="pairing-state is-active">Active</span>', html=False)
+        self.assertContains(response, 'class="pairing-state is-inactive">Inactive</span>', html=False)
+
 
 class ObservationMonitoringVisibilityTests(TestCase):
     def setUp(self):
@@ -413,6 +431,8 @@ class ObservationMonitoringVisibilityTests(TestCase):
         self.assertContains(response, 'AI แนะนำ')
         self.assertContains(response, 'คอลัมน์ “จัดการ”')
         self.assertContains(response, 'เสียงจะดังที่ wearable ไม่ใช่ที่เว็บ')
+        self.assertContains(response, 'class="monitor-overview"')
+        self.assertContains(response, 'แยกตามระดับคัดกรอง')
 
     def test_monitor_and_dashboard_include_responsible_nurse_column(self):
         monitor_response = self.client.get(reverse("monitor_dashboard"))
@@ -507,6 +527,8 @@ class PersonnelDashboardTests(TestCase):
         ).exists())
         self.assertContains(response, 'id="staff-search"')
         self.assertContains(response, 'data-role="NURSE"')
+        self.assertContains(response, "grid-template-columns:minmax(0,1fr)")
+        self.assertContains(response, "flex-wrap:wrap;gap:6px;min-width:0;overflow:visible")
 
     def test_seed_staff_creates_twenty_safe_idempotent_directory_entries(self):
         call_command("seed_staff")
@@ -931,6 +953,9 @@ class QueueWorkflowTests(TestCase):
         self.assertNotContains(first_page, "Patient Queue 10")
         self.assertContains(first_page, "แสดง 1–10 จาก 100 คิว")
         self.assertContains(first_page, "แสดงต่อหน้า")
+        self.assertContains(first_page, 'class="summary-item total"')
+        self.assertContains(first_page, '.summary-item.red:before{background:#df2b2f}')
+        self.assertContains(first_page, '.summary-item.yellow .summary-label,.summary-item.yellow .summary-value{color:#806000}')
 
         second_page = self.client.get(reverse("queue_list"), {"page": 2})
         self.assertEqual(len(second_page.context["q_items"]), 10)
@@ -972,6 +997,10 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "ดูข้อมูลผู้ป่วย")
         self.assertContains(response, "แก้ไขข้อมูลผู้ป่วย")
         self.assertContains(response, 'class="patient-menu-trigger js-patient-menu-trigger"')
+        self.assertRegex(
+            response.content.decode(),
+            r'class="patient-name-line">[\s\S]*?class="patient-name">[\s\S]*?</div>\s*<div class="patient-actions">',
+        )
         self.assertContains(response, 'role="menu"')
         self.assertContains(response, reverse("edit_patient", args=[patient.id]))
         self.assertContains(response, "ประเมินสุขภาพ")

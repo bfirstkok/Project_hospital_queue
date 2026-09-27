@@ -37,13 +37,21 @@
     .monitor-page .section-head h2{margin:0!important;color:#17324d!important;font-size:16px!important;font-weight:800!important}
     .monitor-page .section-head p{margin:3px 0 0;color:#758992;font-size:11px}
 
-    .monitor-page #cards{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px!important;padding:0!important;border:0!important;background:transparent!important}
-    .monitor-page .stat-card{position:relative;min-height:96px!important;padding:14px 15px!important;overflow:hidden;border:1px solid #d8e4e8!important;border-radius:13px!important;background:#fff!important;box-shadow:0 4px 14px rgba(23,50,77,.04)!important}
-    .monitor-page .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#6f8791}
-    .monitor-page .stat-card.total::before{background:#2f6f91}.monitor-page .stat-card.online::before{background:#16a36a}.monitor-page .stat-card.offline::before{background:#dc5262}.monitor-page .stat-card.red::before{background:#dc2626}.monitor-page .stat-card.pink::before{background:#db2777}.monitor-page .stat-card.yellow::before{background:#d99a00}.monitor-page .stat-card.green::before{background:#16a34a}.monitor-page .stat-card.white::before{background:#94a3b8}
-    .monitor-page .stat-label{margin:0 0 8px!important;color:#637b85!important;font-size:10px!important;font-weight:800!important;letter-spacing:.04em!important;text-transform:none!important}
-    .monitor-page .stat-number{color:#17324d!important;font-size:28px!important;font-weight:800!important;line-height:1!important}
-    .monitor-page .stat-card.online .stat-number{color:#137a52!important}.monitor-page .stat-card.offline .stat-number{color:#b52d3e!important}.monitor-page .stat-card.red .stat-number{color:#b91c1c!important}.monitor-page .stat-card.pink .stat-number{color:#be185d!important}.monitor-page .stat-card.yellow .stat-number{color:#986300!important}.monitor-page .stat-card.green .stat-number{color:#18794e!important}
+    .monitor-page #cards{display:block!important;padding:0!important;border:0!important;background:transparent!important}
+    .monitor-page .monitor-overview{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(0,2.2fr);gap:12px}
+    .monitor-page .overview-panel{min-width:0;padding:15px 17px;border:1px solid #d8e4e8;border-radius:13px;background:#fff;box-shadow:0 4px 14px rgba(23,50,77,.035)}
+    .monitor-page .overview-title{color:#637b85;font-size:11px;font-weight:800}
+    .monitor-page .overview-total{display:flex;align-items:baseline;gap:7px;margin-top:8px;color:#17324d}
+    .monitor-page .overview-total strong{font-size:32px;line-height:1;font-weight:800}.monitor-page .overview-total span{color:#758992;font-size:11px;font-weight:700}
+    .monitor-page .connection-counts{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+    .monitor-page .connection-count{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #e1e9ec;border-radius:999px;background:#f8fafb;color:#526b77;font-size:10px;font-weight:700;white-space:nowrap}
+    .monitor-page .connection-count b{color:#294b59;font-size:11px}.monitor-page .connection-count.online i,.monitor-page .connection-count.offline i{width:7px;height:7px;border-radius:50%}.monitor-page .connection-count.online i{background:#16a36a}.monitor-page .connection-count.offline i{background:#dc5262}
+    .monitor-page .severity-summary{display:flex;flex-direction:column;justify-content:center}
+    .monitor-page .severity-items{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:10px}
+    .monitor-page .severity-item{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;padding:8px 9px;border:1px solid #e4ebed;border-radius:9px;background:#fafcfc}
+    .monitor-page .severity-name{display:inline-flex;align-items:center;gap:6px;min-width:0;color:#526b77;font-size:10px;font-weight:700;white-space:nowrap}.monitor-page .severity-name i{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#94a3b8}
+    .monitor-page .severity-item b{color:#294b59;font-size:15px;font-weight:800}
+    .monitor-page .severity-item.red .severity-name i{background:#dc2626}.monitor-page .severity-item.pink .severity-name i{background:#db2777}.monitor-page .severity-item.yellow .severity-name i{background:#d99a00}.monitor-page .severity-item.green .severity-name i{background:#16a34a}.monitor-page .severity-item.white .severity-name i{background:#94a3b8}
 
     .monitor-page .tableWrap{margin-top:12px;padding:0!important;overflow:auto!important;border:1px solid #d7e3e7!important;border-radius:14px!important;background:#fff!important;box-shadow:0 5px 20px rgba(23,50,77,.045)!important}
     .monitor-page table{width:100%;min-width:1160px;border:0!important;border-collapse:separate!important;border-spacing:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
@@ -66,8 +74,9 @@
 
     .monitor-page .row-actions{display:grid;gap:7px;min-width:138px}.monitor-page .rightLink{display:inline-flex;align-items:center;width:max-content;color:#087f75!important;text-decoration:none;font-size:10px!important;font-weight:800}.monitor-page .rightLink:hover{text-decoration:underline}.monitor-page .identifyBtn{min-height:32px;padding:6px 9px!important;border:1px solid #9fdacf!important;border-radius:8px!important;background:#edf9f6!important;color:#087568!important;font:800 10px "Sarabun",sans-serif!important;box-shadow:none!important;cursor:pointer;white-space:nowrap}.monitor-page .identifyBtn:hover:not(:disabled){background:#dff4ef!important}.monitor-page .identifyBtn:disabled{cursor:not-allowed;opacity:.55}.monitor-page .identifyBtn.complete{border-color:#b9dfc7!important;background:#edf8f0!important;color:#18794e!important}
 
-    @media(max-width:1280px){.monitor-page #cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    @media(max-width:760px){.monitor-page .topbar{position:relative;align-items:flex-start!important;flex-direction:column;padding:12px 16px!important}.monitor-page .monitor-content{width:calc(100% - 24px);padding-top:12px}.monitor-page .statusbar{align-items:flex-start}.monitor-page #status{width:100%;margin-left:0;text-align:left}.monitor-page #cards{grid-template-columns:repeat(2,minmax(0,1fr))}.monitor-page .stat-card{min-height:84px!important}.monitor-page .section-head{align-items:flex-start;flex-direction:column}.monitor-page .tableWrap{border-radius:11px!important}}
+    @media(max-width:1100px){.monitor-page .monitor-overview{grid-template-columns:minmax(205px,.8fr) minmax(0,2.2fr)}}
+    @media(max-width:900px){.monitor-page .monitor-overview{grid-template-columns:1fr}}
+    @media(max-width:760px){.monitor-page .topbar{position:relative;align-items:flex-start!important;flex-direction:column;padding:12px 16px!important}.monitor-page .monitor-content{width:calc(100% - 24px);padding-top:12px}.monitor-page .statusbar{align-items:flex-start}.monitor-page #status{width:100%;margin-left:0;text-align:left}.monitor-page .severity-items{grid-template-columns:repeat(2,minmax(0,1fr))}.monitor-page .section-head{align-items:flex-start;flex-direction:column}.monitor-page .tableWrap{border-radius:11px!important}}
   </style>
 </head>
 <body class="monitor-page">
@@ -124,13 +133,17 @@
 
   function renderCards(items){
     const all=items.length,online=items.filter(x=>x.online).length,offline=all-online;
-    const red=items.filter(x=>(x.severity||"").toUpperCase()==="RED").length;
-    const pink=items.filter(x=>(x.severity||"").toUpperCase()==="PINK").length;
-    const yellow=items.filter(x=>(x.severity||"").toUpperCase()==="YELLOW").length;
-    const green=items.filter(x=>(x.severity||"").toUpperCase()==="GREEN").length;
-    const white=items.filter(x=>(x.severity||"").toUpperCase()==="WHITE").length;
-    return `${card("ผู้ป่วยทั้งหมด",all,"total")}${card("ออนไลน์",online,"online")}${card("ออฟไลน์",offline,"offline")}${card("RED",red,"red")}${card("PINK",pink,"pink")}${card("YELLOW",yellow,"yellow")}${card("GREEN",green,"green")}${card("WHITE",white,"white")}`;
-    function card(label,value,cls){return `<div class="stat-card ${cls}"><div class="stat-label">${label}</div><div class="stat-number">${value}</div></div>`;}
+    const levels=[
+      ["RED","สีแดง","red"],["PINK","สีชมพู","pink"],["YELLOW","สีเหลือง","yellow"],["GREEN","สีเขียว","green"],["WHITE","สีขาว","white"]
+    ];
+    const severityItems=levels.map(([key,label,cls])=>{
+      const count=items.filter(item=>(item.severity||"").toUpperCase()===key).length;
+      return `<div class="severity-item ${cls}"><span class="severity-name"><i aria-hidden="true"></i>${label}</span><b>${count}</b></div>`;
+    }).join("");
+    return `<div class="monitor-overview">
+      <section class="overview-panel"><div class="overview-title">ผู้ป่วยที่กำลังติดตาม</div><div class="overview-total"><strong>${all}</strong><span>ราย</span></div><div class="connection-counts"><span class="connection-count online"><i aria-hidden="true"></i>ออนไลน์ <b>${online}</b></span><span class="connection-count offline"><i aria-hidden="true"></i>ออฟไลน์ <b>${offline}</b></span></div></section>
+      <section class="overview-panel severity-summary"><div class="overview-title">แยกตามระดับคัดกรอง</div><div class="severity-items">${severityItems}</div></section>
+    </div>`;
   }
 
   function renderRows(items){

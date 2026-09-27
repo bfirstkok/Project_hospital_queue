@@ -47,6 +47,8 @@
     .summary-note-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: #e8f7f5; color: #087f75; font-weight: 900; }
     .page-messages { display: grid; gap: 8px; margin-bottom: 14px; }
     .page-message { padding: 11px 13px; border: 1px solid #efb7b7; border-left: 5px solid #dc2626; border-radius: 9px; color: #991b1b; background: #fee2e2; font-weight: 750; }
+    .page-message.success, .page-message.info { border-color: #9bd6c2; border-left-color: #07845e; color: #176846; background: #e9f8f1; }
+    .page-message.warning { border-color: #e8ce82; border-left-color: #bd8700; color: #755400; background: #fff7df; }
     .confirmation-list { display: grid; gap: 12px; }
     .confirmation-card { overflow: hidden; border: 1px solid #cddfe3; border-radius: 12px; background: #fff; box-shadow: 0 5px 16px rgba(38,75,89,.06); }
     .patient-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #e1ebed; background: #f7fafb; }
@@ -175,8 +177,8 @@
 
     <main class="wrap">
     {% if messages %}
-      <div class="page-messages" role="alert">
-        {% for message in messages %}<div class="page-message">{{ message }}</div>{% endfor %}
+      <div class="page-messages" aria-live="polite">
+        {% for message in messages %}<div class="page-message{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}
       </div>
     {% endif %}
     <div class="hero-card">

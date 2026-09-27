@@ -22,6 +22,15 @@
     .muted { color: rgba(255,255,255,.55); }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
+  <style>
+    .device-page .pairing-table { overflow: hidden; border: 1px solid #d5e1e5; border-radius: 14px; border-collapse: separate; border-spacing: 0; background: #fff; }
+    .device-page .pairing-table th { color: #526d79; background: #edf5f7; }
+    .device-page .pairing-table th:last-child,
+    .device-page .pairing-table td:last-child { min-width: 120px; }
+    .device-page .pairing-state { display: inline-flex; min-width: 82px; min-height: 30px; align-items: center; justify-content: center; padding: 4px 10px; border: 1px solid transparent; border-radius: 999px; font-size: 13px; font-weight: 800; }
+    .device-page .pairing-state.is-active { border-color: #a7dfc4; color: #176846; background: #e9f8f1; }
+    .device-page .pairing-state.is-inactive { border-color: #d4dde1; color: #5d7079; background: #f0f4f5; }
+  </style>
 </head>
 <body class="device-page">
   <div class="wrap">
@@ -71,8 +80,8 @@
 
     <div class="card">
       <h2>การจับคู่ล่าสุด</h2>
-      <table>
-        <thead><tr><th>เวลา</th><th>รหัส Visit</th><th>ผู้ป่วย</th><th>อุปกรณ์</th></tr></thead>
+      <table class="pairing-table">
+        <thead><tr><th>เวลา</th><th>รหัส Visit</th><th>ผู้ป่วย</th><th>อุปกรณ์</th><th>สถานะ</th></tr></thead>
         <tbody>
           {% for row in latest_pairings %}
             <tr>
@@ -80,10 +89,10 @@
               <td>#{{ row.visit_id }}</td>
               <td>{{ row.visit.patient.first_name }} {{ row.visit.patient.last_name }}</td>
               <td>{{ row.device.device_id }}</td>
-              <td>{% if row.is_active %}Active{% else %}Inactive{% endif %}</td>
+              <td><span class="pairing-state {% if row.is_active %}is-active{% else %}is-inactive{% endif %}">{% if row.is_active %}Active{% else %}Inactive{% endif %}</span></td>
             </tr>
           {% empty %}
-            <tr><td colspan="4" class="muted">ยังไม่มีประวัติการจับคู่</td></tr>
+            <tr><td colspan="5" class="muted">ยังไม่มีประวัติการจับคู่</td></tr>
           {% endfor %}
         </tbody>
       </table>

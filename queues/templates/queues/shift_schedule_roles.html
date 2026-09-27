@@ -27,6 +27,7 @@
 
     .controls{display:grid;grid-template-columns:minmax(230px,1fr) 180px auto;gap:9px;align-items:end;margin-top:12px;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#fff}
     .field{display:grid;gap:5px}.field label{color:#71868e;font-size:9px;font-weight:900}.field input{width:100%;height:39px;padding:0 11px;border:1px solid #cbd9de;border-radius:8px;background:#fff;color:var(--ink);font-size:11px;font-weight:600}.controls button{height:39px;padding:0 16px;border:0;border-radius:8px;background:var(--navy);color:#fff;font-size:10px;font-weight:900;cursor:pointer}
+    .day-picker{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:13px;background:#fff}.day-picker-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.day-picker-head strong{font-size:14px}.day-picker-actions{display:flex;gap:6px}.day-picker-actions a{display:inline-flex;min-height:42px;align-items:center;justify-content:center;padding:0 12px;border:1px solid #cbd9de;border-radius:9px;background:#fff;color:#35596a;text-decoration:none;font-size:12px;font-weight:800}.day-picker-actions a.today{border-color:#0c8f83;background:#edf9f7;color:#08736b}.day-grid{display:grid;grid-template-columns:repeat(7,minmax(86px,1fr));gap:7px;overflow-x:auto;padding:2px 2px 4px}.day-button{display:grid;min-height:68px;align-content:center;justify-items:center;gap:2px;border:1px solid #dbe6e9;border-radius:10px;background:#fbfdfd;color:var(--ink);text-decoration:none;transition:background .15s,border-color .15s,box-shadow .15s}.day-button:hover{border-color:#8dcac2;background:#f1faf8}.day-button span{font-size:12px;font-weight:800;color:#536d78}.day-button b{font-size:17px;line-height:1.15}.day-button small{font-size:10px;color:#627a84}.day-button.today{border-color:#a8d8d1}.day-button.active{border:2px solid var(--teal);background:#e9f8f5;box-shadow:0 0 0 2px rgba(12,143,131,.1)}.day-button.active span,.day-button.active b{color:#075f58}
 
     .role-picker{margin-top:16px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(25,68,82,.04)}
     .role-picker-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:13px}
@@ -77,9 +78,21 @@
 
     .add-shift{margin-top:14px}.add-shift>summary{padding:13px 15px;cursor:pointer;list-style:none;font-size:11px;font-weight:900}.add-shift[open]>summary{border-bottom:1px solid var(--line)}.create{display:grid;grid-template-columns:1.4fr 1.4fr 1fr .7fr .7fr 1fr auto;gap:7px;align-items:end;padding:12px}
 
+    /* Keep roster names, roles, times, and actions comfortably readable. */
+    .hero-copy small{font-size:12px}.hero-copy h1{font-size:30px}.hero-copy p{font-size:14px}
+    .hero-actions a,.hero-actions button{font-size:12px}.messages .message{font-size:13px}
+    .field label{font-size:11px}.field input{height:48px;padding:0 13px;font-size:14px;cursor:pointer}.controls button{height:48px;min-width:120px;font-size:12px}
+    .role-picker-head h2{font-size:20px}.role-picker-head p{font-size:12px}.role-picker-head span{font-size:11px}
+    .role-card-copy strong{font-size:16px}.role-card-copy small{font-size:12px}.role-card-stat{font-size:10px}
+    .summary-title h2{font-size:19px}.summary-title span{font-size:11px}.metric-label{font-size:12px}.metric-sub{font-size:10px}
+    .card-head h2{font-size:16px}.card-head p{font-size:11px}.duty-person{padding:11px}.duty-person b{font-size:14px}.duty-person small{font-size:11px}.duty{font-size:11px}.live{font-size:10px}
+    .detail-list{gap:9px;padding:12px}.shift-row{gap:10px;padding:13px}.detail-name{font-size:14px;line-height:1.4}.detail-role{font-size:11px}.label{margin-bottom:3px;color:#566f79;font-size:10px}.detail-time{font-size:14px}.duty-box{padding:8px 9px;font-size:11px;line-height:1.45}.badge{padding:4px 7px;font-size:10px}.edit>summary{padding:7px;font-size:11px}.edit-form{gap:8px}.edit-form label,.create label{font-size:10px}.edit-form input,.edit-form select,.create input,.create select{font-size:11px}.btn{font-size:10px}.add-shift>summary{font-size:13px}
+    .role-tab{font-size:11px}.weekly-tools button{font-size:11px}.role-table thead th{font-size:12px}.role-table .day b{font-size:14px}.role-table .day span{font-size:11px}.week-person b{font-size:13px}.week-person small{font-size:10px}.leave-note{font-size:10px}
+    .popup-table thead th{font-size:15px}.popup-table thead th small{font-size:12px}.popup-day b{font-size:16px}.popup-day span{font-size:12px}.popup-person-copy b{font-size:15px}.popup-person-copy small{font-size:12px}.popup-leave{font-size:11px}.popup-edit>summary{font-size:11px}.popup-edit-form label{font-size:10px}.popup-edit-form input,.popup-edit-form select{font-size:11px}.popup-save{font-size:11px}.popup-delete-form button{font-size:10px}
+
     @media(max-width:1100px){.role-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:1000px){.popup-edit-form{grid-template-columns:repeat(2,minmax(0,1fr))}.popup-duty-field{grid-column:span 2}.summary-grid{grid-template-columns:repeat(2,1fr)}.shift-columns{grid-template-columns:1fr}.lower{grid-template-columns:1fr}.edit-form,.create{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:700px){.popup-edit-form{grid-template-columns:1fr}.popup-duty-field{grid-column:auto}.roster-modal{padding:8px}.roster-dialog{width:100%;max-height:94dvh;border-radius:13px}.roster-dialog-head{padding:12px}.roster-dialog-title h2{font-size:15px}.roster-dialog-icon{width:38px;height:38px;flex-basis:38px}.modal-action{display:none}.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.role-picker{padding:13px}.role-picker-head{align-items:flex-start;flex-direction:column}.role-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role-card{grid-template-columns:43px 1fr;min-height:92px;padding:11px}.role-card-icon{width:43px;height:43px}.role-card-icon .ui-icon{width:23px;height:23px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
+    @media(max-width:700px){.popup-edit-form{grid-template-columns:1fr}.popup-duty-field{grid-column:auto}.roster-modal{padding:8px}.roster-dialog{width:100%;max-height:94dvh;border-radius:13px}.roster-dialog-head{padding:12px}.roster-dialog-title h2{font-size:15px}.roster-dialog-icon{width:38px;height:38px;flex-basis:38px}.modal-action{display:none}.page{width:calc(100% - 14px);margin-top:8px}.hero{align-items:flex-start;flex-direction:column;padding:17px}.hero-actions{justify-content:flex-start}.controls{grid-template-columns:1fr}.day-picker-head{align-items:flex-start;flex-direction:column}.day-picker-actions{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}.day-picker-actions a{padding:0 6px}.day-grid{grid-template-columns:repeat(7,minmax(76px,1fr))}.role-picker{padding:13px}.role-picker-head{align-items:flex-start;flex-direction:column}.role-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role-card{grid-template-columns:43px 1fr;min-height:92px;padding:11px}.role-card-icon{width:43px;height:43px}.role-card-icon .ui-icon{width:23px;height:23px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:86px}.metric-value{font-size:25px}.today-section{padding:12px}.role-group{grid-template-columns:90px 1fr}.lower{grid-template-columns:1fr}.shift-row{grid-template-columns:1fr 1fr}.duty-box,.badges,.edit{grid-column:1/-1}.edit-form,.create{grid-template-columns:1fr}}
     @media print{body{background:#fff}.main-nav,.hero-actions,.controls,.weekly-tools,.lower,.add-shift{display:none!important}.page{width:100%;margin:0}.hero,.today-section,.weekly{box-shadow:none}.weekly-scroll{max-height:none;overflow:visible}.role-table{min-width:0}}
   </style>
 </head>
@@ -106,9 +119,27 @@
   <form class="controls" method="get">
     <input type="hidden" name="role" value="{{ selected_roster_role }}">
     <div class="field"><label>ค้นหาบุคลากรในมุมมองนี้</label><input type="search" name="q" value="{{ search_query }}" placeholder="ชื่อหรือนามสกุล"></div>
-    <div class="field"><label>สัปดาห์</label><input type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"></div>
+    <div class="field"><label for="shift-selected-day">เลือกวันที่</label><input id="shift-selected-day" type="date" name="day" value="{{ selected_day|date:'Y-m-d' }}"></div>
     <button type="submit">แสดงผล</button>
   </form>
+
+  <nav class="day-picker" aria-label="เลือกวันดูรายละเอียดเวร">
+    <div class="day-picker-head">
+      <strong>เลือกวันแบบกดครั้งเดียว</strong>
+      <div class="day-picker-actions">
+        <a href="?day={{ previous_day|date:'Y-m-d' }}&role={{ selected_roster_role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">‹ วันก่อน</a>
+        <a class="today" href="?day={% now 'Y-m-d' %}&role={{ selected_roster_role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">วันนี้</a>
+        <a href="?day={{ next_day|date:'Y-m-d' }}&role={{ selected_roster_role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">วันถัดไป ›</a>
+      </div>
+    </div>
+    <div class="day-grid">
+      {% for day in week_days %}
+      <a class="day-button{% if day.is_selected %} active{% endif %}{% if day.is_today %} today{% endif %}" {% if day.is_selected %}aria-current="date"{% endif %} href="?day={{ day.date|date:'Y-m-d' }}&role={{ selected_roster_role }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}#day-detail">
+        <span>{{ day.label }}</span><b>{{ day.date|date:"d/m" }}</b><small>{{ day.shift_count }} เวร</small>
+      </a>
+      {% endfor %}
+    </div>
+  </nav>
 
   <section class="role-picker" aria-labelledby="role-picker-title">
     <div class="role-picker-head">

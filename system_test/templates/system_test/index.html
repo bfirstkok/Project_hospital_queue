@@ -94,9 +94,13 @@
     .right{font-size:9px}
     @media(max-width:1100px){.admin-actions-section .launcher{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:600px){.page{width:min(100% - 16px,1320px)}.hero{padding:22px}.hero h1{font-size:29px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-height:112px;padding:16px}.admin-actions-section .launcher{grid-template-columns:1fr}.admin-actions-section .launch{min-height:90px}.section{margin-top:20px}}
+    body.admin-control-page .page > .hero .hero-copy h1,
+    body.admin-control-page .page > .hero .hero-copy h1 *{color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:0 2px 8px rgba(2,22,35,.48)!important}
+    body.admin-control-page .page > .hero .hero-copy > p{color:#f3fffd!important;-webkit-text-fill-color:#f3fffd!important;text-shadow:0 1px 4px rgba(2,22,35,.52)!important}
+    body.admin-control-page .page > .hero .hero-copy > .eyebrow{color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:0 1px 4px rgba(2,22,35,.42)!important}
   </style>
 </head>
-<body>
+<body class="admin-control-page">
 {% include "includes/main_nav.html" %}
 <main class="page">
   <section class="hero">
