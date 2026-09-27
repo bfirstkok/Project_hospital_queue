@@ -1469,7 +1469,7 @@ def _visit_queryset_with_latest_vitals():
 
     return (
         Visit.objects
-        .select_related("patient")
+        .select_related("patient", "triage_result")
         .annotate(
             last_ts=Subquery(latest_vs.values("updated_at")[:1]),
             last_bpm=Subquery(latest_vs.values("pr")[:1]),
@@ -2138,6 +2138,7 @@ def monitor_summary_api(request):
             "queue_number": q.display_number,
             "patient_name": f"{v.patient.first_name} {v.patient.last_name}",
             "severity": v.final_severity,
+            "ai_severity": _get_ai_severity(v),
             "queue_status": q.status,
             "has_active_alert": CriticalAlert.objects.filter(
                 visit=v,

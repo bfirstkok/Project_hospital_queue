@@ -394,6 +394,26 @@ class ObservationMonitoringVisibilityTests(TestCase):
         self.assertEqual(item["queue_number"], self.visit.queue.display_number)
         self.assertEqual(item["responsible_nurse"]["name"], "วิภา ใจดี")
 
+    def test_monitor_summary_includes_ai_recommendation_separately_from_confirmed_level(self):
+        TriageResult.objects.create(
+            visit=self.visit,
+            ai_severity=Visit.Severity.GREEN,
+        )
+
+        response = self.client.get(reverse("monitor_summary_api"))
+
+        self.assertEqual(response.status_code, 200)
+        item = next(item for item in response.json()["items"] if item["visit_id"] == str(self.visit.id))
+        self.assertEqual(item["severity"], Visit.Severity.YELLOW)
+        self.assertEqual(item["ai_severity"], Visit.Severity.GREEN)
+
+    def test_monitor_page_explains_where_wearable_identification_action_is(self):
+        response = self.client.get(reverse("monitor_dashboard"))
+
+        self.assertContains(response, 'AI แนะนำ')
+        self.assertContains(response, 'คอลัมน์ “จัดการ”')
+        self.assertContains(response, 'เสียงจะดังที่ wearable ไม่ใช่ที่เว็บ')
+
     def test_monitor_and_dashboard_include_responsible_nurse_column(self):
         monitor_response = self.client.get(reverse("monitor_dashboard"))
         admin = get_user_model().objects.create_superuser(

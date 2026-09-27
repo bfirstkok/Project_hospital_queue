@@ -56,6 +56,7 @@
 
     .monitor-page .sev{display:inline-flex;align-items:center;justify-content:center;min-width:66px;padding:5px 9px!important;border-radius:999px!important;font-size:10px!important;font-weight:800!important;border:1px solid transparent!important}
     .monitor-page .sev.red{background:#feecee!important;color:#b91c1c!important;border-color:#f7cdd2!important}.monitor-page .sev.pink{background:#fcebf4!important;color:#b51c62!important;border-color:#f4cade!important}.monitor-page .sev.yellow{background:#fff6dd!important;color:#8a6200!important;border-color:#efd99c!important}.monitor-page .sev.green{background:#eaf8f0!important;color:#18794e!important;border-color:#c9e9d7!important}.monitor-page .sev.white{background:#f4f6f7!important;color:#60717b!important;border-color:#dce3e6!important}
+    .monitor-page .ai-result{min-width:0!important}.monitor-page .ai-empty{color:#83969e!important;font-size:10px!important}
     .monitor-page .onlineTag{display:inline-flex;align-items:center;gap:6px;padding:5px 9px!important;border-radius:999px!important;font-size:10px!important;font-weight:800!important;white-space:nowrap}.monitor-page .onlineTag.online{background:#eaf8f0!important;color:#18794e!important}.monitor-page .onlineTag.offline{background:#fff0f1!important;color:#b52d3e!important}
 
     .monitor-page .nurse-owner{display:flex;align-items:center;gap:9px;min-width:190px}.monitor-page .nurse-photo{display:grid;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;object-fit:cover;background:#e9f5f3!important;color:#176d61;font-size:15px}.monitor-page .nurse-owner b{display:block;color:#294b59!important;font-size:11px!important;font-weight:800!important;white-space:nowrap}.monitor-page .nurse-owner small{display:block;margin-top:2px;color:#83969e!important;font-size:9px!important;font-weight:600}.monitor-page .unassigned{color:#9a6500!important;font-size:10px!important;font-weight:800}
@@ -89,7 +90,7 @@
       <div id="status">กำลังโหลดข้อมูล...</div>
     </div>
 
-    <div class="command-help"><span>🔊</span><span><strong>ระบุตัวผู้ป่วยด้วยเสียง</strong> — กดปุ่มในตารางเพื่อส่งคำสั่งไปยัง wearable ที่ออนไลน์ อุปกรณ์ต้องใช้เฟิร์มแวร์ที่รองรับ buzzer</span></div>
+    <div class="command-help"><span>🔊</span><span><strong>วิธีระบุตัวผู้ป่วย:</strong> กดปุ่ม 🔊 ในคอลัมน์ “จัดการ” ท้ายแถวผู้ป่วย — เสียงจะดังที่ wearable ไม่ใช่ที่เว็บ ปุ่มใช้ได้เมื่อจับคู่อุปกรณ์และอุปกรณ์ออนไลน์ หากปุ่มแจ้งว่าออฟไลน์ให้ตรวจการเชื่อมต่อก่อน และอุปกรณ์ต้องใช้เฟิร์มแวร์ที่รองรับ buzzer</span></div>
     <div id="commandNotice" class="command-notice" role="status" aria-live="polite" hidden></div>
 
     <div class="section-head">
@@ -102,7 +103,7 @@
     </div>
     <div class="tableWrap">
       <table>
-        <thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>พยาบาลผู้ดูแล</th><th>ระดับ</th><th>AI</th><th>อุปกรณ์</th><th>สถานะ</th><th>สัญญาณชีพล่าสุด</th><th>จัดการ</th></tr></thead>
+        <thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>พยาบาลผู้ดูแล</th><th>ระดับ</th><th title="คำแนะนำเบื้องต้นจาก AI ไม่ใช่ระดับยืนยัน">AI แนะนำ</th><th>อุปกรณ์</th><th>สถานะ</th><th>สัญญาณชีพล่าสุด</th><th>จัดการ</th></tr></thead>
         <tbody id="rows"><tr><td colspan="9" class="muted">กำลังโหลด...</td></tr></tbody>
       </table>
     </div>
@@ -112,6 +113,7 @@
 <script>
   function escapeHtml(value){return String(value ?? "").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);}
   function sevClass(s){if(!s)return "";const x=String(s).toUpperCase();if(x.includes("RED"))return "red";if(x.includes("PINK"))return "pink";if(x.includes("YELLOW"))return "yellow";if(x.includes("GREEN"))return "green";return "white";}
+  function severityLabel(s){const labels={RED:"สีแดง",PINK:"สีชมพู",YELLOW:"สีเหลือง",GREEN:"สีเขียว",WHITE:"สีขาว"};return labels[String(s||"").toUpperCase()]||"ยังไม่มีผล";}
 
   let monitorItems=[];
   const identifyCommands=new Map();
@@ -138,11 +140,14 @@
       const onlineText=r.online?"ออนไลน์":"ออฟไลน์",onlineCls=r.online?"online":"offline",dotCls=r.online?"good":"bad";
       const sev=r.severity??"-",sevCss=sevClass(sev),v=r.vitals||{},nurse=r.responsible_nurse,commandState=identifyCommands.get(r.visit_id);
       const identifyReady=Boolean(r.device_paired&&r.device_id&&r.online);
-      const identifyLabel=commandState?.status==="PENDING"?"กำลังรออุปกรณ์…":commandState?.status==="DELIVERED"?"ส่งถึงแล้ว · รอเสียง…":commandState?.status==="ACKNOWLEDGED"?"✓ ส่งเสียงแล้ว · เรียกอีกครั้ง":!r.device_paired?"ยังไม่ผูกอุปกรณ์":!r.online?"อุปกรณ์ออฟไลน์":"🔊 ระบุตัวผู้ป่วย";
+      const identifyLabel=commandState?.status==="PENDING"?"⌛ ส่งคำสั่งแล้ว · รออุปกรณ์":commandState?.status==="DELIVERED"?"⌛ อุปกรณ์รับแล้ว · รอผล":commandState?.status==="ACKNOWLEDGED"?"✓ ส่งเสียงแล้ว · กดซ้ำได้":!r.device_paired?"🔊 จับคู่อุปกรณ์ก่อน":!r.online?"🔊 รออุปกรณ์ออนไลน์":"🔊 ส่งเสียงระบุตัวผู้ป่วย";
       const identifyDisabled=!identifyReady||["PENDING","DELIVERED"].includes(commandState?.status),identifyClass=commandState?.status==="ACKNOWLEDGED"?"identifyBtn complete":"identifyBtn";
+      const aiSeverity=r.ai_severity;
+      const aiHtml=aiSeverity?`<span class="sev ${sevClass(aiSeverity)} ai-result" title="คำแนะนำจาก AI เท่านั้น · บุคลากรเป็นผู้ยืนยัน">${severityLabel(aiSeverity)}</span>`:`<span class="ai-empty" title="ยังไม่มีผลประเมินจาก AI">ยังไม่มีผล</span>`;
+      const identifyTitle=!r.device_paired?"ผู้ป่วยยังไม่ได้จับคู่อุปกรณ์ wearable":!r.online?"อุปกรณ์ยังไม่ส่งข้อมูลล่าสุด จึงส่งเสียงไม่ได้":"ส่งคำสั่งให้ wearable ส่งเสียง เพื่อช่วยระบุตัวผู้ป่วย";
       const nurseHtml=nurse?`<div class="nurse-owner">${nurse.photo_url?`<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">`:`<span class="nurse-photo">🧑‍⚕️</span>`}<span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span></div>`:`<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
       const vitalsHtml=`<div class="vitals"><span class="kv"><span class="muted">BPM</span><b>${v.bpm??"-"}</b></span><span class="kv"><span class="muted">O₂</span><b>${v.o2sat??"-"}</b></span><span class="kv"><span class="muted">BT</span><b>${v.bt??"-"}</b></span><span class="kv"><span class="muted">RR</span><b>${v.rr??"-"}</b></span></div>`;
-      return `<tr><td><b>#${r.visit_id}</b></td><td><div class="patient-name">${escapeHtml(r.patient_name??"-")}</div></td><td>${nurseHtml}</td><td><span class="sev ${sevCss}">${escapeHtml(sev)}</span></td><td>-</td><td>${escapeHtml(r.device_id??"-")}</td><td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td><td>${vitalsHtml}</td><td><div class="row-actions"><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">${r.has_active_alert?"ตรวจสอบ Alert":"ดูรายละเอียด"}</a><button class="${identifyClass}" type="button" data-identify-visit="${escapeHtml(r.visit_id)}" data-patient-name="${escapeHtml(r.patient_name||"ผู้ป่วย")}" ${identifyDisabled?"disabled":""}>${identifyLabel}</button></div></td></tr>`;
+      return `<tr><td><b>#${r.visit_id}</b></td><td><div class="patient-name">${escapeHtml(r.patient_name??"-")}</div></td><td>${nurseHtml}</td><td><span class="sev ${sevCss}">${escapeHtml(sev)}</span></td><td>${aiHtml}</td><td>${escapeHtml(r.device_id??"-")}</td><td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td><td>${vitalsHtml}</td><td><div class="row-actions"><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">${r.has_active_alert?"ตรวจสอบ Alert":"ดูรายละเอียด"}</a><button class="${identifyClass}" type="button" title="${identifyTitle}" data-identify-visit="${escapeHtml(r.visit_id)}" data-patient-name="${escapeHtml(r.patient_name||"ผู้ป่วย")}" ${identifyDisabled?"disabled":""}>${identifyLabel}</button></div></td></tr>`;
     }).join("");
   }
 
