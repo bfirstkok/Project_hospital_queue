@@ -302,6 +302,7 @@ class VisitWorkflowLog(models.Model):
         BILL_CREATED = "BILL_CREATED", "สร้างรายการค่าใช้จ่าย"
         PAYMENT_RECEIVED = "PAYMENT_RECEIVED", "รับชำระเงิน"
         MEDICAL_CERTIFICATE_ISSUED = "MEDICAL_CERTIFICATE_ISSUED", "ออกใบรับรองแพทย์"
+        PATIENT_DEPARTED = "PATIENT_DEPARTED", "ปิด Visit / ยืนยันออกจากโรงพยาบาล"
 
     visit = models.ForeignKey(
         Visit,

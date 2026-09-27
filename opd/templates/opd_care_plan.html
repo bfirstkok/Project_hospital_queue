@@ -30,7 +30,7 @@
   <section class="progress" aria-label="ขั้นตอนหลังตรวจ">
     <div class="progress-step done"><span class="number">✓</span><div><b>1 · บันทึกผลตรวจ</b><small>Diagnosis และ Treatment เรียบร้อย</small></div></div>
     <div class="progress-step {% if medication_decision_done %}done{% else %}current{% endif %}"><span class="number">{% if medication_decision_done %}✓{% else %}2{% endif %}</span><div><b>2 · เลือกแผนยา</b><small>{% if no_medication_path %}ไม่มีการสั่งยา · ข้ามขั้นตอน{% elif prescription_has_items %}มี {{ prescription.items.count }} รายการ{% else %}รอแพทย์เลือก{% endif %}</small></div></div>
-    <div class="progress-step {% if visit_complete %}done{% elif handoff_started %}current{% endif %}"><span class="number">{% if visit_complete %}✓{% else %}3{% endif %}</span><div><b>3 · ส่งต่อหน่วยงาน</b><small>{% if visit_complete %}เสร็จสิ้น{% elif no_medication_path %}ส่งการเงินแล้ว{% elif handoff_started %}ส่งห้องยาแล้ว{% else %}ยังไม่ส่งต่อ{% endif %}</small></div></div>
+    <div class="progress-step {% if departure_log %}done{% elif visit_complete or handoff_started %}current{% endif %}"><span class="number">{% if departure_log %}✓{% elif visit_complete %}4{% else %}3{% endif %}</span><div><b>{% if visit_complete %}4 · ปิด Visit{% else %}3 · ส่งต่อหน่วยงาน{% endif %}</b><small>{% if departure_log %}ออกจากโรงพยาบาลแล้ว{% elif visit_complete %}รับยา/ชำระเงินครบ · รอเจ้าหน้าที่จัดคิวปิด Visit{% elif no_medication_path %}ส่งการเงินแล้ว{% elif handoff_started %}ส่งห้องยาแล้ว{% else %}ยังไม่ส่งต่อ{% endif %}</small></div></div>
   </section>
 
   <div class="next-action {% if visit_complete %}complete{% endif %}"><div><strong>{{ next_action_label }}</strong><span>{{ next_action_detail }}</span></div><span class="status-pill">ขั้นตอนที่ต้องทำตอนนี้</span></div>
@@ -41,7 +41,7 @@
       <div class="card-head"><div><h2>2 · เลือกแผนยาและส่งต่อ</h2><p>เลือกตามผลตรวจของผู้ป่วย ระบบจะเปิดเฉพาะคำสั่งที่ทำได้ในสถานะปัจจุบัน</p></div>{% if prescription %}<span class="status-pill">{{ prescription.get_status_display }}</span>{% endif %}</div>
       <div class="card-body">
         {% if visit_complete %}
-          <div class="locked-note"><b>เคสนี้เสร็จสิ้นแล้ว</b><br>{% if pharmacy_skipped %}ไม่ต้องเข้าห้องยา · การเงินดำเนินการครบแล้ว{% else %}ห้องยาจ่ายยาและการเงินดำเนินการครบแล้ว{% endif %} · ผู้ป่วยสามารถกลับบ้านได้</div>
+          <div class="locked-note"><b>{% if departure_log %}ผู้ป่วยออกจากโรงพยาบาลแล้ว{% else %}การรักษาและขั้นตอนหลังตรวจครบแล้ว{% endif %}</b><br>{% if pharmacy_skipped %}ไม่มีรายการยาที่ต้องรับ · การเงินดำเนินการครบแล้ว{% else %}ห้องยาจ่ายยาและการเงินดำเนินการครบแล้ว{% endif %}{% if departure_log %} · ปิด Visit โดย {{ departure_log.actor_name }} เมื่อ {{ departure_log.created_at|date:"d/m/Y H:i" }}{% else %} · ผู้ป่วยพร้อมกลับบ้านตามแผน แพทย์ไม่ต้องกดยืนยันออกจากโรงพยาบาล เจ้าหน้าที่จัดคิวจะปิด Visit เมื่อผู้ป่วยออกจริง{% endif %}</div>
         {% elif not can_edit_prescription %}
           {% if no_medication_path %}<div class="locked-note"><b>แพทย์ยืนยันแล้วว่าไม่มียากลับบ้าน</b><br>ส่งรายการค่าใช้จ่ายให้การเงินแล้ว · เภสัชกรไม่ต้องดำเนินการเคสนี้ · ติดตามสถานะการชำระเงินได้จากแถบด้านบน</div>{% else %}<div class="locked-note"><b>ส่งใบสั่งยาไปห้องยาแล้ว</b><br>แพทย์แก้รายการจากหน้านี้ไม่ได้ กรุณาติดตามสถานะการจัดยาและการเงินจากแถบด้านบน</div>{% endif %}
         {% else %}

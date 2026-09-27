@@ -10,6 +10,7 @@ class Capability:
     VIEW_DASHBOARD = "view_dashboard"
     VIEW_QUEUE = "view_queue"
     MANAGE_QUEUE = "manage_queue"
+    CLOSE_VISIT = "close_visit"
     TRANSFER_PATIENT = "transfer_patient"
     VIEW_EMERGENCY = "view_emergency"
     MANAGE_EMERGENCY = "manage_emergency"
@@ -73,6 +74,7 @@ ROLE_CAPABILITIES = {
     StaffProfile.Role.QUEUE_OPERATOR: {
         Capability.VIEW_QUEUE,
         Capability.MANAGE_QUEUE,
+        Capability.CLOSE_VISIT,
         Capability.TRANSFER_PATIENT,
         Capability.VIEW_SHIFT_SCHEDULE,
     },
@@ -101,7 +103,7 @@ ROLE_DESCRIPTIONS = {
     StaffProfile.Role.NURSE_ASSISTANT: "วัดและบันทึกสัญญาณชีพภายใต้การกำกับของพยาบาลวิชาชีพ",
     StaffProfile.Role.EMERGENCY: "รับช่วง ดูแล ปิดการรักษา หรือส่งต่อผู้ป่วยฉุกเฉินที่ผ่านการคัดกรอง",
     StaffProfile.Role.STAFF: "ลงทะเบียน ค้นหา แก้ไขข้อมูลประชากร และจัดการนัดหมาย",
-    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ ย้ายผู้ป่วย และจัดสถานะคิวบริการ",
+    StaffProfile.Role.QUEUE_OPERATOR: "เรียกคิว ลัดคิวพร้อมเหตุผล ปรับเลขคิว กำหนดห้องตรวจ ย้ายผู้ป่วย และปิด Visit หลังผู้ป่วยออกจากโรงพยาบาล",
     StaffProfile.Role.BIOMEDICAL: "ลงทะเบียน ตรวจสอบ และจับคู่อุปกรณ์ทางการแพทย์",
     StaffProfile.Role.PHARMACIST: "รับใบสั่งยา จัดยา ยืนยันความพร้อม และบันทึกการจ่ายยา",
     StaffProfile.Role.CASHIER: "ตรวจสิทธิการรักษา สรุปค่าใช้จ่าย รับชำระ และออกใบเสร็จ",
@@ -111,6 +113,7 @@ CAPABILITY_LABELS = {
     Capability.VIEW_DASHBOARD: "ดูแดชบอร์ดภาพรวม",
     Capability.VIEW_QUEUE: "ดูรายการคิว",
     Capability.MANAGE_QUEUE: "เรียกคิว ปรับลำดับ/เลขคิว และเปลี่ยนสถานะบริการ",
+    Capability.CLOSE_VISIT: "ปิด Visit หลังผู้ป่วยออกจากโรงพยาบาล",
     Capability.TRANSFER_PATIENT: "ย้ายผู้ป่วยระหว่างห้องตรวจหรือส่งกลับไปรอเรียก",
     Capability.VIEW_EMERGENCY: "ดูรายการผู้ป่วยฉุกเฉิน",
     Capability.MANAGE_EMERGENCY: "รับเคส ปิดการรักษา หรือส่งต่อผู้ป่วยฉุกเฉิน",

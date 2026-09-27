@@ -2,13 +2,15 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Case, IntegerField, When
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Case, IntegerField, Q, When
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from queues.models import Visit, VisitWorkflowLog
+from queues.models import Queue, Visit, VisitWorkflowLog
 
 from .models import (
     Bill,
@@ -263,12 +265,21 @@ def opd_care_plan(request, visit_id):
         )
     )
 
-    if visit_complete:
-        next_action_label = "เสร็จสิ้นการรับบริการ"
+    departure_log = VisitWorkflowLog.objects.filter(
+        visit=visit,
+        event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+    ).first()
+
+    if departure_log:
+        next_action_label = "ผู้ป่วยออกจากโรงพยาบาลแล้ว"
+        departed_at = timezone.localtime(departure_log.created_at).strftime("%d/%m/%Y %H:%M")
+        next_action_detail = f"ยืนยันโดย {departure_log.actor_name or 'บุคลากร'} · {departed_at}"
+    elif visit_complete:
+        next_action_label = "พร้อมกลับบ้าน · รอเจ้าหน้าที่ปิด Visit"
         next_action_detail = (
-            "ไม่มีรายการยาที่ต้องรับ · การเงินเสร็จแล้ว · ผู้ป่วยสามารถกลับบ้านได้"
+            "ไม่มีรายการยาที่ต้องรับและการเงินเสร็จแล้ว · เจ้าหน้าที่จัดคิวยืนยันในหน้า “ปิด Visit” เมื่อผู้ป่วยออกจากโรงพยาบาลจริง"
             if pharmacy_skipped
-            else "จ่ายยาและดำเนินการการเงินเรียบร้อยแล้ว · ผู้ป่วยสามารถกลับบ้านได้"
+            else "ห้องยาจ่ายยาและการเงินเสร็จแล้ว · เจ้าหน้าที่จัดคิวยืนยันในหน้า “ปิด Visit” เมื่อผู้ป่วยออกจากโรงพยาบาลจริง"
         )
     elif prescription and prescription.status == Prescription.Status.DRAFT and prescription_has_items:
         next_action_label = "ส่งใบสั่งยาไปห้องยา"
@@ -304,11 +315,179 @@ def opd_care_plan(request, visit_id):
         "medication_decision_done": medication_decision_done,
         "handoff_started": handoff_started,
         "visit_complete": visit_complete,
+        "departure_log": departure_log,
         "prescription_locked": prescription_locked,
         "can_edit_prescription": can_edit_prescription,
         "next_action_label": next_action_label,
         "next_action_detail": next_action_detail,
     })
+
+
+@login_required
+def patient_departure_worklist(request):
+    """Give queue operators a focused, auditable worklist for closing completed OPD visits."""
+    search = request.GET.get("q", "").strip()
+    assessments = VisitAssessment.objects.select_related(
+        "visit",
+        "visit__patient",
+        "visit__queue",
+        "visit__bill",
+        "visit__prescription",
+        "examiner",
+    ).prefetch_related(
+        "visit__prescription__items",
+        "visit__workflow_logs",
+    ).filter(
+        Q(visit__queue__status__in=[Queue.Status.OPD_DONE, Queue.Status.FOLLOWUP])
+        | Q(
+            visit__queue__status=Queue.Status.DISCHARGED,
+            visit__workflow_logs__event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+        )
+    )
+    if search:
+        assessments = assessments.filter(
+            Q(visit__patient__first_name__icontains=search)
+            | Q(visit__patient__last_name__icontains=search)
+            | Q(visit__patient__hn__icontains=search)
+            | Q(visit__id__icontains=search)
+        )
+    paginator = Paginator(assessments.distinct().order_by("-updated_at", "-visit_id"), 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    rows = []
+    for assessment in page_obj.object_list:
+        visit = assessment.visit
+        queue = visit.queue
+        try:
+            bill = visit.bill
+        except Bill.DoesNotExist:
+            bill = None
+        try:
+            prescription = visit.prescription
+        except Prescription.DoesNotExist:
+            prescription = None
+
+        prescription_has_items = bool(prescription and prescription.items.exists())
+        pharmacy_done = bool(prescription and prescription.status == Prescription.Status.DISPENSED)
+        billing_done = bool(bill and bill.status in {Bill.Status.PAID, Bill.Status.WAIVED})
+        pharmacy_skipped = bool(
+            (bill and bill.pharmacy_skipped)
+            or (
+                billing_done
+                and (
+                    prescription is None
+                    or not prescription_has_items
+                    or prescription.status == Prescription.Status.CANCELLED
+                )
+            )
+        )
+        ready_to_close = billing_done and (pharmacy_done or pharmacy_skipped)
+        departure_log = next(
+            (
+                log for log in visit.workflow_logs.all()
+                if log.event_type == VisitWorkflowLog.EventType.PATIENT_DEPARTED
+            ),
+            None,
+        )
+
+        if departure_log:
+            status_label = "ออกจากโรงพยาบาลแล้ว"
+            status_detail = (
+                f"ปิดโดย {departure_log.actor_name or 'บุคลากร'} · "
+                f"{timezone.localtime(departure_log.created_at).strftime('%d/%m/%Y %H:%M')}"
+            )
+            status_class = "done"
+        elif ready_to_close:
+            status_label = "พร้อมปิด Visit"
+            status_detail = "ห้องยาและการเงินครบแล้ว · ยืนยันเมื่อผู้ป่วยออกจากโรงพยาบาลจริง"
+            status_class = "ready"
+        elif bill and not billing_done:
+            status_label = "รอการเงิน"
+            status_detail = bill.get_status_display()
+            status_class = "pending"
+        elif prescription and prescription_has_items and not pharmacy_done:
+            status_label = "รอห้องยา"
+            status_detail = prescription.get_status_display()
+            status_class = "pending"
+        else:
+            status_label = "รอแผนหลังตรวจ"
+            status_detail = "รอแพทย์ส่งต่อห้องยา/การเงินให้ครบ"
+            status_class = "pending"
+
+        rows.append({
+            "visit": visit,
+            "queue": queue,
+            "bill": bill,
+            "prescription": prescription,
+            "ready_to_close": ready_to_close,
+            "departure_log": departure_log,
+            "status_label": status_label,
+            "status_detail": status_detail,
+            "status_class": status_class,
+        })
+
+    return render(request, "opd/patient_departure_worklist.html", {
+        "rows": rows,
+        "page_obj": page_obj,
+        "search": search,
+        "ready_count": sum(1 for row in rows if row["ready_to_close"] and not row["departure_log"]),
+    })
+
+
+@login_required
+@require_POST
+def confirm_patient_departure(request, visit_id):
+    """Record the queue operator's confirmation that the OPD patient left the facility."""
+    visit = _visit_with_patient(visit_id)
+    queue = getattr(visit, "queue", None)
+    departure_event = VisitWorkflowLog.EventType.PATIENT_DEPARTED
+
+    if VisitWorkflowLog.objects.filter(visit=visit, event_type=departure_event).exists():
+        messages.info(request, "Visit นี้ถูกปิดและบันทึกการออกจากโรงพยาบาลไว้ก่อนหน้านี้แล้ว")
+        return redirect("patient_departure_worklist")
+
+    if not queue or queue.status not in {Queue.Status.OPD_DONE, Queue.Status.FOLLOWUP}:
+        messages.error(request, "Visit นี้ไม่อยู่ในขั้นตอนหลังตรวจที่ปิดได้")
+        return redirect("patient_departure_worklist")
+
+    bill = getattr(visit, "bill", None)
+    if not bill or bill.status not in {Bill.Status.PAID, Bill.Status.WAIVED}:
+        messages.error(request, "ยังปิด Visit ไม่ได้: กรุณาดำเนินการการเงินให้เสร็จก่อน")
+        return redirect("patient_departure_worklist")
+
+    prescription = getattr(visit, "prescription", None)
+    prescription_has_items = bool(prescription and prescription.items.exists())
+    pharmacy_done = bool(
+        prescription and prescription.status == Prescription.Status.DISPENSED
+    ) or bool(
+        not prescription_has_items
+        or (bill.pharmacy_skipped and prescription.status == Prescription.Status.CANCELLED)
+    )
+    if not pharmacy_done:
+        messages.error(request, "ยังปิด Visit ไม่ได้: กรุณาให้ห้องยาจ่ายยา หรือยืนยันว่าไม่มีรายการยาก่อน")
+        return redirect("patient_departure_worklist")
+
+    with transaction.atomic():
+        queue = Queue.objects.select_for_update().get(pk=queue.pk)
+        if queue.status not in {Queue.Status.OPD_DONE, Queue.Status.FOLLOWUP}:
+            messages.error(request, "สถานะ Visit เปลี่ยนแล้ว กรุณารีเฟรชและตรวจสอบอีกครั้ง")
+            return redirect("patient_departure_worklist")
+        queue.status = Queue.Status.DISCHARGED
+        queue.save(update_fields=["status"])
+        VisitWorkflowLog.record(
+            visit=visit,
+            event_type=departure_event,
+            actor=request.user,
+            description="ยืนยันว่าผู้ป่วยออกจากโรงพยาบาลและปิด Visit แล้ว",
+            details={
+                "departure_status": "LEFT_FACILITY",
+                "planned_destination": "HOME",
+                "queue_status": Queue.Status.DISCHARGED,
+            },
+        )
+
+    messages.success(request, f"ปิด Visit แล้ว · บันทึกว่าผู้ป่วย {visit.patient.first_name} {visit.patient.last_name} ออกจากโรงพยาบาลแล้ว")
+    return redirect("patient_departure_worklist")
 
 
 @login_required

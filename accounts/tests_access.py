@@ -67,7 +67,7 @@ class RoleAccessTests(TestCase):
             (
                 StaffProfile.Role.QUEUE_OPERATOR,
                 "queue-only",
-                ("queue_list",),
+                ("queue_list", "patient_departure_worklist"),
                 ("waiting_vitals", "waiting_confirmation", "register_patient", "patient_search", "opd_room_select", "emergency_transfers", "device_management", "dashboard:home"),
             ),
             (
@@ -273,6 +273,7 @@ class RoleAccessTests(TestCase):
             Capability.RECORD_VITALS: StaffProfile.Role.NURSE_ASSISTANT,
             Capability.CONFIRM_TRIAGE: StaffProfile.Role.NURSE,
             Capability.MANAGE_QUEUE: StaffProfile.Role.QUEUE_OPERATOR,
+            Capability.CLOSE_VISIT: StaffProfile.Role.QUEUE_OPERATOR,
             Capability.DOCTOR_ASSESSMENT: StaffProfile.Role.DOCTOR,
             Capability.CREATE_PRESCRIPTION: StaffProfile.Role.DOCTOR,
             Capability.ISSUE_MEDICAL_CERTIFICATE: StaffProfile.Role.DOCTOR,

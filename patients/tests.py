@@ -71,8 +71,21 @@ class PatientJourneyTests(TestCase):
         bill.save(update_fields=["status", "updated_at"])
 
         after = self.history()
-        self.assertContains(after, "เสร็จสิ้นการรับบริการ")
-        self.assertContains(after, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
+        self.assertContains(after, "พร้อมกลับบ้าน · รอปิด Visit")
+        self.assertContains(after, "รับยาและชำระเงินครบแล้ว · รอเจ้าหน้าที่จัดคิวปิด Visit")
+
+        self.queue.status = Queue.Status.DISCHARGED
+        self.queue.save(update_fields=["status"])
+        VisitWorkflowLog.record(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+            actor=self.user,
+            description="ยืนยันว่าผู้ป่วยออกจากโรงพยาบาลแล้ว",
+            details={"departure_status": "LEFT_FACILITY", "planned_destination": "HOME"},
+        )
+        departed = self.history()
+        self.assertContains(departed, "ผู้ป่วยออกจากโรงพยาบาลแล้ว")
+        self.assertContains(departed, "ยืนยันโดย")
 
     def test_prescription_must_be_dispensed_even_when_bill_is_paid(self):
         prescription = Prescription.objects.create(
@@ -94,8 +107,8 @@ class PatientJourneyTests(TestCase):
         prescription.save(update_fields=["status", "updated_at"])
 
         done = self.history()
-        self.assertContains(done, "เสร็จสิ้นการรับบริการ")
-        self.assertContains(done, "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว")
+        self.assertContains(done, "พร้อมกลับบ้าน · รอปิด Visit")
+        self.assertContains(done, "รอเจ้าหน้าที่จัดคิวปิด Visit")
 
 
 class PatientAgeDisplayTests(TestCase):

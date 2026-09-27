@@ -44,7 +44,7 @@
         <div class="aftercare-head">
           <div>
             <h2>งานหลังตรวจวันนี้</h2>
-            <p>ผู้ป่วยจะยังอยู่ตรงนี้หลังแพทย์ตรวจเสร็จ จนเห็นชัดว่ากำลังรอห้องยา การเงิน หรือเสร็จสิ้นแล้ว</p>
+            <p>แพทย์ติดตามงานหลังตรวจ · เมื่อรับยา/ชำระเงินครบ เจ้าหน้าที่จัดคิวจะปิด Visit หลังผู้ป่วยออกจากโรงพยาบาล</p>
           </div>
           <span class="room-current">{{ aftercare_rows|length }} เคส</span>
         </div>
@@ -55,7 +55,10 @@
             <td><span class="visit-badge">#{{ row.visit.id }}</span></td>
             <td><span class="aftercare-status {{ row.status_class }}"><b>{{ row.status_label }}</b><span>{{ row.status_detail }}</span></span></td>
             <td>{{ row.assessment.updated_at|date:"H:i" }}</td>
-            <td><div class="actions"><a class="btn primary" href="{% url 'opd_care_plan' row.visit.id %}">เปิดแผนหลังตรวจ</a><a class="btn" href="{% url 'opd_visit_detail' row.visit.id %}">ดูข้อมูล</a></div></td>
+            <td><div class="actions">
+              {% if row.complete and not row.departure_log %}<span class="aftercare-status current">รอเจ้าหน้าที่จัดคิวปิด Visit</span>{% endif %}
+              <a class="btn primary" href="{% url 'opd_care_plan' row.visit.id %}">เปิดแผนหลังตรวจ</a><a class="btn" href="{% url 'opd_visit_detail' row.visit.id %}">ดูข้อมูล</a>
+            </div></td>
           </tr>
         {% empty %}
           <tr><td colspan="5"><div class="empty-state">ยังไม่มีงานหลังตรวจของวันนี้ในห้องนี้</div></td></tr>

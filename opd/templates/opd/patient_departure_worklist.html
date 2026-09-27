@@ -1,0 +1,82 @@
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ปิด Visit · ระบบผู้ป่วย</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=visit-departure-20260927">
+  <style>
+    .departure-page{width:min(1240px,calc(100% - 36px));margin:28px auto 56px;color:#193747}
+    .departure-hero,.departure-panel{border:1px solid #d5e3e7;border-radius:18px;background:#fff;box-shadow:0 10px 30px rgba(26,67,82,.06)}
+    .departure-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px 28px;margin-bottom:18px}
+    .departure-hero h1{margin:0;font-size:clamp(23px,3vw,32px);letter-spacing:-.025em}
+    .departure-hero p{margin:6px 0 0;color:#5e7884;line-height:1.55}
+    .departure-count{min-width:150px;padding:13px 17px;border-radius:14px;background:#eaf8f5;color:#087f75;text-align:center}
+    .departure-count b{display:block;font-size:27px;line-height:1.1}
+    .departure-count span{font-size:12px;font-weight:800}
+    .departure-panel{padding:18px 20px}
+    .departure-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .departure-toolbar form{display:flex;gap:8px;width:min(620px,100%)}
+    .departure-toolbar input{flex:1;min-width:0;height:42px;padding:0 13px;border:1px solid #cbdde2;border-radius:10px;color:#183849;font:inherit}
+    .departure-toolbar button,.departure-action{min-height:40px;padding:0 15px;border:0;border-radius:10px;background:#087f75;color:white;font:800 14px "Sarabun",sans-serif;cursor:pointer}
+    .departure-hint{color:#607a85;font-size:12px}
+    .departure-table-wrap{overflow:auto;border:1px solid #e0eaed;border-radius:13px}
+    .departure-table{width:100%;border-collapse:collapse;min-width:850px}
+    .departure-table th{padding:12px 14px;background:#f3f8f9;color:#5a7480;text-align:left;font-size:12px;white-space:nowrap}
+    .departure-table td{padding:14px;border-top:1px solid #e7eef0;vertical-align:middle}
+    .departure-table tbody tr:hover{background:#f9fcfc}
+    .departure-patient{font-weight:900;color:#193747}
+    .departure-meta{margin-top:3px;color:#6b828c;font-size:12px}
+    .departure-status{display:inline-flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;font-size:12px}
+    .departure-status b{font-size:13px}
+    .departure-status span{color:inherit;opacity:.82}
+    .departure-status.ready{background:#e8f7f2;color:#087760}
+    .departure-status.done{background:#edf3f7;color:#426273}
+    .departure-status.pending{background:#fff5e3;color:#91600a}
+    .departure-action{white-space:nowrap}
+    .departure-action:disabled{background:#afc0c4;cursor:not-allowed}
+    .departure-empty{padding:42px 16px;color:#6b828c;text-align:center}
+    .departure-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 2px 0;color:#607a85;font-size:13px}
+    .departure-pagination a{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid #cbdde2;border-radius:9px;color:#176f70;text-decoration:none;font-weight:800}
+    .departure-pagination .links{display:flex;gap:7px}
+    .departure-messages{display:grid;gap:8px;margin:0 0 14px}
+    .departure-message{padding:11px 14px;border-radius:10px;background:#edf8f5;color:#087760;font-weight:700}
+    .departure-message.error{background:#fff0ef;color:#a4312b}
+    @media(max-width:680px){.departure-page{width:calc(100% - 20px);margin-top:16px}.departure-hero{align-items:flex-start;flex-direction:column;padding:19px}.departure-count{width:100%;box-sizing:border-box}.departure-panel{padding:13px}.departure-toolbar{align-items:stretch;flex-direction:column}.departure-toolbar form{width:100%}.departure-pagination{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  {% include "includes/main_nav.html" %}
+  <main class="departure-page">
+    <header class="departure-hero">
+      <div><h1>ปิด Visit</h1><p>สำหรับเจ้าหน้าที่จัดคิว · ยืนยันการออกจากโรงพยาบาลหลังผู้ป่วยรับยาและชำระเงินครบแล้ว</p></div>
+      <div class="departure-count"><b>{{ ready_count }}</b><span>เคสพร้อมปิดในหน้านี้</span></div>
+    </header>
+
+    {% if messages %}<div class="departure-messages">{% for message in messages %}<div class="departure-message{% if message.tags == 'error' %} error{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+    <section class="departure-panel">
+      <div class="departure-toolbar">
+        <form method="get" role="search"><input name="q" value="{{ search }}" placeholder="ค้นหาชื่อผู้ป่วย, HN หรือเลข Visit" aria-label="ค้นหารายชื่อผู้ป่วย"><button type="submit">ค้นหา</button></form>
+        <span class="departure-hint">ปิด Visit เฉพาะเมื่อผู้ป่วยออกจากโรงพยาบาลจริง · ระบบบันทึกผู้ยืนยันและเวลา</span>
+      </div>
+      <div class="departure-table-wrap"><table class="departure-table">
+        <thead><tr><th>ผู้ป่วย</th><th>คิว / Visit</th><th>สถานะ</th><th>แพทย์ผู้ตรวจ</th><th>คำสั่ง</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td><div class="departure-patient">{{ row.visit.patient.first_name }} {{ row.visit.patient.last_name }}</div><div class="departure-meta">HN {{ row.visit.patient.hn|default:"-" }} · ห้อง {{ row.queue.exam_room|default:"-" }}</div></td>
+            <td><div class="departure-patient">{{ row.queue.display_number }}</div><div class="departure-meta">Visit #{{ row.visit.id }}</div></td>
+            <td><span class="departure-status {{ row.status_class }}"><b>{{ row.status_label }}</b><span>{{ row.status_detail }}</span></span></td>
+            <td>{{ row.visit.opd_assessment.examiner.get_full_name|default:"-" }}</td>
+            <td>{% if row.ready_to_close and not row.departure_log %}<form method="post" action="{% url 'confirm_patient_departure' row.visit.id %}" onsubmit="return confirm('ยืนยันว่าผู้ป่วยออกจากโรงพยาบาลแล้ว และปิด Visit นี้ใช่หรือไม่?')">{% csrf_token %}<button class="departure-action" type="submit">ยืนยันออก · ปิด Visit</button></form>{% elif row.departure_log %}<span class="departure-meta">ปิดแล้ว</span>{% else %}<button class="departure-action" type="button" disabled>รอขั้นตอนก่อนหน้า</button>{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5"><div class="departure-empty">ไม่พบ Visit ที่กำลังรอปิด หรือปิดแล้วตามคำค้นนี้</div></td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+      {% if page_obj.paginator.num_pages > 1 %}<nav class="departure-pagination" aria-label="เปลี่ยนหน้ารายการ"><span>แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} Visit</span><div class="links">{% if page_obj.has_previous %}<a href="?q={{ search|urlencode }}&page={{ page_obj.previous_page_number }}">ก่อนหน้า</a>{% endif %}{% if page_obj.has_next %}<a href="?q={{ search|urlencode }}&page={{ page_obj.next_page_number }}">ถัดไป</a>{% endif %}</div></nav>{% endif %}
+    </section>
+  </main>
+</body>
+</html>

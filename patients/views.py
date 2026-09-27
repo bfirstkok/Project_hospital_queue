@@ -108,6 +108,13 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
 
     queue_status = getattr(queue, "status", "")
     logged_events = {log.event_type for log in workflow_logs}
+    departure_log = next(
+        (
+            log for log in workflow_logs
+            if log.event_type == VisitWorkflowLog.EventType.PATIENT_DEPARTED
+        ),
+        None,
+    )
 
     def step(key, label, state, detail):
         return {
@@ -166,6 +173,27 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
         and billing_done
     )
     completed = queue_status == Queue.Status.DISCHARGED or downstream_complete
+    if departure_log:
+        departure_step_state = "done"
+        departure_step_detail = (
+            f"ผู้ป่วยออกจากโรงพยาบาลแล้ว · ปิด Visit โดย {departure_log.actor_name or 'บุคลากร'} · "
+            f"{timezone.localtime(departure_log.created_at).strftime('%d/%m/%Y %H:%M')}"
+        )
+    elif queue_status == Queue.Status.DISCHARGED:
+        departure_step_state = "done"
+        departure_step_detail = "ปิด Visit แล้ว"
+    elif downstream_complete:
+        departure_step_state = "current"
+        departure_step_detail = "รับยาและชำระเงินครบแล้ว · รอเจ้าหน้าที่จัดคิวปิด Visit เมื่อผู้ป่วยออกจากโรงพยาบาล"
+    elif terminal_cancelled:
+        departure_step_state = "cancelled"
+        departure_step_detail = "ยกเลิกคิว/การรับบริการ"
+    elif emergency_transfer:
+        departure_step_state = "current"
+        departure_step_detail = "อยู่ระหว่างส่งต่อฉุกเฉิน"
+    else:
+        departure_step_state = "pending"
+        departure_step_detail = "ยังมีขั้นตอนที่ต้องดำเนินการต่อ"
 
     steps = [
         step(
@@ -241,22 +269,9 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
         ),
         step(
             "complete",
-            "เสร็จสิ้น",
-            "done" if completed else (
-                "cancelled" if terminal_cancelled else (
-                    "current" if emergency_transfer else "pending"
-                )
-            ),
-            (
-                "กระบวนการบริการเสร็จสิ้นแล้ว"
-                if completed else (
-                    "ยกเลิกคิว/การรับบริการ"
-                    if terminal_cancelled else (
-                        "อยู่ระหว่างส่งต่อฉุกเฉิน"
-                        if emergency_transfer else "ยังมีขั้นตอนที่ต้องดำเนินการต่อ"
-                    )
-                )
-            ),
+            "ออกจากโรงพยาบาล",
+            departure_step_state,
+            departure_step_detail,
         ),
     ]
 
@@ -268,6 +283,17 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
         current_label = "ส่งต่อฉุกเฉิน"
         current_detail = "ผู้ป่วยอยู่ในกระบวนการดูแลฉุกเฉิน"
         current_class = "urgent"
+    elif departure_log:
+        current_label = "ผู้ป่วยออกจากโรงพยาบาลแล้ว"
+        current_detail = (
+            f"ยืนยันโดย {departure_log.actor_name or 'บุคลากร'} · "
+            f"{timezone.localtime(departure_log.created_at).strftime('%d/%m/%Y %H:%M')}"
+        )
+        current_class = "done"
+    elif downstream_complete:
+        current_label = "พร้อมกลับบ้าน · รอปิด Visit"
+        current_detail = "รับยาและชำระเงินครบแล้ว · รอเจ้าหน้าที่จัดคิวยืนยันเมื่อผู้ป่วยออกจากโรงพยาบาลจริง"
+        current_class = "current"
     elif completed:
         current_label = "เสร็จสิ้นการรับบริการ"
         current_detail = "ขั้นตอนที่ต้องดำเนินการของ Visit นี้เสร็จแล้ว"
@@ -315,7 +341,8 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
         "current_class": current_class,
         "queue_status": queue_status,
         "queue_status_label": (
-            PUBLIC_STATUS.get(queue_status, (queue.get_status_display(), ""))[0]
+            "ออกจากโรงพยาบาลแล้ว"
+            if departure_log else PUBLIC_STATUS.get(queue_status, (queue.get_status_display(), ""))[0]
             if queue else "ไม่พบข้อมูลคิว"
         ),
     }

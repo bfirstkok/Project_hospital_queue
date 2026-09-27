@@ -514,11 +514,117 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["visit_complete"])
         self.assertTrue(response.context["pharmacy_skipped"])
-        self.assertContains(response, "เสร็จสิ้นการรับบริการ")
+        self.assertContains(response, "พร้อมกลับบ้าน · รอเจ้าหน้าที่ปิด Visit")
         self.assertContains(response, "ไม่มีการสั่งยา · ข้ามขั้นตอน")
-        self.assertContains(response, "ไม่ต้องเข้าห้องยา")
-        self.assertContains(response, "ผู้ป่วยสามารถกลับบ้านได้")
+        self.assertContains(response, "ไม่มีรายการยาที่ต้องรับ")
+        self.assertContains(response, "ผู้ป่วยพร้อมกลับบ้าน")
         self.assertNotContains(response, "ส่งค่าใช้จ่ายไปการเงิน")
+
+    def test_queue_operator_closes_visit_only_after_pharmacy_and_billing_are_done(self):
+        bill = Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.PAID,
+            pharmacy_skipped=True,
+            patient_due="200.00",
+            paid_at=timezone.now(),
+        )
+        self.client.force_login(self.doctor)
+        session = self.client.session
+        session["opd_exam_room"] = 1
+        session.save()
+
+        before = self.client.get(reverse("opd_list"))
+        self.assertEqual(before.status_code, 200)
+        self.assertEqual(before.context["aftercare_rows"][0]["status_label"], "รอปิด Visit")
+        self.assertContains(before, "รอเจ้าหน้าที่จัดคิวปิด Visit")
+
+        queue_operator = get_user_model().objects.create_user(
+            "queue-operator-close",
+            password="test-pass",
+            first_name="เจ้าหน้าที่",
+            last_name="จัดคิว",
+        )
+        StaffProfile.objects.create(user=queue_operator, role=StaffProfile.Role.QUEUE_OPERATOR)
+        self.client.force_login(queue_operator)
+        worklist = self.client.get(reverse("patient_departure_worklist"))
+        self.assertEqual(worklist.status_code, 200)
+        self.assertEqual(worklist.context["ready_count"], 1)
+        self.assertContains(worklist, "พร้อมปิด Visit")
+
+        self.client.force_login(self.doctor)
+        forbidden_doctor = self.client.post(reverse("confirm_patient_departure", args=[self.visit.id]))
+        self.assertEqual(forbidden_doctor.status_code, 403)
+
+        self.client.force_login(self.cashier)
+        forbidden = self.client.post(reverse("confirm_patient_departure", args=[self.visit.id]))
+        self.assertEqual(forbidden.status_code, 403)
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.OPD_DONE)
+        self.client.force_login(queue_operator)
+
+        response = self.client.post(reverse("confirm_patient_departure", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("patient_departure_worklist"))
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.DISCHARGED)
+        departure = VisitWorkflowLog.objects.get(
+            visit=self.visit,
+            event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+        )
+        self.assertEqual(departure.actor, queue_operator)
+        self.assertEqual(departure.details["departure_status"], "LEFT_FACILITY")
+        self.assertEqual(departure.details["planned_destination"], "HOME")
+
+        self.client.force_login(self.doctor)
+        session = self.client.session
+        session["opd_exam_room"] = 1
+        session.save()
+        after = self.client.get(reverse("opd_list"))
+        self.assertEqual(len(after.context["aftercare_rows"]), 1)
+        self.assertEqual(len(after.context["q_items"]), 0)
+        self.assertEqual(after.context["aftercare_rows"][0]["status_label"], "ออกจากโรงพยาบาลแล้ว")
+        self.assertContains(after, "ปิดโดย เจ้าหน้าที่ จัดคิว")
+
+    def test_patient_cannot_be_confirmed_home_before_payment_and_dispensing(self):
+        prescription = Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.SENT,
+            sent_at=timezone.now(),
+        )
+        PrescriptionItem.objects.create(
+            prescription=prescription,
+            medication_name="Paracetamol",
+            quantity=10,
+        )
+        Bill.objects.create(visit=self.visit, status=Bill.Status.READY)
+        queue_operator = get_user_model().objects.create_user("queue-operator-blocked", password="test-pass")
+        StaffProfile.objects.create(user=queue_operator, role=StaffProfile.Role.QUEUE_OPERATOR)
+        self.client.force_login(queue_operator)
+
+        self.client.post(reverse("confirm_patient_departure", args=[self.visit.id]))
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.OPD_DONE)
+        self.assertFalse(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+            ).exists()
+        )
+
+        bill = Bill.objects.get(visit=self.visit)
+        bill.status = Bill.Status.PAID
+        bill.save(update_fields=["status", "updated_at"])
+        self.client.post(reverse("confirm_patient_departure", args=[self.visit.id]))
+        self.visit.queue.refresh_from_db()
+        self.assertEqual(self.visit.queue.status, Queue.Status.OPD_DONE)
+        self.assertFalse(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+            ).exists()
+        )
 
     def test_doctor_can_issue_medical_certificate(self):
         self.client.force_login(self.doctor)

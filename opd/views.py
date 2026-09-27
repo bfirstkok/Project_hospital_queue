@@ -8,7 +8,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.db import transaction
 from django.http import JsonResponse
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Q, Subquery
 
 from queues.models import DeviceAssignment, Queue, StaffDuty, StaffProfile, Visit, TelemetryLog, VitalSign, VisitWorkflowLog
 from accounts.access import is_effective_superuser, user_role
@@ -139,11 +139,16 @@ def _opd_aftercare_rows(selected_room):
         .filter(
             updated_at__date=timezone.localdate(),
             visit__queue__exam_room=selected_room,
-            visit__queue__status__in=[
-                Queue.Status.OPD_DONE,
-                Queue.Status.FOLLOWUP,
-            ],
         )
+        .filter(
+            Q(visit__queue__status__in=[Queue.Status.OPD_DONE, Queue.Status.FOLLOWUP])
+            | Q(
+                visit__queue__status=Queue.Status.DISCHARGED,
+                visit__workflow_logs__event_type=VisitWorkflowLog.EventType.PATIENT_DEPARTED,
+            )
+        )
+        .prefetch_related("visit__workflow_logs")
+        .distinct()
         .order_by("-updated_at", "-visit_id")
     )
 
@@ -182,11 +187,23 @@ def _opd_aftercare_rows(selected_room):
         complete = bool(
             billing_done and (pharmacy_done or pharmacy_skipped)
         )
+        departure_log = next(
+            (
+                log for log in visit.workflow_logs.all()
+                if log.event_type == VisitWorkflowLog.EventType.PATIENT_DEPARTED
+            ),
+            None,
+        )
 
-        if complete:
-            status_label = "เสร็จสิ้น"
-            status_detail = "ห้องยา/การเงินครบแล้ว" if pharmacy_done else "ไม่มียา · การเงินครบแล้ว"
+        if departure_log:
+            status_label = "ออกจากโรงพยาบาลแล้ว"
+            departed_at = timezone.localtime(departure_log.created_at).strftime("%H:%M")
+            status_detail = f"ปิดโดย {departure_log.actor_name or 'บุคลากร'} · {departed_at}"
             status_class = "done"
+        elif complete:
+            status_label = "รอปิด Visit"
+            status_detail = "รับยาและชำระเงินครบแล้ว · เจ้าหน้าที่จัดคิวยืนยันเมื่อผู้ป่วยออกจากโรงพยาบาลจริง"
+            status_class = "current"
         elif prescription and prescription.status == Prescription.Status.DRAFT and prescription_has_items:
             status_label = "รอหมอส่งห้องยา"
             status_detail = "มีรายการยาแบบฉบับร่าง"
@@ -218,6 +235,7 @@ def _opd_aftercare_rows(selected_room):
             "prescription": prescription,
             "bill": bill,
             "complete": complete,
+            "departure_log": departure_log,
             "status_label": status_label,
             "status_detail": status_detail,
             "status_class": status_class,
