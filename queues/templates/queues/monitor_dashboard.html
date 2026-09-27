@@ -5,342 +5,70 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ติดตามผู้ป่วย</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=monitor-readable-20260927">
   <style>
-    /* ===== RESET ===== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    /* Monitor page owns its visual system. Keep this after app.css so global utility
+       classes cannot wash out the monitoring dashboard. */
+    body.monitor-page{margin:0!important;min-height:100vh;background:#f4f7f9!important;color:#17324d!important;font-family:"Sarabun",sans-serif!important;font-size:14px!important}
+    body.monitor-page::before{display:none!important}
+    .monitor-page .shell{display:block!important;min-height:100vh;background:#f4f7f9!important;padding-bottom:36px}
 
-    /* ===== BODY & SHELL ===== */
-    body {
-      font-family: 'Sarabun', sans-serif;
-      background: #0a0e1a;
-      color: #e8eaf0;
-      min-height: 100vh;
-    }
+    .monitor-page .topbar{position:sticky;top:0;z-index:20;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:20px;min-height:72px;padding:12px 28px!important;border:0!important;border-bottom:1px solid #dbe5e9!important;background:rgba(255,255,255,.96)!important;box-shadow:0 2px 12px rgba(23,50,77,.05)!important;backdrop-filter:blur(12px)}
+    .monitor-page .logo-area{display:flex;align-items:center;gap:12px;min-width:220px}
+    .monitor-page .logo-icon{display:grid;width:42px;height:42px;place-items:center;border:1px solid #bfe7df;border-radius:12px!important;background:#eaf8f5!important;color:#087f75!important;box-shadow:none!important;font-size:20px}
+    .monitor-page .logo-text{color:#17324d!important;font-size:18px!important;font-weight:800!important;line-height:1.2}
+    .monitor-page .logo-sub{margin-top:3px;color:#6d818b!important;font-size:11px!important;font-weight:500}
 
-    .shell {
-      display: grid;
-      grid-template-rows: auto auto auto 1fr;
-      min-height: 100vh;
-      background: #0a0e1a;
-      padding: 0;
-    }
+    .monitor-page .monitor-content{width:min(1540px,calc(100% - 40px));margin:0 auto;padding-top:20px}
+    .monitor-page .statusbar{display:flex!important;align-items:center;gap:10px;min-height:58px;padding:10px 14px!important;border:1px solid #d9e5e8!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 18px rgba(23,50,77,.04)!important;flex-wrap:wrap}
+    .monitor-page .pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px!important;border:1px solid #dbe6e9!important;border-radius:999px!important;background:#f8fbfc!important;color:#536b77!important;font-size:11px!important;font-weight:700}
+    .monitor-page .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px}
+    .monitor-page .dot.good{background:#16a36a!important}.monitor-page .dot.bad{background:#dc5262!important}
+    .monitor-page #status{margin-left:auto;color:#506873!important;font-size:11px!important;font-weight:700;text-align:right}
 
-    /* ===== TOPBAR ===== */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.02);
-    }
+    .monitor-page .command-help{display:flex;align-items:flex-start;gap:9px;margin:12px 0 0!important;padding:10px 13px!important;border:1px solid #cfe4e8!important;border-radius:11px!important;background:#eef8fa!important;color:#426572!important;font-size:11px!important;line-height:1.55}
+    .monitor-page .command-help strong{color:#175b68}
+    .monitor-page .command-notice{margin:10px 0 0!important;padding:10px 13px!important;border:1px solid #a8ddd2!important;border-radius:10px!important;background:#edf9f5!important;color:#176d61!important;font-size:12px!important;font-weight:700}
+    .monitor-page .command-notice.error{border-color:#efbdc5!important;background:#fff3f5!important;color:#9e182c!important}.monitor-page .command-notice[hidden]{display:none!important}
 
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .monitor-page .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:22px 0 10px;padding:0 2px}
+    .monitor-page .section-head h2{margin:0!important;color:#17324d!important;font-size:16px!important;font-weight:800!important}
+    .monitor-page .section-head p{margin:3px 0 0;color:#758992;font-size:11px}
 
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #00d4aa, #0096ff);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
+    .monitor-page #cards{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px!important;padding:0!important;border:0!important;background:transparent!important}
+    .monitor-page .stat-card{position:relative;min-height:96px!important;padding:14px 15px!important;overflow:hidden;border:1px solid #d8e4e8!important;border-radius:13px!important;background:#fff!important;box-shadow:0 4px 14px rgba(23,50,77,.04)!important}
+    .monitor-page .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#6f8791}
+    .monitor-page .stat-card.total::before{background:#2f6f91}.monitor-page .stat-card.online::before{background:#16a36a}.monitor-page .stat-card.offline::before{background:#dc5262}.monitor-page .stat-card.red::before{background:#dc2626}.monitor-page .stat-card.pink::before{background:#db2777}.monitor-page .stat-card.yellow::before{background:#d99a00}.monitor-page .stat-card.green::before{background:#16a34a}.monitor-page .stat-card.white::before{background:#94a3b8}
+    .monitor-page .stat-label{margin:0 0 8px!important;color:#637b85!important;font-size:10px!important;font-weight:800!important;letter-spacing:.04em!important;text-transform:none!important}
+    .monitor-page .stat-number{color:#17324d!important;font-size:28px!important;font-weight:800!important;line-height:1!important}
+    .monitor-page .stat-card.online .stat-number{color:#137a52!important}.monitor-page .stat-card.offline .stat-number{color:#b52d3e!important}.monitor-page .stat-card.red .stat-number{color:#b91c1c!important}.monitor-page .stat-card.pink .stat-number{color:#be185d!important}.monitor-page .stat-card.yellow .stat-number{color:#986300!important}.monitor-page .stat-card.green .stat-number{color:#18794e!important}
 
-    .logo-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: -0.3px;
-    }
+    .monitor-page .tableWrap{margin-top:12px;padding:0!important;overflow:auto!important;border:1px solid #d7e3e7!important;border-radius:14px!important;background:#fff!important;box-shadow:0 5px 20px rgba(23,50,77,.045)!important}
+    .monitor-page table{width:100%;min-width:1160px;border:0!important;border-collapse:separate!important;border-spacing:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
+    .monitor-page thead{background:#edf4f6!important}
+    .monitor-page th{padding:12px 14px!important;border:0!important;border-bottom:1px solid #d8e4e8!important;background:#edf4f6!important;color:#5d7681!important;font-size:10px!important;font-weight:800!important;letter-spacing:.02em!important;text-transform:none!important;text-align:left;white-space:nowrap}
+    .monitor-page td{padding:14px!important;border:0!important;border-bottom:1px solid #edf2f3!important;background:#fff!important;color:#314f5d!important;font-size:12px!important;vertical-align:middle}
+    .monitor-page tbody tr:last-child td{border-bottom:0!important}.monitor-page tbody tr:hover td{background:#f9fcfc!important}
+    .monitor-page td:first-child b{color:#17324d;font-size:11px;white-space:nowrap}
+    .monitor-page .patient-name{color:#17324d;font-size:13px;font-weight:800}
 
-    .logo-sub {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.35);
-      margin-top: 0px;
-    }
+    .monitor-page .sev{display:inline-flex;align-items:center;justify-content:center;min-width:66px;padding:5px 9px!important;border-radius:999px!important;font-size:10px!important;font-weight:800!important;border:1px solid transparent!important}
+    .monitor-page .sev.red{background:#feecee!important;color:#b91c1c!important;border-color:#f7cdd2!important}.monitor-page .sev.pink{background:#fcebf4!important;color:#b51c62!important;border-color:#f4cade!important}.monitor-page .sev.yellow{background:#fff6dd!important;color:#8a6200!important;border-color:#efd99c!important}.monitor-page .sev.green{background:#eaf8f0!important;color:#18794e!important;border-color:#c9e9d7!important}.monitor-page .sev.white{background:#f4f6f7!important;color:#60717b!important;border-color:#dce3e6!important}
+    .monitor-page .onlineTag{display:inline-flex;align-items:center;gap:6px;padding:5px 9px!important;border-radius:999px!important;font-size:10px!important;font-weight:800!important;white-space:nowrap}.monitor-page .onlineTag.online{background:#eaf8f0!important;color:#18794e!important}.monitor-page .onlineTag.offline{background:#fff0f1!important;color:#b52d3e!important}
 
-    .nav-pills {
-      display: flex;
-      gap: 3px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      padding: 3px;
-    }
+    .monitor-page .nurse-owner{display:flex;align-items:center;gap:9px;min-width:190px}.monitor-page .nurse-photo{display:grid;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;object-fit:cover;background:#e9f5f3!important;color:#176d61;font-size:15px}.monitor-page .nurse-owner b{display:block;color:#294b59!important;font-size:11px!important;font-weight:800!important;white-space:nowrap}.monitor-page .nurse-owner small{display:block;margin-top:2px;color:#83969e!important;font-size:9px!important;font-weight:600}.monitor-page .unassigned{color:#9a6500!important;font-size:10px!important;font-weight:800}
 
-    .nav-pill {
-      padding: 5px 13px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.45);
-      transition: all 0.2s;
-      border: none;
-      background: transparent;
-      font-family: 'Sarabun', sans-serif;
-      text-decoration: none;
-      display: inline-block;
-    }
+    .monitor-page .vitals{display:flex;gap:5px!important;flex-wrap:wrap}.monitor-page .kv{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border:1px solid #e0e9ec!important;border-radius:6px!important;background:#f7fafb!important;color:#294b59!important;font-size:9px!important;white-space:nowrap}.monitor-page .kv .muted{color:#7a9099!important}.monitor-page .kv b{color:#294b59;font-weight:800}
+    .monitor-page .muted{color:#7b9099!important}
 
-    .nav-pill.active {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
+    .monitor-page .row-actions{display:grid;gap:7px;min-width:138px}.monitor-page .rightLink{display:inline-flex;align-items:center;width:max-content;color:#087f75!important;text-decoration:none;font-size:10px!important;font-weight:800}.monitor-page .rightLink:hover{text-decoration:underline}.monitor-page .identifyBtn{min-height:32px;padding:6px 9px!important;border:1px solid #9fdacf!important;border-radius:8px!important;background:#edf9f6!important;color:#087568!important;font:800 10px "Sarabun",sans-serif!important;box-shadow:none!important;cursor:pointer;white-space:nowrap}.monitor-page .identifyBtn:hover:not(:disabled){background:#dff4ef!important}.monitor-page .identifyBtn:disabled{cursor:not-allowed;opacity:.55}.monitor-page .identifyBtn.complete{border-color:#b9dfc7!important;background:#edf8f0!important;color:#18794e!important}
 
-    .nav-pill:hover:not(.active) {
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    /* ===== STATUS BAR ===== */
-    .statusbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px 28px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.01);
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .dot.good {
-      background: #86efac;
-    }
-
-    .dot.bad {
-      background: #ff5f72;
-    }
-
-    .muted {
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    #status {
-      flex: 1;
-      text-align: right;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-    }
-
-    /* ===== STAT CARDS ===== */
-    #cards {
-      padding: 10px 28px;
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      background: rgba(255, 255, 255, 0.01);
-    }
-
-    .stat-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 12px 14px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.35);
-      margin-bottom: 6px;
-    }
-
-    .stat-number {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    /* ===== TABLE ===== */
-    .tableWrap {
-      padding: 10px 28px;
-      overflow: auto;
-      flex: 1;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    thead {
-      background: rgba(255, 255, 255, 0.02);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    th {
-      padding: 14px 16px;
-      font-size: 11px;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.3);
-      font-weight: 600;
-      text-align: left;
-    }
-
-    td {
-      padding: 13px 16px;
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    /* ===== SEVERITY BADGES ===== */
-    .sev {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .sev.red {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .sev.yellow {
-      background: rgba(255, 184, 48, 0.15);
-      color: #ffb830;
-    }
-
-    .sev.green {
-      background: rgba(0, 212, 170, 0.15);
-      color: #00d4aa;
-    }
-
-    /* ===== VITALS ===== */
-    .vitals {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .kv {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-    }
-
-    /* ===== LINKS & TAGS ===== */
-    .rightLink {
-      color: #00d4aa;
-      text-decoration: none;
-      font-size: 11px;
-      cursor: pointer;
-    }
-
-    .rightLink:hover {
-      text-decoration: underline;
-    }
-
-    .row-actions { display:grid; gap:8px; min-width:142px; }
-    .identifyBtn { border:1px solid rgba(0,212,170,.38); border-radius:8px; padding:8px 10px; background:rgba(0,212,170,.13); color:#73f0d6; font:600 12px 'Sarabun',sans-serif; cursor:pointer; white-space:nowrap; }
-    .identifyBtn:hover:not(:disabled) { background:rgba(0,212,170,.23); }
-    .identifyBtn:disabled { cursor:not-allowed; opacity:.58; }
-    .identifyBtn.complete { border-color:rgba(134,239,172,.35); background:rgba(134,239,172,.12); color:#a7f3bd; }
-    .command-notice { margin:12px 28px 0; padding:11px 14px; border:1px solid rgba(0,212,170,.3); border-radius:10px; background:rgba(0,212,170,.09); color:#b5f5e7; font-size:13px; }
-    .command-notice.error { border-color:rgba(255,95,114,.38); background:rgba(255,95,114,.1); color:#ffc1c8; }
-    .command-notice[hidden] { display:none; }
-    .command-help { margin:10px 28px 0; padding:9px 12px; border:1px solid rgba(255,255,255,.08); border-radius:9px; color:rgba(255,255,255,.7); font-size:12px; }
-
-    .onlineTag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .onlineTag.online {
-      background: rgba(134, 239, 172, 0.15);
-      color: #86efac;
-    }
-
-    .onlineTag.offline {
-      background: rgba(255, 95, 114, 0.15);
-      color: #ff5f72;
-    }
-
-    .nurse-owner { display:flex; align-items:center; gap:10px; min-width:220px; }
-    .nurse-photo { width:36px; height:36px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 36px; }
-    .nurse-owner b { display:block; color:#f1f5f9; font-size:13px; font-weight:700; white-space:nowrap; }
-    .nurse-owner small { display:block; color:#b7c4d3; font-size:12px; font-weight:500; margin-top:2px; }
-    .unassigned { color:#ffb830; font-size:12px; font-weight:600; }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
-      .statusbar {
-        padding: 12px 16px;
-      }
-
-      .tableWrap {
-        padding: 12px 16px;
-      }
-
-      td {
-        padding: 10px 12px;
-      }
-
-      #cards {
-        padding: 12px 16px;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      }
-    }
+    @media(max-width:1280px){.monitor-page #cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(max-width:760px){.monitor-page .topbar{position:relative;align-items:flex-start!important;flex-direction:column;padding:12px 16px!important}.monitor-page .monitor-content{width:calc(100% - 24px);padding-top:12px}.monitor-page .statusbar{align-items:flex-start}.monitor-page #status{width:100%;margin-left:0;text-align:left}.monitor-page #cards{grid-template-columns:repeat(2,minmax(0,1fr))}.monitor-page .stat-card{min-height:84px!important}.monitor-page .section-head{align-items:flex-start;flex-direction:column}.monitor-page .tableWrap{border-radius:11px!important}}
   </style>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
 </head>
-
 <body class="monitor-page">
 <div class="shell">
   <div class="topbar">
@@ -348,409 +76,103 @@
       <div class="logo-icon">🩺</div>
       <div>
         <div class="logo-text">ติดตามผู้ป่วย</div>
-        <div class="logo-sub">ติดตามผู้ป่วยจาก IoT (auto refresh)</div>
+        <div class="logo-sub">ข้อมูลจากอุปกรณ์ IoT · อัปเดตอัตโนมัติทุก 5 วินาที</div>
       </div>
     </div>
     {% include "includes/main_nav.html" %}
   </div>
 
+  <main class="monitor-content">
     <div class="statusbar">
-    <div class="pill"><span class="dot good"></span>ออนไลน์ = ข้อมูลล่าสุดภายใน 60 วินาที</div>
-    <div class="pill"><span class="dot bad"></span>ออฟไลน์ = เกิน 60 วินาที</div>
-      <div id="status">กำลังโหลด...</div>
+      <div class="pill"><span class="dot good"></span>ออนไลน์ · ข้อมูลไม่เกิน 60 วินาที</div>
+      <div class="pill"><span class="dot bad"></span>ออฟไลน์ · ข้อมูลเกิน 60 วินาที</div>
+      <div id="status">กำลังโหลดข้อมูล...</div>
     </div>
 
-    <div class="command-help">🔊 ปุ่ม “ระบุตัวผู้ป่วย” ส่งคำสั่งไปยัง wearable ที่ออนไลน์ — อุปกรณ์ต้องอัปเดตเฟิร์มแวร์ให้รับคำสั่ง buzzer ก่อนจึงจะมีเสียง</div>
+    <div class="command-help"><span>🔊</span><span><strong>ระบุตัวผู้ป่วยด้วยเสียง</strong> — กดปุ่มในตารางเพื่อส่งคำสั่งไปยัง wearable ที่ออนไลน์ อุปกรณ์ต้องใช้เฟิร์มแวร์ที่รองรับ buzzer</span></div>
     <div id="commandNotice" class="command-notice" role="status" aria-live="polite" hidden></div>
 
-  <div id="cards"></div>
+    <div class="section-head">
+      <div><h2>ภาพรวมการเฝ้าระวัง</h2><p>จำนวนผู้ป่วยตามสถานะการเชื่อมต่อและระดับคัดกรอง</p></div>
+    </div>
+    <div id="cards"></div>
 
-  <div class="tableWrap">
-    <table>
-      <thead>
-        <tr>
-          <th>ลำดับ</th>
-          <th>ผู้ป่วย</th>
-          <th style="min-width:220px">พยาบาลผู้ดูแล</th>
-          <th>ระดับ</th>
-          <th>AI</th>
-          <th>อุปกรณ์</th>
-          <th>ออนไลน์</th>
-          <th>สัญญาณชีพล่าสุด</th>
-          <th>คำสั่ง</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="9" class="muted">กำลังโหลด...</td></tr>
-      </tbody>
-    </table>
-  </div>
+    <div class="section-head">
+      <div><h2>ผู้ป่วยที่กำลังติดตาม</h2><p>ข้อมูลผู้ป่วย ผู้ดูแล อุปกรณ์ และสัญญาณชีพล่าสุด</p></div>
+    </div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Visit</th><th>ผู้ป่วย</th><th>พยาบาลผู้ดูแล</th><th>ระดับ</th><th>AI</th><th>อุปกรณ์</th><th>สถานะ</th><th>สัญญาณชีพล่าสุด</th><th>จัดการ</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="9" class="muted">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
 </div>
 
 <script>
-  function escapeHtml(value){
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
-  }
+  function escapeHtml(value){return String(value ?? "").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);}
+  function sevClass(s){if(!s)return "";const x=String(s).toUpperCase();if(x.includes("RED"))return "red";if(x.includes("PINK"))return "pink";if(x.includes("YELLOW"))return "yellow";if(x.includes("GREEN"))return "green";return "white";}
 
-  function sevClass(s){
-    if(!s) return "";
-    const x = String(s).toUpperCase();
-    if(x.includes("RED")) return "red";
-    if(x.includes("PINK")) return "pink";
-    if(x.includes("YELLOW")) return "yellow";
-    if(x.includes("GREEN")) return "green";
-    return "white";
-  }
+  let monitorItems=[];
+  const identifyCommands=new Map();
+  const commandNotice=document.getElementById("commandNotice");
 
-  let monitorItems = [];
-  const identifyCommands = new Map();
-  const commandNotice = document.getElementById("commandNotice");
-
-  function notifyCommand(message, isError = false){
-    commandNotice.textContent = message;
-    commandNotice.classList.toggle("error", isError);
-    commandNotice.hidden = false;
-    clearTimeout(notifyCommand.timer);
-    notifyCommand.timer = setTimeout(() => { commandNotice.hidden = true; }, 9000);
-  }
-
-  function csrfToken(){
-    return document.querySelector('meta[name="csrf-token"]')?.content || "";
-  }
+  function notifyCommand(message,isError=false){commandNotice.textContent=message;commandNotice.classList.toggle("error",isError);commandNotice.hidden=false;clearTimeout(notifyCommand.timer);notifyCommand.timer=setTimeout(()=>{commandNotice.hidden=true;},9000);}
+  function csrfToken(){return document.querySelector('meta[name="csrf-token"]')?.content||"";}
 
   function renderCards(items){
-    const all = items.length;
-    const online = items.filter(x => x.online).length;
-    const offline = all - online;
-    const red = items.filter(x => (x.severity||"").toUpperCase()==="RED").length;
-    const pink = items.filter(x => (x.severity||"").toUpperCase()==="PINK").length;
-    const yellow = items.filter(x => (x.severity||"").toUpperCase()==="YELLOW").length;
-    const green = items.filter(x => (x.severity||"").toUpperCase()==="GREEN").length;
-    const white = items.filter(x => (x.severity||"").toUpperCase()==="WHITE").length;
-
-    return `
-      ${card("ทั้งหมด", all)}
-      ${card("ออนไลน์", online)}
-      ${card("ออฟไลน์", offline)}
-      ${card("RED", red)}
-      ${card("PINK", pink)}
-      ${card("YELLOW", yellow)}
-      ${card("GREEN", green)}
-      ${card("WHITE", white)}
-    `;
-
-    function card(label, value){
-      return `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-number">${value}</div></div>`;
-    }
+    const all=items.length,online=items.filter(x=>x.online).length,offline=all-online;
+    const red=items.filter(x=>(x.severity||"").toUpperCase()==="RED").length;
+    const pink=items.filter(x=>(x.severity||"").toUpperCase()==="PINK").length;
+    const yellow=items.filter(x=>(x.severity||"").toUpperCase()==="YELLOW").length;
+    const green=items.filter(x=>(x.severity||"").toUpperCase()==="GREEN").length;
+    const white=items.filter(x=>(x.severity||"").toUpperCase()==="WHITE").length;
+    return `${card("ผู้ป่วยทั้งหมด",all,"total")}${card("ออนไลน์",online,"online")}${card("ออฟไลน์",offline,"offline")}${card("RED",red,"red")}${card("PINK",pink,"pink")}${card("YELLOW",yellow,"yellow")}${card("GREEN",green,"green")}${card("WHITE",white,"white")}`;
+    function card(label,value,cls){return `<div class="stat-card ${cls}"><div class="stat-label">${label}</div><div class="stat-number">${value}</div></div>`;}
   }
 
   function renderRows(items){
-      const elRows = document.getElementById("rows");
-      if (items.length === 0) {
-        elRows.innerHTML = `<tr><td colspan="9" class="muted">ยังไม่มีข้อมูลผู้ป่วยที่กำลังเฝ้าระวัง</td></tr>`;
-        return;
-      }
-
-      elRows.innerHTML = items.map(r => {
-        const onlineText = r.online ? "ออนไลน์" : "ออฟไลน์";
-        const onlineCls = r.online ? "online" : "offline";
-        const dotCls = r.online ? "good" : "bad";
-        const sev = r.severity ?? "-";
-        const sevCss = sevClass(sev);
-        const v = r.vitals || {};
-        const nurse = r.responsible_nurse;
-        const commandState = identifyCommands.get(r.visit_id);
-        const identifyReady = Boolean(r.device_paired && r.device_id && r.online);
-        const identifyLabel = commandState?.status === "PENDING" ? "กำลังรออุปกรณ์…"
-          : commandState?.status === "DELIVERED" ? "ส่งถึงแล้ว · รอเสียงตอบรับ…"
-          : commandState?.status === "ACKNOWLEDGED" ? "✓ อุปกรณ์ส่งเสียงแล้ว · เรียกอีกครั้ง"
-          : !r.device_paired ? "ยังไม่ผูกอุปกรณ์"
-          : !r.online ? "อุปกรณ์ออฟไลน์"
-          : "🔊 ระบุตัวผู้ป่วย";
-        const identifyDisabled = !identifyReady || ["PENDING", "DELIVERED"].includes(commandState?.status);
-        const identifyClass = commandState?.status === "ACKNOWLEDGED" ? "identifyBtn complete" : "identifyBtn";
-        const nurseHtml = nurse ? `
-          <div class="nurse-owner">
-            ${nurse.photo_url ? `<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">` : `<span class="nurse-photo">🧑‍⚕️</span>`}
-            <span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span>
-          </div>` : `<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
-        const vitalsHtml = `
-          <div class="vitals">
-            <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
-            <span class="kv"><span class="muted">O2</span> <b>${v.o2sat ?? "-"}</b></span>
-            <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
-            <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
-          </div>
-        `;
-
-        return `
-          <tr>
-            <td><b>#${r.visit_id}</b></td>
-            <td><div style="font-weight:800">${r.patient_name ?? "-"}</div></td>
-            <td>${nurseHtml}</td>
-            <td><span class="sev ${sevCss}">${sev}</span></td>
-            <td>-</td>
-            <td>${r.device_id ?? "-"}</td>
-            <td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td>
-            <td>${vitalsHtml}</td>
-            <td><div class="row-actions"><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">${r.has_active_alert ? "ตรวจสอบ Alert" : "ดูรายละเอียด"}</a><button class="${identifyClass}" type="button" data-identify-visit="${escapeHtml(r.visit_id)}" data-patient-name="${escapeHtml(r.patient_name || "ผู้ป่วย")}" ${identifyDisabled ? "disabled" : ""}>${identifyLabel}</button></div></td>
-          </tr>
-        `;
-      }).join("");
+    const elRows=document.getElementById("rows");
+    if(items.length===0){elRows.innerHTML=`<tr><td colspan="9" class="muted">ยังไม่มีข้อมูลผู้ป่วยที่กำลังเฝ้าระวัง</td></tr>`;return;}
+    elRows.innerHTML=items.map(r=>{
+      const onlineText=r.online?"ออนไลน์":"ออฟไลน์",onlineCls=r.online?"online":"offline",dotCls=r.online?"good":"bad";
+      const sev=r.severity??"-",sevCss=sevClass(sev),v=r.vitals||{},nurse=r.responsible_nurse,commandState=identifyCommands.get(r.visit_id);
+      const identifyReady=Boolean(r.device_paired&&r.device_id&&r.online);
+      const identifyLabel=commandState?.status==="PENDING"?"กำลังรออุปกรณ์…":commandState?.status==="DELIVERED"?"ส่งถึงแล้ว · รอเสียง…":commandState?.status==="ACKNOWLEDGED"?"✓ ส่งเสียงแล้ว · เรียกอีกครั้ง":!r.device_paired?"ยังไม่ผูกอุปกรณ์":!r.online?"อุปกรณ์ออฟไลน์":"🔊 ระบุตัวผู้ป่วย";
+      const identifyDisabled=!identifyReady||["PENDING","DELIVERED"].includes(commandState?.status),identifyClass=commandState?.status==="ACKNOWLEDGED"?"identifyBtn complete":"identifyBtn";
+      const nurseHtml=nurse?`<div class="nurse-owner">${nurse.photo_url?`<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">`:`<span class="nurse-photo">🧑‍⚕️</span>`}<span><b>${escapeHtml(nurse.name)}</b><small>ผู้รับผิดชอบ</small></span></div>`:`<span class="unassigned">ยังไม่ได้มอบหมาย</span>`;
+      const vitalsHtml=`<div class="vitals"><span class="kv"><span class="muted">BPM</span><b>${v.bpm??"-"}</b></span><span class="kv"><span class="muted">O₂</span><b>${v.o2sat??"-"}</b></span><span class="kv"><span class="muted">BT</span><b>${v.bt??"-"}</b></span><span class="kv"><span class="muted">RR</span><b>${v.rr??"-"}</b></span></div>`;
+      return `<tr><td><b>#${r.visit_id}</b></td><td><div class="patient-name">${escapeHtml(r.patient_name??"-")}</div></td><td>${nurseHtml}</td><td><span class="sev ${sevCss}">${escapeHtml(sev)}</span></td><td>-</td><td>${escapeHtml(r.device_id??"-")}</td><td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td><td>${vitalsHtml}</td><td><div class="row-actions"><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">${r.has_active_alert?"ตรวจสอบ Alert":"ดูรายละเอียด"}</a><button class="${identifyClass}" type="button" data-identify-visit="${escapeHtml(r.visit_id)}" data-patient-name="${escapeHtml(r.patient_name||"ผู้ป่วย")}" ${identifyDisabled?"disabled":""}>${identifyLabel}</button></div></td></tr>`;
+    }).join("");
   }
 
-  async function watchIdentifyCommand(commandId, visitId, patientName){
-    const startedAt = Date.now();
-    while(Date.now() - startedAt < 32000){
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      try {
-        const response = await fetch(`/queues/monitor/commands/${commandId}/`, {credentials:"same-origin", cache:"no-store"});
-        const data = await response.json();
-        if(!response.ok || !data.ok) throw new Error(data.error || "ตรวจสอบสถานะคำสั่งไม่ได้");
-        identifyCommands.set(visitId, {id:commandId, status:data.status});
-        renderRows(monitorItems);
-        if(data.status === "ACKNOWLEDGED"){
-          notifyCommand(`${patientName}: อุปกรณ์ ${data.device_id} ยืนยันว่า buzzer ดังแล้ว`);
-          return;
-        }
-        if(data.status === "FAILED"){
-          notifyCommand(`${patientName}: อุปกรณ์รับคำสั่งแต่ทำงานไม่สำเร็จ ${data.message || ""}`.trim(), true);
-          return;
-        }
-        if(data.status === "EXPIRED"){
-          identifyCommands.delete(visitId);
-          renderRows(monitorItems);
-          notifyCommand(`${patientName}: ไม่ได้รับการตอบรับจากอุปกรณ์ภายใน 30 วินาที ตรวจสอบการเชื่อมต่อหรือเฟิร์มแวร์`, true);
-          return;
-        }
-      } catch(error) {
-        identifyCommands.delete(visitId);
-        renderRows(monitorItems);
-        notifyCommand(error.message || "ตรวจสอบสถานะอุปกรณ์ไม่ได้", true);
-        return;
-      }
+  async function watchIdentifyCommand(commandId,visitId,patientName){
+    const startedAt=Date.now();
+    while(Date.now()-startedAt<32000){
+      await new Promise(resolve=>setTimeout(resolve,1200));
+      try{
+        const response=await fetch(`/queues/monitor/commands/${commandId}/`,{credentials:"same-origin",cache:"no-store"});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||"ตรวจสอบสถานะคำสั่งไม่ได้");
+        identifyCommands.set(visitId,{id:commandId,status:data.status});renderRows(monitorItems);
+        if(data.status==="ACKNOWLEDGED"){notifyCommand(`${patientName}: อุปกรณ์ ${data.device_id} ยืนยันว่า buzzer ดังแล้ว`);return;}
+        if(data.status==="FAILED"){notifyCommand(`${patientName}: อุปกรณ์รับคำสั่งแต่ทำงานไม่สำเร็จ ${data.message||""}`.trim(),true);return;}
+        if(data.status==="EXPIRED"){identifyCommands.delete(visitId);renderRows(monitorItems);notifyCommand(`${patientName}: ไม่ได้รับการตอบรับจากอุปกรณ์ภายใน 30 วินาที ตรวจสอบการเชื่อมต่อหรือเฟิร์มแวร์`,true);return;}
+      }catch(error){identifyCommands.delete(visitId);renderRows(monitorItems);notifyCommand(error.message||"ตรวจสอบสถานะอุปกรณ์ไม่ได้",true);return;}
     }
-    identifyCommands.delete(visitId);
-    renderRows(monitorItems);
-    notifyCommand(`${patientName}: หมดเวลารอการตอบรับจากอุปกรณ์`, true);
+    identifyCommands.delete(visitId);renderRows(monitorItems);notifyCommand(`${patientName}: หมดเวลารอการตอบรับจากอุปกรณ์`,true);
   }
 
   async function identifyPatient(button){
-    const visitId = button.dataset.identifyVisit;
-    const patientName = button.dataset.patientName || "ผู้ป่วย";
-    button.disabled = true;
-    button.textContent = "กำลังส่งคำสั่ง…";
-    try {
-      const response = await fetch(`/queues/monitor/visit/${visitId}/identify/`, {
-        method:"POST",
-        credentials:"same-origin",
-        headers:{"X-CSRFToken":csrfToken(), "X-Requested-With":"XMLHttpRequest"}
-      });
-      const data = await response.json();
-      if(!response.ok || !data.ok) throw new Error(data.error || "ส่งคำสั่งไม่สำเร็จ");
-      identifyCommands.set(visitId, {id:data.command_id, status:data.status});
-      notifyCommand(`${patientName}: ส่งคำสั่งไปยัง ${data.device_id} แล้ว กำลังรอ buzzer ตอบรับ`);
-      renderRows(monitorItems);
-      watchIdentifyCommand(data.command_id, visitId, patientName);
-    } catch(error) {
-      renderRows(monitorItems);
-      notifyCommand(error.message || "ส่งคำสั่งไม่สำเร็จ", true);
-    }
+    const visitId=button.dataset.identifyVisit,patientName=button.dataset.patientName||"ผู้ป่วย";button.disabled=true;button.textContent="กำลังส่งคำสั่ง…";
+    try{const response=await fetch(`/queues/monitor/visit/${visitId}/identify/`,{method:"POST",credentials:"same-origin",headers:{"X-CSRFToken":csrfToken(),"X-Requested-With":"XMLHttpRequest"}});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||"ส่งคำสั่งไม่สำเร็จ");identifyCommands.set(visitId,{id:data.command_id,status:data.status});notifyCommand(`${patientName}: ส่งคำสั่งไปยัง ${data.device_id} แล้ว กำลังรอ buzzer ตอบรับ`);renderRows(monitorItems);watchIdentifyCommand(data.command_id,visitId,patientName);}catch(error){renderRows(monitorItems);notifyCommand(error.message||"ส่งคำสั่งไม่สำเร็จ",true);}
   }
 
-  document.getElementById("rows").addEventListener("click", event => {
-    const button = event.target.closest("[data-identify-visit]");
-    if(button && !button.disabled) identifyPatient(button);
-  });
+  document.getElementById("rows").addEventListener("click",event=>{const button=event.target.closest("[data-identify-visit]");if(button&&!button.disabled)identifyPatient(button);});
 
-  async function loadLatest() {
-    const elStatus = document.getElementById("status");
-    const elRows = document.getElementById("rows");
-    const elCards = document.getElementById("cards");
-
-    try {
-      const res = await fetch("/queues/monitor/api/summary/", {credentials:"same-origin", cache:"no-store"});
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "API error");
-
-      const nowStr = new Date().toLocaleTimeString("th-TH");
-      monitorItems = data.items || [];
-      const onlineCount = monitorItems.filter(r => r.online).length;
-      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${monitorItems.length}`;
-
-      if(elCards) elCards.innerHTML = renderCards(monitorItems);
-      renderRows(monitorItems);
-
-    } catch (e) {
-      elStatus.textContent = "โหลดไม่ได้: " + e.message;
-      elRows.innerHTML = `<tr><td colspan="9" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;
-    }
+  async function loadLatest(){
+    const elStatus=document.getElementById("status"),elRows=document.getElementById("rows"),elCards=document.getElementById("cards");
+    try{const res=await fetch("/queues/monitor/api/summary/",{credentials:"same-origin",cache:"no-store"});const data=await res.json();if(!data.ok)throw new Error(data.error||"API error");const nowStr=new Date().toLocaleTimeString("th-TH");monitorItems=data.items||[];const onlineCount=monitorItems.filter(r=>r.online).length;elStatus.textContent=`อัปเดตล่าสุด ${nowStr} · ออนไลน์ ${onlineCount}/${monitorItems.length}`;if(elCards)elCards.innerHTML=renderCards(monitorItems);renderRows(monitorItems);}catch(e){elStatus.textContent="โหลดข้อมูลไม่ได้: "+e.message;elRows.innerHTML=`<tr><td colspan="9" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;}
   }
-
-  loadLatest();
-  setInterval(loadLatest, 5000);
+  loadLatest();setInterval(loadLatest,5000);
 </script>
-
 </body>
 </html>
-
-{% comment %}
-<script>
-  function sevClass(s){
-    if(!s) return "";
-    const x = String(s).toUpperCase();
-    if(x.includes("RED")) return "red";
-    if(x.includes("PINK")) return "pink";
-    if(x.includes("YELLOW")) return "yellow";
-    if(x.includes("GREEN")) return "green";
-    return "white";
-  }
-
-  async function copyText(text){
-    try{
-      await navigator.clipboard.writeText(text);
-      alert("คัดลอกแล้ว: " + text);
-    }catch(e){
-      prompt("คัดลอกไม่สำเร็จ คัดลอกเอง:", text);
-    }
-  }
-
-  function renderCards(items){
-    const all = items.length;
-    const online = items.filter(x => x.online).length;
-    const offline = all - online;
-
-    const red = items.filter(x => (x.severity||"").toUpperCase()==="RED").length;
-    const pink = items.filter(x => (x.severity||"").toUpperCase()==="PINK").length;
-    const yellow = items.filter(x => (x.severity||"").toUpperCase()==="YELLOW").length;
-    const green = items.filter(x => (x.severity||"").toUpperCase()==="GREEN").length;
-    const white = items.filter(x => (x.severity||"").toUpperCase()==="WHITE").length;
-
-    // ใช้กล่องสไตล์เดียวกับ statusbar
-    return `
-      <div style="
-        margin:0 0 14px;
-        display:grid; gap:10px;
-        grid-template-columns: repeat(4, minmax(140px, 1fr));
-      ">
-        ${card("ทั้งหมด", all)}
-        ${card("ออนไลน์", online, "color:#18794e")}
-        ${card("ออฟไลน์", offline, "color:#607784")}
-        ${card("RED", red, "color:#c83737")}
-        ${card("PINK", pink, "color:#a92d63")}
-        ${card("YELLOW", yellow, "color:#9a6500")}
-        ${card("GREEN", green, "color:#18794e")}
-        ${card("WHITE", white, "color:#60717b")}
-      </div>
-    `;
-
-    function card(label, value, extra=""){
-      return `
-        <div style="
-          padding:12px 14px;
-          background:rgba(255,255,255,.04);
-          border:1px solid var(--line);
-          border-radius: var(--radius);
-          box-shadow: 0 10px 22px rgba(0,0,0,.25);
-        ">
-          <div class="muted" style="font-size:12px">${label}</div>
-          <div style="font-size:22px;font-weight:900;margin-top:4px;${extra}">${value}</div>
-        </div>
-      `;
-    }
-  }
-
-  async function loadLatest() {
-    const elStatus = document.getElementById("status");
-    const elRows = document.getElementById("rows");
-    const elCards = document.getElementById("cards");
-
-    try {
-      const res = await fetch("/queues/monitor/api/summary/");
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "API error");
-
-      const nowStr = new Date().toLocaleTimeString();
-      const items = data.items || [];
-
-      // summary text
-      const onlineCount = items.filter(r => r.online).length;
-      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${items.length}`;
-
-      // cards
-      if(elCards) elCards.innerHTML = renderCards(items);
-
-      if (items.length === 0) {
-        elRows.innerHTML = `<tr><td colspan="8" class="muted">ยังไม่มีข้อมูล</td></tr>`;
-        return;
-      }
-
-      elRows.innerHTML = items.map(r => {
-        const onlineText = r.online ? "ออนไลน์" : "ออฟไลน์";
-        const onlineCls = r.online ? "online" : "offline";
-        const dotCls = r.online ? "good" : "bad";
-
-        const sev = r.severity ?? "-";
-        const sevCss = sevClass(sev);
-
-        const v = r.vitals || {};
-        const vitalsHtml = `
-          <div class="vitals">
-            <span class="kv"><span class="muted">BPM</span> <b>${v.bpm ?? "-"}</b></span>
-            <span class="kv"><span class="muted">O2</span> <b>${v.o2sat ?? "-"}</b></span>
-            <span class="kv"><span class="muted">BT</span> <b>${v.bt ?? "-"}</b></span>
-            <span class="kv"><span class="muted">RR</span> <b>${v.rr ?? "-"}</b></span>
-          </div>
-        `;
-
-        return `
-          <tr>
-            <td data-label="ลำดับ">#${r.visit_id}</td>
-
-            <td data-label="ผู้ป่วย">
-              <div style="font-weight:800">${r.patient_name ?? "-"}</div>
-              <div class="muted">รหัส Visit: ${r.visit_id}</div>
-            </td>
-
-            <td data-label="ระดับ">
-              <span class="sev ${sevCss}">${sev}</span>
-            </td>
-
-            <td data-label="AI">
-              <span class="aiTag">-</span>
-            </td>
-
-            <td data-label="อุปกรณ์">
-              <span class="pill" style="color:var(--text)">${r.device_id ?? "-"}</span>
-            </td>
-
-            <td data-label="ออนไลน์">
-              <span class="onlineTag ${onlineCls}">
-                <span class="dot ${dotCls}"></span>${onlineText}
-              </span>
-            </td>
-
-            <td data-label="สัญญาณชีพล่าสุด">
-              ${vitalsHtml}
-            </td>
-
-            <td data-label="คำสั่ง">
-              ${r.has_active_alert ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/monitor/visit/' + r.visit_id + '/">ตรวจสอบ Alert</a>' : '<a class="rightLink" href="/queues/monitor/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}
-            </td>
-          </tr>
-        `;
-      }).join("");
-
-    } catch (e) {
-      elStatus.textContent = "โหลดไม่ได้: " + e.message;
-      elRows.innerHTML = `<tr><td colspan="8" class="muted">เชื่อมต่อ API ไม่สำเร็จ</td></tr>`;
-    }
-  }
-
-  loadLatest();
-  setInterval(loadLatest, 5000);
-</script>
-
-</body>
-</html>
-{% endcomment %}
