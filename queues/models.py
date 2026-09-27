@@ -408,6 +408,46 @@ class DeviceAssignment(models.Model):
         return f"{self.device.device_id} -> Visit#{self.visit_id} ({state})"
 
 
+class DeviceCommand(models.Model):
+    """A short-lived command waiting for a paired wearable to poll it."""
+
+    class CommandType(models.TextChoices):
+        BUZZER = "BUZZER", "Identify patient with buzzer"
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending delivery"
+        DELIVERED = "DELIVERED", "Delivered to device"
+        ACKNOWLEDGED = "ACKNOWLEDGED", "Completed by device"
+        FAILED = "FAILED", "Failed on device"
+        EXPIRED = "EXPIRED", "Expired"
+
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="commands")
+    visit = models.ForeignKey(Visit, on_delete=models.CASCADE, related_name="device_commands")
+    command_type = models.CharField(max_length=24, choices=CommandType.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_device_commands",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    delivery_count = models.PositiveSmallIntegerField(default=0)
+    result_message = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["device", "status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.command_type} for {self.device.device_id} ({self.status})"
+
+
 class StaffProfile(models.Model):
     """Persistent hospital role for a staff account."""
 

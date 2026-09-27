@@ -4,6 +4,7 @@
   {% load static %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ติดตามผู้ป่วย</title>
   <style>
@@ -281,6 +282,16 @@
       text-decoration: underline;
     }
 
+    .row-actions { display:grid; gap:8px; min-width:142px; }
+    .identifyBtn { border:1px solid rgba(0,212,170,.38); border-radius:8px; padding:8px 10px; background:rgba(0,212,170,.13); color:#73f0d6; font:600 12px 'Sarabun',sans-serif; cursor:pointer; white-space:nowrap; }
+    .identifyBtn:hover:not(:disabled) { background:rgba(0,212,170,.23); }
+    .identifyBtn:disabled { cursor:not-allowed; opacity:.58; }
+    .identifyBtn.complete { border-color:rgba(134,239,172,.35); background:rgba(134,239,172,.12); color:#a7f3bd; }
+    .command-notice { margin:12px 28px 0; padding:11px 14px; border:1px solid rgba(0,212,170,.3); border-radius:10px; background:rgba(0,212,170,.09); color:#b5f5e7; font-size:13px; }
+    .command-notice.error { border-color:rgba(255,95,114,.38); background:rgba(255,95,114,.1); color:#ffc1c8; }
+    .command-notice[hidden] { display:none; }
+    .command-help { margin:10px 28px 0; padding:9px 12px; border:1px solid rgba(255,255,255,.08); border-radius:9px; color:rgba(255,255,255,.7); font-size:12px; }
+
     .onlineTag {
       display: inline-flex;
       align-items: center;
@@ -303,8 +314,8 @@
 
     .nurse-owner { display:flex; align-items:center; gap:10px; min-width:220px; }
     .nurse-photo { width:36px; height:36px; border-radius:50%; object-fit:cover; background:rgba(0,212,170,.13); display:grid; place-items:center; flex:0 0 36px; }
-    .nurse-owner b { display:block; color:#17324d; font-size:13px; font-weight:700; white-space:nowrap; }
-    .nurse-owner small { display:block; color:#526b7f; font-size:12px; font-weight:500; margin-top:2px; }
+    .nurse-owner b { display:block; color:#f1f5f9; font-size:13px; font-weight:700; white-space:nowrap; }
+    .nurse-owner small { display:block; color:#b7c4d3; font-size:12px; font-weight:500; margin-top:2px; }
     .unassigned { color:#ffb830; font-size:12px; font-weight:600; }
 
     /* ===== RESPONSIVE ===== */
@@ -343,11 +354,14 @@
     {% include "includes/main_nav.html" %}
   </div>
 
-  <div class="statusbar">
+    <div class="statusbar">
     <div class="pill"><span class="dot good"></span>ออนไลน์ = ข้อมูลล่าสุดภายใน 60 วินาที</div>
     <div class="pill"><span class="dot bad"></span>ออฟไลน์ = เกิน 60 วินาที</div>
-    <div id="status">กำลังโหลด...</div>
-  </div>
+      <div id="status">กำลังโหลด...</div>
+    </div>
+
+    <div class="command-help">🔊 ปุ่ม “ระบุตัวผู้ป่วย” ส่งคำสั่งไปยัง wearable ที่ออนไลน์ — อุปกรณ์ต้องอัปเดตเฟิร์มแวร์ให้รับคำสั่ง buzzer ก่อนจึงจะมีเสียง</div>
+    <div id="commandNotice" class="command-notice" role="status" aria-live="polite" hidden></div>
 
   <div id="cards"></div>
 
@@ -388,6 +402,22 @@
     return "white";
   }
 
+  let monitorItems = [];
+  const identifyCommands = new Map();
+  const commandNotice = document.getElementById("commandNotice");
+
+  function notifyCommand(message, isError = false){
+    commandNotice.textContent = message;
+    commandNotice.classList.toggle("error", isError);
+    commandNotice.hidden = false;
+    clearTimeout(notifyCommand.timer);
+    notifyCommand.timer = setTimeout(() => { commandNotice.hidden = true; }, 9000);
+  }
+
+  function csrfToken(){
+    return document.querySelector('meta[name="csrf-token"]')?.content || "";
+  }
+
   function renderCards(items){
     const all = items.length;
     const online = items.filter(x => x.online).length;
@@ -414,25 +444,10 @@
     }
   }
 
-  async function loadLatest() {
-    const elStatus = document.getElementById("status");
-    const elRows = document.getElementById("rows");
-    const elCards = document.getElementById("cards");
-
-    try {
-      const res = await fetch("/queues/monitor/api/summary/");
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "API error");
-
-      const nowStr = new Date().toLocaleTimeString();
-      const items = data.items || [];
-      const onlineCount = items.filter(r => r.online).length;
-      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${items.length}`;
-
-      if(elCards) elCards.innerHTML = renderCards(items);
-
+  function renderRows(items){
+      const elRows = document.getElementById("rows");
       if (items.length === 0) {
-        elRows.innerHTML = `<tr><td colspan="9" class="muted">ยังไม่มีข้อมูล</td></tr>`;
+        elRows.innerHTML = `<tr><td colspan="9" class="muted">ยังไม่มีข้อมูลผู้ป่วยที่กำลังเฝ้าระวัง</td></tr>`;
         return;
       }
 
@@ -444,6 +459,16 @@
         const sevCss = sevClass(sev);
         const v = r.vitals || {};
         const nurse = r.responsible_nurse;
+        const commandState = identifyCommands.get(r.visit_id);
+        const identifyReady = Boolean(r.device_paired && r.device_id && r.online);
+        const identifyLabel = commandState?.status === "PENDING" ? "กำลังรออุปกรณ์…"
+          : commandState?.status === "DELIVERED" ? "ส่งถึงแล้ว · รอเสียงตอบรับ…"
+          : commandState?.status === "ACKNOWLEDGED" ? "✓ อุปกรณ์ส่งเสียงแล้ว · เรียกอีกครั้ง"
+          : !r.device_paired ? "ยังไม่ผูกอุปกรณ์"
+          : !r.online ? "อุปกรณ์ออฟไลน์"
+          : "🔊 ระบุตัวผู้ป่วย";
+        const identifyDisabled = !identifyReady || ["PENDING", "DELIVERED"].includes(commandState?.status);
+        const identifyClass = commandState?.status === "ACKNOWLEDGED" ? "identifyBtn complete" : "identifyBtn";
         const nurseHtml = nurse ? `
           <div class="nurse-owner">
             ${nurse.photo_url ? `<img class="nurse-photo" src="${escapeHtml(nurse.photo_url)}" alt="รูปพยาบาล">` : `<span class="nurse-photo">🧑‍⚕️</span>`}
@@ -468,10 +493,93 @@
             <td>${r.device_id ?? "-"}</td>
             <td><span class="onlineTag ${onlineCls}"><span class="dot ${dotCls}"></span>${onlineText}</span></td>
             <td>${vitalsHtml}</td>
-            <td>${r.has_active_alert ? '<a class="rightLink" style="background:#b91c1c;color:#fff" href="/queues/monitor/visit/' + r.visit_id + '/">ตรวจสอบ Alert</a>' : '<a class="rightLink" href="/queues/monitor/visit/' + r.visit_id + '/">ดูรายละเอียด</a>'}</td>
+            <td><div class="row-actions"><a class="rightLink" href="/queues/monitor/visit/${r.visit_id}/">${r.has_active_alert ? "ตรวจสอบ Alert" : "ดูรายละเอียด"}</a><button class="${identifyClass}" type="button" data-identify-visit="${escapeHtml(r.visit_id)}" data-patient-name="${escapeHtml(r.patient_name || "ผู้ป่วย")}" ${identifyDisabled ? "disabled" : ""}>${identifyLabel}</button></div></td>
           </tr>
         `;
       }).join("");
+  }
+
+  async function watchIdentifyCommand(commandId, visitId, patientName){
+    const startedAt = Date.now();
+    while(Date.now() - startedAt < 32000){
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      try {
+        const response = await fetch(`/queues/monitor/commands/${commandId}/`, {credentials:"same-origin", cache:"no-store"});
+        const data = await response.json();
+        if(!response.ok || !data.ok) throw new Error(data.error || "ตรวจสอบสถานะคำสั่งไม่ได้");
+        identifyCommands.set(visitId, {id:commandId, status:data.status});
+        renderRows(monitorItems);
+        if(data.status === "ACKNOWLEDGED"){
+          notifyCommand(`${patientName}: อุปกรณ์ ${data.device_id} ยืนยันว่า buzzer ดังแล้ว`);
+          return;
+        }
+        if(data.status === "FAILED"){
+          notifyCommand(`${patientName}: อุปกรณ์รับคำสั่งแต่ทำงานไม่สำเร็จ ${data.message || ""}`.trim(), true);
+          return;
+        }
+        if(data.status === "EXPIRED"){
+          identifyCommands.delete(visitId);
+          renderRows(monitorItems);
+          notifyCommand(`${patientName}: ไม่ได้รับการตอบรับจากอุปกรณ์ภายใน 30 วินาที ตรวจสอบการเชื่อมต่อหรือเฟิร์มแวร์`, true);
+          return;
+        }
+      } catch(error) {
+        identifyCommands.delete(visitId);
+        renderRows(monitorItems);
+        notifyCommand(error.message || "ตรวจสอบสถานะอุปกรณ์ไม่ได้", true);
+        return;
+      }
+    }
+    identifyCommands.delete(visitId);
+    renderRows(monitorItems);
+    notifyCommand(`${patientName}: หมดเวลารอการตอบรับจากอุปกรณ์`, true);
+  }
+
+  async function identifyPatient(button){
+    const visitId = button.dataset.identifyVisit;
+    const patientName = button.dataset.patientName || "ผู้ป่วย";
+    button.disabled = true;
+    button.textContent = "กำลังส่งคำสั่ง…";
+    try {
+      const response = await fetch(`/queues/monitor/visit/${visitId}/identify/`, {
+        method:"POST",
+        credentials:"same-origin",
+        headers:{"X-CSRFToken":csrfToken(), "X-Requested-With":"XMLHttpRequest"}
+      });
+      const data = await response.json();
+      if(!response.ok || !data.ok) throw new Error(data.error || "ส่งคำสั่งไม่สำเร็จ");
+      identifyCommands.set(visitId, {id:data.command_id, status:data.status});
+      notifyCommand(`${patientName}: ส่งคำสั่งไปยัง ${data.device_id} แล้ว กำลังรอ buzzer ตอบรับ`);
+      renderRows(monitorItems);
+      watchIdentifyCommand(data.command_id, visitId, patientName);
+    } catch(error) {
+      renderRows(monitorItems);
+      notifyCommand(error.message || "ส่งคำสั่งไม่สำเร็จ", true);
+    }
+  }
+
+  document.getElementById("rows").addEventListener("click", event => {
+    const button = event.target.closest("[data-identify-visit]");
+    if(button && !button.disabled) identifyPatient(button);
+  });
+
+  async function loadLatest() {
+    const elStatus = document.getElementById("status");
+    const elRows = document.getElementById("rows");
+    const elCards = document.getElementById("cards");
+
+    try {
+      const res = await fetch("/queues/monitor/api/summary/", {credentials:"same-origin", cache:"no-store"});
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "API error");
+
+      const nowStr = new Date().toLocaleTimeString("th-TH");
+      monitorItems = data.items || [];
+      const onlineCount = monitorItems.filter(r => r.online).length;
+      elStatus.textContent = `อัปเดตล่าสุด: ${nowStr} | ออนไลน์: ${onlineCount}/${monitorItems.length}`;
+
+      if(elCards) elCards.innerHTML = renderCards(monitorItems);
+      renderRows(monitorItems);
 
     } catch (e) {
       elStatus.textContent = "โหลดไม่ได้: " + e.message;

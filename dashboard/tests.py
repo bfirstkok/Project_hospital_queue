@@ -29,11 +29,12 @@ class DashboardPresentationTests(TestCase):
         response = self.client.get(reverse("dashboard:home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "แสดงเฉพาะข้อมูลที่ต้องใช้ตัดสินใจ")
+        self.assertContains(response, "ภาพรวมวันนี้")
+        self.assertEqual(response.context["overview"]["today_total"], 1)
         self.assertContains(response, "พยาบาลผู้ดูแล")
         self.assertContains(response, 'class="severity"')
         self.assertContains(response, 'id="urgent-alert-title"')
-        self.assertContains(response, "รายการแจ้งเตือนเร่งด่วน")
+        self.assertContains(response, "แจ้งเตือนที่ยังต้องจัดการ")
         self.assertContains(response, "การแจ้งเตือนจาก Sensor")
         self.assertContains(response, "1</b>รับทราบและไปตรวจ")
         self.assertContains(response, "Sensor เป็นตัวแจ้งเตือน")
@@ -45,6 +46,18 @@ class DashboardPresentationTests(TestCase):
         self.assertContains(response, "เหตุผลจากระบบ")
         self.assertContains(response, "ยืนยันตามอาการและสัญญาณชีพ")
         self.assertContains(response, "document.body.prepend(nav)")
+
+    def test_live_summary_returns_today_patient_flow_totals(self):
+        patient = Patient.objects.create(first_name="วันนี้", last_name="ทดสอบ", national_id="1111111111112")
+        visit = Visit.objects.create(patient=patient)
+        Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
+
+        response = self.client.get(reverse("dashboard:live_summary_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["overview"]["today_total"], 1)
+        self.assertEqual(response.json()["overview"]["waiting_assessment"], 1)
+        self.assertEqual(response.json()["overview"]["waiting_queue"], 0)
 
     def test_dashboard_alert_stays_active_during_clinical_review_without_retriage(self):
         patient = Patient.objects.create(

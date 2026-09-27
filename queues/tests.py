@@ -15,7 +15,7 @@ from django.utils import timezone
 from patients.models import Patient
 from queues import views as queue_views
 from queues.forms import DeviceManagementPairForm, DevicePairingForm
-from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
+from queues.models import ConfirmedTriageCase, CriticalAlert, Device, DeviceAssignment, DeviceCommand, NurseCareAssignment, Queue, ShiftSchedule, StaffDuty, StaffProfile, TelemetryLog, TriageResult, Visit, VisitWorkflowLog, VitalSign
 from queues.training_cases import capture_confirmed_triage_case
 from queues.management.commands.setup_demo_roster import (
     ADMIN_MORNING_COVERAGE,
@@ -2008,3 +2008,90 @@ class EmergencyOfficerWorkflowTests(TestCase):
             "โรงพยาบาลศูนย์จังหวัด",
         )
         self.assertEqual(log.details["disposition"], "REFERRED")
+
+
+class WearableBuzzerCommandTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="monitor-operator",
+            password="secret",
+            first_name="พยาบาล",
+            last_name="ติดตาม",
+        )
+        StaffProfile.objects.create(user=self.staff, role=StaffProfile.Role.NURSE)
+        self.client.force_login(self.staff)
+        self.patient = Patient.objects.create(
+            first_name="ระบุตัว",
+            last_name="ผู้ป่วย",
+            national_id="8888888888888",
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            final_severity=Visit.Severity.YELLOW,
+        )
+        Queue.objects.create(
+            visit=self.visit,
+            status=Queue.Status.OBSERVATION_MONITORING,
+            priority=2,
+        )
+        self.device = Device.objects.create(
+            device_id="BUZZER-001",
+            api_key="device-secret",
+            is_active=True,
+            last_seen=timezone.now(),
+        )
+        DeviceAssignment.objects.create(device=self.device, visit=self.visit)
+
+    def device_headers(self):
+        return {
+            "HTTP_X_DEVICE_ID": self.device.device_id,
+            "HTTP_X_API_KEY": self.device.api_key,
+        }
+
+    def test_staff_command_is_polled_once_and_device_acknowledges_buzzer(self):
+        created = self.client.post(reverse("identify_monitored_visit", args=[self.visit.id]))
+
+        self.assertEqual(created.status_code, 200)
+        command_id = created.json()["command_id"]
+        command = DeviceCommand.objects.get(pk=command_id)
+        self.assertEqual(command.status, DeviceCommand.Status.PENDING)
+        self.assertEqual(command.requested_by, self.staff)
+
+        first_poll = self.client.get(reverse("iot_next_command"), **self.device_headers())
+        self.assertEqual(first_poll.status_code, 200)
+        self.assertEqual(first_poll.json()["command"]["type"], DeviceCommand.CommandType.BUZZER)
+        self.assertEqual(first_poll.json()["command"]["payload"]["duration_ms"], 1200)
+        command.refresh_from_db()
+        self.assertEqual(command.status, DeviceCommand.Status.DELIVERED)
+        self.assertEqual(command.delivery_count, 1)
+
+        second_poll = self.client.get(reverse("iot_next_command"), **self.device_headers())
+        self.assertIsNone(second_poll.json()["command"])
+
+        acknowledged = self.client.post(
+            reverse("iot_acknowledge_command", args=[command_id]),
+            data=json.dumps({"result": "completed", "message": "buzzer played"}),
+            content_type="application/json",
+            **self.device_headers(),
+        )
+        self.assertEqual(acknowledged.status_code, 200)
+        self.assertEqual(acknowledged.json()["status"], DeviceCommand.Status.ACKNOWLEDGED)
+
+        staff_status = self.client.get(reverse("identify_command_status", args=[command_id]))
+        self.assertEqual(staff_status.json()["status"], DeviceCommand.Status.ACKNOWLEDGED)
+
+    def test_identify_requires_a_recently_online_paired_wearable(self):
+        self.device.last_seen = timezone.now() - timedelta(minutes=2)
+        self.device.save(update_fields=["last_seen"])
+
+        response = self.client.post(reverse("identify_monitored_visit", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(DeviceCommand.objects.count(), 0)
+
+    def test_unpaired_device_cannot_poll_commands(self):
+        DeviceAssignment.objects.filter(device=self.device).update(is_active=False)
+
+        response = self.client.get(reverse("iot_next_command"), **self.device_headers())
+
+        self.assertEqual(response.status_code, 409)

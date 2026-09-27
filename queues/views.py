@@ -5,7 +5,7 @@ import secrets
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import Count, OuterRef, Q, Subquery, Value
+from django.db.models import Count, F, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Concat
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -25,7 +25,7 @@ from ai_triage.services import apply_ai_triage, localize_ai_reason
 from accounts.access import is_effective_superuser
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
-from .models import CriticalAlert, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
+from .models import CriticalAlert, DeviceCommand, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 from .training_cases import capture_confirmed_triage_case
 
@@ -1260,6 +1260,205 @@ def iot_vitals(request):
     })
 
 
+def _authenticated_iot_device(request):
+    device_id = request.headers.get("X-DEVICE-ID")
+    api_key = request.headers.get("X-API-KEY")
+    if not device_id or not api_key:
+        return None, JsonResponse(
+            {"ok": False, "error": "Missing X-DEVICE-ID or X-API-KEY"},
+            status=401,
+        )
+    try:
+        device = Device.objects.get(device_id=device_id, api_key=api_key, is_active=True)
+    except Device.DoesNotExist:
+        return None, JsonResponse({"ok": False, "error": "Invalid device credentials"}, status=403)
+    return device, None
+
+
+def _active_command_assignment(device):
+    assignment = (
+        DeviceAssignment.objects
+        .select_related("visit", "visit__queue")
+        .filter(device=device, is_active=True)
+        .first()
+    )
+    if not assignment:
+        return None
+    queue = getattr(assignment.visit, "queue", None)
+    if not queue or queue.status not in {
+        Queue.Status.OBSERVATION_MONITORING,
+        Queue.Status.REASSESSMENT_REQUIRED,
+    }:
+        return None
+    return assignment
+
+
+@require_POST
+def identify_monitored_visit(request, visit_id):
+    """Queue a short-lived buzzer command for the wearable paired to a patient."""
+    visit = get_object_or_404(Visit, pk=visit_id)
+    assignment = (
+        DeviceAssignment.objects
+        .select_related("device", "visit__queue")
+        .filter(visit=visit, is_active=True, device__is_active=True)
+        .first()
+    )
+    if not assignment:
+        return JsonResponse({"ok": False, "error": "ผู้ป่วยยังไม่มีอุปกรณ์ที่จับคู่และเปิดใช้งาน"}, status=409)
+    queue = getattr(visit, "queue", None)
+    if not queue or queue.status not in {
+        Queue.Status.OBSERVATION_MONITORING,
+        Queue.Status.REASSESSMENT_REQUIRED,
+    }:
+        return JsonResponse({"ok": False, "error": "ผู้ป่วยไม่ได้อยู่ในสถานะเฝ้าระวัง"}, status=409)
+
+    now = timezone.now()
+    if not assignment.device.last_seen or (now - assignment.device.last_seen).total_seconds() > 60:
+        return JsonResponse({"ok": False, "error": "อุปกรณ์ออฟไลน์หรือไม่ได้ส่งข้อมูลใน 60 วินาทีที่ผ่านมา"}, status=409)
+
+    expires_at = now + timedelta(seconds=30)
+    DeviceCommand.objects.filter(
+        device=assignment.device,
+        status__in=[DeviceCommand.Status.PENDING, DeviceCommand.Status.DELIVERED],
+        expires_at__lte=now,
+    ).update(status=DeviceCommand.Status.EXPIRED)
+    outstanding = (
+        DeviceCommand.objects
+        .filter(
+            device=assignment.device,
+            visit=visit,
+            command_type=DeviceCommand.CommandType.BUZZER,
+            status__in=[DeviceCommand.Status.PENDING, DeviceCommand.Status.DELIVERED],
+            expires_at__gt=now,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    command = outstanding or DeviceCommand.objects.create(
+        device=assignment.device,
+        visit=visit,
+        command_type=DeviceCommand.CommandType.BUZZER,
+        requested_by=request.user,
+        expires_at=expires_at,
+    )
+    return JsonResponse({
+        "ok": True,
+        "command_id": command.id,
+        "device_id": assignment.device.device_id,
+        "status": command.status,
+        "message": "ส่งคำสั่งเรียกอุปกรณ์แล้ว กำลังรออุปกรณ์ตอบรับ",
+    })
+
+
+@require_GET
+def identify_command_status(request, command_id):
+    command = get_object_or_404(
+        DeviceCommand.objects.select_related("device"),
+        pk=command_id,
+    )
+    if command.status in {DeviceCommand.Status.PENDING, DeviceCommand.Status.DELIVERED}:
+        if command.expires_at <= timezone.now():
+            command.status = DeviceCommand.Status.EXPIRED
+            command.save(update_fields=["status"])
+    return JsonResponse({
+        "ok": True,
+        "status": command.status,
+        "device_id": command.device.device_id,
+        "message": command.result_message,
+    })
+
+
+@csrf_exempt
+@require_GET
+def iot_next_command(request):
+    """Wearable poll endpoint. Authenticate with the same headers as telemetry."""
+    device, error = _authenticated_iot_device(request)
+    if error:
+        return error
+    assignment = _active_command_assignment(device)
+    if not assignment:
+        return JsonResponse({"ok": False, "error": "Device is not paired to an active monitoring visit"}, status=409)
+
+    now = timezone.now()
+    DeviceCommand.objects.filter(
+        device=device,
+        status__in=[DeviceCommand.Status.PENDING, DeviceCommand.Status.DELIVERED],
+        expires_at__lte=now,
+    ).update(status=DeviceCommand.Status.EXPIRED)
+
+    with transaction.atomic():
+        command = (
+            DeviceCommand.objects
+            .select_for_update()
+            .filter(
+                device=device,
+                visit=assignment.visit,
+                status=DeviceCommand.Status.PENDING,
+                expires_at__gt=now,
+            )
+            .order_by("created_at", "id")
+            .first()
+        )
+        if not command:
+            return JsonResponse({"ok": True, "command": None})
+        command.status = DeviceCommand.Status.DELIVERED
+        command.delivered_at = now
+        command.delivery_count = F("delivery_count") + 1
+        command.save(update_fields=["status", "delivered_at", "delivery_count"])
+        command.refresh_from_db(fields=["delivery_count"])
+
+    return JsonResponse({
+        "ok": True,
+        "command": {
+            "id": command.id,
+            "type": command.command_type,
+            "payload": {"pattern": "identify", "duration_ms": 1200},
+            "expires_at": command.expires_at.isoformat(),
+        },
+    })
+
+
+@csrf_exempt
+@require_POST
+def iot_acknowledge_command(request, command_id):
+    """Wearable acknowledges whether it physically executed a command."""
+    device, error = _authenticated_iot_device(request)
+    if error:
+        return error
+    assignment = _active_command_assignment(device)
+    if not assignment:
+        return JsonResponse({"ok": False, "error": "Device is not paired to an active monitoring visit"}, status=409)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({"ok": False, "error": "JSON body must be an object"}, status=400)
+    result = data.get("result")
+    if result not in {"completed", "failed"}:
+        return JsonResponse({"ok": False, "error": "result must be completed or failed"}, status=400)
+
+    command = get_object_or_404(DeviceCommand, pk=command_id, device=device)
+    if command.visit_id != assignment.visit_id:
+        return JsonResponse({"ok": False, "error": "Command does not match the active device assignment"}, status=409)
+    if command.status in {DeviceCommand.Status.PENDING, DeviceCommand.Status.DELIVERED} and command.expires_at <= timezone.now():
+        command.status = DeviceCommand.Status.EXPIRED
+        command.save(update_fields=["status"])
+    if command.status != DeviceCommand.Status.DELIVERED:
+        return JsonResponse({"ok": False, "error": "Command is not awaiting acknowledgement"}, status=409)
+
+    command.status = (
+        DeviceCommand.Status.ACKNOWLEDGED
+        if result == "completed"
+        else DeviceCommand.Status.FAILED
+    )
+    command.acknowledged_at = timezone.now()
+    command.result_message = str(data.get("message") or "")[:255]
+    command.save(update_fields=["status", "acknowledged_at", "result_message"])
+    return JsonResponse({"ok": True, "status": command.status})
+
+
 # -----------------------------
 # helpers: ดึง "ล่าสุด" ด้วย Subquery
 # -----------------------------
@@ -1913,6 +2112,14 @@ def monitor_summary_api(request):
         for v in _visit_queryset_with_latest_vitals()
         .filter(id__in=visit_ids)
     }
+    active_devices = {
+        assignment.visit_id: assignment.device
+        for assignment in (
+            DeviceAssignment.objects
+            .select_related("device")
+            .filter(visit_id__in=visit_ids, is_active=True, device__is_active=True)
+        )
+    }
 
     items = []
     for q in q_items:
@@ -1920,9 +2127,10 @@ def monitor_summary_api(request):
         if not v:
             continue
 
+        device = active_devices.get(v.id)
         online = False
-        if v.last_log_ts:
-            online = (now - v.last_log_ts).total_seconds() <= 60
+        if device and device.last_seen:
+            online = (now - device.last_seen).total_seconds() <= 60
 
         items.append({
             # Keep the exact 64-bit identifier in JavaScript clients.
@@ -1937,7 +2145,8 @@ def monitor_summary_api(request):
             ).exists(),
             "registered_at": v.registered_at.isoformat() if v.registered_at else None,
             "online": online,
-            "device_id": v.last_device_id,
+            "device_id": device.device_id if device else v.last_device_id,
+            "device_paired": bool(device),
             "responsible_nurse": nurse_by_visit.get(v.id),
             "vitals": {
                 "bpm": v.last_bpm,

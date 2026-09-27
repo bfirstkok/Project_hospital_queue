@@ -49,6 +49,8 @@ urlpatterns = [
     path("monitor/api/latest/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_latest_api), name="monitor_latest_api"),
     path("monitor/api/summary/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_summary_api), name="monitor_summary_api"),
     path("monitor/visit/<int:visit_id>/", capability_required(Capability.MONITOR_PATIENT)(views.monitor_visit_detail), name="followup_visit_detail"),
+    path("monitor/visit/<int:visit_id>/identify/", capability_required(Capability.MONITOR_PATIENT)(views.identify_monitored_visit), name="identify_monitored_visit"),
+    path("monitor/commands/<int:command_id>/", capability_required(Capability.MONITOR_PATIENT)(views.identify_command_status), name="identify_command_status"),
     path("monitor/demo/push/<int:visit_id>/", superuser_required(opd_views.post_opd_demo_push_telemetry), name="followup_demo_push"),
 
     # ✅ monitor เดิม (WAITING) ย้ายไป /queues/monitor/waiting/

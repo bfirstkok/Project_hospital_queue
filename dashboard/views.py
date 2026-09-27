@@ -38,6 +38,46 @@ STATUS_LABELS = {
 }
 
 
+def _dashboard_overview_counts():
+    """Summarize today's patient flow without mixing in historical visits."""
+    today = timezone.localdate()
+    today_visits = Visit.objects.filter(registered_at__date=today)
+    status_counts = dict(
+        Queue.objects
+        .filter(visit__in=today_visits)
+        .values_list("status")
+        .annotate(total=Count("id"))
+    )
+    waiting_assessment = (
+        status_counts.get(Queue.Status.WAITING_VITALS, 0)
+        + status_counts.get(Queue.Status.WAITING_CONFIRMATION, 0)
+    )
+    in_care = status_counts.get(Queue.Status.CALLED, 0)
+    monitoring = sum(
+        status_counts.get(status, 0)
+        for status in (
+            Queue.Status.MONITORING,
+            Queue.Status.OBSERVATION_MONITORING,
+            Queue.Status.REASSESSMENT_REQUIRED,
+        )
+    )
+    return {
+        "today_total": today_visits.count(),
+        "waiting_assessment": waiting_assessment,
+        "waiting_queue": (
+            status_counts.get(Queue.Status.WAITING_QUEUE, 0)
+            + status_counts.get(Queue.Status.WAITING, 0)
+        ),
+        "in_care": in_care,
+        "monitoring": monitoring,
+        "emergency_transfer": status_counts.get(Queue.Status.EMERGENCY_TRANSFER, 0),
+        "completed": (
+            status_counts.get(Queue.Status.OPD_DONE, 0)
+            + status_counts.get(Queue.Status.DISCHARGED, 0)
+        ),
+    }
+
+
 def _severity_detail_groups(visits):
     """Build auditable patient details behind each severity summary card."""
     grouped = {severity: [] for severity in SEVERITY_LEVELS}
@@ -93,6 +133,7 @@ def dashboard_view(request):
     }
 
     context = {
+        "overview": _dashboard_overview_counts(),
         "waiting_total": waiting.count(),
         "called_total": called.count(),
         "severity_totals": severity_totals,
@@ -1009,6 +1050,7 @@ def live_summary_api(request):
     return JsonResponse({
         "ok": True,
         "server_time": timezone.now().isoformat(),
+        "overview": _dashboard_overview_counts(),
         "waiting_total": waiting.count(),
         "called_total": called.count(),
         "severity": {

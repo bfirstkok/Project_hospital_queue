@@ -30,6 +30,8 @@ urlpatterns = [
     path("device/", capability_required(Capability.MANAGE_DEVICE)(device_views.device_management), name="device_management"),
 
     path("api/iot/telemetry/", views.iot_telemetry, name="iot_telemetry"),
+    path("api/iot/commands/next/", views.iot_next_command, name="iot_next_command"),
+    path("api/iot/commands/<int:command_id>/ack/", views.iot_acknowledge_command, name="iot_acknowledge_command"),
     path("api/iot/vitals/", views.iot_vitals, name="iot_vitals"),
     path("api/patient/register/", patient_views.public_register, name="public_patient_register"),
     path("api/patient/login/", patient_views.patient_login, name="public_patient_login"),
