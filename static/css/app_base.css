@@ -1,0 +1,1405 @@
+@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap");
+
+/* Unified Hospital Queue UI */
+:root {
+  color-scheme: dark;
+  --bg: #08111f;
+  --bg-soft: #0d1728;
+  --surface: rgba(16, 27, 45, 0.78);
+  --surface-strong: rgba(18, 31, 51, 0.94);
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --border: rgba(174, 194, 220, 0.14);
+  --border-strong: rgba(174, 194, 220, 0.22);
+  --text: #edf4ff;
+  --muted: #9aa9bd;
+  --faint: #65748a;
+  --teal: #20d6b5;
+  --blue: #4aa3ff;
+  --red: #ff5f72;
+  --pink: #e85d9e;
+  --yellow: #ffc44d;
+  --green: #22d3a6;
+  --white-level: #60717b;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+body *,
+button,
+input,
+select,
+textarea {
+  font-family: "Sarabun", "Noto Sans Thai", Tahoma, sans-serif !important;
+}
+
+html {
+  background: var(--bg);
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% -8%, rgba(32, 214, 181, 0.18), transparent 28rem),
+    radial-gradient(circle at 86% 2%, rgba(74, 163, 255, 0.14), transparent 30rem),
+    linear-gradient(180deg, #08111f 0%, #0b1020 52%, #070b14 100%) !important;
+  color: var(--text) !important;
+  font-family: "Sarabun", "Segoe UI", system-ui, sans-serif !important;
+  font-size: 14px;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 68%);
+}
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+a:hover {
+  color: #72ffe3;
+}
+
+h1, h2, h3, h4, .logo-text, .queue-title, .stat-number, .num {
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.18;
+}
+
+h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+h3 {
+  margin: 28px 0 14px;
+  font-size: 15px;
+  color: #dce7f7;
+}
+
+.shell {
+  background: transparent !important;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  align-items: center !important;
+  min-height: 58px;
+  padding: 12px 24px !important;
+  background: rgba(8, 17, 31, 0.84) !important;
+  border-bottom: 1px solid var(--border) !important;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .18);
+}
+
+.logo-area {
+  min-width: 0;
+  justify-self: start;
+}
+
+.logo-icon, .login-image img {
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 10px 34px rgba(32, 214, 181, .16);
+}
+
+.logo-text {
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.logo-sub, .muted, .queue-meta, .stat-sub, .patient-age, .triage-desc, .label {
+  color: var(--muted) !important;
+}
+
+.nav-pills {
+  justify-self: center;
+  gap: 4px !important;
+  padding: 4px !important;
+  background: rgba(255, 255, 255, .055) !important;
+  border: 1px solid rgba(255, 255, 255, .055);
+}
+
+.topbar > :last-child:not(.nav-pills):not(.logo-area) {
+  justify-self: end;
+}
+
+.nav-pill {
+  color: #b1bfd1 !important;
+  border-radius: 8px !important;
+  min-height: 32px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.nav-pill.active, .nav-pill:hover {
+  color: #07131f !important;
+  background: linear-gradient(135deg, var(--teal), var(--blue)) !important;
+  box-shadow: 0 8px 22px rgba(32, 214, 181, .18);
+}
+
+.content, .main, .wrap, .content-wrapper, .tableWrap {
+  position: relative;
+}
+
+.wrap, .content-wrapper {
+  width: min(1220px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.main, .sidebar, .tableWrap, #cards, .statusbar {
+  animation: pageIn .32s ease both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card, .stat-card, .triage-legend, .queue-table-wrap, table, .login-box {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.035) inset;
+}
+
+.card, .stat-card, .triage-legend {
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.stat-card:hover, .triage-legend:hover, .card:hover {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-strong) !important;
+}
+
+.stat-number, .num {
+  color: #fff !important;
+}
+
+.queue-table-wrap, .card {
+  overflow: hidden;
+}
+
+.card {
+  padding: 16px 20px !important;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead, .queue-table th {
+  background: rgba(255,255,255,.035) !important;
+}
+
+th {
+  color: #8390a3 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+
+td, th {
+  border-color: rgba(174,194,220,.09) !important;
+}
+
+tbody tr {
+  transition: background .16s ease;
+}
+
+tbody tr:hover td {
+  background: var(--surface-hover) !important;
+}
+
+input, select, textarea {
+  width: 100%;
+  border: 1px solid rgba(174,194,220,.16) !important;
+  border-radius: 8px !important;
+  background: rgba(5, 12, 24, .58) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: rgba(32, 214, 181, .65) !important;
+  background: rgba(12, 28, 44, .92) !important;
+  box-shadow: 0 0 0 3px rgba(32, 214, 181, .12) !important;
+}
+
+label {
+  color: #b8c5d6 !important;
+  letter-spacing: .25px;
+}
+
+button, .btn, .add-btn, .action-btn, .filter-chip {
+  border-radius: 8px !important;
+  font-family: "Sarabun", "Segoe UI", system-ui, sans-serif !important;
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease, opacity .16s ease;
+}
+
+button:hover, .btn:hover, .add-btn:hover, .action-btn:hover, .filter-chip:hover {
+  transform: translateY(-1px);
+}
+
+.primary, .add-btn, button[type="submit"], .action-btn.call, .filter-chip.active {
+  background: linear-gradient(135deg, var(--teal), var(--blue)) !important;
+  color: #061522 !important;
+  border: 0 !important;
+  box-shadow: 0 12px 26px rgba(32, 214, 181, .18);
+}
+
+button.red, .btn.red, .action-btn.red {
+  background: rgba(255, 95, 114, .14) !important;
+  color: var(--red) !important;
+  border: 1px solid rgba(255, 95, 114, .25) !important;
+  box-shadow: none !important;
+}
+
+button.yellow, .btn.yellow, .action-btn.yellow {
+  background: rgba(255, 196, 77, .14) !important;
+  color: var(--yellow) !important;
+  border: 1px solid rgba(255, 196, 77, .25) !important;
+  box-shadow: none !important;
+}
+
+button.green, .btn.green, .action-btn.green {
+  background: rgba(34, 211, 166, .14) !important;
+  color: var(--green) !important;
+  border: 1px solid rgba(34, 211, 166, .25) !important;
+  box-shadow: none !important;
+}
+
+.ghost, .dark, .action-btn.triage {
+  background: rgba(255,255,255,.07) !important;
+  color: #d5e1ef !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+
+.red, .sev.red, .triage-badge.red {
+  color: var(--red) !important;
+}
+
+.yellow, .sev.yellow, .triage-badge.yellow {
+  color: var(--yellow) !important;
+}
+
+.green, .sev.green, .triage-badge.green {
+  color: var(--green) !important;
+}
+
+.badge, .sev, .triage-badge, .ai-badge, .pill, .chip {
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.login-box {
+  max-width: 440px !important;
+  padding: 34px !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.login-image {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.login-image img {
+  width: 74px;
+  height: 74px;
+  object-fit: contain;
+  border-radius: 18px;
+}
+
+.alert, .error, .caps-warning {
+  border-radius: 8px !important;
+}
+
+.page-head,
+.hero,
+.statusbar,
+.panel,
+.visit,
+.table-wrap,
+.table-shell,
+.summary-card,
+.result-card,
+.room-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel,
+.modal-head,
+.modal-body,
+.message {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.035) inset;
+}
+
+.page-head,
+.hero {
+  padding: 16px 18px !important;
+  margin-bottom: 16px !important;
+  background:
+    linear-gradient(135deg, rgba(13,25,43,.94), rgba(16,34,55,.72)) !important;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.eyebrow,
+.summary-eyebrow,
+.card-kicker,
+.mini-label,
+.stat-label,
+.result-subtitle,
+.modal-subtitle {
+  color: var(--muted) !important;
+  text-transform: uppercase;
+  letter-spacing: .65px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.brand-mark,
+.title-icon,
+.logo-icon {
+  background: linear-gradient(135deg, var(--teal), var(--blue)) !important;
+  color: #07131f !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 24px rgba(32, 214, 181, .18);
+}
+
+.panel,
+.visit,
+.room-card,
+.summary-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel {
+  padding: 14px 16px !important;
+}
+
+.panel:hover,
+.visit:hover,
+.room-card:hover,
+.summary-card:hover,
+.detail-section:hover,
+.mini:hover,
+.info-card:hover {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-strong) !important;
+}
+
+.table,
+.table-wrap,
+.table-shell,
+.queue-table-wrap {
+  overflow: hidden;
+  border-radius: var(--radius) !important;
+}
+
+.table-wrap,
+.table-shell {
+  overflow-x: auto;
+}
+
+.table,
+.queue-table {
+  background: transparent !important;
+}
+
+.summary-grid,
+.overview,
+.stats-grid,
+.cards,
+.form-grid,
+.info-grid,
+.detail-grid,
+.vitals-grid,
+.grid {
+  gap: 14px !important;
+}
+
+.summary-item,
+.info-row,
+.vital,
+.mini-chip,
+.room-link,
+.check-item,
+.checks label,
+.control,
+.note,
+.kv,
+.filter-chip,
+.status,
+.pill {
+  background: rgba(255,255,255,.045) !important;
+  border: 1px solid rgba(174,194,220,.12) !important;
+  border-radius: 8px !important;
+}
+
+.info-row,
+.summary-item,
+.check-item,
+.checks label,
+.note {
+  padding: 10px 12px !important;
+}
+
+.control input {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.unit,
+.muted,
+.subtitle,
+.desc,
+.empty,
+.reason,
+.note b,
+.info-row dt {
+  color: var(--muted) !important;
+}
+
+.empty {
+  text-align: center;
+  padding: 34px 16px !important;
+}
+
+.messages {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.message.success {
+  color: #86efac !important;
+  border-color: rgba(34,197,94,.32) !important;
+  background: rgba(34,197,94,.12) !important;
+}
+
+.message.error,
+.error {
+  color: #fecaca !important;
+  border-color: rgba(239,68,68,.34) !important;
+  background: rgba(239,68,68,.12) !important;
+}
+
+.btn.danger,
+.action-btn.delete,
+button.danger {
+  color: #fecaca !important;
+  background: rgba(239,68,68,.17) !important;
+  border: 1px solid rgba(239,68,68,.35) !important;
+  box-shadow: none !important;
+}
+
+.btn.warn,
+button.warn {
+  color: #fde68a !important;
+  background: rgba(245,158,11,.16) !important;
+  border: 1px solid rgba(245,158,11,.34) !important;
+  box-shadow: none !important;
+}
+
+dialog,
+.patient-modal {
+  background: #0b1628 !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 24px 90px rgba(0,0,0,.52) !important;
+}
+
+dialog::backdrop,
+.patient-modal::backdrop {
+  background: rgba(2,8,20,.72) !important;
+  backdrop-filter: blur(3px);
+}
+
+pre {
+  background: rgba(3, 8, 18, .72) !important;
+  border: 1px solid rgba(174,194,220,.12);
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    position: relative;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px !important;
+  }
+
+  .nav-pills {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .content {
+    display: block !important;
+  }
+
+  .sidebar, .main, .tableWrap, #cards, .statusbar {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .queue-table-wrap, table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Hospital light theme ---------------------------------------------------
+   Calm, high-contrast surfaces intended for long clinical work sessions. */
+:root {
+  color-scheme: light;
+  --bg: #f3f7f8;
+  --bg-soft: #edf3f5;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-hover: #eef6f7;
+  --border: #cad9de;
+  --border-strong: #adc4cc;
+  --text: #183044;
+  --muted: #536b77;
+  --faint: #657b86;
+  --teal: #087f75;
+  --blue: #176b9c;
+  --red: #c83737;
+  --yellow: #9a6500;
+  --green: #18794e;
+  --shadow: 0 14px 38px rgba(32, 70, 86, .08);
+  --radius: 14px;
+}
+
+html,
+body,
+.shell {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+body::before {
+  background: none !important;
+  mask-image: none;
+}
+
+a { color: var(--teal); }
+a:hover { color: #075f59; }
+
+h1, h2, h3, h4,
+.logo-text,
+.queue-title,
+.patient-name,
+.stat-number,
+.num {
+  color: var(--text) !important;
+}
+
+h1 { font-weight: 700; }
+h2, h3, h4 { font-weight: 650; }
+
+.topbar {
+  min-height: 68px;
+  padding: 12px clamp(16px, 3vw, 36px) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: 0 4px 20px rgba(35, 73, 88, .06) !important;
+  backdrop-filter: blur(14px);
+}
+
+.logo-icon,
+.brand-mark,
+.title-icon {
+  background: #e4f4f2 !important;
+  color: var(--teal) !important;
+  border: 1px solid #c8e7e3 !important;
+  box-shadow: none !important;
+}
+
+.logo-text { font-size: 16px !important; }
+.logo-sub { color: var(--muted) !important; }
+
+.nav-pills {
+  padding: 5px !important;
+  background: #f7f9fa !important;
+  border: 1px solid #e0eaed !important;
+}
+
+.nav-pill {
+  min-height: 36px;
+  color: #536b77 !important;
+  font-weight: 600 !important;
+}
+
+.nav-pill.active,
+.nav-pill:hover {
+  color: #ffffff !important;
+  background: var(--teal) !important;
+  box-shadow: 0 5px 14px rgba(8, 127, 117, .18) !important;
+}
+
+.wrap,
+.content-wrapper {
+  width: min(1240px, calc(100vw - 40px));
+  padding: 30px 0 44px;
+}
+
+.page-head,
+.hero {
+  padding: 22px 24px !important;
+  margin-bottom: 20px !important;
+  background: #ffffff !important;
+  border-color: #d7e8e7 !important;
+}
+
+.card,
+.stat-card,
+.triage-legend,
+.queue-table-wrap,
+.tableWrap,
+table,
+.login-box,
+.page-head,
+.hero,
+.statusbar,
+.panel,
+.visit,
+.table-wrap,
+.table-shell,
+.summary-card,
+.result-card,
+.room-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel,
+.modal-head,
+.modal-body,
+.message {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+.card,
+.panel,
+.visit,
+.room-card,
+.summary-card,
+.detail-section,
+.mini,
+.info-card,
+.result-panel,
+.reason-panel {
+  padding: 18px 20px !important;
+}
+
+.stat-card:hover,
+.triage-legend:hover,
+.card:hover,
+.panel:hover,
+.visit:hover,
+.room-card:hover,
+.summary-card:hover,
+.detail-section:hover,
+.mini:hover,
+.info-card:hover {
+  background: #ffffff !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.eyebrow,
+.summary-eyebrow,
+.card-kicker,
+.mini-label,
+.stat-label,
+.result-subtitle,
+.modal-subtitle,
+.muted,
+.queue-meta,
+.stat-sub,
+.patient-age,
+.triage-desc,
+.label,
+.unit,
+.subtitle,
+.desc,
+.empty,
+.reason,
+.note b,
+.info-row dt {
+  color: var(--muted) !important;
+}
+
+table { border-collapse: separate; border-spacing: 0; }
+
+thead,
+.queue-table th {
+  background: #eef5f7 !important;
+}
+
+th {
+  color: #506b78 !important;
+  font-size: 12px !important;
+  letter-spacing: .45px;
+}
+
+td,
+th {
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+  border-color: #e5edef !important;
+}
+
+tbody tr:hover td { background: #f5fafb !important; }
+
+input,
+select,
+textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid #cddce1 !important;
+  box-shadow: 0 1px 2px rgba(31, 61, 73, .035) !important;
+}
+
+textarea { min-height: 94px; }
+
+input::placeholder,
+textarea::placeholder { color: #687d87 !important; }
+
+input:focus,
+select:focus,
+textarea:focus {
+  background: #ffffff !important;
+  border-color: var(--teal) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 117, .12) !important;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+input[readonly] {
+  background: #f1f5f6 !important;
+  color: #617681 !important;
+}
+
+label { color: #334f5d !important; font-weight: 600 !important; }
+
+.primary,
+.add-btn,
+button[type="submit"],
+.action-btn.call,
+.filter-chip.active {
+  background: var(--teal) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--teal) !important;
+  box-shadow: 0 7px 16px rgba(8, 127, 117, .16) !important;
+}
+
+.primary:hover,
+.add-btn:hover,
+button[type="submit"]:hover,
+.action-btn.call:hover { background: #076d65 !important; }
+
+.ghost,
+.dark,
+.action-btn.triage {
+  background: #ffffff !important;
+  color: #405d6b !important;
+  border: 1px solid #cddce1 !important;
+}
+
+.red,
+.sev.red,
+.triage-badge.red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border-color: #f4c3c3 !important;
+}
+
+.yellow,
+.sev.yellow,
+.triage-badge.yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border-color: #efd99c !important;
+}
+
+.green,
+.sev.green,
+.triage-badge.green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border-color: #bfe3ce !important;
+}
+
+button.red,
+.btn.red,
+.action-btn.red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border: 1px solid #f1bcbc !important;
+}
+
+button.yellow,
+.btn.yellow,
+.action-btn.yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border: 1px solid #ead493 !important;
+}
+
+button.green,
+.btn.green,
+.action-btn.green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border: 1px solid #b9dfc9 !important;
+}
+
+.summary-item,
+.info-row,
+.vital,
+.mini-chip,
+.room-link,
+.check-item,
+.checks label,
+.control,
+.note,
+.kv,
+.filter-chip,
+.status,
+.pill {
+  background: #f5f9fa !important;
+  color: var(--text) !important;
+  border-color: #dbe7ea !important;
+}
+
+.login-box {
+  max-width: 460px !important;
+  padding: 36px !important;
+  box-shadow: 0 18px 55px rgba(38, 75, 89, .12) !important;
+}
+
+.login-image img {
+  background: #eef7f6;
+  border: 1px solid #d5e9e6;
+  box-shadow: none;
+}
+
+.message.success {
+  color: #176b45 !important;
+  border-color: #b8dfc7 !important;
+  background: #eaf8f0 !important;
+}
+
+.message.error,
+.error {
+  color: #a62929 !important;
+  border-color: #efc0c0 !important;
+  background: #fff0f0 !important;
+}
+
+.btn.danger,
+.action-btn.delete,
+button.danger {
+  color: #a62929 !important;
+  background: #fff0f0 !important;
+  border-color: #efc0c0 !important;
+}
+
+.btn.warn,
+button.warn {
+  color: #855700 !important;
+  background: #fff7df !important;
+  border-color: #e8d18b !important;
+}
+
+dialog,
+.patient-modal {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 24px 70px rgba(28, 56, 68, .22) !important;
+}
+
+dialog::backdrop,
+.patient-modal::backdrop {
+  background: rgba(24, 48, 68, .34) !important;
+}
+
+pre {
+  background: #f2f6f7 !important;
+  color: #294b5a !important;
+  border-color: #d8e4e8 !important;
+}
+
+@media (max-width: 860px) {
+  .wrap,
+  .content-wrapper { width: min(100% - 24px, 1240px); }
+
+  .topbar { padding: 12px !important; }
+
+  .page-head,
+  .hero { padding: 18px !important; }
+}
+
+/* Page-specific surfaces used by older templates. Keeping these here makes
+   every workflow use the same white clinical canvas. */
+.header,
+.sidebar,
+.section,
+.legend,
+.table-container,
+.hero-card,
+.card-head,
+.result-head,
+.combo-list,
+.modal-content,
+#cards {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+#cards { box-shadow: none !important; }
+
+.btn:not(.primary):not(.red):not(.pink):not(.yellow):not(.green):not(.white):not(.danger):not(.warn):not(.ai-confirm),
+.room-link,
+.room-btn,
+.btn-link,
+.btn-back,
+.detail-open,
+.draft {
+  background: #ffffff !important;
+  color: #365765 !important;
+  border: 1px solid #cddce1 !important;
+  box-shadow: none !important;
+}
+
+.btn:not(.primary):not(.red):not(.pink):not(.yellow):not(.green):not(.white):not(.danger):not(.warn):not(.ai-confirm):hover,
+.room-link:hover,
+.room-btn:hover,
+.btn-link:hover,
+.btn-back:hover,
+.detail-open:hover {
+  background: #f4f8f9 !important;
+  color: var(--teal) !important;
+  border-color: #aac7c6 !important;
+}
+
+.room-btn.active,
+.room-current,
+.sync-status,
+.online,
+.onlineTag.online,
+.pill.on {
+  background: #eaf8f0 !important;
+  color: var(--green) !important;
+  border-color: #b9dfc9 !important;
+}
+
+.offline,
+.onlineTag.offline,
+.pill.off {
+  background: #fff0f0 !important;
+  color: var(--red) !important;
+  border-color: #efc0c0 !important;
+}
+
+.status,
+.badge.yellow,
+.severity.yellow,
+.severity-chip.yellow,
+.YELLOW {
+  background: #fff7df !important;
+  color: var(--yellow) !important;
+  border-color: #e8d18b !important;
+}
+
+.severity.red,
+.severity-chip.red,
+.RED,
+.LOW_O2,
+.LOW_BP,
+.HIGH_RR,
+.MISSED,
+.CANCELLED {
+  background: #fff0f0 !important;
+  color: var(--red) !important;
+  border-color: #efc0c0 !important;
+}
+
+.severity.pink,
+.severity-chip.pink,
+.PINK {
+  background: #fff0f6 !important;
+  color: var(--pink) !important;
+  border-color: #efb7cf !important;
+}
+
+.severity.green,
+.severity-chip.green,
+.GREEN,
+.ATTENDED {
+  background: #eaf8f0 !important;
+  color: var(--green) !important;
+  border-color: #b9dfc9 !important;
+}
+
+.NORMAL,
+.SCHEDULED,
+.ai,
+.visit-badge,
+.queue-chip {
+  background: #edf6fb !important;
+  color: var(--blue) !important;
+  border-color: #c7dfea !important;
+}
+
+.combo-option { color: var(--text) !important; }
+.combo-option:hover,
+.combo-option.active { background: #edf6fb !important; }
+
+.result-head,
+.card-head,
+.modal-head,
+.detail-table th { background: #f5f9fa !important; }
+
+.confidence-track { background: #e4ecef !important; }
+
+body,
+.shell {
+  background-color: var(--bg) !important;
+}
+
+.content,
+.main,
+.wrap,
+.content-wrapper {
+  background-color: transparent !important;
+}
+
+/* Readable typography for the monitoring and management dashboards. */
+.dashboard-page,
+.monitor-page,
+.dashboard-page .shell,
+.monitor-page .shell {
+  color: var(--text) !important;
+}
+
+.dashboard-page .val,
+.dashboard-page .table-title,
+.dashboard-page td,
+.dashboard-page .chip,
+.monitor-page td,
+.monitor-page .kv,
+.monitor-page #status,
+.monitor-page .mono {
+  color: var(--text) !important;
+}
+
+.dashboard-page .label,
+.dashboard-page .muted,
+.dashboard-page .logo-sub,
+.monitor-page .muted,
+.monitor-page .logo-sub,
+.monitor-page .stat-label {
+  color: var(--muted) !important;
+}
+
+.dashboard-page .pill,
+.monitor-page .pill {
+  color: #405d6b !important;
+}
+
+.dashboard-page th,
+.monitor-page th {
+  color: #506b78 !important;
+}
+
+.dashboard-page .action-btn-blue {
+  color: var(--blue) !important;
+  background: #edf6fb !important;
+  border: 1px solid #c7dfea !important;
+}
+
+.dashboard-page .action-btn-red {
+  color: var(--red) !important;
+  background: #fff0f0 !important;
+  border: 1px solid #efc0c0 !important;
+}
+
+.dashboard-page .action-btn-yellow {
+  color: var(--yellow) !important;
+  background: #fff7df !important;
+  border: 1px solid #e8d18b !important;
+}
+
+.dashboard-page .action-btn-green {
+  color: var(--green) !important;
+  background: #eaf8f0 !important;
+  border: 1px solid #b9dfc9 !important;
+}
+
+.monitor-page [style*="background:rgba(255,255,255,.04)"] {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 18px rgba(38, 75, 89, .055) !important;
+}
+
+/* Device management pages: readable labels and values on white surfaces. */
+.device-page,
+.device-page td,
+.device-page .device-id,
+.device-page .pair-text,
+.device-page .combo-option {
+  color: var(--text) !important;
+}
+
+.device-page .muted,
+.device-page .empty,
+.device-page .combo-option.empty {
+  color: var(--muted) !important;
+}
+
+.device-page th {
+  color: #506b78 !important;
+  background: #eef5f7 !important;
+}
+
+.device-page label {
+  color: #334f5d !important;
+}
+
+.device-page select option {
+  background: #ffffff !important;
+  color: var(--text) !important;
+}
+
+.device-page .errors {
+  color: #a62929 !important;
+}
+
+/* Legacy templates originally used white text on a dark background. These
+   aliases keep their typography readable after the shared light theme loads. */
+.brand-title,
+.section-title,
+.modal-title,
+.summary-value,
+.table-title,
+.visit-title,
+.detail-value,
+.vital-value,
+.stat-value,
+.mini-value,
+.card-title,
+.room-name,
+.patient-name,
+.queue-title,
+.stat-number,
+.val,
+.num,
+.info-row dd {
+  color: var(--text) !important;
+}
+
+.brand-sub,
+.hint,
+.link,
+.back,
+.patient-meta,
+.summary-label,
+.summary-note,
+.legend-desc,
+.time-text,
+.empty-state,
+#serverTime {
+  color: var(--muted) !important;
+}
+
+.red-alert {
+  color: var(--red) !important;
+}
+
+.link:hover,
+.back:hover {
+  color: var(--teal) !important;
+}
+
+/* White cards need a visible edge against the clinical canvas. */
+.card,
+.panel,
+.visit,
+.stat-card,
+.triage-legend,
+.queue-table-wrap,
+.table-wrap,
+.table-shell,
+.room-card,
+.summary-card,
+.detail-section,
+.info-card,
+.result-card {
+  border-color: var(--border) !important;
+  box-shadow: 0 5px 20px rgba(31, 65, 78, .075) !important;
+}
+
+/* Waiting confirmation: override the remaining dark-template text colors. */
+.waiting-confirmation-page .visit-meta,
+.waiting-confirmation-page .reason,
+.waiting-confirmation-page .modal-subtitle,
+.waiting-confirmation-page .info-row dt,
+.waiting-confirmation-page .empty {
+  color: var(--muted) !important;
+}
+
+.waiting-confirmation-page td,
+.waiting-confirmation-page .info-row dd,
+.waiting-confirmation-page .vital-value {
+  color: var(--text) !important;
+}
+
+.waiting-confirmation-page .detail-section h3,
+.waiting-confirmation-page .queue-chip,
+.waiting-confirmation-page .detail-open,
+.waiting-confirmation-page .btn.back {
+  color: var(--blue) !important;
+}
+
+/* Nurse and doctor room selectors. */
+.exam-room-select-page .patient,
+.exam-room-select-page .room-label,
+.opd-room-select-page .hint,
+.opd-room-select-page .room-label {
+  color: var(--muted) !important;
+}
+
+.exam-room-select-page .room-btn,
+.opd-room-select-page .room-btn {
+  background: #edf8f6 !important;
+  color: #075f59 !important;
+  border-color: #b6dcd7 !important;
+  box-shadow: 0 4px 14px rgba(20, 91, 86, .07) !important;
+}
+
+.exam-room-select-page .room-btn:hover,
+.opd-room-select-page .room-btn:hover,
+.opd-room-select-page .room-btn.active {
+  background: #dff2ef !important;
+  color: #064f4a !important;
+  border-color: #72b8af !important;
+}
+
+/* OPD examination room table and live status. */
+.opd-room-page td,
+.opd-room-page .mini-chip {
+  color: var(--text) !important;
+}
+
+.opd-room-page .stat-label,
+.opd-room-page .patient-meta,
+.opd-room-page .legend-desc,
+.opd-room-page .reason,
+.opd-room-page .empty-state {
+  color: var(--muted) !important;
+}
+
+.opd-room-page #redCount { color: var(--red) !important; }
+.opd-room-page #yellowCount { color: var(--yellow) !important; }
+.opd-room-page #greenCount { color: var(--green) !important; }
+
+
+/* ===== ปุ่มสีฟ้า: ใช้กับ action ที่ยกเลิก/ถอดออกได้ ไม่ใช่ลบถาวร (เช่น unpair) ===== */
+button.blue, .btn.blue, .action-btn.blue {
+  color: #176b9c !important;
+  background: #eaf4fb !important;
+  border: 1px solid #b9d9ec !important;
+  box-shadow: none !important;
+}
+
+.severity.white,
+.severity-chip.white,
+.WHITE {
+  background: #f7fafb !important;
+  color: var(--white-level) !important;
+  border-color: #cfdadd !important;
+}
