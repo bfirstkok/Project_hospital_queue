@@ -179,6 +179,8 @@
     .waiting-vitals-page .table td:last-child { padding-right: 20px; }
     .waiting-vitals-page .table td:nth-child(2) { font-size: 15px; font-weight: 400; }
     .queue-badge { display: inline-flex; min-width: 68px; min-height: 38px; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid #bcdbe7; border-radius: 11px; color: #126f99; background: linear-gradient(180deg,#f3fbfe,#eaf6fb); box-shadow: 0 2px 7px rgba(25,119,164,.08); font-size: 14px; font-weight: 900; }
+    .queue-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+    .queue-service-date { color: #718792; font-size: 11px; font-weight: 700; white-space: nowrap; }
     .patient-summary { display: flex; align-items: center; gap: 12px; }
     .patient-identity { min-width: 0; }
     .patient-name-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -310,7 +312,12 @@
         {% for q in q_items %}
           {% with v=q.visit vs=q.visit.vitals p=q.visit.patient %}
           <tr>
-            <td><span class="queue-badge">{{ q.display_number }}</span></td>
+            <td>
+              <div class="queue-cell">
+                <span class="queue-badge">{{ q.display_number }}</span>
+                <small class="queue-service-date">รอบวันที่ {{ q.service_date|date:"d/m/Y" }}</small>
+              </div>
+            </td>
             <td>
               <div class="patient-summary">
                 <span class="patient-avatar">{{ p.first_name|default:"?"|slice:":1" }}</span>

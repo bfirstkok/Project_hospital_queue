@@ -1010,6 +1010,39 @@ class QueueWorkflowTests(TestCase):
         self.assertContains(response, "ยังไม่มีข้อมูลวันเดือนปีเกิด")
         self.assertContains(response, reverse("update_patient_birth_date", args=[patient.id]))
 
+    def test_waiting_vitals_disambiguates_same_number_from_different_service_days(self):
+        today = timezone.localdate()
+        current_tz = timezone.get_current_timezone()
+        service_dates = [today - timedelta(days=1), today]
+        queues = []
+        for index, service_date in enumerate(service_dates):
+            patient = Patient.objects.create(
+                first_name="คิวรายวัน",
+                last_name=f"{index}",
+                national_id=f"710000000000{index}",
+            )
+            visit = Visit.objects.create(patient=patient)
+            queue = Queue.objects.create(visit=visit, status=Queue.Status.WAITING_VITALS)
+            created_at = timezone.make_aware(
+                datetime.combine(service_date, time(12, 0)),
+                current_tz,
+            )
+            Queue.objects.filter(pk=queue.pk).update(created_at=created_at)
+            queue.created_at = created_at
+            queues.append(queue)
+
+        self.assertEqual([queue.display_number for queue in queues], ["Q001", "Q001"])
+        self.assertNotEqual(queues[0].service_date, queues[1].service_date)
+
+        response = self.client.get(reverse("waiting_vitals"))
+
+        self.assertEqual(response.status_code, 200)
+        for queue in queues:
+            self.assertContains(
+                response,
+                f"รอบวันที่ {queue.service_date.strftime('%d/%m/%Y')}",
+            )
+
     def test_waiting_vitals_hides_registration_shortcut_without_permission(self):
         assistant = get_user_model().objects.create_user(
             username="vitals-only-assistant",

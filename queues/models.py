@@ -95,17 +95,26 @@ class Queue(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
-    def display_sequence(self):
-        """Return the sequence for the service day, which starts at 06:00."""
+    def service_date(self):
+        """Return the queue's service date, which rolls over at 06:00."""
         if not self.created_at:
-            return 1
+            return None
 
         current_tz = timezone.get_current_timezone()
         created_local = timezone.localtime(self.created_at, current_tz)
         service_date = created_local.date()
         if created_local.time() < time(hour=6):
             service_date -= timedelta(days=1)
+        return service_date
 
+    @property
+    def display_sequence(self):
+        """Return the sequence for the service day, which starts at 06:00."""
+        service_date = self.service_date
+        if service_date is None:
+            return 1
+
+        current_tz = timezone.get_current_timezone()
         service_day_start = timezone.make_aware(
             datetime.combine(service_date, time(hour=6)),
             current_tz,
