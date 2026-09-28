@@ -8,6 +8,11 @@ from accounts.access import Capability, capability_required
 from system_test import views as system_test_views
 
 urlpatterns = [
+    path(
+        "admin/database-tables/",
+        admin.site.admin_view(system_test_views.admin_database_tables),
+        name="admin_database_tables",
+    ),
     path("admin/", admin.site.urls),
 
     # 1. หน้าแรกสุดคือ Login
@@ -25,6 +30,7 @@ urlpatterns = [
     path("opd/", include("opd.urls")),
     path("test/", include("system_test.urls")),
     path("database/", system_test_views.database_index, name="database_index"),
+    path("database/raw/<str:table_name>/", system_test_views.database_raw_table, name="database_raw_table_root"),
     path("database/<str:app_label>/<str:model_name>/<path:object_id>/edit/", system_test_views.database_record_edit, name="database_record_edit_root"),
     path("database/<str:app_label>/<str:model_name>/", system_test_views.database_table, name="database_table_root"),
     path("device/", capability_required(Capability.MANAGE_DEVICE)(device_views.device_management), name="device_management"),

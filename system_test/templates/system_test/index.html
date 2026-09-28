@@ -316,7 +316,7 @@
     <div class="section-title"><div><h2>Data & access</h2><p>ตรวจฐานข้อมูลและสิทธิ์โดยไม่ทำให้หน้าหลักรกเกินไป</p></div></div>
     <div class="grid">
       <div class="panel">
-        <div class="panel-head"><div><h3>ตารางที่ใช้บ่อย</h3><p>{{ system_summary.tables }} models · {{ system_summary.rows }} rows ที่เปิดผ่าน explorer</p></div><a class="btn secondary small" href="{% url 'database_index' %}">เปิดทุกตาราง</a></div>
+        <div class="panel-head"><div><h3>ตารางที่ใช้บ่อย</h3><p>{{ system_summary.tables }} ตารางจริง · {{ system_summary.rows }} ระเบียนรวมในฐานข้อมูล</p></div><a class="btn secondary small" href="{% url 'database_index' %}">เปิดทุกตาราง</a></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>ตาราง</th><th>แถว</th><th></th></tr></thead><tbody>{% for item in quick_tables %}<tr><td><b>{{ item.label }}</b><div class="muted mono">{{ item.db_table }}</div></td><td>{{ item.count }}</td><td><a class="btn secondary small" href="{% url 'system_test:database_table' item.app_label item.model_name %}">เปิด</a></td></tr>{% empty %}<tr><td colspan="3">ไม่พบตาราง</td></tr>{% endfor %}</tbody></table></div>
       </div>
       <div class="panel">

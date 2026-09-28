@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -266,6 +267,34 @@ class SystemTestConsoleTests(TestCase):
         response = self.client.get(reverse("database_index"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "จัดการฐานข้อมูล")
+
+    def test_database_explorer_lists_every_physical_table(self):
+        response = self.client.get(reverse("database_index"))
+        self.assertEqual(response.status_code, 200)
+        with connection.cursor() as cursor:
+            physical_tables = set(connection.introspection.table_names(cursor))
+        listed_tables = {item["db_table"] for item in response.context["models"]}
+        self.assertSetEqual(listed_tables, physical_tables)
+        self.assertEqual(response.context["table_count"], len(physical_tables))
+
+    def test_database_internal_table_is_read_only_and_linked_from_admin(self):
+        raw_response = self.client.get(
+            reverse("database_raw_table_root", args=["django_migrations"])
+        )
+        self.assertEqual(raw_response.status_code, 200)
+        self.assertContains(raw_response, "django_migrations")
+        self.assertContains(raw_response, "อ่านอย่างเดียว")
+
+        admin_response = self.client.get(reverse("admin_database_tables"))
+        self.assertEqual(admin_response.status_code, 200)
+        self.assertContains(admin_response, "ตารางฐานข้อมูลทั้งหมด")
+        self.assertContains(admin_response, "django_migrations")
+        index_response = self.client.get(reverse("admin:index"))
+        self.assertEqual(index_response.status_code, 200)
+        self.assertContains(index_response, reverse("admin_database_tables"))
+        with connection.cursor() as cursor:
+            physical_tables = set(connection.introspection.table_names(cursor))
+        self.assertEqual(admin_response.context["table_count"], len(physical_tables))
 
     def test_database_table_can_search_and_edit_allowed_patient_fields(self):
         patient = Patient.objects.create(

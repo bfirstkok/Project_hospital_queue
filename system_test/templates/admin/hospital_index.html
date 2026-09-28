@@ -1,0 +1,10 @@
+{% extends "admin/index.html" %}
+{% block content %}
+<div class="module" style="margin-bottom:18px">
+  <table>
+    <caption><a href="{% url 'admin_database_tables' %}" class="section">ฐานข้อมูล</a></caption>
+    <tbody><tr><th scope="row"><a href="{% url 'admin_database_tables' %}">ดูรายชื่อตารางจริงทั้งหมด</a></th><td>รวมตารางระบบและตารางเชื่อมความสัมพันธ์</td></tr></tbody>
+  </table>
+</div>
+{{ block.super }}
+{% endblock %}

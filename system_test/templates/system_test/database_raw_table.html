@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ db_table }} · ฐานข้อมูล</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#eef5f6;color:#173242;font-family:"Sarabun",Tahoma,sans-serif}
+    main{width:min(1400px,calc(100% - 32px));margin:24px auto 56px}.panel{overflow:hidden;border:1px solid #d5e4e7;border-radius:16px;background:#fff}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 24px;border-bottom:1px solid #e2ecee}
+    h1{margin:0 0 6px;font-size:25px}.muted{color:#718792}.mono{font:13px Consolas,monospace}
+    a{color:#087f75;font-weight:700;text-decoration:none}.content{padding:20px 24px}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #cfe3e5;border-radius:10px;background:#f5fafb;color:#49636d}
+    .table-wrap{overflow:auto;border:1px solid #d5e4e7;border-radius:10px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:10px 12px;border-bottom:1px solid #e2ecee;text-align:left;vertical-align:top}th{background:#f2f8f9;color:#49636d;font-size:13px}td{font-size:13px}
+    .pager{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:15px}.btn{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border:1px solid #bfd3d7;border-radius:8px}
+    @media(max-width:620px){header,.pager{flex-direction:column;align-items:flex-start}.content{padding:14px}}
+  </style>
+</head>
+<body>
+  {% include "includes/main_nav.html" %}
+  <main>
+    <section class="panel">
+      <header>
+        <div><h1>ดูตารางแบบอ่านอย่างเดียว</h1><div class="muted mono">{{ db_table }} · {{ total }} ระเบียน · หน้า {{ page }} / {{ last_page }}</div></div>
+        <a class="btn" href="{% url 'database_index' %}">กลับรายการตาราง</a>
+      </header>
+      <div class="content">
+        <p class="notice">ตารางนี้ไม่มี Django Model ที่เปิดแก้ไขได้ จึงแสดงข้อมูลแบบอ่านอย่างเดียว และปิดบังค่าที่เป็นข้อมูลลับโดยอัตโนมัติ</p>
+        <div class="table-wrap"><table>
+          <thead><tr>{% for column in columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in rows %}<tr>{% for value in row %}<td>{{ value }}</td>{% endfor %}</tr>
+            {% empty %}<tr><td colspan="{{ columns|length|default:1 }}">ไม่มีระเบียนในหน้านี้</td></tr>{% endfor %}
+          </tbody>
+        </table></div>
+        <nav class="pager" aria-label="เปลี่ยนหน้า">
+          <span class="muted">แสดงหน้าละ 25 รายการ</span>
+          <div>{% if previous_page %}<a class="btn" href="?page={{ previous_page }}">ก่อนหน้า</a>{% endif %} {% if next_page %}<a class="btn" href="?page={{ next_page }}">ถัดไป</a>{% endif %}</div>
+        </nav>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

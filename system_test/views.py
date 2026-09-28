@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib import admin
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -42,7 +43,7 @@ from .models import TestScenarioRun
 
 
 VISIBLE_APPS = {"accounts", "admin", "auth", "dashboard", "opd", "patients", "queues", "sessions", "system_test"}
-SENSITIVE_PARTS = ("password", "secret", "token", "api_key", "pin_hash", "code_hash")
+SENSITIVE_PARTS = ("password", "secret", "token", "api_key", "pin_hash", "code_hash", "session")
 
 
 def _allowed_model(app_label, model_name):
@@ -102,6 +103,142 @@ def _safe_value(field_name, value):
     if isinstance(value, (dict, list)):
         return json.dumps(value, ensure_ascii=False)
     return str(value)
+
+
+def _physical_table_names():
+    """Return real database tables, including Django's internal/join tables."""
+    with connection.cursor() as cursor:
+        return sorted(connection.introspection.table_names(cursor))
+
+
+def _physical_table_row_count(table_name):
+    # table_name always comes from database introspection; quote it as an
+    # identifier because SQL parameters cannot be used for table names.
+    quoted_table = connection.ops.quote_name(table_name)
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT COUNT(*) FROM {quoted_table}")
+        return cursor.fetchone()[0]
+
+
+def _database_table_catalog():
+    """Describe every physical table, even if it has no editable Django model."""
+    physical_tables = _physical_table_names()
+    visible_models = {item["db_table"]: item for item in _model_catalog()}
+    registered_models = {}
+    for model in apps.get_models(include_auto_created=True):
+        if model._meta.proxy or model._meta.db_table not in physical_tables:
+            continue
+        registered_models.setdefault(model._meta.db_table, model)
+
+    catalog = []
+    for table_name in physical_tables:
+        visible_model = visible_models.get(table_name)
+        model = registered_models.get(table_name)
+        if visible_model:
+            app_label = visible_model["app_label"]
+            model_name = visible_model["model_name"]
+            label = visible_model["label"]
+            model_url = reverse("database_table_root", args=[app_label, model_name])
+        else:
+            app_label = model._meta.app_label if model else "database"
+            model_name = model._meta.model_name if model else ""
+            label = model._meta.verbose_name_plural if model else "ตารางภายในฐานข้อมูล"
+            model_url = ""
+
+        if visible_model:
+            row_count = visible_model["count"]
+        else:
+            try:
+                row_count = _physical_table_row_count(table_name)
+            except Exception:
+                # Keep the table visible even if its row count cannot be read.
+                row_count = None
+
+        admin_url = ""
+        if model:
+            try:
+                admin_url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_changelist")
+            except NoReverseMatch:
+                pass
+
+        catalog.append({
+            "app_label": app_label,
+            "model_name": model_name,
+            "label": label,
+            "db_table": table_name,
+            "count": row_count,
+            "admin_url": admin_url,
+            "model_url": model_url,
+            "raw_url": reverse("database_raw_table_root", args=[table_name]),
+            "has_django_model": model is not None,
+        })
+    return sorted(catalog, key=lambda row: (row["app_label"], row["db_table"]))
+
+
+@superuser_required
+@require_GET
+def admin_database_tables(request):
+    """Read-only inventory of every physical table, linked from Django Admin."""
+    catalog = _database_table_catalog()
+    return render(request, "admin/database_tables.html", {
+        "table_rows": catalog,
+        "table_count": len(catalog),
+        "row_count": sum(item["count"] or 0 for item in catalog),
+        **admin.site.each_context(request),
+    })
+
+
+@superuser_required
+@require_GET
+def database_raw_table(request, table_name):
+    """Show read-only schema and a paginated sample for tables without an explorer model."""
+    if table_name not in _physical_table_names():
+        raise Http404("ไม่พบตาราง")
+
+    quoted_table = connection.ops.quote_name(table_name)
+    with connection.cursor() as cursor:
+        description = connection.introspection.get_table_description(cursor, table_name)
+        columns = [column.name for column in description]
+        constraints = connection.introspection.get_constraints(cursor, table_name)
+        primary_key = next(
+            (details.get("columns", []) for details in constraints.values() if details.get("primary_key")),
+            [],
+        )
+        cursor.execute(f"SELECT COUNT(*) FROM {quoted_table}")
+        total = cursor.fetchone()[0]
+
+    page_size = 25
+    try:
+        page_number = max(1, int(request.GET.get("page", 1)))
+    except (TypeError, ValueError):
+        page_number = 1
+    last_page = max(1, (total + page_size - 1) // page_size)
+    page_number = min(page_number, last_page)
+    offset = (page_number - 1) * page_size
+    quoted_columns = ", ".join(connection.ops.quote_name(column) for column in columns) or "*"
+    ordering = ""
+    if primary_key:
+        ordering = " ORDER BY " + ", ".join(connection.ops.quote_name(column) for column in primary_key)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"SELECT {quoted_columns} FROM {quoted_table}{ordering} LIMIT %s OFFSET %s",
+            [page_size, offset],
+        )
+        rows = [
+            [_safe_value(column, value) for column, value in zip(columns, values)]
+            for values in cursor.fetchall()
+        ]
+
+    return render(request, "system_test/database_raw_table.html", {
+        "db_table": table_name,
+        "columns": columns,
+        "rows": rows,
+        "total": total,
+        "page": page_number,
+        "last_page": last_page,
+        "previous_page": page_number - 1 if page_number > 1 else None,
+        "next_page": page_number + 1 if page_number < last_page else None,
+    })
 
 
 @superuser_required
@@ -168,7 +305,7 @@ def index(request):
         Queue.Status.OBSERVATION_MONITORING,
         Queue.Status.REASSESSMENT_REQUIRED,
     ]
-    catalog = _model_catalog()
+    catalog = _database_table_catalog()
 
     # Live staff presence is based on actual attendance plus recent authenticated
     # requests. StaffActivityMiddleware refreshes StaffDuty.last_seen_at while a
@@ -254,7 +391,7 @@ def index(request):
         ).count(),
         "test_runs": TestScenarioRun.objects.count(),
         "tables": len(catalog),
-        "rows": sum(item["count"] for item in catalog),
+        "rows": sum(item["count"] or 0 for item in catalog),
         "online_users": online_count,
         "idle_users": idle_count,
         "on_duty": on_duty_count,
@@ -400,7 +537,7 @@ def index(request):
 @superuser_required
 @require_GET
 def database_index(request):
-    catalog = _model_catalog()
+    catalog = _database_table_catalog()
     grouped_models = []
     for app_label in sorted({item["app_label"] for item in catalog}):
         grouped_models.append({
@@ -411,7 +548,7 @@ def database_index(request):
         "models": catalog,
         "grouped_models": grouped_models,
         "table_count": len(catalog),
-        "row_count": sum(item["count"] for item in catalog),
+        "row_count": sum(item["count"] or 0 for item in catalog),
     })
 
 
