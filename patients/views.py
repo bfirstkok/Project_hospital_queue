@@ -43,6 +43,7 @@ ACTIVE_QUEUE_STATUSES = {
     Queue.Status.OBSERVATION_MONITORING,
     Queue.Status.REASSESSMENT_REQUIRED,
     Queue.Status.EMERGENCY_TRANSFER,
+    Queue.Status.OPD_DONE,
     Queue.Status.FOLLOWUP,
 }
 
@@ -312,6 +313,10 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
             current_detail = "แพทย์ตรวจเสร็จแล้ว · รอส่งต่อห้องยา/การเงินตามแผนการรักษา"
         else:
             current_detail = "แพทย์ตรวจเสร็จแล้ว · กำลังดำเนินการหลังตรวจ"
+        current_class = "current"
+    elif queue_status == Queue.Status.OPD_DONE:
+        current_label = "ขั้นตอนหลังตรวจ"
+        current_detail = "แพทย์ตรวจเสร็จแล้ว · กรุณาดำเนินการตามขั้นตอนหลังตรวจ"
         current_class = "current"
     elif queue_status == Queue.Status.CALLED:
         current_label = "ห้องตรวจ"
@@ -702,10 +707,11 @@ def _validate_emergency_contacts(value):
 
 
 def _serialize_queue(queue):
-    label, instruction = PUBLIC_STATUS.get(
-        queue.status,
-        (queue.get_status_display(), "กรุณาติดต่อเจ้าหน้าที่"),
+    journey = _patient_journey_for_visit(
+        queue.visit,
+        list(queue.visit.workflow_logs.all()),
     )
+    label, instruction = _patient_portal_status(queue, journey)
     return {
         "queue_number": _queue_number(queue),
         "status": queue.status,
@@ -743,9 +749,10 @@ def _serialize_visit(visit):
         assessment = visit.opd_assessment
     except ObjectDoesNotExist:
         assessment = None
-    status_label = (
-        PUBLIC_STATUS.get(queue.status, (queue.get_status_display(), ""))[0]
-        if queue else "ไม่พบข้อมูลคิว"
+    journey = _patient_journey_for_visit(visit, list(visit.workflow_logs.all())) if queue else None
+    status_label, status_detail = (
+        _patient_portal_status(queue, journey)
+        if queue else ("ไม่พบข้อมูลคิว", "")
     )
     return {
         "queue_number": _queue_number(queue) if queue else None,
@@ -753,11 +760,45 @@ def _serialize_visit(visit):
         "note": visit.note or "",
         "status": queue.status if queue else None,
         "status_label": status_label,
+        "status_detail": status_detail,
         "room": f"ห้องตรวจ {queue.exam_room}" if queue and queue.exam_room else None,
         "vitals": _serialize_vitals(visit),
         "diagnosis": assessment.diagnosis if assessment else "",
         "treatment": assessment.treatment if assessment else "",
     }
+
+
+def _patient_portal_status(queue, journey):
+    """Return a patient-facing stage while preserving the underlying queue state.
+
+    The queue can remain CALLED/OPD_DONE while the visit continues through the
+    pharmacy and cashier. Once aftercare data exists, show the journey stage
+    instead of implying that the patient is still in the examination room.
+    """
+    visit = queue.visit
+    has_aftercare = queue.status in {
+        Queue.Status.OPD_DONE,
+        Queue.Status.FOLLOWUP,
+        Queue.Status.DISCHARGED,
+        Queue.Status.EMERGENCY_TRANSFER,
+        Queue.Status.CANCELLED,
+    }
+    if not has_aftercare:
+        for related_name in ("opd_assessment", "prescription", "bill"):
+            try:
+                getattr(visit, related_name)
+            except ObjectDoesNotExist:
+                continue
+            has_aftercare = True
+            break
+
+    if has_aftercare:
+        return journey["current_label"], journey["current_detail"]
+
+    return PUBLIC_STATUS.get(
+        queue.status,
+        (queue.get_status_display(), "กรุณาติดต่อเจ้าหน้าที่"),
+    )
 
 
 def _people_ahead(queue):
@@ -954,11 +995,21 @@ def public_queue_status(request, tracking_token):
         return _cors_json(request, {"ok": False, "error": "Method not allowed"}, status=405)
 
     try:
-        visit = Visit.objects.select_related("queue").get(tracking_token=tracking_token)
+        visit = (
+            Visit.objects.select_related(
+                "queue",
+                "opd_assessment",
+                "prescription",
+                "bill",
+            )
+            .prefetch_related("workflow_logs")
+            .get(tracking_token=tracking_token)
+        )
     except Visit.DoesNotExist:
         return _cors_json(request, {"ok": False, "error": "ไม่พบข้อมูลคิว"}, status=404)
     queue = visit.queue
-    label, instruction = PUBLIC_STATUS.get(queue.status, ("กำลังตรวจสอบสถานะ", "กรุณาติดต่อเจ้าหน้าที่"))
+    journey = _patient_journey_for_visit(visit, list(visit.workflow_logs.all()))
+    label, instruction = _patient_portal_status(queue, journey)
     return _cors_json(request, {
         "ok": True,
         "queue_number": _queue_number(queue),
@@ -1928,11 +1979,18 @@ def patient_me(request):
 
     visits = list(
         Visit.objects.filter(patient=patient)
-        .select_related("queue", "vitals", "opd_assessment")
+        .select_related("queue", "vitals", "opd_assessment", "prescription", "bill")
+        .prefetch_related("workflow_logs")
         .order_by("-registered_at")[:20]
     )
     active_queue = (
-        Queue.objects.select_related("visit")
+        Queue.objects.select_related(
+            "visit",
+            "visit__opd_assessment",
+            "visit__prescription",
+            "visit__bill",
+        )
+        .prefetch_related("visit__workflow_logs")
         .filter(visit__patient=patient, status__in=ACTIVE_QUEUE_STATUSES)
         .order_by("-created_at")
         .first()
@@ -1975,7 +2033,13 @@ def patient_queue(request):
             status=401,
         )
     queue = (
-        Queue.objects.select_related("visit")
+        Queue.objects.select_related(
+            "visit",
+            "visit__opd_assessment",
+            "visit__prescription",
+            "visit__bill",
+        )
+        .prefetch_related("visit__workflow_logs")
         .filter(visit__patient=patient, status__in=ACTIVE_QUEUE_STATUSES)
         .order_by("-created_at")
         .first()

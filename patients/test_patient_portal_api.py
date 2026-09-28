@@ -2,11 +2,13 @@ import json
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from queues.models import Queue, Visit, VitalSign
+from opd.models import Bill, Prescription, VisitAssessment
 
 from .models import Patient, PatientAccessToken
 
@@ -127,6 +129,45 @@ class PatientPortalApiTests(TestCase):
         self.assertEqual(payload["room"], "ห้องตรวจ 2")
         self.assertIn("people_ahead", payload)
         self.assertIn("updated_at", payload)
+
+    def test_patient_portal_advances_to_aftercare_when_payment_and_medicine_are_complete(self):
+        staff = get_user_model().objects.create_user(username="portal-doctor", password="test-pass")
+        VisitAssessment.objects.create(
+            visit=self.visit,
+            examiner=staff,
+            diagnosis="ทดสอบ",
+            treatment="รับยาและกลับบ้าน",
+        )
+        Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=staff,
+            status=Prescription.Status.DISPENSED,
+        )
+        Bill.objects.create(visit=self.visit, status=Bill.Status.PAID)
+        self.queue.status = Queue.Status.OPD_DONE
+        self.queue.save(update_fields=["status"])
+
+        token = self.login().json()["access_token"]
+        headers = self.bearer(token)
+        current_queue = self.client.get(reverse("public_authenticated_patient_queue"), **headers)
+        profile = self.client.get(reverse("public_patient_me"), **headers)
+        tracked_queue = self.client.get(
+            reverse("public_patient_queue_status", args=[self.visit.tracking_token]),
+        )
+
+        expected_label = "พร้อมกลับบ้าน · รอปิด Visit"
+        for response in (current_queue, tracked_queue):
+            with self.subTest(endpoint=response.wsgi_request.path):
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["status"], Queue.Status.OPD_DONE)
+                self.assertEqual(response.json()["status_label"], expected_label)
+                self.assertIn("รอเจ้าหน้าที่", response.json()["instruction"])
+
+        self.assertEqual(profile.status_code, 200)
+        profile_payload = profile.json()
+        self.assertEqual(profile_payload["active_queue"]["status_label"], expected_label)
+        self.assertEqual(profile_payload["visits"][0]["status_label"], expected_label)
+        self.assertIn("รอเจ้าหน้าที่", profile_payload["visits"][0]["status_detail"])
 
     def test_patient_can_cancel_own_waiting_or_called_queue(self):
         other_patient = Patient.objects.create(
