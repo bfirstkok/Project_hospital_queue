@@ -22,10 +22,10 @@ from django.apps import apps
 
 
 from ai_triage.services import apply_ai_triage, localize_ai_reason
-from accounts.access import is_effective_superuser
+from accounts.access import Capability, has_capability, is_effective_superuser, user_role
 from patients.models import Patient
 from .forms import DeviceCreateForm, DeviceManagementPairForm, DevicePairingForm, NurseTriageAssessmentForm
-from .models import CriticalAlert, DeviceCommand, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
+from .models import CriticalAlert, DeviceCommand, NurseCareAssignment, Queue, Visit, Device, DeviceAssignment, StaffDuty, StaffProfile, TelemetryLog, VitalSign, TriageResult, VisitWorkflowLog
 from .triage import EMERGENCY_SEVERITIES, SEVERITY_LEVELS, SEVERITY_PRIORITY
 from .training_cases import capture_confirmed_triage_case
 
@@ -45,6 +45,12 @@ QUEUE_CALLABLE_STATUSES = [
     Queue.Status.OBSERVATION_MONITORING,
 ]
 REQUIRED_VITAL_FIELDS = ["rr", "pr", "sys_bp", "dia_bp", "bt", "o2sat"]
+ALERT_MONITORING_QUEUE_STATUSES = (
+    Queue.Status.OBSERVATION_MONITORING,
+    Queue.Status.REASSESSMENT_REQUIRED,
+    Queue.Status.MONITORING,
+)
+DEVICE_ONLINE_WINDOW_SECONDS = 60
 
 
 def mask_api_key(api_key):
@@ -1313,7 +1319,7 @@ def identify_monitored_visit(request, visit_id):
         return JsonResponse({"ok": False, "error": "ผู้ป่วยไม่ได้อยู่ในสถานะเฝ้าระวัง"}, status=409)
 
     now = timezone.now()
-    if not assignment.device.last_seen or (now - assignment.device.last_seen).total_seconds() > 60:
+    if not assignment.device.last_seen or (now - assignment.device.last_seen).total_seconds() > DEVICE_ONLINE_WINDOW_SECONDS:
         return JsonResponse({"ok": False, "error": "อุปกรณ์ออฟไลน์หรือไม่ได้ส่งข้อมูลใน 60 วินาทีที่ผ่านมา"}, status=409)
 
     expires_at = now + timedelta(seconds=30)
@@ -1752,14 +1758,8 @@ def acknowledge_alert(request, alert_id: int):
     )
     queue_status = Queue.objects.filter(visit_id=alert.visit_id).values_list("status", flat=True).first()
 
-    if not is_effective_superuser(request.user):
-        is_responsible_nurse = NurseCareAssignment.objects.filter(
-            visit=alert.visit,
-            nurse=request.user,
-            is_active=True,
-        ).exists()
-        if not is_responsible_nurse:
-            return JsonResponse({"ok": False, "message": "Only the responsible nurse can manage this alert"}, status=403)
+    if not _alert_manage_allowed(request.user, alert):
+        return JsonResponse({"ok": False, "message": "ไม่มีสิทธิ์จัดการสัญญาณเตือนนี้"}, status=403)
 
     if alert.status != CriticalAlert.Status.NEW:
         return JsonResponse({
@@ -1800,13 +1800,38 @@ def acknowledge_alert(request, alert_id: int):
     })
 
 
+def _is_on_duty_role(user, role):
+    return bool(
+        getattr(user, "is_active", False)
+        and user_role(user) == role
+        and StaffDuty.objects.filter(
+            user=user,
+            duty_date=timezone.localdate(),
+            is_present=True,
+        ).exists()
+    )
+
+
+def _is_on_duty_monitoring_nurse(user):
+    return has_capability(user, Capability.ACKNOWLEDGE_ALERT) and _is_on_duty_role(
+        user,
+        StaffProfile.Role.NURSE,
+    )
+
+
 def _alert_manage_allowed(user, alert):
     if is_effective_superuser(user):
         return True
-    return NurseCareAssignment.objects.filter(
+    is_responsible_nurse = NurseCareAssignment.objects.filter(
         visit=alert.visit,
         nurse=user,
         is_active=True,
+    ).exists()
+    if is_responsible_nurse:
+        return True
+    return _is_on_duty_monitoring_nurse(user) and Queue.objects.filter(
+        visit_id=alert.visit_id,
+        status__in=ALERT_MONITORING_QUEUE_STATUSES,
     ).exists()
 
 
@@ -2039,33 +2064,44 @@ def transfer_alert_to_er(request, alert_id: int):
 @login_required
 @require_GET
 def my_critical_alerts(request):
-    """Return unresolved wearable alerts assigned to the signed-in nurse."""
-    alerts = (
-        CriticalAlert.objects
-        .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
-        .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
-    )
-    if not is_effective_superuser(request.user):
-        alerts = alerts.filter(
-            visit__nurse_care_assignments__nurse=request.user,
-            visit__nurse_care_assignments__is_active=True,
+    """Return clinical alerts to assigned/on-duty nurses and device issues to biomedical staff."""
+    can_manage_clinical_alerts = has_capability(request.user, Capability.ACKNOWLEDGE_ALERT)
+    can_manage_devices = has_capability(request.user, Capability.MANAGE_DEVICE)
+    if not can_manage_clinical_alerts and not can_manage_devices:
+        return JsonResponse({"ok": False, "message": "ไม่มีสิทธิ์ดูรายการแจ้งเตือน"}, status=403)
+
+    is_admin = is_effective_superuser(request.user)
+    is_duty_nurse = _is_on_duty_monitoring_nurse(request.user)
+    is_duty_biomedical = _is_on_duty_role(request.user, StaffProfile.Role.BIOMEDICAL)
+    alert_items = []
+
+    if can_manage_clinical_alerts:
+        clinical_alerts = (
+            CriticalAlert.objects
+            .filter(status__in=CriticalAlert.ACTIVE_STATUSES)
+            .exclude(visit__queue__status=Queue.Status.EMERGENCY_TRANSFER)
         )
-    alerts = alerts.distinct()
-    total_count = alerts.count()
-    patient_count = alerts.values("visit_id").distinct().count()
-    alerts = list(
-        alerts.select_related("visit", "visit__patient", "visit__queue")
-        .order_by("-created_at")[:50]
-    )
-    return JsonResponse({
-        "ok": True,
-        "count": total_count,
-        "patient_count": patient_count,
-        "returned_count": len(alerts),
-        "truncated": total_count > len(alerts),
-        "alerts": [
-            {
+        if not is_admin:
+            assigned_visits = NurseCareAssignment.objects.filter(
+                nurse=request.user,
+                is_active=True,
+            ).values("visit_id")
+            if is_duty_nurse:
+                clinical_alerts = clinical_alerts.filter(
+                    Q(visit_id__in=assigned_visits)
+                    | Q(visit__queue__status__in=ALERT_MONITORING_QUEUE_STATUSES)
+                )
+            else:
+                clinical_alerts = clinical_alerts.filter(visit_id__in=assigned_visits)
+        clinical_alerts = list(
+            clinical_alerts.select_related("visit", "visit__patient", "visit__queue")
+            .distinct()
+            .order_by("-created_at")
+        )
+        for alert in clinical_alerts:
+            alert_items.append({
                 "id": alert.id,
+                "kind": "CLINICAL",
                 "visit_id": alert.visit_id,
                 "queue": alert.visit.queue.display_number,
                 "patient": f"{alert.visit.patient.first_name} {alert.visit.patient.last_name}",
@@ -2074,6 +2110,7 @@ def my_critical_alerts(request):
                 "threshold": alert.threshold,
                 "status": alert.status,
                 "created_at": alert.created_at.isoformat(),
+                "_sort_at": alert.created_at.timestamp(),
                 "actions": {
                     "ack": reverse("acknowledge_alert", args=[alert.id]),
                     "review": reverse("start_alert_review", args=[alert.id]),
@@ -2082,9 +2119,88 @@ def my_critical_alerts(request):
                     "escalate": reverse("escalate_alert", args=[alert.id]),
                     "transfer_er": reverse("transfer_alert_to_er", args=[alert.id]),
                 },
-            }
-            for alert in alerts
-        ],
+            })
+
+    can_receive_device_alerts = can_manage_devices and (is_admin or is_duty_biomedical)
+    if can_manage_clinical_alerts and (is_admin or is_duty_nurse):
+        can_receive_device_alerts = True
+    elif can_manage_clinical_alerts and NurseCareAssignment.objects.filter(
+        nurse=request.user,
+        is_active=True,
+    ).exists():
+        # An assigned nurse remains responsible for the patient's equipment issue
+        # even when another monitoring nurse is providing the on-duty backup.
+        can_receive_device_alerts = True
+
+    if can_receive_device_alerts:
+        offline_assignments = DeviceAssignment.objects.filter(
+            is_active=True,
+            device__is_active=True,
+            visit__queue__status__in=ALERT_MONITORING_QUEUE_STATUSES,
+        ).filter(
+            Q(device__last_seen__isnull=True)
+            | Q(device__last_seen__lte=timezone.now() - timedelta(seconds=DEVICE_ONLINE_WINDOW_SECONDS))
+        )
+        if not is_admin and not can_manage_devices:
+            assigned_visits = NurseCareAssignment.objects.filter(
+                nurse=request.user,
+                is_active=True,
+            ).values("visit_id")
+            visibility = Q(visit_id__in=assigned_visits)
+            if is_duty_nurse:
+                visibility |= Q(visit__queue__status__in=ALERT_MONITORING_QUEUE_STATUSES)
+            offline_assignments = offline_assignments.filter(visibility)
+        offline_assignments = offline_assignments.select_related(
+            "device", "visit", "visit__patient", "visit__queue",
+        ).distinct()
+        for assignment in offline_assignments:
+            device = assignment.device
+            patient = assignment.visit.patient
+            last_seen = device.last_seen
+            event_stamp = last_seen or assignment.paired_at
+            episode = last_seen.isoformat() if last_seen else "never-seen"
+            alert_items.append({
+                "id": f"device-offline-{assignment.id}-{episode}",
+                "kind": "DEVICE_OFFLINE",
+                "visit_id": assignment.visit_id,
+                "queue": assignment.visit.queue.display_number,
+                "patient": (
+                    f"{patient.first_name} {patient.last_name}"
+                    if can_manage_clinical_alerts
+                    else "อุปกรณ์เฝ้าระวัง"
+                ),
+                "device_id": device.device_id,
+                "message": f"อุปกรณ์ {device.device_id} ไม่ส่งสัญญาณเกิน {DEVICE_ONLINE_WINDOW_SECONDS} วินาที",
+                "value": None,
+                "threshold": None,
+                "status": "DEVICE_OFFLINE",
+                "created_at": event_stamp.isoformat(),
+                "_sort_at": event_stamp.timestamp(),
+                "details_url": reverse("device_pairing") if can_manage_devices else reverse(
+                    "followup_visit_detail", args=[assignment.visit_id],
+                ),
+            })
+
+    alert_items.sort(key=lambda item: item["_sort_at"], reverse=True)
+    total_count = len(alert_items)
+    patient_count = len({item["visit_id"] for item in alert_items})
+    subject_count = (
+        len({item["device_id"] for item in alert_items if item["kind"] == "DEVICE_OFFLINE"})
+        if not can_manage_clinical_alerts
+        else patient_count
+    )
+    alerts = alert_items[:50]
+    for item in alerts:
+        item.pop("_sort_at", None)
+    return JsonResponse({
+        "ok": True,
+        "count": total_count,
+        "patient_count": patient_count,
+        "subject_count": subject_count,
+        "subject_label": "คน" if can_manage_clinical_alerts else "อุปกรณ์",
+        "returned_count": len(alerts),
+        "truncated": total_count > len(alerts),
+        "alerts": alerts,
     })
 
 
@@ -2130,7 +2246,7 @@ def monitor_summary_api(request):
         device = active_devices.get(v.id)
         online = False
         if device and device.last_seen:
-            online = (now - device.last_seen).total_seconds() <= 60
+            online = (now - device.last_seen).total_seconds() <= DEVICE_ONLINE_WINDOW_SECONDS
 
         items.append({
             # Keep the exact 64-bit identifier in JavaScript clients.

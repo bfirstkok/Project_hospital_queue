@@ -46,6 +46,7 @@ class PatientAdmin(admin.ModelAdmin):
         from queues.models import (
             ConfirmedTriageCase,
             CriticalAlert,
+            DeviceCommand,
             TelemetryLog,
             VisitWorkflowLog,
         )
@@ -54,6 +55,7 @@ class PatientAdmin(admin.ModelAdmin):
             ConfirmedTriageCase,
             TelemetryLog,
             CriticalAlert,
+            DeviceCommand,
             VisitWorkflowLog,
         )
         cascade_labels = {

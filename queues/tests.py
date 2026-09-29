@@ -1593,6 +1593,89 @@ class DutyAndResponsibleNurseAlertTests(TestCase):
         response = self.client.get(reverse("my_critical_alerts"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 0)
+        response = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_on_duty_monitoring_nurse_can_receive_and_acknowledge_as_backup(self):
+        StaffDuty.objects.create(
+            user=self.other_nurse,
+            duty_date=timezone.localdate(),
+            is_present=True,
+            is_available=False,
+        )
+        alert = CriticalAlert.objects.create(
+            visit=self.visit,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำกว่า 95%",
+            value=88,
+            threshold="< 95",
+        )
+
+        self.client.force_login(self.other_nurse)
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 1)
+        self.assertEqual(response.json()["alerts"][0]["id"], alert.id)
+
+        response = self.client.post(reverse("acknowledge_alert", args=[alert.id]))
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, CriticalAlert.Status.ACKNOWLEDGED)
+        self.assertEqual(alert.acknowledged_by, self.other_nurse)
+
+    def test_biomedical_on_duty_receives_device_alert_not_clinical_alert(self):
+        device = Device.objects.create(
+            device_id="WATCH998",
+            api_key="test-device-key",
+            last_seen=timezone.now() - timedelta(minutes=2),
+        )
+        DeviceAssignment.objects.create(device=device, visit=self.visit)
+        clinical_alert = CriticalAlert.objects.create(
+            visit=self.visit,
+            alert_type=CriticalAlert.AlertType.LOW_O2,
+            message="SpO2 ต่ำกว่า 95%",
+            value=88,
+            threshold="< 95",
+        )
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {item["kind"] for item in response.json()["alerts"]},
+            {"CLINICAL", "DEVICE_OFFLINE"},
+        )
+        self.assertIn(clinical_alert.id, [
+            item["id"] for item in response.json()["alerts"] if item["kind"] == "CLINICAL"
+        ])
+        biomedical = get_user_model().objects.create_user(
+            username="alert-biomedical",
+            password="secret",
+        )
+        StaffProfile.objects.create(user=biomedical, role=StaffProfile.Role.BIOMEDICAL)
+        self.client.force_login(biomedical)
+
+        page = self.client.get(reverse("device_pairing"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "แจ้งเตือนการเฝ้าระวัง")
+
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 0)
+
+        StaffDuty.objects.create(
+            user=biomedical,
+            duty_date=timezone.localdate(),
+            is_present=True,
+            is_available=False,
+        )
+        response = self.client.get(reverse("my_critical_alerts"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["alerts"][0]["kind"], "DEVICE_OFFLINE")
+        self.assertEqual(payload["alerts"][0]["device_id"], device.device_id)
+        self.assertEqual(payload["alerts"][0]["patient"], "อุปกรณ์เฝ้าระวัง")
+        self.assertEqual(payload["subject_label"], "อุปกรณ์")
+        self.assertEqual(payload["alerts"][0]["details_url"], reverse("device_pairing"))
 
     def test_my_alert_feed_keeps_exact_totals_when_many_patients_alert(self):
         second_patient = Patient.objects.create(

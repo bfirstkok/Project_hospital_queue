@@ -5,11 +5,12 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from queues.models import Queue, Visit, VisitWorkflowLog, VitalSign
+from queues.models import DeviceCommand, Queue, Visit, VisitWorkflowLog, VitalSign
 from opd.models import Bill, Prescription, VisitAssessment
 from .models import Patient, PatientAccessToken, PatientPin
 
@@ -607,6 +608,8 @@ class PatientAdminCascadeDeleteTests(TestCase):
         from queues.models import (
             ConfirmedTriageCase,
             CriticalAlert,
+            Device,
+            DeviceCommand,
             TelemetryLog,
             Visit,
             VisitWorkflowLog,
@@ -636,6 +639,13 @@ class PatientAdminCascadeDeleteTests(TestCase):
             actor_role="ระบบ",
             description="test workflow log",
         )
+        device = Device.objects.create(device_id="WATCH997", api_key="test-device-key")
+        self.device_command = DeviceCommand.objects.create(
+            device=device,
+            visit=self.visit,
+            command_type=DeviceCommand.CommandType.BUZZER,
+            expires_at=timezone.now() + timedelta(minutes=1),
+        )
 
     def test_admin_can_delete_patient_with_read_only_portal_credentials(self):
         delete_url = reverse("admin:patients_patient_delete", args=[self.patient.id])
@@ -649,6 +659,7 @@ class PatientAdminCascadeDeleteTests(TestCase):
         self.assertNotContains(confirm, "confirmed triage case")
         self.assertNotContains(confirm, "telemetry log")
         self.assertNotContains(confirm, "critical alert")
+        self.assertNotContains(confirm, "device command")
         self.assertNotContains(confirm, "visit workflow log")
 
         response = self.client.post(delete_url, {"post": "yes"})
@@ -668,3 +679,33 @@ class PatientAdminCascadeDeleteTests(TestCase):
         self.assertFalse(TelemetryLog.objects.filter(visit_id=self.visit.id).exists())
         self.assertFalse(CriticalAlert.objects.filter(visit_id=self.visit.id).exists())
         self.assertFalse(VisitWorkflowLog.objects.filter(visit_id=self.visit.id).exists())
+        self.assertFalse(DeviceCommand.objects.filter(pk=self.device_command.pk).exists())
+
+    def test_device_command_delete_permission_does_not_block_patient_cascade(self):
+        staff_admin = get_user_model().objects.create_user(
+            username="patient-delete-limited-admin",
+            email="patient-delete-limited@example.test",
+            password="secret",
+            is_staff=True,
+        )
+        delete_permissions = Permission.objects.filter(
+            codename__startswith="delete_",
+        ).exclude(
+            content_type__app_label="queues",
+            codename="delete_devicecommand",
+        )
+        staff_admin.user_permissions.add(*delete_permissions)
+        self.client.force_login(staff_admin)
+
+        delete_url = reverse("admin:patients_patient_delete", args=[self.patient.id])
+        confirm = self.client.get(delete_url)
+
+        self.assertEqual(confirm.status_code, 200)
+        self.assertNotContains(confirm, "ไม่สามารถลบ")
+        self.assertNotContains(confirm, "device command")
+
+        response = self.client.post(delete_url, {"post": "yes"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Patient.objects.filter(pk=self.patient.pk).exists())
+        self.assertFalse(DeviceCommand.objects.filter(pk=self.device_command.pk).exists())
