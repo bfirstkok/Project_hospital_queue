@@ -706,6 +706,48 @@ def _validate_emergency_contacts(value):
     return cleaned, None
 
 
+def _patient_visible_current_detail(journey):
+    detail = journey.get("current_detail", "")
+    if "ยืนยันโดย " in detail or "ปิด Visit โดย " in detail:
+        return "ผู้ป่วยออกจากโรงพยาบาลแล้ว · ปิด Visit แล้ว"
+    return detail
+
+
+def _serialize_patient_journey(journey):
+    """Expose progress states without staff identities or clinical severity."""
+    if not journey:
+        return None
+
+    steps = []
+    for step_data in journey.get("steps", []):
+        key = step_data.get("key")
+        state = step_data.get("state")
+        detail = step_data.get("detail", "")
+
+        # The patient portal needs progress states, not internal identities or acuity.
+        if key == "registration":
+            detail = "ลงทะเบียนแล้ว"
+        elif key == "triage" and state == "done":
+            detail = "คัดกรองแล้ว"
+        elif key == "doctor" and state == "done":
+            detail = "แพทย์ตรวจแล้ว"
+        elif key == "complete" and state == "done":
+            detail = "ผู้ป่วยออกจากโรงพยาบาลแล้ว"
+
+        steps.append({
+            "key": key,
+            "label": step_data.get("label", ""),
+            "state": state,
+            "detail": detail,
+        })
+
+    return {
+        "steps": steps,
+        "current_label": journey.get("current_label", ""),
+        "current_detail": _patient_visible_current_detail(journey),
+    }
+
+
 def _serialize_queue(queue):
     journey = _patient_journey_for_visit(
         queue.visit,
@@ -717,6 +759,7 @@ def _serialize_queue(queue):
         "status": queue.status,
         "status_label": label,
         "instruction": instruction,
+        "patient_journey": _serialize_patient_journey(journey),
         "room": f"ห้องตรวจ {queue.exam_room}" if queue.exam_room else None,
         "people_ahead": _people_ahead(queue),
         "queue_position": _queue_position(queue),
@@ -761,6 +804,7 @@ def _serialize_visit(visit):
         "status": queue.status if queue else None,
         "status_label": status_label,
         "status_detail": status_detail,
+        "patient_journey": _serialize_patient_journey(journey),
         "room": f"ห้องตรวจ {queue.exam_room}" if queue and queue.exam_room else None,
         "vitals": _serialize_vitals(visit),
         "diagnosis": assessment.diagnosis if assessment else "",
@@ -793,7 +837,7 @@ def _patient_portal_status(queue, journey):
             break
 
     if has_aftercare:
-        return journey["current_label"], journey["current_detail"]
+        return journey["current_label"], _patient_visible_current_detail(journey)
 
     return PUBLIC_STATUS.get(
         queue.status,
@@ -1016,6 +1060,7 @@ def public_queue_status(request, tracking_token):
         "status": queue.status,
         "status_label": label,
         "instruction": instruction,
+        "patient_journey": _serialize_patient_journey(journey),
         "people_ahead": _people_ahead(queue),
         "queue_position": _queue_position(queue),
         "room": f"ห้องตรวจ {queue.exam_room}" if queue.exam_room else None,

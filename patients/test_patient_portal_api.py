@@ -162,12 +162,50 @@ class PatientPortalApiTests(TestCase):
                 self.assertEqual(response.json()["status"], Queue.Status.OPD_DONE)
                 self.assertEqual(response.json()["status_label"], expected_label)
                 self.assertIn("รอเจ้าหน้าที่", response.json()["instruction"])
+                journey = response.json()["patient_journey"]
+                steps = {step["key"]: step for step in journey["steps"]}
+                self.assertEqual(steps["billing"]["state"], "done")
+                self.assertEqual(steps["billing"]["detail"], "ชำระแล้ว")
+                self.assertEqual(steps["pharmacy"]["state"], "done")
+                self.assertEqual(steps["pharmacy"]["detail"], "จ่ายยาแล้ว")
+                self.assertEqual(steps["complete"]["state"], "current")
+                self.assertNotIn("portal-doctor", response.content.decode())
 
         self.assertEqual(profile.status_code, 200)
         profile_payload = profile.json()
         self.assertEqual(profile_payload["active_queue"]["status_label"], expected_label)
         self.assertEqual(profile_payload["visits"][0]["status_label"], expected_label)
         self.assertIn("รอเจ้าหน้าที่", profile_payload["visits"][0]["status_detail"])
+        self.assertIn("patient_journey", profile_payload["active_queue"])
+        self.assertIn("patient_journey", profile_payload["visits"][0])
+
+    def test_patient_queue_serializes_pending_billing_and_pharmacy_states(self):
+        staff = get_user_model().objects.create_user(username="portal-doctor", password="test-pass")
+        VisitAssessment.objects.create(visit=self.visit, examiner=staff, diagnosis="ทดสอบ")
+        Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=staff,
+            status=Prescription.Status.SENT,
+        )
+        Bill.objects.create(visit=self.visit, status=Bill.Status.READY)
+        self.queue.status = Queue.Status.OPD_DONE
+        self.queue.save(update_fields=["status"])
+
+        token = self.login().json()["access_token"]
+        response = self.client.get(
+            reverse("public_authenticated_patient_queue"),
+            **self.bearer(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        steps = {step["key"]: step for step in payload["patient_journey"]["steps"]}
+        self.assertEqual(payload["patient_journey"]["current_label"], "การเงิน")
+        self.assertEqual(steps["billing"]["state"], "current")
+        self.assertEqual(steps["billing"]["detail"], "รอชำระเงิน")
+        self.assertEqual(steps["pharmacy"]["state"], "current")
+        self.assertEqual(steps["pharmacy"]["detail"], "รอห้องยา")
+        self.assertNotIn("portal-doctor", response.content.decode())
 
     def test_patient_can_cancel_own_waiting_or_called_queue(self):
         other_patient = Patient.objects.create(
