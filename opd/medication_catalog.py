@@ -1,0 +1,118 @@
+"""Starter generic medicine choices for the OPD prescription form.
+
+These are searchable examples based on entries/forms found in the Thai FDA
+National Drug Information database. They are not a hospital stock list. Keep
+dose, frequency, duration and price blank/unset so the prescriber enters them.
+"""
+
+
+MEDICATION_CATALOG = [
+    {
+        "value": "Paracetamol (tablet)",
+        "strength": "500 mg",
+        "form_label": "ยาเม็ด",
+        "route": "oral",
+        "route_label": "รับประทาน",
+        "unit": "เม็ด",
+        "search_terms": "paracetamol พาราเซตามอล tablet ยาเม็ด",
+    },
+    {
+        "value": "Paracetamol (oral syrup)",
+        "strength": "120 mg/5 mL",
+        "form_label": "ยาน้ำเชื่อม",
+        "route": "oral",
+        "route_label": "รับประทาน",
+        "unit": "ขวด",
+        "search_terms": "paracetamol พาราเซตามอล syrup ยาน้ำ ยาน้ำเชื่อม",
+    },
+    {
+        "value": "Cetirizine (tablet)",
+        "strength": "10 mg",
+        "form_label": "ยาเม็ด",
+        "route": "oral",
+        "route_label": "รับประทาน",
+        "unit": "เม็ด",
+        "search_terms": "cetirizine เซทิริซีน tablet ยาเม็ด",
+    },
+    {
+        "value": "Ibuprofen (film-coated tablet)",
+        "strength": "400 mg",
+        "form_label": "ยาเม็ดเคลือบ",
+        "route": "oral",
+        "route_label": "รับประทาน",
+        "unit": "เม็ด",
+        "search_terms": "ibuprofen ไอบูโพรเฟน tablet ยาเม็ด",
+    },
+    {
+        "value": "Omeprazole (enteric-coated capsule)",
+        "strength": "20 mg",
+        "form_label": "แคปซูลเคลือบ",
+        "route": "oral",
+        "route_label": "รับประทาน",
+        "unit": "แคปซูล",
+        "search_terms": "omeprazole โอเมพราโซล capsule แคปซูล",
+    },
+    {
+        "value": "Amoxicillin (capsule) · ยาตามแพทย์สั่ง",
+        "strength": "500 mg",
+        "form_label": "ยาแคปซูล · ยาตามแพทย์สั่ง",
+        "route": "oral",
+        "route_label": "รับประทาน · ยาตามแพทย์สั่ง",
+        "unit": "แคปซูล",
+        "search_terms": "amoxicillin อะม็อกซีซิลลิน capsule แคปซูล antibiotic ยาปฏิชีวนะ",
+    },
+    {
+        "value": "Clotrimazole (cream)",
+        "strength": "1% w/w",
+        "form_label": "ครีมใช้ภายนอก",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก",
+        "unit": "หลอด",
+        "search_terms": "clotrimazole โคลไตรมาโซล cream ครีม ทา ยาทา ยาใช้ภายนอก topical",
+    },
+    {
+        "value": "Diclofenac diethylamine (gel)",
+        "strength": "1% w/w",
+        "form_label": "เจลใช้ภายนอก",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก",
+        "unit": "หลอด",
+        "search_terms": "diclofenac diclofenac diethylamine ไดโคลฟีแนก gel เจล ทา ยาทา ยาใช้ภายนอก topical",
+    },
+    {
+        "value": "Mupirocin (ointment) · ยาตามแพทย์สั่ง",
+        "strength": "2% w/w",
+        "form_label": "ขี้ผึ้งใช้ภายนอก · ยาตามแพทย์สั่ง",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก · ยาตามแพทย์สั่ง",
+        "unit": "หลอด",
+        "search_terms": "mupirocin มิวพิโรซิน ointment ขี้ผึ้ง ทา ยาทา ยาใช้ภายนอก topical",
+    },
+    {
+        "value": "Calamine + zinc oxide (lotion)",
+        "strength": "",
+        "form_label": "โลชั่นใช้ภายนอก",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก",
+        "unit": "ขวด",
+        "search_terms": "calamine คาลาไมน์ zinc oxide lotion โลชั่น ทา ยาทา ยาใช้ภายนอก topical",
+    },
+    {
+        "value": "Povidone-iodine (cleansing solution)",
+        "strength": "10 g/100 mL",
+        "form_label": "น้ำยาทำความสะอาดใช้ภายนอก",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก",
+        "unit": "ขวด",
+        "search_terms": "povidone iodine povidone-iodine โพวิโดนไอโอดีน solution น้ำยา ทา ยาทา ยาใช้ภายนอก topical",
+    },
+    {
+        "value": "Hydrocortisone acetate (cream)",
+        "strength": "",
+        "form_label": "ครีมใช้ภายนอก",
+        "route": "topical",
+        "route_label": "ใช้ภายนอก",
+        "unit": "หลอด",
+        "search_terms": "hydrocortisone acetate ไฮโดรคอร์ติโซน cream ครีม ทา ยาทา ยาใช้ภายนอก topical",
+    },
+]

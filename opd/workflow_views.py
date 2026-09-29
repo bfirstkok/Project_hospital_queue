@@ -20,6 +20,7 @@ from .models import (
     PrescriptionItem,
     VisitAssessment,
 )
+from .medication_catalog import MEDICATION_CATALOG
 
 
 COVERAGE_DEFAULT_PERCENT = {
@@ -318,6 +319,7 @@ def opd_care_plan(request, visit_id):
         "departure_log": departure_log,
         "prescription_locked": prescription_locked,
         "can_edit_prescription": can_edit_prescription,
+        "medication_catalog": MEDICATION_CATALOG,
         "next_action_label": next_action_label,
         "next_action_detail": next_action_detail,
     })

@@ -345,6 +345,25 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertContains(response, "ไม่มียากลับบ้าน")
         self.assertContains(response, "ยืนยัน “ไม่มียา” และส่งต่อ")
 
+    def test_prescription_form_has_searchable_oral_and_topical_medicine_choices(self):
+        self.client.force_login(self.doctor)
+
+        response = self.client.get(reverse("opd_care_plan", args=[self.visit.id]))
+
+        self.assertEqual(response.status_code, 200)
+        catalog = response.context["medication_catalog"]
+        self.assertGreaterEqual(sum(item["route"] == "oral" for item in catalog), 5)
+        self.assertGreaterEqual(sum(item["route"] == "topical" for item in catalog), 5)
+        self.assertContains(response, 'role="combobox"')
+        self.assertContains(response, 'role="listbox"')
+        self.assertContains(response, "ArrowDown")
+        self.assertContains(response, "item.search_terms")
+        self.assertContains(response, "ยาทา")
+        self.assertContains(response, "Clotrimazole (cream)")
+        self.assertContains(response, "Povidone-iodine (cleansing solution)")
+        self.assertContains(response, "ระบบไม่เติมขนาดหรือความถี่ให้")
+        self.assertContains(response, "ไม่ใช่รายการคลังยาของโรงพยาบาล")
+
     def test_doctor_cannot_send_billing_before_draft_prescription_is_sent(self):
         prescription = Prescription.objects.create(
             visit=self.visit,
