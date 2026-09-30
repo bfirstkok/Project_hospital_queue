@@ -244,6 +244,7 @@ class Bill(models.Model):
         verbose_name="แพทย์ยืนยันว่าไม่มีรายการยา",
         help_text="บันทึกเมื่อแพทย์เลือกส่งการเงินโดยไม่ส่งใบสั่งยา",
     )
+    billing_queue_entered_at = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

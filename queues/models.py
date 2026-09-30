@@ -309,6 +309,7 @@ class VisitWorkflowLog(models.Model):
         PRESCRIPTION_CREATED = "PRESCRIPTION_CREATED", "สร้าง/แก้ไขใบสั่งยา"
         PHARMACY_STATUS_CHANGED = "PHARMACY_STATUS_CHANGED", "เปลี่ยนสถานะงานห้องยา"
         BILL_CREATED = "BILL_CREATED", "สร้างรายการค่าใช้จ่าย"
+        BILLING_QUEUE_ENTERED = "BILLING_QUEUE_ENTERED", "ส่งเข้าคิวการเงิน"
         PAYMENT_RECEIVED = "PAYMENT_RECEIVED", "รับชำระเงิน"
         MEDICAL_CERTIFICATE_ISSUED = "MEDICAL_CERTIFICATE_ISSUED", "ออกใบรับรองแพทย์"
         PATIENT_DEPARTED = "PATIENT_DEPARTED", "ปิด Visit / ยืนยันออกจากโรงพยาบาล"

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>การเงิน OPD · ระบบผู้ป่วย</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-clean-20260926">
-  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=service-queues-20260930">
 </head>
 <body>
 {% include "includes/main_nav.html" %}
@@ -17,7 +17,7 @@
       <h1>ตรวจสิทธิและรับชำระ</h1>
       <p>ตรวจข้อมูลสิทธิและยอดค่าใช้จ่ายก่อนรับชำระ จากนั้นเปิดใบเสร็จเพื่อพิมพ์หรือบันทึก</p>
     </div>
-    <div class="ow-hero__side"><span>ยอดที่ต้องดำเนินการ</span><strong id="billingActiveCount">—</strong></div>
+    <div class="ow-hero__side"><span>ยอดที่ต้องดำเนินการ</span><strong id="billingActiveCount">—</strong><a class="ow-hero-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a></div>
   </header>
 
   {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
@@ -35,7 +35,8 @@
       <div class="ow-filters" role="group" aria-label="กรองรายการการเงิน">
         <button class="ow-filter active" type="button" data-bill-filter="ALL">ทั้งหมด <span class="ow-filter-count" data-bill-filter-count="ALL">0</span></button>
         <button class="ow-filter" type="button" data-bill-filter="DRAFT">รอตรวจยอด <span class="ow-filter-count" data-bill-filter-count="DRAFT">0</span></button>
-        <button class="ow-filter" type="button" data-bill-filter="READY">รอชำระ <span class="ow-filter-count" data-bill-filter-count="READY">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="READY">รอชำระ / ปิดยอด <span class="ow-filter-count" data-bill-filter-count="READY">0</span></button>
+        <button class="ow-filter" type="button" data-bill-filter="OUTSTANDING">ค้างชำระ <span class="ow-filter-count" data-bill-filter-count="OUTSTANDING">0</span></button>
         <button class="ow-filter" type="button" data-bill-filter="DONE">เสร็จแล้ว <span class="ow-filter-count" data-bill-filter-count="DONE">0</span></button>
         <button class="ow-filter" type="button" data-bill-filter="CANCELLED">ยกเลิก <span class="ow-filter-count" data-bill-filter-count="CANCELLED">0</span></button>
       </div>
@@ -43,7 +44,7 @@
 
     <div class="ow-list" id="billingList">
       {% for bill in bills %}
-      <article class="ow-record billing-record" data-status="{{ bill.status }}" data-search="{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }} {{ bill.visit.patient.hn }} {{ bill.visit_id }}">
+      <article class="ow-record billing-record" data-status="{% if bill.status == 'WAIVED' and not bill.paid_at %}READY{% else %}{{ bill.status }}{% endif %}" data-outstanding="{% if bill.status == 'READY' and bill.patient_due > 0 %}true{% else %}false{% endif %}" data-search="{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }} {{ bill.visit.patient.hn }} {{ bill.visit_id }}">
         <div class="ow-record__top">
           <div class="ow-patient">
             <span class="ow-avatar" aria-hidden="true">{{ bill.visit.patient.first_name|slice:":1" }}</span>
@@ -55,6 +56,7 @@
           </div>
           <span class="ow-status {% if bill.status == 'READY' %}ready{% elif bill.status == 'DRAFT' %}sent{% elif bill.status == 'PAID' %}paid{% elif bill.status == 'WAIVED' %}waived{% elif bill.status == 'CANCELLED' %}cancelled{% endif %}">{{ bill.get_status_display }}</span>
         </div>
+        {% if bill.queue_position %}<div class="ow-queue-line"><span>ลำดับคิวการเงิน</span><strong>{{ bill.queue_position }}</strong><span>คิวผู้ป่วยเดิม {{ bill.queue_display_number }}</span></div>{% endif %}
         <div class="ow-record__body">
           <div class="ow-bill-metrics">
             <div class="ow-bill-metric"><span>ยอดรวม</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>
@@ -63,7 +65,7 @@
             <div class="ow-bill-metric"><span>สร้างรายการ</span><b>{{ bill.created_at|date:"d/m/Y H:i" }}</b></div>
           </div>
           <div class="ow-bill-action">
-            {% if bill.status == 'PAID' or bill.status == 'WAIVED' %}
+            {% if bill.status == 'PAID' or bill.paid_at %}
               <small>{% if bill.received_by %}รับรายการโดย {{ bill.received_by.get_full_name|default:bill.received_by.username }}{% endif %}{% if bill.paid_at %} · {{ bill.paid_at|date:"d/m/Y H:i" }}{% endif %}</small>
               <a class="ow-button secondary" href="{% url 'billing_receipt' bill.id %}">เปิดใบเสร็จ <span aria-hidden="true">→</span></a>
             {% elif bill.status == 'CANCELLED' %}
@@ -91,12 +93,12 @@
   const noResults=document.getElementById('billingNoResults');
   const group=status=>['PAID','WAIVED'].includes(status)?'DONE':status;
   let active='ALL';
-  const counts={DRAFT:0,READY:0,DONE:0,CANCELLED:0};
-  cards.forEach(card=>{const key=group(card.dataset.status);if(key in counts)counts[key]++;});
-  Object.entries(counts).forEach(([key,value])=>{document.querySelector(`[data-bill-count="${key}"]`).textContent=value;document.querySelector(`[data-bill-filter-count="${key}"]`).textContent=value;});
+  const counts={DRAFT:0,READY:0,DONE:0,CANCELLED:0,OUTSTANDING:0};
+  cards.forEach(card=>{const key=group(card.dataset.status);if(key in counts)counts[key]++;if(card.dataset.outstanding==='true')counts.OUTSTANDING++;});
+  Object.entries(counts).forEach(([key,value])=>{const summary=document.querySelector(`[data-bill-count="${key}"]`);const filter=document.querySelector(`[data-bill-filter-count="${key}"]`);if(summary)summary.textContent=value;if(filter)filter.textContent=value;});
   document.querySelector('[data-bill-filter-count="ALL"]').textContent=cards.length;
   document.getElementById('billingActiveCount').textContent=counts.DRAFT+counts.READY;
-  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;cards.forEach(card=>{const matchesStatus=active==='ALL'||active===group(card.dataset.status);const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});noResults.classList.toggle('visible',cards.length>0&&visible===0);}
+  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;cards.forEach(card=>{const matchesStatus=active==='ALL'||(active==='OUTSTANDING'?card.dataset.outstanding==='true':active===group(card.dataset.status));const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});noResults.classList.toggle('visible',cards.length>0&&visible===0);}
   filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.billFilter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
   search.addEventListener('input',update);
 })();

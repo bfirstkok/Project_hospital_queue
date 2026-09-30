@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ห้องยา · ระบบผู้ป่วย</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-clean-20260926">
-  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=service-queues-20260930">
 </head>
 <body>
 {% include "includes/main_nav.html" %}
@@ -17,7 +17,7 @@
       <h1>จัดการใบสั่งยา</h1>
       <p>ตรวจรายการจากแพทย์ → จัดยาให้ครบ → เปลี่ยนสถานะเมื่อพร้อมจ่ายหรือจ่ายยาแล้ว</p>
     </div>
-    <div class="ow-hero__side"><span>งานที่ยังดำเนินการ</span><strong id="pharmacyPendingCount">—</strong></div>
+    <div class="ow-hero__side"><span>งานที่ยังดำเนินการ</span><strong id="pharmacyPendingCount">—</strong><a class="ow-hero-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a></div>
   </header>
 
   {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
@@ -54,6 +54,7 @@
           </div>
           <span class="ow-status {% if rx.status == 'SENT' %}sent{% elif rx.status == 'PREPARING' %}preparing{% elif rx.status == 'READY' %}ready{% elif rx.status == 'DISPENSED' %}dispensed{% elif rx.status == 'CANCELLED' %}cancelled{% endif %}">{{ rx.get_status_display }}</span>
         </div>
+        {% if rx.queue_position %}<div class="ow-queue-line"><span>ลำดับคิวห้องยา</span><strong>{{ rx.queue_position }}</strong><span>คิวผู้ป่วยเดิม {{ rx.queue_display_number }}</span></div>{% endif %}
         <div class="ow-record__body">
           <div class="ow-meta-grid">
             <div class="ow-meta-cell"><span>รับใบสั่งยา</span><b>{{ rx.sent_at|date:"d/m/Y H:i"|default:"ยังไม่ระบุเวลา" }}</b></div>

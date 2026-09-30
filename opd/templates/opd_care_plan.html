@@ -78,7 +78,7 @@
         {% endif %}
 
         {% if prescription and prescription.status == 'DRAFT' and prescription_has_items %}
-          <div class="handoff"><h3>รายการครบแล้วใช่หรือไม่?</h3><p>หลังส่งแล้ว แพทย์จะแก้รายการจากหน้านี้ไม่ได้ และเคสจะปรากฏในหน้าของเภสัชกร</p><form method="post" class="actions">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ยืนยันและส่งใบสั่งยาไปห้องยา →</button></form></div>
+          <div class="handoff"><h3>รายการครบแล้วใช่หรือไม่?</h3><p>หลังส่งแล้ว แพทย์จะแก้รายการจากหน้านี้ไม่ได้ เคสจะเข้าคิวห้องยาและคิวการเงิน โดยแต่ละจุดบริการมีลำดับของตนเอง</p><form method="post" class="actions">{% csrf_token %}<input type="hidden" name="action" value="send_pharmacy"><button class="btn" type="submit">ยืนยันและส่งใบสั่งยาไปห้องยา →</button></form></div>
         {% endif %}
       </div>
     </section>

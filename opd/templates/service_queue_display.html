@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="15">
+  <title>จอคิวห้องยาและการเงิน</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#edf3f5;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.screen{width:min(1500px,calc(100% - 32px));margin:0 auto;padding:20px 0 26px}.head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:21px 25px;border-radius:18px;background:linear-gradient(120deg,#173e54,#087f75);color:#fff;box-shadow:0 12px 30px rgba(23,62,84,.14)}h1{margin:0;font-size:clamp(26px,3vw,42px);line-height:1.2}.subtitle{margin-top:6px;color:#dff8f5;font-size:clamp(14px,1.5vw,19px)}.clock{min-width:145px;text-align:right;font-size:clamp(25px,3vw,42px);font-weight:900;font-variant-numeric:tabular-nums}.lanes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.lane{overflow:hidden;border:1px solid #d2e0e4;border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(23,50,77,.05)}.lane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 19px;border-bottom:1px solid #dce8ea;background:#f7fbfb}.lane-head h2{margin:0;font-size:23px}.count{display:grid;place-items:center;min-width:38px;height:38px;padding:0 9px;border-radius:12px;background:#e4f5f1;color:#087467;font-size:20px;font-weight:900}.rows{display:grid}.row{display:grid;grid-template-columns:74px minmax(90px,.8fr) minmax(120px,1fr);align-items:center;gap:12px;min-height:79px;padding:11px 17px;border-bottom:1px solid #e8eff0}.row:last-child{border-bottom:0}.position{color:#6b818a;font-size:14px;font-weight:800}.ticket{color:#087467;font-size:clamp(24px,2.2vw,34px);font-weight:900;letter-spacing:.02em}.state{justify-self:start;padding:7px 10px;border-radius:9px;background:#eef5f6;color:#496772;font-size:13px;font-weight:800}.state.wait{background:#fff5dc;color:#825d00}.state.progress{background:#eaf3fb;color:#356e9a}.state.ready{background:#e8f7f0;color:#087467}.empty{padding:45px 18px;text-align:center;color:#6c828b;font-size:17px}.footer{display:flex;justify-content:space-between;gap:14px;padding:13px 4px 0;color:#607982;font-size:13px}.footer span:last-child{font-variant-numeric:tabular-nums}@media(max-width:800px){.screen{width:calc(100% - 16px);padding-top:10px}.head{align-items:flex-start;flex-direction:column;padding:18px}.clock{text-align:left}.lanes{grid-template-columns:1fr;gap:11px}.row{grid-template-columns:55px minmax(85px,.75fr) minmax(110px,1fr);padding:10px}.lane-head{padding:14px}.footer{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="screen">
+    <header class="head">
+      <div><h1>คิวรับบริการหลังตรวจ</h1><div class="subtitle">เรียงตามเวลาที่ส่งเข้าจุดบริการ · กรุณารอตามหมายเลขคิว</div></div>
+      <div class="clock" id="clock" aria-label="เวลาปัจจุบัน">--:--:--</div>
+    </header>
+    <div class="lanes">
+      <section class="lane" aria-label="คิวห้องยา">
+        <header class="lane-head"><h2>คิวห้องยา</h2><span class="count">{{ prescriptions|length }}</span></header>
+        <div class="rows">
+          {% for rx in prescriptions %}
+          <div class="row"><span class="position">ลำดับ {{ rx.queue_position }}</span><strong class="ticket">{{ rx.queue_display_number }}</strong>
+            {% if rx.status == "SENT" %}<span class="state wait">รอรับใบสั่งยา</span>{% elif rx.status == "PREPARING" %}<span class="state progress">กำลังจัดยา</span>{% else %}<span class="state ready">พร้อมจ่ายยา</span>{% endif %}
+          </div>
+          {% empty %}<div class="empty">ยังไม่มีคิวห้องยา</div>{% endfor %}
+        </div>
+      </section>
+      <section class="lane" aria-label="คิวการเงิน">
+        <header class="lane-head"><h2>คิวการเงิน</h2><span class="count">{{ bills|length }}</span></header>
+        <div class="rows">
+          {% for bill in bills %}
+          <div class="row"><span class="position">ลำดับ {{ bill.queue_position }}</span><strong class="ticket">{{ bill.queue_display_number }}</strong>
+            {% if bill.status == "DRAFT" %}<span class="state wait">รอตรวจยอด</span>{% elif bill.status == "WAIVED" %}<span class="state progress">รอปิดยอด</span>{% else %}<span class="state ready">รอชำระเงิน</span>{% endif %}
+          </div>
+          {% empty %}<div class="empty">ยังไม่มีคิวการเงิน</div>{% endfor %}
+        </div>
+      </section>
+    </div>
+    <footer class="footer"><span>แสดงเฉพาะลำดับบริการและหมายเลขคิว OPD ไม่แสดงชื่อหรือข้อมูลส่วนบุคคล</span><span>รีเฟรชอัตโนมัติทุก 15 วินาที · <span id="updatedAt">--:--:--</span></span></footer>
+  </main>
+  <script>
+    function updateClock(){const value=new Date().toLocaleTimeString('th-TH',{hour12:false});document.getElementById('clock').textContent=value;document.getElementById('updatedAt').textContent=value;}updateClock();window.setInterval(updateClock,1000);
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -332,6 +332,8 @@ class OpdDownstreamWorkflowTests(TestCase):
         prescription.refresh_from_db()
         self.assertEqual(prescription.status, Prescription.Status.SENT)
         self.assertTrue(Bill.objects.filter(visit=self.visit).exists())
+        bill = Bill.objects.get(visit=self.visit)
+        self.assertIsNotNone(bill.billing_queue_entered_at)
 
     def test_doctor_handoff_page_explains_the_next_choice_and_role_boundary(self):
         self.client.force_login(self.doctor)
@@ -407,6 +409,22 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertNotContains(response, "id=\"medication-name\"")
         bill = Bill.objects.get(visit=self.visit)
         self.assertTrue(bill.pharmacy_skipped)
+        self.assertIsNotNone(bill.billing_queue_entered_at)
+        original_queue_time = bill.billing_queue_entered_at
+
+        self.client.post(
+            reverse("opd_care_plan", args=[self.visit.id]),
+            {"action": "send_billing"},
+        )
+        bill.refresh_from_db()
+        self.assertEqual(bill.billing_queue_entered_at, original_queue_time)
+        self.assertEqual(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.BILLING_QUEUE_ENTERED,
+            ).count(),
+            1,
+        )
 
         response = self.client.post(
             reverse("opd_care_plan", args=[self.visit.id]),
@@ -448,8 +466,7 @@ class OpdDownstreamWorkflowTests(TestCase):
         prescription = Prescription.objects.create(
             visit=self.visit,
             prescribed_by=self.doctor,
-            status=Prescription.Status.SENT,
-            sent_at=timezone.now(),
+            status=Prescription.Status.DRAFT,
         )
         PrescriptionItem.objects.create(
             prescription=prescription,
@@ -459,13 +476,24 @@ class OpdDownstreamWorkflowTests(TestCase):
             unit_price="2.00",
         )
 
+        self.client.force_login(self.doctor)
+        response = self.client.post(
+            reverse("opd_care_plan", args=[self.visit.id]),
+            {"action": "send_pharmacy"},
+        )
+        self.assertRedirects(response, reverse("opd_care_plan", args=[self.visit.id]))
+        prescription.refresh_from_db()
+        bill = Bill.objects.get(visit=self.visit)
+        self.assertIsNotNone(prescription.sent_at)
+        self.assertIsNotNone(bill.billing_queue_entered_at)
+
         self.client.force_login(self.pharmacist)
         response = self.client.get(reverse("pharmacy_worklist"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "จัดการใบสั่งยา")
         self.assertRegex(
             response.content.decode(),
-            r"opd-workflow-ui(?:\.[0-9a-f]+)?\.css\?v=2",
+            r"opd-workflow-ui(?:\.[0-9a-f]+)?\.css\?v=service-queues-20260930",
         )
         self.assertContains(response, "รอรับยา")
         self.assertContains(response, "ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา")
@@ -479,14 +507,13 @@ class OpdDownstreamWorkflowTests(TestCase):
         prescription.refresh_from_db()
         self.assertEqual(prescription.status, Prescription.Status.DISPENSED)
 
-        bill = Bill.objects.get(visit=self.visit)
         self.client.force_login(self.cashier)
         response = self.client.get(reverse("billing_worklist"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "ตรวจสิทธิและรับชำระ")
         self.assertRegex(
             response.content.decode(),
-            r"opd-workflow-ui(?:\.[0-9a-f]+)?\.css\?v=2",
+            r"opd-workflow-ui(?:\.[0-9a-f]+)?\.css\?v=service-queues-20260930",
         )
         self.assertContains(response, "สิทธิครอบคลุม")
         self.assertContains(response, "ค้นชื่อผู้ป่วย, HN หรือเลข Visit")
@@ -515,6 +542,77 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("billing_receipt", args=[bill.id]))
         bill.refresh_from_db()
         self.assertEqual(bill.status, Bill.Status.WAIVED)
+        self.assertIsNotNone(bill.paid_at)
+
+    def test_service_queues_are_fifo_and_board_never_displays_patient_identity(self):
+        queue = Queue.objects.get(visit=self.visit)
+        queue.manual_sequence = 17
+        queue.save(update_fields=["manual_sequence"])
+        first_sent_at = timezone.now() - timedelta(minutes=20)
+        first_rx = Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.READY,
+            sent_at=first_sent_at,
+        )
+        first_bill = Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.READY,
+            patient_due="200.00",
+            billing_queue_entered_at=first_sent_at,
+        )
+
+        second_patient = Patient.objects.create(
+            first_name="อีกคน",
+            last_name="ไม่เปิดเผย",
+            national_id="5234567890123",
+        )
+        second_visit = Visit.objects.create(
+            patient=second_patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        Queue.objects.create(visit=second_visit, manual_sequence=18)
+        second_rx = Prescription.objects.create(
+            visit=second_visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.SENT,
+            sent_at=first_sent_at + timedelta(minutes=1),
+        )
+        second_bill = Bill.objects.create(
+            visit=second_visit,
+            status=Bill.Status.READY,
+            patient_due="50.00",
+            billing_queue_entered_at=first_sent_at + timedelta(minutes=1),
+        )
+
+        self.client.force_login(self.pharmacist)
+        response = self.client.get(reverse("pharmacy_worklist"))
+        pharmacy_rows = response.context["prescriptions"]
+        self.assertEqual([row.pk for row in pharmacy_rows[:2]], [first_rx.pk, second_rx.pk])
+        self.assertEqual([row.queue_position for row in pharmacy_rows[:2]], [1, 2])
+        self.assertContains(response, "ลำดับคิวห้องยา")
+        self.assertContains(response, "Q017")
+
+        self.client.force_login(self.cashier)
+        response = self.client.get(reverse("billing_worklist"))
+        billing_rows = response.context["bills"]
+        self.assertEqual([row.pk for row in billing_rows[:2]], [first_bill.pk, second_bill.pk])
+        self.assertEqual([row.queue_position for row in billing_rows[:2]], [1, 2])
+        self.assertContains(response, 'data-bill-filter="OUTSTANDING"')
+        self.assertContains(response, 'data-outstanding="true"')
+        self.assertContains(response, "Q017")
+
+        self.client.logout()
+        response = self.client.get(reverse("service_queue_display"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "คิวห้องยา")
+        self.assertContains(response, "คิวการเงิน")
+        self.assertContains(response, "Q017")
+        self.assertContains(response, "Q018")
+        self.assertNotContains(response, self.visit.patient.first_name)
+        self.assertNotContains(response, self.visit.patient.national_id)
+        self.assertNotContains(response, second_patient.first_name)
+        self.assertNotContains(response, second_patient.national_id)
 
     def test_aftercare_marks_no_medication_paid_visit_complete(self):
         Bill.objects.create(

@@ -4,10 +4,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Case, IntegerField, Q, When
+from django.db.models import Case, DateTimeField, IntegerField, Q, When
+from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 
 from queues.models import Queue, Visit, VisitWorkflowLog
@@ -31,6 +33,48 @@ COVERAGE_DEFAULT_PERCENT = {
     PatientCoverage.CoverageType.PRIVATE: 80,
     PatientCoverage.CoverageType.OTHER: 0,
 }
+
+PHARMACY_QUEUE_STATUSES = (
+    Prescription.Status.SENT,
+    Prescription.Status.PREPARING,
+    Prescription.Status.READY,
+)
+BILLING_QUEUE_STATUSES = (
+    Bill.Status.DRAFT,
+    Bill.Status.READY,
+    Bill.Status.WAIVED,
+)
+
+
+def _queue_ticket_for_visit(visit):
+    try:
+        return visit.queue.display_number
+    except Queue.DoesNotExist:
+        return f"Visit #{visit.pk}"
+
+
+def _enter_billing_queue(bill, actor):
+    if bill.billing_queue_entered_at is not None:
+        return False
+    entered_at = timezone.now()
+    updated = Bill.objects.filter(
+        pk=bill.pk,
+        billing_queue_entered_at__isnull=True,
+        status__in=BILLING_QUEUE_STATUSES,
+        paid_at__isnull=True,
+    ).update(billing_queue_entered_at=entered_at, updated_at=entered_at)
+    if not updated:
+        return False
+    bill.billing_queue_entered_at = entered_at
+    bill.updated_at = entered_at
+    VisitWorkflowLog.record(
+        visit=bill.visit,
+        event_type=VisitWorkflowLog.EventType.BILLING_QUEUE_ENTERED,
+        actor=actor,
+        description="รายการถูกส่งเข้าคิวการเงิน",
+        details={"bill_id": bill.id},
+    )
+    return True
 
 
 def _visit_with_patient(visit_id):
@@ -135,10 +179,15 @@ def opd_care_plan(request, visit_id):
             if not prescription or not prescription.items.exists():
                 messages.error(request, "ยังไม่มีรายการยา กรุณาเพิ่มรายการก่อนส่งห้องยา")
                 return redirect("opd_care_plan", visit_id=visit.id)
+            if prescription.status != Prescription.Status.DRAFT:
+                messages.error(request, "ใบสั่งยานี้ถูกส่งเข้าห้องยาแล้ว")
+                return redirect("opd_care_plan", visit_id=visit.id)
             prescription.status = Prescription.Status.SENT
-            prescription.sent_at = timezone.now()
+            if prescription.sent_at is None:
+                prescription.sent_at = timezone.now()
             prescription.save(update_fields=["status", "sent_at", "updated_at"])
-            _ensure_bill(visit, request.user)
+            bill = _ensure_bill(visit, request.user)
+            _enter_billing_queue(bill, request.user)
             VisitWorkflowLog.record(
                 visit=visit,
                 event_type=VisitWorkflowLog.EventType.PHARMACY_STATUS_CHANGED,
@@ -168,6 +217,7 @@ def opd_care_plan(request, visit_id):
                 request.user,
                 pharmacy_skipped=no_medication_ordered,
             )
+            _enter_billing_queue(bill, request.user)
             if prescription and prescription.items.exists():
                 messages.success(
                     request,
@@ -512,25 +562,30 @@ def delete_prescription_item(request, item_id):
 
 @login_required
 def pharmacy_worklist(request):
-    prescriptions = (
+    prescriptions = list(
         Prescription.objects
-        .select_related("visit", "visit__patient", "prescribed_by")
+        .select_related("visit", "visit__patient", "visit__queue", "prescribed_by")
         .prefetch_related("items")
         .exclude(status=Prescription.Status.DRAFT)
         .order_by(
             Case(
-                When(status=Prescription.Status.READY, then=0),
-                When(status=Prescription.Status.PREPARING, then=1),
-                When(status=Prescription.Status.SENT, then=2),
-                When(status=Prescription.Status.DISPENSED, then=3),
-                When(status=Prescription.Status.CANCELLED, then=4),
-                default=5,
+                When(status__in=PHARMACY_QUEUE_STATUSES, then=0),
+                default=1,
                 output_field=IntegerField(),
             ),
-            "sent_at",
-            "created_at",
+            Coalesce("sent_at", "created_at", output_field=DateTimeField()),
+            "pk",
         )
     )
+    queue_position = 0
+    for prescription in prescriptions:
+        if prescription.status in PHARMACY_QUEUE_STATUSES:
+            queue_position += 1
+            prescription.queue_position = queue_position
+            prescription.queue_display_number = _queue_ticket_for_visit(prescription.visit)
+        else:
+            prescription.queue_position = None
+            prescription.queue_display_number = None
     return render(request, "pharmacy_worklist.html", {
         "prescriptions": prescriptions,
         "status_choices": Prescription.Status.choices,
@@ -577,23 +632,75 @@ def pharmacy_update_status(request, prescription_id):
 
 @login_required
 def billing_worklist(request):
-    bills = (
-        Bill.objects
-        .select_related("visit", "visit__patient", "coverage", "received_by")
-        .order_by(
-            Case(
-                When(status=Bill.Status.READY, then=0),
-                When(status=Bill.Status.DRAFT, then=1),
-                When(status=Bill.Status.PAID, then=2),
-                When(status=Bill.Status.WAIVED, then=3),
-                When(status=Bill.Status.CANCELLED, then=4),
-                default=5,
-                output_field=IntegerField(),
-            ),
-            "created_at",
+    active_billing = (
+        Q(billing_queue_entered_at__isnull=False)
+        & (
+            Q(status__in=(Bill.Status.DRAFT, Bill.Status.READY))
+            | Q(status=Bill.Status.WAIVED, paid_at__isnull=True)
         )
     )
+    billing_history = (
+        Q(status__in=(Bill.Status.PAID, Bill.Status.CANCELLED))
+        | Q(status=Bill.Status.WAIVED, paid_at__isnull=False)
+    )
+    bills = list(
+        Bill.objects
+        .filter(active_billing | billing_history)
+        .select_related("visit", "visit__patient", "visit__queue", "coverage", "received_by")
+        .order_by(
+            Case(
+                When(active_billing, then=0),
+                default=1,
+                output_field=IntegerField(),
+            ),
+            Coalesce("billing_queue_entered_at", "created_at", output_field=DateTimeField()),
+            "pk",
+        )
+    )
+    queue_position = 0
+    for bill in bills:
+        if bill.billing_queue_entered_at is not None and bill.status in BILLING_QUEUE_STATUSES and bill.paid_at is None:
+            queue_position += 1
+            bill.queue_position = queue_position
+            bill.queue_display_number = _queue_ticket_for_visit(bill.visit)
+        else:
+            bill.queue_position = None
+            bill.queue_display_number = None
     return render(request, "billing_worklist.html", {"bills": bills})
+
+
+@require_GET
+def service_queue_display(request):
+    """Public service-counter board: show queue numbers only, never patient details."""
+    prescriptions = list(
+        Prescription.objects
+        .filter(status__in=PHARMACY_QUEUE_STATUSES)
+        .select_related("visit", "visit__queue")
+        .order_by(Coalesce("sent_at", "created_at", output_field=DateTimeField()), "pk")
+    )
+    for position, prescription in enumerate(prescriptions, start=1):
+        prescription.queue_position = position
+        prescription.queue_display_number = _queue_ticket_for_visit(prescription.visit)
+
+    open_bills = (
+        Q(status__in=(Bill.Status.DRAFT, Bill.Status.READY))
+        | Q(status=Bill.Status.WAIVED, paid_at__isnull=True)
+    )
+    bills = list(
+        Bill.objects
+        .filter(billing_queue_entered_at__isnull=False)
+        .filter(open_bills)
+        .select_related("visit", "visit__queue")
+        .order_by("billing_queue_entered_at", "pk")
+    )
+    for position, bill in enumerate(bills, start=1):
+        bill.queue_position = position
+        bill.queue_display_number = _queue_ticket_for_visit(bill.visit)
+
+    return render(request, "service_queue_display.html", {
+        "prescriptions": prescriptions,
+        "bills": bills,
+    })
 
 
 @login_required
