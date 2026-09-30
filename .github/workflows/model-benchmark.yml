@@ -25,6 +25,9 @@ jobs:
       - name: Install benchmark-only model libraries
         run: python -m pip install xgboost catboost lightgbm
 
+      - name: Test MIMIC-IV-ED import adapter
+        run: python -m unittest ai_triage.ml.test_import_mimic_iv_ed
+
       - name: Run 3-fold triage benchmark
         run: python -m ai_triage.ml.benchmark_models --output-dir ai_triage/reports/model_benchmark
 
