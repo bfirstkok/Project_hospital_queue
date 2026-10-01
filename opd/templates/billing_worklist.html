@@ -130,7 +130,8 @@
   const noResults=document.getElementById('billingNoResults');
   const group=status=>['PAID','WAIVED'].includes(status)?'DONE':status;
   const selected=cards.find(card=>card.getAttribute('aria-current')==='true');
-  let active=selected&&selected.dataset.active!=='true'?group(selected.dataset.status):'OPEN';
+  const selectedFromUrl=new URLSearchParams(window.location.search).has('bill_id');
+  let active=selectedFromUrl&&selected&&selected.dataset.active!=='true'?group(selected.dataset.status):'OPEN';
   const counts={OPEN:0,DRAFT:0,READY:0,DONE:0,CANCELLED:0,OUTSTANDING:0,ALL:cards.length};
   cards.forEach(card=>{const key=group(card.dataset.status);if(card.dataset.active==='true'){counts.OPEN++;if(key in counts)counts[key]++;}else if(key in counts)counts[key]++;if(card.dataset.outstanding==='true')counts.OUTSTANDING++;});
   Object.entries(counts).forEach(([key,value])=>{const node=document.querySelector(`[data-bill-filter-count="${key}"]`);if(node)node.textContent=value;});
