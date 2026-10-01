@@ -570,7 +570,7 @@ def pharmacy_worklist(request):
         Prescription.objects
         .select_related("visit", "visit__patient", "visit__queue", "prescribed_by")
         .prefetch_related("items")
-        .exclude(status=Prescription.Status.DRAFT)
+        .filter(status__in=PHARMACY_QUEUE_STATUSES)
         .order_by(
             Case(
                 When(pharmacy_queue_skipped_at__isnull=False, status__in=PHARMACY_QUEUE_STATUSES, then=2),
@@ -624,7 +624,6 @@ def pharmacy_worklist(request):
         "SENT": sum(rx.status == Prescription.Status.SENT for rx in prescriptions),
         "PREPARING": sum(rx.status == Prescription.Status.PREPARING for rx in prescriptions),
         "READY": sum(rx.status == Prescription.Status.READY for rx in prescriptions),
-        "DONE": sum(rx.status in (Prescription.Status.DISPENSED, Prescription.Status.CANCELLED) for rx in prescriptions),
     }
     status_counts["ACTIVE"] = sum(rx.status in PHARMACY_QUEUE_STATUSES for rx in prescriptions)
     dispensed_today = Prescription.objects.filter(
@@ -874,7 +873,28 @@ def _service_queue_action(
 
 @require_GET
 def service_queue_display(request):
-    """Public service-counter board: show queue numbers only, never patient details."""
+    """Choose a service-counter board without combining separate service queues."""
+    return render(request, "service_queue_selector.html")
+
+
+def _number_public_queue(items, *, called_field, skipped_field, entered_at):
+    position = 0
+    for item in items:
+        item.queue_display_number = _queue_ticket_for_visit(item.visit)
+        item.queue_is_called = getattr(item, called_field) is not None and getattr(item, skipped_field) is None
+        item.queue_is_skipped = getattr(item, skipped_field) is not None
+        item.queue_wait_started = entered_at(item)
+        if not item.queue_is_called and not item.queue_is_skipped:
+            position += 1
+            item.queue_position = position
+        else:
+            item.queue_position = None
+    return items
+
+
+@require_GET
+def pharmacy_queue_display(request):
+    """Public pharmacy board: show queue numbers only, never patient details."""
     prescriptions = list(
         Prescription.objects.filter(status__in=PHARMACY_QUEUE_STATUSES)
         .select_related("visit", "visit__queue")
@@ -889,18 +909,29 @@ def service_queue_display(request):
             "pk",
         )
     )
-    pharmacy_position = 0
+    _number_public_queue(
+        prescriptions,
+        called_field="pharmacy_queue_called_at",
+        skipped_field="pharmacy_queue_skipped_at",
+        entered_at=lambda prescription: prescription.pharmacy_queue_entered_at or prescription.sent_at or prescription.created_at,
+    )
     for prescription in prescriptions:
-        prescription.queue_display_number = _queue_ticket_for_visit(prescription.visit)
-        prescription.queue_is_called = prescription.pharmacy_queue_called_at is not None and prescription.pharmacy_queue_skipped_at is None
-        prescription.queue_is_skipped = prescription.pharmacy_queue_skipped_at is not None
-        prescription.queue_wait_started = prescription.pharmacy_queue_entered_at or prescription.sent_at or prescription.created_at
-        if not prescription.queue_is_called and not prescription.queue_is_skipped:
-            pharmacy_position += 1
-            prescription.queue_position = pharmacy_position
-        else:
-            prescription.queue_position = None
+        prescription.queue_status_label = {
+            Prescription.Status.SENT: "รอรับใบสั่งยา",
+            Prescription.Status.PREPARING: "กำลังจัดยา",
+            Prescription.Status.READY: "พร้อมจ่ายยา",
+        }.get(prescription.status, "รอรับยา")
+    return render(request, "service_queue_display.html", {
+        "queue_items": prescriptions,
+        "lane_title": "คิวห้องยา",
+        "empty_message": "ขณะนี้ยังไม่มีคิวห้องยา",
+        "called_message": "กำลังเรียก · เชิญที่ห้องยา",
+    })
 
+
+@require_GET
+def billing_queue_display(request):
+    """Public billing board: show queue numbers only, never patient details."""
     open_bills = (
         Q(status__in=(Bill.Status.DRAFT, Bill.Status.READY))
         | Q(status=Bill.Status.WAIVED, paid_at__isnull=True)
@@ -921,21 +952,23 @@ def service_queue_display(request):
             "pk",
         )
     )
-    billing_position = 0
+    _number_public_queue(
+        bills,
+        called_field="billing_queue_called_at",
+        skipped_field="billing_queue_skipped_at",
+        entered_at=lambda bill: bill.billing_queue_entered_at,
+    )
     for bill in bills:
-        bill.queue_display_number = _queue_ticket_for_visit(bill.visit)
-        bill.queue_is_called = bill.billing_queue_called_at is not None and bill.billing_queue_skipped_at is None
-        bill.queue_is_skipped = bill.billing_queue_skipped_at is not None
-        bill.queue_wait_started = bill.billing_queue_entered_at
-        if not bill.queue_is_called and not bill.queue_is_skipped:
-            billing_position += 1
-            bill.queue_position = billing_position
-        else:
-            bill.queue_position = None
-
+        bill.queue_status_label = {
+            Bill.Status.DRAFT: "รอตรวจยอด",
+            Bill.Status.WAIVED: "รอปิดยอด",
+            Bill.Status.READY: "รอชำระเงิน",
+        }.get(bill.status, "รอชำระเงิน")
     return render(request, "service_queue_display.html", {
-        "prescriptions": prescriptions,
-        "bills": bills,
+        "queue_items": bills,
+        "lane_title": "คิวชำระเงิน",
+        "empty_message": "ขณะนี้ยังไม่มีคิวการเงิน",
+        "called_message": "กำลังเรียก · เชิญที่การเงิน",
     })
 
 

@@ -15,7 +15,7 @@
   <header class="ph-topbar">
     <div class="ph-brand"><span class="ph-brand-mark" aria-hidden="true">✚</span><div><span>งานบริการ OPD</span><h1>ห้องจ่ายยา</h1></div></div>
     <p>จัดการใบสั่งยา · ตรวจสอบผู้ป่วย · จัดยา · ยืนยันเมื่อจ่ายยาแล้ว</p>
-    <a class="ph-public-board" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a>
+    <a class="ph-public-board" href="{% url 'pharmacy_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวห้องยา ↗</a>
   </header>
 
   {% if messages %}<div class="ph-messages">{% for message in messages %}<div class="ph-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
@@ -29,7 +29,7 @@
 
   <section class="ph-workspace" aria-label="จัดการคิวและใบสั่งยา">
     <aside class="ph-panel ph-queue-panel">
-      <header class="ph-panel-head"><div><h2>คิวผู้ป่วยรอรับยา</h2><p>ลำดับคิวห้องยาเรียงตามเวลามาถึง · เลือกคิวเพื่อดูข้อมูลและใบสั่งยา</p></div><span class="ph-count">{{ prescriptions|length }}</span></header>
+      <header class="ph-panel-head"><div><h2>คิวผู้ป่วยรอรับยา</h2><p>ลำดับคิวห้องยา · แสดงเฉพาะรายการที่ยังไม่จ่ายยา</p></div><span class="ph-count">{{ prescriptions|length }}</span></header>
       <div class="ph-queue-tools">
         <label class="ph-search"><span aria-hidden="true">⌕</span><input id="pharmacySearch" type="search" placeholder="ค้นหา HN, ชื่อ หรือชื่อยา" autocomplete="off" aria-label="ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา"></label>
         <div class="ph-filters" role="group" aria-label="กรองคิวห้องยา">
@@ -37,7 +37,6 @@
           <button type="button" data-filter="SENT">รอรับ <span data-filter-count="SENT">{{ pharmacy_status_counts.SENT }}</span></button>
           <button type="button" data-filter="PREPARING">กำลังจัด <span data-filter-count="PREPARING">{{ pharmacy_status_counts.PREPARING }}</span></button>
           <button type="button" data-filter="READY">พร้อมจ่าย <span data-filter-count="READY">{{ pharmacy_status_counts.READY }}</span></button>
-          <button type="button" data-filter="DONE">เสร็จแล้ว <span data-filter-count="DONE">{{ pharmacy_status_counts.DONE }}</span></button>
         </div>
       </div>
       <div class="ph-queue-scroll">
@@ -51,11 +50,11 @@
             <td>{{ rx.sent_at|date:"H:i"|default:"—" }}</td>
             <td><span class="ph-status {{ rx.status|lower }}{% if rx.queue_is_skipped %} no-show{% endif %}">{% if rx.queue_is_called %}กำลังเรียก{% elif rx.queue_is_skipped %}ไม่มา{% else %}{{ rx.get_status_display }}{% endif %}</span></td>
           </tr>
-          {% empty %}<tr><td colspan="4" class="ph-empty">ยังไม่มีรายการส่งมาห้องยา</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="4" class="ph-empty">ไม่มีผู้ป่วยที่รอรับยา กำลังจัดยา หรือพร้อมจ่ายในขณะนี้</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>
-      <div class="ph-no-results" id="pharmacyNoResults">ไม่พบคิวตามคำค้นหาหรือตัวกรอง</div>
+    <div class="ph-no-results" id="pharmacyNoResults">ไม่พบคิวที่ยังรอรับยาตามคำค้นหาหรือตัวกรอง</div>
     </aside>
 
     <section class="ph-panel ph-detail-panel" aria-label="รายละเอียดผู้ป่วยและใบสั่งยา">
@@ -103,7 +102,7 @@
           <div class="ph-call-note">คิวนี้จะถูกเรียกตามลำดับ เมื่อคิวก่อนหน้าดำเนินการเสร็จ</div><button class="ph-action-button disabled" type="button" disabled>รอเรียกตามลำดับ</button>
           {% else %}<div class="ph-call-note">รายการนี้ไม่อยู่ในคิวที่กำลังรอรับบริการ</div>{% endif %}
         {% else %}<div class="ph-call-note">เมื่อมีใบสั่งยา รายการจะปรากฏที่นี่</div>{% endif %}
-        <a class="ph-quiet-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a>
+        <a class="ph-quiet-link" href="{% url 'pharmacy_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวห้องยา ↗</a>
       </section>
 
       <section class="ph-action-card ph-progress-card"><header><span aria-hidden="true">✓</span><h2>ขั้นตอนการจัดยา</h2></header>

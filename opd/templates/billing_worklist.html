@@ -17,7 +17,7 @@
       <h1>ตรวจสิทธิและรับชำระ</h1>
       <p>ตรวจข้อมูลสิทธิและยอดค่าใช้จ่ายก่อนรับชำระ จากนั้นเปิดใบเสร็จเพื่อพิมพ์หรือบันทึก</p>
     </div>
-    <div class="ow-hero__side"><span>ยอดที่ต้องดำเนินการ</span><strong id="billingActiveCount">—</strong><a class="ow-hero-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a></div>
+    <div class="ow-hero__side"><span>ยอดที่ต้องดำเนินการ</span><strong id="billingActiveCount">—</strong><a class="ow-hero-link" href="{% url 'billing_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวการเงิน ↗</a></div>
   </header>
 
   {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}

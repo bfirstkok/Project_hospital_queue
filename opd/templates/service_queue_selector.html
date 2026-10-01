@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>เลือกจอคิวบริการ OPD</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#e9edf7;color:#18243b;font-family:"Sarabun",Tahoma,sans-serif}.wrap{width:min(920px,100%)}header{padding:28px 32px;border-radius:18px;background:#271176;color:#fff}h1{margin:0;font-size:clamp(30px,5vw,48px)}header p{margin:8px 0 0;color:#e7ddff;font-size:18px}.boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}.board{display:flex;min-height:210px;flex-direction:column;justify-content:space-between;padding:24px;border:2px solid #d8c7f0;border-radius:16px;background:#fff;text-decoration:none;color:inherit;box-shadow:0 8px 22px #25116712;transition:transform .15s,border-color .15s}.board:hover,.board:focus-visible{transform:translateY(-3px);border-color:#38199b;outline:none}.board h2{margin:0;color:#2c167e;font-size:30px}.board p{margin:10px 0;color:#536782;font-size:17px}.open{align-self:flex-start;padding:10px 18px;border-radius:9px;background:#38199b;color:#fff;font-weight:800}@media(max-width:640px){.boards{grid-template-columns:1fr}.board{min-height:160px}header{padding:22px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header><h1>จอคิวบริการ OPD</h1><p>เลือกเปิดจอของจุดบริการที่ต้องการ แต่ละจอแสดงเฉพาะคิวของจุดนั้น</p></header>
+    <nav class="boards" aria-label="เลือกจอคิว">
+      <a class="board" href="{% url 'pharmacy_queue_display' %}"><div><h2>คิวห้องยา</h2><p>แสดงคิวรอรับใบสั่งยา กำลังจัดยา และพร้อมจ่ายยา</p></div><span class="open">เปิดจอห้องยา ↗</span></a>
+      <a class="board" href="{% url 'billing_queue_display' %}"><div><h2>คิวชำระเงิน</h2><p>แสดงคิวรอตรวจยอด รอปิดยอด และรอชำระเงิน</p></div><span class="open">เปิดจอการเงิน ↗</span></a>
+    </nav>
+  </main>
+</body>
+</html>

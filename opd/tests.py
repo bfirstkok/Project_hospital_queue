@@ -515,6 +515,10 @@ class OpdDownstreamWorkflowTests(TestCase):
         )
         prescription.refresh_from_db()
         self.assertEqual(prescription.status, Prescription.Status.DISPENSED)
+        response = self.client.get(reverse("pharmacy_worklist"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["prescriptions"], [])
+        self.assertEqual(response.context["pharmacy_dispensed_today"], 1)
 
         self.client.force_login(self.cashier)
         response = self.client.get(reverse("billing_worklist"))
@@ -594,6 +598,40 @@ class OpdDownstreamWorkflowTests(TestCase):
             billing_queue_entered_at=first_sent_at + timedelta(minutes=1),
         )
 
+        pharmacy_only_patient = Patient.objects.create(
+            first_name="เฉพาะห้องยา",
+            last_name="ทดสอบแยกจอ",
+            national_id="8234567890123",
+        )
+        pharmacy_only_visit = Visit.objects.create(
+            patient=pharmacy_only_patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        Queue.objects.create(visit=pharmacy_only_visit, manual_sequence=19)
+        Prescription.objects.create(
+            visit=pharmacy_only_visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.SENT,
+            sent_at=first_sent_at + timedelta(minutes=2),
+        )
+
+        billing_only_patient = Patient.objects.create(
+            first_name="เฉพาะการเงิน",
+            last_name="ทดสอบแยกจอ",
+            national_id="9234567890123",
+        )
+        billing_only_visit = Visit.objects.create(
+            patient=billing_only_patient,
+            final_severity=Visit.Severity.GREEN,
+        )
+        Queue.objects.create(visit=billing_only_visit, manual_sequence=20)
+        Bill.objects.create(
+            visit=billing_only_visit,
+            status=Bill.Status.READY,
+            patient_due="75.00",
+            billing_queue_entered_at=first_sent_at + timedelta(minutes=3),
+        )
+
         self.client.force_login(self.pharmacist)
         response = self.client.get(reverse("pharmacy_worklist"))
         pharmacy_rows = response.context["prescriptions"]
@@ -614,14 +652,37 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse("service_queue_display"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "คิวห้องยา")
-        self.assertContains(response, "คิวการเงิน")
-        self.assertContains(response, "Q017")
-        self.assertContains(response, "Q018")
-        self.assertNotContains(response, self.visit.patient.first_name)
-        self.assertNotContains(response, self.visit.patient.national_id)
-        self.assertNotContains(response, second_patient.first_name)
-        self.assertNotContains(response, second_patient.national_id)
+        self.assertContains(response, reverse("pharmacy_queue_display"))
+        self.assertContains(response, reverse("billing_queue_display"))
+        self.assertNotContains(response, "Q017")
+
+        pharmacy_board = self.client.get(reverse("pharmacy_queue_display"))
+        self.assertEqual(pharmacy_board.status_code, 200)
+        self.assertContains(pharmacy_board, "คิวห้องยา")
+        self.assertNotContains(pharmacy_board, "คิวชำระเงิน")
+        self.assertContains(pharmacy_board, "Q017")
+        self.assertContains(pharmacy_board, "Q018")
+        self.assertContains(pharmacy_board, "Q019")
+        self.assertNotContains(pharmacy_board, "Q020")
+        self.assertNotContains(pharmacy_board, f"{self.visit.patient.first_name} {self.visit.patient.last_name}")
+        self.assertNotContains(pharmacy_board, self.visit.patient.national_id)
+        self.assertNotContains(pharmacy_board, f"{second_patient.first_name} {second_patient.last_name}")
+        self.assertNotContains(pharmacy_board, second_patient.national_id)
+        self.assertNotContains(pharmacy_board, f"{billing_only_patient.first_name} {billing_only_patient.last_name}")
+
+        billing_board = self.client.get(reverse("billing_queue_display"))
+        self.assertEqual(billing_board.status_code, 200)
+        self.assertContains(billing_board, "คิวชำระเงิน")
+        self.assertNotContains(billing_board, "คิวห้องยา")
+        self.assertContains(billing_board, "Q017")
+        self.assertContains(billing_board, "Q018")
+        self.assertContains(billing_board, "Q020")
+        self.assertNotContains(billing_board, "Q019")
+        self.assertNotContains(billing_board, f"{self.visit.patient.first_name} {self.visit.patient.last_name}")
+        self.assertNotContains(billing_board, self.visit.patient.national_id)
+        self.assertNotContains(billing_board, f"{second_patient.first_name} {second_patient.last_name}")
+        self.assertNotContains(billing_board, second_patient.national_id)
+        self.assertNotContains(billing_board, f"{pharmacy_only_patient.first_name} {pharmacy_only_patient.last_name}")
 
     def test_pharmacy_no_show_skips_to_next_and_late_patient_returns_to_tail(self):
         second_patient = Patient.objects.create(
@@ -669,7 +730,7 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertTrue(records[second_rx.id].can_call_queue)
         self.assertTrue(records[first_rx.id].queue_is_skipped)
         self.client.logout()
-        display = self.client.get(reverse("service_queue_display"))
+        display = self.client.get(reverse("pharmacy_queue_display"))
         self.assertContains(display, "ไม่พบผู้ป่วย · ติดต่อเจ้าหน้าที่")
         self.assertNotContains(
             display,
