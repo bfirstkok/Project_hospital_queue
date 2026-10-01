@@ -766,7 +766,46 @@ def billing_worklist(request):
     )
     if waiting and not called_exists:
         waiting[0].can_call_queue = True
-    return render(request, "billing_worklist.html", {"bills": bills})
+
+    active_bills = [
+        bill for bill in bills
+        if bill.billing_queue_entered_at is not None
+        and bill.status in BILLING_QUEUE_STATUSES
+        and bill.paid_at is None
+    ]
+    today = timezone.localdate()
+    paid_today = [
+        bill for bill in bills
+        if bill.paid_at is not None
+        and timezone.localtime(bill.paid_at).date() == today
+        and bill.status in (Bill.Status.PAID, Bill.Status.WAIVED)
+    ]
+    selected_bill = next(
+        (bill for bill in bills if str(bill.pk) == request.GET.get("bill_id")),
+        None,
+    )
+    if selected_bill is None:
+        selected_bill = next(iter(active_bills), bills[0] if bills else None)
+    prescription = (
+        Prescription.objects.filter(visit=selected_bill.visit)
+        .prefetch_related("items")
+        .first()
+        if selected_bill else None
+    )
+    billing_summary = {
+        "active": len(active_bills),
+        "review": sum(bill.status == Bill.Status.DRAFT for bill in active_bills),
+        "awaiting_payment": sum(bill.status in (Bill.Status.READY, Bill.Status.WAIVED) for bill in active_bills),
+        "paid_today": len(paid_today),
+        "paid_today_total": sum((bill.patient_due for bill in paid_today), Decimal("0.00")),
+        "cancelled": sum(bill.status == Bill.Status.CANCELLED for bill in bills),
+    }
+    return render(request, "billing_worklist.html", {
+        "bills": bills,
+        "selected_bill": selected_bill,
+        "selected_prescription": prescription,
+        "billing_summary": billing_summary,
+    })
 
 
 @login_required

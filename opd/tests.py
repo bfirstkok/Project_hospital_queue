@@ -531,6 +531,12 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertContains(response, "สิทธิครอบคลุม")
         self.assertContains(response, "ค้นชื่อผู้ป่วย, HN หรือเลข Visit")
         self.assertContains(response, "ผู้ป่วย ปลายทาง")
+        self.assertEqual(response.context["selected_bill"].id, bill.id)
+        self.assertEqual(response.context["selected_prescription"].id, prescription.id)
+        self.assertContains(response, "ยอดที่ผู้ป่วยต้องชำระ")
+        self.assertContains(response, "จัดการคิวการเงิน")
+        self.assertContains(response, "ตรวจสอบยอดและรับชำระ")
+        self.assertContains(response, "เปิดจอคิว")
 
         response = self.client.post(
             reverse("billing_detail", args=[bill.id]),
