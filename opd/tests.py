@@ -498,12 +498,21 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertContains(response, "รอรับยา")
         self.assertContains(response, "ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา")
         self.assertContains(response, "Paracetamol")
+        self.assertContains(response, "ข้อมูลผู้ป่วยและใบสั่งยา")
+        self.assertContains(response, "ตรวจสอบก่อนจ่ายยา")
+        self.assertContains(response, "เรียกคิว")
 
         response = self.client.post(
             reverse("pharmacy_update_status", args=[prescription.id]),
-            {"status": Prescription.Status.DISPENSED},
+            {
+                "status": Prescription.Status.DISPENSED,
+                "return_prescription_id": str(prescription.id),
+            },
         )
-        self.assertRedirects(response, reverse("pharmacy_worklist"))
+        self.assertRedirects(
+            response,
+            f"{reverse('pharmacy_worklist')}?prescription_id={prescription.id}",
+        )
         prescription.refresh_from_db()
         self.assertEqual(prescription.status, Prescription.Status.DISPENSED)
 
@@ -613,6 +622,119 @@ class OpdDownstreamWorkflowTests(TestCase):
         self.assertNotContains(response, self.visit.patient.national_id)
         self.assertNotContains(response, second_patient.first_name)
         self.assertNotContains(response, second_patient.national_id)
+
+    def test_pharmacy_no_show_skips_to_next_and_late_patient_returns_to_tail(self):
+        second_patient = Patient.objects.create(
+            first_name="คิวถัดไป",
+            last_name="ห้องยา",
+            national_id="6234567890123",
+        )
+        second_visit = Visit.objects.create(patient=second_patient, final_severity=Visit.Severity.GREEN)
+        Queue.objects.create(visit=second_visit, manual_sequence=22)
+        first_time = timezone.now() - timedelta(minutes=10)
+        second_time = timezone.now() - timedelta(minutes=5)
+        first_rx = Prescription.objects.create(
+            visit=self.visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.SENT,
+            sent_at=first_time,
+            pharmacy_queue_entered_at=first_time,
+        )
+        second_rx = Prescription.objects.create(
+            visit=second_visit,
+            prescribed_by=self.doctor,
+            status=Prescription.Status.SENT,
+            sent_at=second_time,
+            pharmacy_queue_entered_at=second_time,
+        )
+        self.client.force_login(self.pharmacist)
+
+        response = self.client.post(reverse("pharmacy_queue_action", args=[first_rx.id]), {"action": "call"})
+        self.assertRedirects(response, reverse("pharmacy_worklist"))
+        first_rx.refresh_from_db()
+        self.assertIsNotNone(first_rx.pharmacy_queue_called_at)
+
+        # Staff cannot skip the FIFO head by calling a later prescription.
+        self.client.post(reverse("pharmacy_queue_action", args=[second_rx.id]), {"action": "call"})
+        second_rx.refresh_from_db()
+        self.assertIsNone(second_rx.pharmacy_queue_called_at)
+
+        response = self.client.post(reverse("pharmacy_queue_action", args=[first_rx.id]), {"action": "skip"})
+        self.assertRedirects(response, reverse("pharmacy_worklist"))
+        first_rx.refresh_from_db()
+        self.assertIsNone(first_rx.pharmacy_queue_called_at)
+        self.assertIsNotNone(first_rx.pharmacy_queue_skipped_at)
+        response = self.client.get(reverse("pharmacy_worklist"))
+        records = {row.pk: row for row in response.context["prescriptions"]}
+        self.assertTrue(records[second_rx.id].can_call_queue)
+        self.assertTrue(records[first_rx.id].queue_is_skipped)
+        self.client.logout()
+        display = self.client.get(reverse("service_queue_display"))
+        self.assertContains(display, "ไม่พบผู้ป่วย · ติดต่อเจ้าหน้าที่")
+        self.assertNotContains(
+            display,
+            f"{self.visit.patient.first_name} {self.visit.patient.last_name}",
+        )
+        self.client.force_login(self.pharmacist)
+
+        self.client.post(reverse("pharmacy_queue_action", args=[second_rx.id]), {"action": "call"})
+        second_rx.refresh_from_db()
+        self.assertIsNotNone(second_rx.pharmacy_queue_called_at)
+        self.client.post(reverse("pharmacy_queue_action", args=[first_rx.id]), {"action": "requeue"})
+        first_rx.refresh_from_db()
+        self.assertIsNone(first_rx.pharmacy_queue_skipped_at)
+        self.assertGreater(first_rx.pharmacy_queue_entered_at, second_rx.pharmacy_queue_entered_at)
+        self.assertEqual(
+            VisitWorkflowLog.objects.filter(
+                visit=self.visit,
+                event_type=VisitWorkflowLog.EventType.SERVICE_QUEUE_ACTION,
+            ).count(),
+            3,
+        )
+
+    def test_billing_no_show_can_call_next_and_requeue_at_end(self):
+        second_patient = Patient.objects.create(
+            first_name="คิวถัดไป",
+            last_name="การเงิน",
+            national_id="7234567890123",
+        )
+        second_visit = Visit.objects.create(patient=second_patient, final_severity=Visit.Severity.GREEN)
+        Queue.objects.create(visit=second_visit, manual_sequence=23)
+        first_time = timezone.now() - timedelta(minutes=8)
+        second_time = timezone.now() - timedelta(minutes=4)
+        first_bill = Bill.objects.create(
+            visit=self.visit,
+            status=Bill.Status.READY,
+            patient_due="100.00",
+            billing_queue_entered_at=first_time,
+        )
+        second_bill = Bill.objects.create(
+            visit=second_visit,
+            status=Bill.Status.READY,
+            patient_due="50.00",
+            billing_queue_entered_at=second_time,
+        )
+        self.client.force_login(self.cashier)
+
+        self.client.post(reverse("billing_queue_action", args=[first_bill.id]), {"action": "call"})
+        first_bill.refresh_from_db()
+        self.assertIsNotNone(first_bill.billing_queue_called_at)
+        self.client.post(reverse("billing_queue_action", args=[first_bill.id]), {"action": "skip"})
+        first_bill.refresh_from_db()
+        self.assertIsNotNone(first_bill.billing_queue_skipped_at)
+
+        response = self.client.get(reverse("billing_worklist"))
+        records = {row.pk: row for row in response.context["bills"]}
+        self.assertTrue(records[second_bill.id].can_call_queue)
+        self.assertTrue(records[first_bill.id].queue_is_skipped)
+        self.client.post(reverse("billing_queue_action", args=[second_bill.id]), {"action": "call"})
+        second_bill.refresh_from_db()
+        self.assertIsNotNone(second_bill.billing_queue_called_at)
+
+        self.client.post(reverse("billing_queue_action", args=[first_bill.id]), {"action": "requeue"})
+        first_bill.refresh_from_db()
+        self.assertIsNone(first_bill.billing_queue_skipped_at)
+        self.assertGreater(first_bill.billing_queue_entered_at, second_bill.billing_queue_entered_at)
 
     def test_aftercare_marks_no_medication_paid_visit_complete(self):
         Bill.objects.create(

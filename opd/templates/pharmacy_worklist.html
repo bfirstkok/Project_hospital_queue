@@ -4,119 +4,138 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ห้องยา · ระบบผู้ป่วย</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-clean-20260926">
+  <title>ห้องจ่ายยา · ระบบผู้ป่วย</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-dashboard-20261001">
   <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=service-queues-20260930">
+  <link rel="stylesheet" href="{% static 'css/pharmacy-dashboard.css' %}?v=20261001">
 </head>
 <body>
 {% include "includes/main_nav.html" %}
-<main class="ow-page pharmacy-page">
-  <header class="ow-hero">
-    <div class="ow-hero__copy">
-      <div class="ow-eyebrow"><span class="ow-eyebrow__mark" aria-hidden="true">Rx</span> งานบริการ OPD · ห้องยา</div>
-      <h1>จัดการใบสั่งยา</h1>
-      <p>ตรวจรายการจากแพทย์ → จัดยาให้ครบ → เปลี่ยนสถานะเมื่อพร้อมจ่ายหรือจ่ายยาแล้ว</p>
-    </div>
-    <div class="ow-hero__side"><span>งานที่ยังดำเนินการ</span><strong id="pharmacyPendingCount">—</strong><a class="ow-hero-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a></div>
+<main class="ph-dashboard" id="pharmacy-dashboard">
+  <header class="ph-topbar">
+    <div class="ph-brand"><span class="ph-brand-mark" aria-hidden="true">✚</span><div><span>งานบริการ OPD</span><h1>ห้องจ่ายยา</h1></div></div>
+    <p>จัดการใบสั่งยา · ตรวจสอบผู้ป่วย · จัดยา · ยืนยันเมื่อจ่ายยาแล้ว</p>
+    <a class="ph-public-board" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a>
   </header>
 
-  {% if messages %}<div class="ow-messages">{% for message in messages %}<div class="ow-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+  {% if messages %}<div class="ph-messages">{% for message in messages %}<div class="ph-message{% if message.tags == 'error' %} error{% elif message.tags == 'warning' %} warning{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
-  <section class="ow-summary" aria-label="สรุปสถานะใบสั่งยา">
-    <article class="ow-summary-card warn"><span class="ow-summary-icon" aria-hidden="true">↓</span><div class="ow-summary-copy"><span>รอรับใบสั่งยา</span><strong data-status-count="SENT">0</strong></div></article>
-    <article class="ow-summary-card info"><span class="ow-summary-icon" aria-hidden="true">◷</span><div class="ow-summary-copy"><span>กำลังจัดยา</span><strong data-status-count="PREPARING">0</strong></div></article>
-    <article class="ow-summary-card"><span class="ow-summary-icon" aria-hidden="true">✓</span><div class="ow-summary-copy"><span>พร้อมจ่ายยา</span><strong data-status-count="READY">0</strong></div></article>
-    <article class="ow-summary-card muted"><span class="ow-summary-icon" aria-hidden="true">↗</span><div class="ow-summary-copy"><span>จ่ายแล้ว / ยกเลิก</span><strong data-status-count="DONE">0</strong></div></article>
+  <section class="ph-stats" aria-label="สรุปงานห้องยา">
+    <article class="ph-stat blue"><span class="ph-stat-icon" aria-hidden="true">♟</span><div><span>คิวที่ยังดำเนินการ</span><strong>{{ pharmacy_status_counts.ACTIVE }}</strong><small>รายการ</small></div></article>
+    <article class="ph-stat amber"><span class="ph-stat-icon" aria-hidden="true">◷</span><div><span>กำลังจัดยา</span><strong>{{ pharmacy_status_counts.PREPARING }}</strong><small>รายการ</small></div></article>
+    <article class="ph-stat green"><span class="ph-stat-icon" aria-hidden="true">✓</span><div><span>พร้อมจ่าย</span><strong>{{ pharmacy_status_counts.READY }}</strong><small>รายการ</small></div></article>
+    <article class="ph-stat slate"><span class="ph-stat-icon" aria-hidden="true">▣</span><div><span>จ่ายยาแล้ววันนี้</span><strong>{{ pharmacy_dispensed_today }}</strong><small>รายการ</small></div></article>
   </section>
 
-  <section class="ow-panel" aria-label="รายการใบสั่งยา">
-    <div class="ow-toolbar">
-      <label class="ow-search"><span class="ow-search__icon" aria-hidden="true">⌕</span><input id="pharmacySearch" type="search" placeholder="ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา" autocomplete="off" aria-label="ค้นหาใบสั่งยา"></label>
-      <div class="ow-filters" role="group" aria-label="กรองสถานะใบสั่งยา">
-        <button class="ow-filter active" type="button" data-filter="ALL">ทั้งหมด <span class="ow-filter-count" data-filter-count="ALL">0</span></button>
-        <button class="ow-filter" type="button" data-filter="SENT">รอรับยา <span class="ow-filter-count" data-filter-count="SENT">0</span></button>
-        <button class="ow-filter" type="button" data-filter="PREPARING">กำลังจัด <span class="ow-filter-count" data-filter-count="PREPARING">0</span></button>
-        <button class="ow-filter" type="button" data-filter="READY">พร้อมจ่าย <span class="ow-filter-count" data-filter-count="READY">0</span></button>
-        <button class="ow-filter" type="button" data-filter="DONE">เสร็จแล้ว <span class="ow-filter-count" data-filter-count="DONE">0</span></button>
+  <section class="ph-workspace" aria-label="จัดการคิวและใบสั่งยา">
+    <aside class="ph-panel ph-queue-panel">
+      <header class="ph-panel-head"><div><h2>คิวผู้ป่วยรอรับยา</h2><p>ลำดับคิวห้องยาเรียงตามเวลามาถึง · เลือกคิวเพื่อดูข้อมูลและใบสั่งยา</p></div><span class="ph-count">{{ prescriptions|length }}</span></header>
+      <div class="ph-queue-tools">
+        <label class="ph-search"><span aria-hidden="true">⌕</span><input id="pharmacySearch" type="search" placeholder="ค้นหา HN, ชื่อ หรือชื่อยา" autocomplete="off" aria-label="ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา"></label>
+        <div class="ph-filters" role="group" aria-label="กรองคิวห้องยา">
+          <button type="button" class="active" data-filter="ALL">ทั้งหมด <span data-filter-count="ALL">{{ prescriptions|length }}</span></button>
+          <button type="button" data-filter="SENT">รอรับ <span data-filter-count="SENT">{{ pharmacy_status_counts.SENT }}</span></button>
+          <button type="button" data-filter="PREPARING">กำลังจัด <span data-filter-count="PREPARING">{{ pharmacy_status_counts.PREPARING }}</span></button>
+          <button type="button" data-filter="READY">พร้อมจ่าย <span data-filter-count="READY">{{ pharmacy_status_counts.READY }}</span></button>
+          <button type="button" data-filter="DONE">เสร็จแล้ว <span data-filter-count="DONE">{{ pharmacy_status_counts.DONE }}</span></button>
+        </div>
       </div>
-    </div>
+      <div class="ph-queue-scroll">
+        <table class="ph-queue-table">
+          <thead><tr><th>คิว</th><th>ผู้ป่วย / HN</th><th>เวลา</th><th>สถานะ</th></tr></thead>
+          <tbody id="pharmacyQueueRows">
+          {% for rx in prescriptions %}
+          <tr class="ph-queue-row{% if selected_rx.id == rx.id %} selected{% endif %}{% if rx.queue_is_called %} called{% elif rx.queue_is_skipped %} skipped{% endif %}" data-status="{{ rx.status }}" data-search="{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }} {{ rx.visit.patient.hn }} {{ rx.visit_id }} {% for item in rx.items.all %}{{ item.medication_name }} {{ item.strength }} {% endfor %}" data-href="?prescription_id={{ rx.id }}#pharmacy-dashboard" tabindex="0"{% if selected_rx.id == rx.id %} aria-current="true"{% endif %}>
+            <td><span class="ph-row-ticket">{{ rx.queue_display_number|default:"—" }}</span><small>{% if rx.queue_is_called %}เรียกแล้ว{% elif rx.queue_is_skipped %}ข้ามคิว{% elif rx.queue_position %}ลำดับ {{ rx.queue_position }}{% else %}ประวัติ{% endif %}</small></td>
+            <td><a class="ph-patient-link" href="?prescription_id={{ rx.id }}#pharmacy-dashboard">{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</a><small>HN {{ rx.visit.patient.hn }}</small></td>
+            <td>{{ rx.sent_at|date:"H:i"|default:"—" }}</td>
+            <td><span class="ph-status {{ rx.status|lower }}{% if rx.queue_is_skipped %} no-show{% endif %}">{% if rx.queue_is_called %}กำลังเรียก{% elif rx.queue_is_skipped %}ไม่มา{% else %}{{ rx.get_status_display }}{% endif %}</span></td>
+          </tr>
+          {% empty %}<tr><td colspan="4" class="ph-empty">ยังไม่มีรายการส่งมาห้องยา</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="ph-no-results" id="pharmacyNoResults">ไม่พบคิวตามคำค้นหาหรือตัวกรอง</div>
+    </aside>
 
-    <div class="ow-list" id="pharmacyList">
-      {% for rx in prescriptions %}
-      <article class="ow-record pharmacy-record" data-status="{{ rx.status }}" data-search="{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }} {{ rx.visit.patient.hn }} {{ rx.visit_id }} {% for item in rx.items.all %}{{ item.medication_name }} {{ item.strength }} {% endfor %}">
-        <div class="ow-record__top">
-          <div class="ow-patient">
-            <span class="ow-avatar" aria-hidden="true">{{ rx.visit.patient.first_name|slice:":1" }}</span>
-            <div class="ow-patient__copy">
-              <h2>{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</h2>
-              <p><strong>HN {{ rx.visit.patient.hn }}</strong> · Visit #{{ rx.visit_id }} · แพทย์ {{ rx.prescribed_by.get_full_name|default:rx.prescribed_by.username }}</p>
-            </div>
-          </div>
-          <span class="ow-status {% if rx.status == 'SENT' %}sent{% elif rx.status == 'PREPARING' %}preparing{% elif rx.status == 'READY' %}ready{% elif rx.status == 'DISPENSED' %}dispensed{% elif rx.status == 'CANCELLED' %}cancelled{% endif %}">{{ rx.get_status_display }}</span>
+    <section class="ph-panel ph-detail-panel" aria-label="รายละเอียดผู้ป่วยและใบสั่งยา">
+      {% if selected_rx %}
+      <header class="ph-panel-head"><div><h2>ข้อมูลผู้ป่วยและใบสั่งยา</h2><p>ตรวจสอบตัวตนและรายการยาก่อนจัดหรือจ่ายทุกครั้ง</p></div><span class="ph-detail-ticket">{{ selected_rx.queue_display_number|default:"Visit" }}</span></header>
+      <div class="ph-patient-card">
+        <div class="ph-patient-avatar" aria-hidden="true">{{ selected_rx.visit.patient.first_name|slice:":1" }}</div>
+        <div class="ph-patient-main"><h2>{{ selected_rx.visit.patient.first_name }} {{ selected_rx.visit.patient.last_name }}</h2><div class="ph-patient-facts"><span>HN <strong>{{ selected_rx.visit.patient.hn }}</strong></span><span>{{ selected_rx.visit.patient.get_gender_display }}</span><span>อายุ {{ selected_rx.visit.patient.age_display }}</span></div>
+          <dl class="ph-meta"><div><dt>Visit</dt><dd>#{{ selected_rx.visit_id }}</dd></div><div><dt>แพทย์ผู้สั่งยา</dt><dd>{{ selected_rx.prescribed_by.get_full_name|default:selected_rx.prescribed_by.username }}</dd></div><div><dt>รับใบสั่งยา</dt><dd>{{ selected_rx.sent_at|date:"d/m/Y H:i"|default:"—" }}</dd></div></dl>
         </div>
-        {% if rx.queue_position %}<div class="ow-queue-line"><span>ลำดับคิวห้องยา</span><strong>{{ rx.queue_position }}</strong><span>คิวผู้ป่วยเดิม {{ rx.queue_display_number }}</span></div>{% endif %}
-        <div class="ow-record__body">
-          <div class="ow-meta-grid">
-            <div class="ow-meta-cell"><span>รับใบสั่งยา</span><b>{{ rx.sent_at|date:"d/m/Y H:i"|default:"ยังไม่ระบุเวลา" }}</b></div>
-            <div class="ow-meta-cell"><span>รายการยา</span><b>{{ rx.items.count }} รายการ</b></div>
-            <div class="ow-meta-cell"><span>สถานะปัจจุบัน</span><b>{{ rx.get_status_display }}</b></div>
-          </div>
+      </div>
 
-          <div class="ow-items" aria-label="รายการยา">
-            {% for item in rx.items.all %}
-            <div class="ow-item">
-              <div class="ow-item__name">{{ item.medication_name }}{% if item.strength %} {{ item.strength }}{% endif %}<small>{{ item.instructions|default:"ไม่มีคำแนะนำเพิ่มเติม" }}</small></div>
-              <div class="ow-item__sig">{{ item.dosage|default:"-" }} · {{ item.frequency|default:"-" }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}</div>
-              <div class="ow-item__qty">{{ item.quantity }} {{ item.unit }}</div>
-            </div>
-            {% empty %}<div class="ow-no-meds">ใบสั่งยานี้ไม่มีรายการยา กรุณาตรวจสอบกับผู้สั่งก่อนดำเนินการ</div>{% endfor %}
-          </div>
+      {% if selected_rx.visit.patient.allergies %}
+      <div class="ph-alert danger"><span class="ph-alert-mark" aria-hidden="true">!</span><div><strong>ประวัติแพ้ยา · ตรวจสอบก่อนจัดยา</strong><p>{{ selected_rx.visit.patient.allergies|linebreaksbr }}</p></div></div>
+      {% else %}
+      <div class="ph-alert caution"><span class="ph-alert-mark" aria-hidden="true">!</span><div><strong>ยังไม่มีบันทึกข้อมูลการแพ้ยา</strong><p>กรุณาสอบถามและยืนยันกับผู้ป่วยก่อนจ่ายยา</p></div></div>
+      {% endif %}
+      {% if selected_rx.visit.patient.chronic_diseases %}<div class="ph-clinical-note"><strong>โรคประจำตัวที่บันทึกไว้</strong><span>{{ selected_rx.visit.patient.chronic_diseases|linebreaksbr }}</span></div>{% endif %}
 
-          <div class="ow-actions">
-            <span class="ow-actions__hint">อัปเดตสถานะตามขั้นตอนที่ทำจริง เพื่อให้หน้าการเงินและประวัติผู้ป่วยตรงกัน</span>
-            <form class="ow-action-form" method="post" action="{% url 'pharmacy_update_status' rx.id %}">
-              {% csrf_token %}
-              <label class="sr-only" for="rx-status-{{ rx.id }}">สถานะใบสั่งยา</label>
-              <select class="ow-select" id="rx-status-{{ rx.id }}" name="status">
-                <option value="SENT" {% if rx.status == 'SENT' %}selected{% endif %}>รอห้องยา</option>
-                <option value="PREPARING" {% if rx.status == 'PREPARING' %}selected{% endif %}>กำลังจัดยา</option>
-                <option value="READY" {% if rx.status == 'READY' %}selected{% endif %}>พร้อมจ่ายยา</option>
-                <option value="DISPENSED" {% if rx.status == 'DISPENSED' %}selected{% endif %}>จ่ายยาแล้ว</option>
-                <option value="CANCELLED" {% if rx.status == 'CANCELLED' %}selected{% endif %}>ยกเลิก</option>
-              </select>
-              <button class="ow-button" type="submit">บันทึกสถานะ <span aria-hidden="true">→</span></button>
-            </form>
-          </div>
-        </div>
-      </article>
-      {% empty %}
-      <div class="ow-empty"><span class="ow-empty__icon" aria-hidden="true">Rx</span><strong>ยังไม่มีใบสั่งยารอห้องยา</strong><span>เมื่อแพทย์ส่งใบสั่งยา รายการจะปรากฏที่หน้านี้</span></div>
-      {% endfor %}
-    </div>
-    <div class="ow-no-results" id="pharmacyNoResults">ไม่พบใบสั่งยาตามคำค้นหาหรือตัวกรองนี้</div>
+      <div class="ph-med-head"><div><h3>รายการยาในใบสั่งยา</h3><p>โปรดตรวจชื่อยา ขนาด วิธีใช้ และจำนวนให้ตรงกับใบสั่ง</p></div><span>{{ selected_rx.items.count }} รายการ</span></div>
+      <div class="ph-med-list">
+        {% for item in selected_rx.items.all %}
+        <article class="ph-med-item"><span class="ph-med-index">{{ forloop.counter }}</span><div class="ph-med-main"><h4>{{ item.medication_name }}{% if item.strength %} <span>{{ item.strength }}</span>{% endif %}</h4><p>{{ item.dosage|default:"ไม่ระบุขนาดใช้" }} · {{ item.frequency|default:"ไม่ระบุความถี่" }}{% if item.duration_days %} · {{ item.duration_days }} วัน{% endif %}</p>{% if item.instructions %}<small>หมายเหตุ: {{ item.instructions }}</small>{% endif %}</div><div class="ph-med-quantity"><strong>{{ item.quantity }}</strong><span>{{ item.unit }}</span></div></article>
+        {% empty %}<div class="ph-empty-meds">ใบสั่งยานี้ไม่มีรายการยา กรุณาตรวจสอบกับแพทย์ก่อนดำเนินการ</div>{% endfor %}
+      </div>
+      {% if selected_rx.note %}<div class="ph-prescription-note"><strong>หมายเหตุจากแพทย์</strong><p>{{ selected_rx.note|linebreaksbr }}</p></div>{% endif %}
+      {% else %}
+      <div class="ph-detail-empty"><span aria-hidden="true">Rx</span><h2>เลือกคิวเพื่อดูใบสั่งยา</h2><p>เลือกรายการจากคิวทางซ้ายเพื่อแสดงข้อมูลผู้ป่วยและรายการยา</p></div>
+      {% endif %}
+    </section>
+
+    <aside class="ph-actions-column" aria-label="การจัดการคิวและสถานะยา">
+      <section class="ph-action-card ph-queue-action-card"><header><span aria-hidden="true">♟</span><h2>จัดการคิว</h2></header>
+        {% if selected_rx %}
+          {% if selected_rx.queue_is_called %}
+          <div class="ph-current-call"><small>กำลังเรียกผู้ป่วย</small><strong>{{ selected_rx.queue_display_number }}</strong></div>
+          <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}" onsubmit="return confirm('ยืนยันว่าผู้ป่วยไม่มาหลังเรียกคิว และข้ามไปเรียกคิวถัดไปหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="ph-action-button danger" type="submit"><span aria-hidden="true">↪</span> ไม่มา · ข้ามคิว</button></form>
+          {% elif selected_rx.queue_is_skipped %}
+          <div class="ph-call-note warning">คิวนี้ถูกข้ามแล้ว หากผู้ป่วยมาถึง ให้นำกลับเข้าท้ายแถว</div>
+          <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}" onsubmit="return confirm('นำคิวนี้กลับเข้าท้ายแถวหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="requeue"><button class="ph-action-button" type="submit"><span aria-hidden="true">↻</span> กลับเข้าคิวท้ายแถว</button></form>
+          {% elif selected_rx.can_call_queue %}
+          <div class="ph-call-note">เรียกคิวแรกตามลำดับเวลาที่มาถึง ผู้ป่วยจะเห็นเลขคิวบนจอส่วนกลาง</div>
+          <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}">{% csrf_token %}<input type="hidden" name="action" value="call"><button class="ph-action-button" type="submit"><span aria-hidden="true">▶</span> เรียกคิว {{ selected_rx.queue_display_number }}</button></form>
+          {% elif selected_rx.queue_display_number %}
+          <div class="ph-call-note">คิวนี้จะถูกเรียกตามลำดับ เมื่อคิวก่อนหน้าดำเนินการเสร็จ</div><button class="ph-action-button disabled" type="button" disabled>รอเรียกตามลำดับ</button>
+          {% else %}<div class="ph-call-note">รายการนี้ไม่อยู่ในคิวที่กำลังรอรับบริการ</div>{% endif %}
+        {% else %}<div class="ph-call-note">เมื่อมีใบสั่งยา รายการจะปรากฏที่นี่</div>{% endif %}
+        <a class="ph-quiet-link" href="{% url 'service_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวกลาง ↗</a>
+      </section>
+
+      <section class="ph-action-card ph-progress-card"><header><span aria-hidden="true">✓</span><h2>ขั้นตอนการจัดยา</h2></header>
+        {% if selected_rx and selected_rx.next_status %}
+        <p class="ph-progress-hint">สถานะปัจจุบัน: <strong>{{ selected_rx.get_status_display }}</strong></p>
+        <form method="post" action="{% url 'pharmacy_update_status' selected_rx.id %}" onsubmit="{% if selected_rx.next_status.0 == 'DISPENSED' %}return confirm('ยืนยันว่าตรวจสอบและจ่ายยาครบแล้วหรือไม่?'){% else %}return true{% endif %}">
+          {% csrf_token %}<input type="hidden" name="status" value="{{ selected_rx.next_status.0 }}"><input type="hidden" name="return_prescription_id" value="{{ selected_rx.id }}">
+          <button class="ph-action-button success" type="submit"><span aria-hidden="true">{% if selected_rx.next_status.0 == 'DISPENSED' %}✓{% else %}→{% endif %}</span>{{ selected_rx.next_status.1 }}</button>
+        </form>
+        <details class="ph-more-actions"><summary>ตัวเลือกสถานะเพิ่มเติม</summary>
+          <form method="post" action="{% url 'pharmacy_update_status' selected_rx.id %}" class="ph-extra-status" onsubmit="return this.querySelector('select[name=status]').value !== 'CANCELLED' || confirm('ยืนยันยกเลิกใบสั่งยานี้หรือไม่?')">{% csrf_token %}<input type="hidden" name="return_prescription_id" value="{{ selected_rx.id }}"><label for="pharmacyExtraStatus">สถานะ</label><select id="pharmacyExtraStatus" name="status">{% for status_value,status_label in status_choices %}{% if status_value == 'PREPARING' or status_value == 'READY' or status_value == 'CANCELLED' %}<option value="{{ status_value }}"{% if status_value == selected_rx.status %} selected{% endif %}>{{ status_label }}</option>{% endif %}{% endfor %}</select><button type="submit">บันทึก</button></form>
+        </details>
+        {% elif selected_rx %}<div class="ph-finished-state"><strong>{{ selected_rx.get_status_display }}</strong>{% if selected_rx.dispensed_at %}<span>จ่ายเมื่อ {{ selected_rx.dispensed_at|date:"d/m/Y H:i" }}</span>{% endif %}</div>
+        {% else %}<div class="ph-call-note">เลือกคิวเพื่อดำเนินการตามขั้นตอน</div>{% endif %}
+      </section>
+
+      <section class="ph-safety-card"><header><span aria-hidden="true">!</span><strong>ตรวจสอบก่อนจ่ายยา</strong></header><ul><li>ยืนยันชื่อและ HN ให้ตรงกับผู้ป่วย</li><li>ตรวจประวัติแพ้ยาและรายการยา</li><li>ตรวจขนาด วิธีใช้ และจำนวน</li><li>บันทึกสถานะหลังดำเนินการจริง</li></ul></section>
+      <section class="ph-info-card"><header><span aria-hidden="true">i</span><strong>ข้อมูลสำหรับผู้ป่วย</strong></header><p>แนะนำให้ใช้ยาตามคำสั่งแพทย์ หากมีอาการผิดปกติให้ติดต่อโรงพยาบาล</p></section>
+    </aside>
   </section>
 </main>
 <script>
 (()=>{
-  const cards=[...document.querySelectorAll('.pharmacy-record')];
+  const rows=[...document.querySelectorAll('.ph-queue-row')];
   const search=document.getElementById('pharmacySearch');
   const filters=[...document.querySelectorAll('[data-filter]')];
   const noResults=document.getElementById('pharmacyNoResults');
-  const done=status=>['DISPENSED','CANCELLED'].includes(status)?'DONE':status;
   let active='ALL';
-  const counts={SENT:0,PREPARING:0,READY:0,DONE:0};
-  cards.forEach(card=>{const group=done(card.dataset.status);if(group in counts)counts[group]++;});
-  Object.entries(counts).forEach(([key,value])=>{document.querySelectorAll(`[data-status-count="${key}"],[data-filter-count="${key}"]`).forEach(node=>node.textContent=value);});
-  document.querySelector('[data-filter-count="ALL"]').textContent=cards.length;
-  const pending=counts.SENT+counts.PREPARING+counts.READY;
-  document.getElementById('pharmacyPendingCount').textContent=pending;
-  function update(){
-    const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;
-    cards.forEach(card=>{const group=done(card.dataset.status);const matchesStatus=active==='ALL'||active===group;const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});
-    noResults.classList.toggle('visible',cards.length>0&&visible===0);
-  }
+  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;rows.forEach(row=>{const status=['DISPENSED','CANCELLED'].includes(row.dataset.status)?'DONE':row.dataset.status;const matchesStatus=active==='ALL'||active===status;const matchesSearch=!term||row.dataset.search.toLocaleLowerCase().includes(term);row.hidden=!(matchesStatus&&matchesSearch);if(!row.hidden)visible++;});noResults.classList.toggle('visible',rows.length>0&&visible===0);}
   filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.filter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
   search.addEventListener('input',update);
+  rows.forEach(row=>{row.addEventListener('click',event=>{if(event.target.closest('a,button'))return;window.location.href=row.dataset.href;});row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=row.dataset.href;}});});
 })();
 </script>
 </body>

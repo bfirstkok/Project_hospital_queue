@@ -149,6 +149,9 @@ class Prescription(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
     note = models.TextField(blank=True, default="")
     sent_at = models.DateTimeField(null=True, blank=True)
+    pharmacy_queue_entered_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    pharmacy_queue_called_at = models.DateTimeField(null=True, blank=True)
+    pharmacy_queue_skipped_at = models.DateTimeField(null=True, blank=True, db_index=True)
     dispensed_at = models.DateTimeField(null=True, blank=True)
     dispensed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -245,6 +248,8 @@ class Bill(models.Model):
         help_text="บันทึกเมื่อแพทย์เลือกส่งการเงินโดยไม่ส่งใบสั่งยา",
     )
     billing_queue_entered_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    billing_queue_called_at = models.DateTimeField(null=True, blank=True)
+    billing_queue_skipped_at = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

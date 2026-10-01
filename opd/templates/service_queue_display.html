@@ -4,43 +4,57 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="refresh" content="15">
-  <title>จอคิวห้องยาและการเงิน</title>
+  <title>คิวรับยาและชำระเงิน</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#edf3f5;color:#17324d;font-family:"Sarabun",Tahoma,sans-serif}.screen{width:min(1500px,calc(100% - 32px));margin:0 auto;padding:20px 0 26px}.head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:21px 25px;border-radius:18px;background:linear-gradient(120deg,#173e54,#087f75);color:#fff;box-shadow:0 12px 30px rgba(23,62,84,.14)}h1{margin:0;font-size:clamp(26px,3vw,42px);line-height:1.2}.subtitle{margin-top:6px;color:#dff8f5;font-size:clamp(14px,1.5vw,19px)}.clock{min-width:145px;text-align:right;font-size:clamp(25px,3vw,42px);font-weight:900;font-variant-numeric:tabular-nums}.lanes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.lane{overflow:hidden;border:1px solid #d2e0e4;border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(23,50,77,.05)}.lane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 19px;border-bottom:1px solid #dce8ea;background:#f7fbfb}.lane-head h2{margin:0;font-size:23px}.count{display:grid;place-items:center;min-width:38px;height:38px;padding:0 9px;border-radius:12px;background:#e4f5f1;color:#087467;font-size:20px;font-weight:900}.rows{display:grid}.row{display:grid;grid-template-columns:74px minmax(90px,.8fr) minmax(120px,1fr);align-items:center;gap:12px;min-height:79px;padding:11px 17px;border-bottom:1px solid #e8eff0}.row:last-child{border-bottom:0}.position{color:#6b818a;font-size:14px;font-weight:800}.ticket{color:#087467;font-size:clamp(24px,2.2vw,34px);font-weight:900;letter-spacing:.02em}.state{justify-self:start;padding:7px 10px;border-radius:9px;background:#eef5f6;color:#496772;font-size:13px;font-weight:800}.state.wait{background:#fff5dc;color:#825d00}.state.progress{background:#eaf3fb;color:#356e9a}.state.ready{background:#e8f7f0;color:#087467}.empty{padding:45px 18px;text-align:center;color:#6c828b;font-size:17px}.footer{display:flex;justify-content:space-between;gap:14px;padding:13px 4px 0;color:#607982;font-size:13px}.footer span:last-child{font-variant-numeric:tabular-nums}@media(max-width:800px){.screen{width:calc(100% - 16px);padding-top:10px}.head{align-items:flex-start;flex-direction:column;padding:18px}.clock{text-align:left}.lanes{grid-template-columns:1fr;gap:11px}.row{grid-template-columns:55px minmax(85px,.75fr) minmax(110px,1fr);padding:10px}.lane-head{padding:14px}.footer{flex-direction:column}}
+    *{box-sizing:border-box}body{margin:0;background:#e9edf7;color:#18243b;font-family:"Sarabun",Tahoma,sans-serif}.screen{width:min(1600px,calc(100% - 32px));margin:0 auto;padding:16px 0 22px}.head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 24px;border-radius:15px 15px 0 0;background:#271176;color:#fff}.head h1{margin:0;font-size:clamp(30px,3.8vw,54px);line-height:1.08}.subtitle{margin-top:7px;color:#e7ddff;font-size:clamp(15px,1.45vw,21px)}.clock{flex:none;text-align:right;font-size:clamp(28px,3vw,44px);font-weight:900;font-variant-numeric:tabular-nums}.lane{margin-top:14px;overflow:hidden;border:3px solid #eeb2e9;background:#fff}.lane-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 18px;background:#371a98;color:#fff}.lane-head h2{margin:0;font-size:clamp(22px,2.2vw,32px)}.lane-head span{font-size:16px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;table-layout:fixed}th{height:56px;padding:9px 12px;background:#38199b;color:#fff;font-size:clamp(17px,1.6vw,24px);font-weight:800;text-align:center;border-right:4px solid #dca3ed}th:last-child{border-right:0}td{height:75px;padding:9px 12px;border-bottom:1px solid #e7e5ed;text-align:center;font-size:clamp(16px,1.35vw,21px)}tbody tr:last-child td{border-bottom:0}.row-called{background:#fff8e7}.row-skipped{background:#fff0f0}.position{color:#65758c;font-weight:700}.ticket{color:#2c167e;font-size:clamp(26px,2.7vw,39px);font-weight:900;letter-spacing:.03em}.wait{font-variant-numeric:tabular-nums;color:#40556f}.state{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 13px;border-radius:9px;background:#eff1f6;color:#48566e;font-weight:800}.state.waiting{background:#f0ebff;color:#381a91}.state.called{background:#fff0bf;color:#735300}.state.skipped{background:#ffe0e0;color:#a12332}.state.ready{background:#e5f6eb;color:#16683c}.empty{height:275px;display:grid;place-items:center;color:#718097;font-size:clamp(23px,2.2vw,34px);font-weight:700}.footer{display:flex;justify-content:space-between;gap:16px;padding:11px 4px 0;color:#536782;font-size:14px}.footer span:last-child{font-variant-numeric:tabular-nums}@media(max-width:700px){.screen{width:calc(100% - 14px);padding-top:8px}.head{align-items:flex-start;flex-direction:column;padding:16px}.clock{text-align:left}.lane-head{align-items:flex-start;flex-direction:column;gap:2px}th,td{padding:7px 5px}th{height:48px;border-right-width:2px}td{height:64px}.footer{flex-direction:column;gap:3px}}
   </style>
 </head>
 <body>
   <main class="screen">
     <header class="head">
-      <div><h1>คิวรับบริการหลังตรวจ</h1><div class="subtitle">เรียงตามเวลาที่ส่งเข้าจุดบริการ · กรุณารอตามหมายเลขคิว</div></div>
+      <div><h1>คิวรับบริการหลังตรวจ OPD</h1><div class="subtitle">กรุณารอตามหมายเลขคิว · เมื่อมีการเรียกคิว โปรดมาที่จุดบริการ</div></div>
       <div class="clock" id="clock" aria-label="เวลาปัจจุบัน">--:--:--</div>
     </header>
-    <div class="lanes">
-      <section class="lane" aria-label="คิวห้องยา">
-        <header class="lane-head"><h2>คิวห้องยา</h2><span class="count">{{ prescriptions|length }}</span></header>
-        <div class="rows">
+
+    <section class="lane" aria-label="คิวห้องยา">
+      <header class="lane-head"><h2>คิวห้องยา</h2><span>{{ prescriptions|length }} รายการ · เรียงตามเวลาที่มาถึง</span></header>
+      <div class="table-wrap"><table>
+        <colgroup><col style="width:16%"><col style="width:23%"><col style="width:25%"><col style="width:36%"></colgroup>
+        <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>สถานะ</th></tr></thead>
+        <tbody>
           {% for rx in prescriptions %}
-          <div class="row"><span class="position">ลำดับ {{ rx.queue_position }}</span><strong class="ticket">{{ rx.queue_display_number }}</strong>
-            {% if rx.status == "SENT" %}<span class="state wait">รอรับใบสั่งยา</span>{% elif rx.status == "PREPARING" %}<span class="state progress">กำลังจัดยา</span>{% else %}<span class="state ready">พร้อมจ่ายยา</span>{% endif %}
-          </div>
-          {% empty %}<div class="empty">ยังไม่มีคิวห้องยา</div>{% endfor %}
-        </div>
-      </section>
-      <section class="lane" aria-label="คิวการเงิน">
-        <header class="lane-head"><h2>คิวการเงิน</h2><span class="count">{{ bills|length }}</span></header>
-        <div class="rows">
+          <tr class="{% if rx.queue_is_called %}row-called{% elif rx.queue_is_skipped %}row-skipped{% endif %}">
+            <td class="position">{% if rx.queue_is_called %}—{% elif rx.queue_is_skipped %}ข้าม{% else %}{{ rx.queue_position }}{% endif %}</td>
+            <td class="ticket">{{ rx.queue_display_number }}</td>
+            <td class="wait" data-wait-start="{{ rx.queue_wait_started|date:'c' }}">—</td>
+            <td>{% if rx.queue_is_called %}<span class="state called">กำลังเรียก · เชิญที่ห้องยา</span>{% elif rx.queue_is_skipped %}<span class="state skipped">ไม่พบผู้ป่วย · ติดต่อเจ้าหน้าที่</span>{% elif rx.status == "SENT" %}<span class="state waiting">รอรับใบสั่งยา</span>{% elif rx.status == "PREPARING" %}<span class="state waiting">กำลังจัดยา</span>{% else %}<span class="state ready">พร้อมจ่ายยา</span>{% endif %}</td>
+          </tr>
+          {% empty %}<tr><td class="empty" colspan="4">ขณะนี้ยังไม่มีคิวห้องยา</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="lane" aria-label="คิวการเงิน">
+      <header class="lane-head"><h2>คิวชำระเงิน</h2><span>{{ bills|length }} รายการ · เรียงตามเวลาที่มาถึง</span></header>
+      <div class="table-wrap"><table>
+        <colgroup><col style="width:16%"><col style="width:23%"><col style="width:25%"><col style="width:36%"></colgroup>
+        <thead><tr><th>ลำดับ</th><th>คิว</th><th>เวลารอ</th><th>สถานะ</th></tr></thead>
+        <tbody>
           {% for bill in bills %}
-          <div class="row"><span class="position">ลำดับ {{ bill.queue_position }}</span><strong class="ticket">{{ bill.queue_display_number }}</strong>
-            {% if bill.status == "DRAFT" %}<span class="state wait">รอตรวจยอด</span>{% elif bill.status == "WAIVED" %}<span class="state progress">รอปิดยอด</span>{% else %}<span class="state ready">รอชำระเงิน</span>{% endif %}
-          </div>
-          {% empty %}<div class="empty">ยังไม่มีคิวการเงิน</div>{% endfor %}
-        </div>
-      </section>
-    </div>
-    <footer class="footer"><span>แสดงเฉพาะลำดับบริการและหมายเลขคิว OPD ไม่แสดงชื่อหรือข้อมูลส่วนบุคคล</span><span>รีเฟรชอัตโนมัติทุก 15 วินาที · <span id="updatedAt">--:--:--</span></span></footer>
+          <tr class="{% if bill.queue_is_called %}row-called{% elif bill.queue_is_skipped %}row-skipped{% endif %}">
+            <td class="position">{% if bill.queue_is_called %}—{% elif bill.queue_is_skipped %}ข้าม{% else %}{{ bill.queue_position }}{% endif %}</td>
+            <td class="ticket">{{ bill.queue_display_number }}</td>
+            <td class="wait" data-wait-start="{{ bill.queue_wait_started|date:'c' }}">—</td>
+            <td>{% if bill.queue_is_called %}<span class="state called">กำลังเรียก · เชิญที่การเงิน</span>{% elif bill.queue_is_skipped %}<span class="state skipped">ไม่พบผู้ป่วย · ติดต่อเจ้าหน้าที่</span>{% elif bill.status == "DRAFT" %}<span class="state waiting">รอตรวจยอด</span>{% elif bill.status == "WAIVED" %}<span class="state waiting">รอปิดยอด</span>{% else %}<span class="state ready">รอชำระเงิน</span>{% endif %}</td>
+          </tr>
+          {% empty %}<tr><td class="empty" colspan="4">ขณะนี้ยังไม่มีคิวการเงิน</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    <footer class="footer"><span>แสดงเฉพาะหมายเลขคิว ไม่แสดงชื่อ HN หรือข้อมูลส่วนบุคคล</span><span>อัปเดตอัตโนมัติทุก 15 วินาที · อัปเดตล่าสุด <span id="updatedAt">--:--:--</span></span></footer>
   </main>
   <script>
-    function updateClock(){const value=new Date().toLocaleTimeString('th-TH',{hour12:false});document.getElementById('clock').textContent=value;document.getElementById('updatedAt').textContent=value;}updateClock();window.setInterval(updateClock,1000);
+    function updateClock(){const now=new Date();const value=now.toLocaleTimeString('th-TH',{hour12:false});document.getElementById('clock').textContent=value;document.getElementById('updatedAt').textContent=value;document.querySelectorAll('[data-wait-start]').forEach(cell=>{const start=Date.parse(cell.dataset.waitStart);if(!Number.isFinite(start)){cell.textContent='—';return;}const minutes=Math.max(0,Math.floor((now.getTime()-start)/60000));cell.textContent=minutes<1?'น้อยกว่า 1 นาที':`${minutes} นาที`;});}updateClock();window.setInterval(updateClock,1000);
   </script>
 </body>
 </html>

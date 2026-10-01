@@ -56,7 +56,27 @@
           </div>
           <span class="ow-status {% if bill.status == 'READY' %}ready{% elif bill.status == 'DRAFT' %}sent{% elif bill.status == 'PAID' %}paid{% elif bill.status == 'WAIVED' %}waived{% elif bill.status == 'CANCELLED' %}cancelled{% endif %}">{{ bill.get_status_display }}</span>
         </div>
-        {% if bill.queue_position %}<div class="ow-queue-line"><span>ลำดับคิวการเงิน</span><strong>{{ bill.queue_position }}</strong><span>คิวผู้ป่วยเดิม {{ bill.queue_display_number }}</span></div>{% endif %}
+        {% if bill.queue_display_number %}
+        <div class="ow-queue-line">
+          {% if bill.queue_is_called %}<span>กำลังเรียกคิวการเงิน</span><strong>{{ bill.queue_display_number }}</strong>
+          {% elif bill.queue_is_skipped %}<span>ข้ามคิวแล้ว</span><strong>{{ bill.queue_display_number }}</strong><span>ยังรอผู้ป่วยกลับมาติดต่อ</span>
+          {% else %}<span>ลำดับคิวการเงิน</span><strong>{{ bill.queue_position }}</strong><span>คิวผู้ป่วยเดิม {{ bill.queue_display_number }}</span>{% endif %}
+        </div>
+        {% if bill.queue_is_called or bill.queue_is_skipped or bill.can_call_queue %}
+        <div class="ow-actions" style="margin-top:10px">
+          {% if bill.queue_is_called %}
+          <span class="ow-actions__hint">หากเรียกแล้วผู้ป่วยไม่มาที่ช่องชำระเงิน ให้ข้ามคิวเพื่อเรียกคิวถัดไป</span>
+          <form method="post" action="{% url 'billing_queue_action' bill.id %}">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="ow-button secondary" type="submit">ไม่มา · ข้ามคิว</button></form>
+          {% elif bill.queue_is_skipped %}
+          <span class="ow-actions__hint">ผู้ป่วยสามารถติดต่อเจ้าหน้าที่เพื่อนำกลับเข้าท้ายแถว</span>
+          <form method="post" action="{% url 'billing_queue_action' bill.id %}">{% csrf_token %}<input type="hidden" name="action" value="requeue"><button class="ow-button secondary" type="submit">กลับเข้าคิวท้ายแถว</button></form>
+          {% else %}
+          <span class="ow-actions__hint">เรียกคิวตามลำดับ · เมื่อเรียกแล้ว ระบบจะรอเจ้าหน้าที่บันทึกผล</span>
+          <form method="post" action="{% url 'billing_queue_action' bill.id %}">{% csrf_token %}<input type="hidden" name="action" value="call"><button class="ow-button" type="submit">เรียกคิว {{ bill.queue_display_number }}</button></form>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
         <div class="ow-record__body">
           <div class="ow-bill-metrics">
             <div class="ow-bill-metric"><span>ยอดรวม</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>

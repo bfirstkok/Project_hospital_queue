@@ -8,6 +8,7 @@ from django.db.models import Case, DateTimeField, IntegerField, Q, When
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
@@ -183,9 +184,12 @@ def opd_care_plan(request, visit_id):
                 messages.error(request, "ใบสั่งยานี้ถูกส่งเข้าห้องยาแล้ว")
                 return redirect("opd_care_plan", visit_id=visit.id)
             prescription.status = Prescription.Status.SENT
+            sent_at = timezone.now()
             if prescription.sent_at is None:
-                prescription.sent_at = timezone.now()
-            prescription.save(update_fields=["status", "sent_at", "updated_at"])
+                prescription.sent_at = sent_at
+            if prescription.pharmacy_queue_entered_at is None:
+                prescription.pharmacy_queue_entered_at = sent_at
+            prescription.save(update_fields=["status", "sent_at", "pharmacy_queue_entered_at", "updated_at"])
             bill = _ensure_bill(visit, request.user)
             _enter_billing_queue(bill, request.user)
             VisitWorkflowLog.record(
@@ -569,27 +573,94 @@ def pharmacy_worklist(request):
         .exclude(status=Prescription.Status.DRAFT)
         .order_by(
             Case(
-                When(status__in=PHARMACY_QUEUE_STATUSES, then=0),
-                default=1,
+                When(pharmacy_queue_skipped_at__isnull=False, status__in=PHARMACY_QUEUE_STATUSES, then=2),
+                When(pharmacy_queue_called_at__isnull=False, status__in=PHARMACY_QUEUE_STATUSES, then=0),
+                When(status__in=PHARMACY_QUEUE_STATUSES, then=1),
+                default=3,
                 output_field=IntegerField(),
             ),
-            Coalesce("sent_at", "created_at", output_field=DateTimeField()),
+            Coalesce("pharmacy_queue_entered_at", "sent_at", "created_at", output_field=DateTimeField()),
             "pk",
         )
     )
     queue_position = 0
     for prescription in prescriptions:
         if prescription.status in PHARMACY_QUEUE_STATUSES:
-            queue_position += 1
-            prescription.queue_position = queue_position
             prescription.queue_display_number = _queue_ticket_for_visit(prescription.visit)
+            prescription.queue_is_skipped = prescription.pharmacy_queue_skipped_at is not None
+            prescription.queue_is_called = prescription.pharmacy_queue_called_at is not None and not prescription.queue_is_skipped
+            if not prescription.queue_is_called and not prescription.queue_is_skipped:
+                queue_position += 1
+                prescription.queue_position = queue_position
+            else:
+                prescription.queue_position = None
         else:
             prescription.queue_position = None
             prescription.queue_display_number = None
+            prescription.queue_is_called = False
+            prescription.queue_is_skipped = False
+        prescription.can_call_queue = False
+    waiting = [
+        rx for rx in prescriptions
+        if rx.status in PHARMACY_QUEUE_STATUSES and not rx.queue_is_called and not rx.queue_is_skipped
+    ]
+    called_exists = any(
+        rx.status in PHARMACY_QUEUE_STATUSES and rx.queue_is_called and not rx.queue_is_skipped
+        for rx in prescriptions
+    )
+    if waiting and not called_exists:
+        waiting[0].can_call_queue = True
+
+    requested_id = request.GET.get("prescription_id", "")
+    selected = next((rx for rx in prescriptions if str(rx.pk) == requested_id), None)
+    if selected is None:
+        selected = next((rx for rx in prescriptions if rx.queue_is_called), None)
+    if selected is None:
+        selected = next((rx for rx in prescriptions if rx.status in PHARMACY_QUEUE_STATUSES and not rx.queue_is_skipped), None)
+    if selected is None and prescriptions:
+        selected = prescriptions[0]
+
+    status_counts = {
+        "SENT": sum(rx.status == Prescription.Status.SENT for rx in prescriptions),
+        "PREPARING": sum(rx.status == Prescription.Status.PREPARING for rx in prescriptions),
+        "READY": sum(rx.status == Prescription.Status.READY for rx in prescriptions),
+        "DONE": sum(rx.status in (Prescription.Status.DISPENSED, Prescription.Status.CANCELLED) for rx in prescriptions),
+    }
+    status_counts["ACTIVE"] = sum(rx.status in PHARMACY_QUEUE_STATUSES for rx in prescriptions)
+    dispensed_today = Prescription.objects.filter(
+        status=Prescription.Status.DISPENSED,
+        dispensed_at__date=timezone.localdate(),
+    ).count()
+    if selected:
+        selected.next_status = {
+            Prescription.Status.SENT: (Prescription.Status.PREPARING, "เริ่มจัดยา"),
+            Prescription.Status.PREPARING: (Prescription.Status.READY, "ยาพร้อมจ่าย"),
+            Prescription.Status.READY: (Prescription.Status.DISPENSED, "ยืนยันจ่ายยาแล้ว"),
+        }.get(selected.status)
     return render(request, "pharmacy_worklist.html", {
         "prescriptions": prescriptions,
         "status_choices": Prescription.Status.choices,
+        "selected_rx": selected,
+        "pharmacy_status_counts": status_counts,
+        "pharmacy_dispensed_today": dispensed_today,
     })
+
+
+@login_required
+@require_POST
+def pharmacy_queue_action(request, prescription_id):
+    return _service_queue_action(
+        request,
+        model=Prescription,
+        record_id=prescription_id,
+        service="pharmacy",
+        statuses=PHARMACY_QUEUE_STATUSES,
+        entered_field="pharmacy_queue_entered_at",
+        called_field="pharmacy_queue_called_at",
+        skipped_field="pharmacy_queue_skipped_at",
+        time_order_fields=("pharmacy_queue_entered_at", "sent_at", "created_at"),
+        return_to="pharmacy_worklist",
+    )
 
 
 @login_required
@@ -627,6 +698,8 @@ def pharmacy_update_status(request, prescription_id):
         details={"prescription_id": prescription.id, "status": status},
     )
     messages.success(request, f"อัปเดตใบสั่งยา Visit#{prescription.visit_id} เป็น {prescription.get_status_display()}")
+    if request.POST.get("return_prescription_id") == str(prescription.pk):
+        return redirect(f"{reverse('pharmacy_worklist')}?prescription_id={prescription.pk}")
     return redirect("pharmacy_worklist")
 
 
@@ -649,8 +722,10 @@ def billing_worklist(request):
         .select_related("visit", "visit__patient", "visit__queue", "coverage", "received_by")
         .order_by(
             Case(
-                When(active_billing, then=0),
-                default=1,
+                When(active_billing & Q(billing_queue_skipped_at__isnull=False), then=2),
+                When(active_billing & Q(billing_queue_called_at__isnull=False), then=0),
+                When(active_billing, then=1),
+                default=3,
                 output_field=IntegerField(),
             ),
             Coalesce("billing_queue_entered_at", "created_at", output_field=DateTimeField()),
@@ -660,27 +735,171 @@ def billing_worklist(request):
     queue_position = 0
     for bill in bills:
         if bill.billing_queue_entered_at is not None and bill.status in BILLING_QUEUE_STATUSES and bill.paid_at is None:
-            queue_position += 1
-            bill.queue_position = queue_position
             bill.queue_display_number = _queue_ticket_for_visit(bill.visit)
+            bill.queue_is_skipped = bill.billing_queue_skipped_at is not None
+            bill.queue_is_called = bill.billing_queue_called_at is not None and not bill.queue_is_skipped
+            if not bill.queue_is_called and not bill.queue_is_skipped:
+                queue_position += 1
+                bill.queue_position = queue_position
+            else:
+                bill.queue_position = None
         else:
             bill.queue_position = None
             bill.queue_display_number = None
+            bill.queue_is_called = False
+            bill.queue_is_skipped = False
+        bill.can_call_queue = False
+    waiting = [
+        bill for bill in bills
+        if bill.billing_queue_entered_at is not None
+        and bill.status in BILLING_QUEUE_STATUSES
+        and bill.paid_at is None
+        and not bill.queue_is_called
+        and not bill.queue_is_skipped
+    ]
+    called_exists = any(
+        bill.billing_queue_entered_at is not None
+        and bill.status in BILLING_QUEUE_STATUSES
+        and bill.paid_at is None
+        and bill.queue_is_called
+        and not bill.queue_is_skipped
+        for bill in bills
+    )
+    if waiting and not called_exists:
+        waiting[0].can_call_queue = True
     return render(request, "billing_worklist.html", {"bills": bills})
+
+
+@login_required
+@require_POST
+def billing_queue_action(request, bill_id):
+    return _service_queue_action(
+        request,
+        model=Bill,
+        record_id=bill_id,
+        service="billing",
+        statuses=BILLING_QUEUE_STATUSES,
+        entered_field="billing_queue_entered_at",
+        called_field="billing_queue_called_at",
+        skipped_field="billing_queue_skipped_at",
+        time_order_fields=("billing_queue_entered_at", "created_at"),
+        return_to="billing_worklist",
+    )
+
+
+def _service_queue_action(
+    request,
+    *,
+    model,
+    record_id,
+    service,
+    statuses,
+    entered_field,
+    called_field,
+    skipped_field,
+    time_order_fields,
+    return_to,
+):
+    action = request.POST.get("action", "").strip()
+    if action not in {"call", "skip", "requeue"}:
+        return HttpResponseBadRequest("Invalid queue action")
+
+    now = timezone.now()
+    with transaction.atomic():
+        active = model.objects.select_for_update().filter(status__in=statuses)
+        if model is Bill:
+            active = active.filter(billing_queue_entered_at__isnull=False, paid_at__isnull=True)
+        ordered = list(
+            active.select_related("visit")
+            .order_by(
+                Coalesce(*time_order_fields, output_field=DateTimeField()),
+                "pk",
+            )
+        )
+        target = next((row for row in ordered if row.pk == record_id), None)
+        if target is None:
+            messages.error(request, "รายการนี้ไม่อยู่ในคิวที่กำลังให้บริการแล้ว")
+            return redirect(return_to)
+
+        called = [row for row in ordered if getattr(row, called_field) and not getattr(row, skipped_field)]
+        waiting = [
+            row for row in ordered
+            if not getattr(row, called_field) and not getattr(row, skipped_field)
+        ]
+        description = ""
+        if action == "call":
+            if called:
+                messages.error(request, "ยังมีคิวที่กำลังเรียกอยู่ กรุณาบันทึกผลก่อนเรียกคิวถัดไป")
+                return redirect(return_to)
+            if not waiting or waiting[0].pk != target.pk:
+                messages.error(request, "เรียกคิวได้ตามลำดับก่อนมาถึงเท่านั้น")
+                return redirect(return_to)
+            setattr(target, called_field, now)
+            description = f"เรียกคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')}"
+        elif action == "skip":
+            if not getattr(target, called_field) or getattr(target, skipped_field):
+                messages.error(request, "ทำเครื่องหมายไม่มาได้เฉพาะคิวที่กำลังเรียก")
+                return redirect(return_to)
+            setattr(target, called_field, None)
+            setattr(target, skipped_field, now)
+            description = f"ผู้ป่วยไม่มาหลังเรียกคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')} · ข้ามไปคิวถัดไป"
+        else:
+            if not getattr(target, skipped_field):
+                messages.error(request, "นำกลับเข้าคิวได้เฉพาะรายการที่ถูกข้ามคิว")
+                return redirect(return_to)
+            setattr(target, called_field, None)
+            setattr(target, skipped_field, None)
+            setattr(target, entered_field, now)
+            description = f"นำคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')}กลับเข้าท้ายแถว"
+
+        update_fields = [called_field, skipped_field, "updated_at"]
+        if action == "requeue":
+            update_fields.append(entered_field)
+        target.save(update_fields=update_fields)
+        VisitWorkflowLog.record(
+            visit=target.visit,
+            event_type=VisitWorkflowLog.EventType.SERVICE_QUEUE_ACTION,
+            actor=request.user,
+            description=description,
+            details={"service": service, "action": action, "record_id": target.pk},
+        )
+
+    messages.success(request, {
+        "call": "เรียกคิวแล้ว",
+        "skip": "บันทึกไม่มาแล้ว · สามารถเรียกคิวถัดไปได้",
+        "requeue": "นำกลับเข้าคิวท้ายแถวแล้ว",
+    }[action])
+    return redirect(return_to)
 
 
 @require_GET
 def service_queue_display(request):
     """Public service-counter board: show queue numbers only, never patient details."""
     prescriptions = list(
-        Prescription.objects
-        .filter(status__in=PHARMACY_QUEUE_STATUSES)
+        Prescription.objects.filter(status__in=PHARMACY_QUEUE_STATUSES)
         .select_related("visit", "visit__queue")
-        .order_by(Coalesce("sent_at", "created_at", output_field=DateTimeField()), "pk")
+        .order_by(
+            Case(
+                When(pharmacy_queue_skipped_at__isnull=False, then=2),
+                When(pharmacy_queue_called_at__isnull=False, then=0),
+                default=1,
+                output_field=IntegerField(),
+            ),
+            Coalesce("pharmacy_queue_entered_at", "sent_at", "created_at", output_field=DateTimeField()),
+            "pk",
+        )
     )
-    for position, prescription in enumerate(prescriptions, start=1):
-        prescription.queue_position = position
+    pharmacy_position = 0
+    for prescription in prescriptions:
         prescription.queue_display_number = _queue_ticket_for_visit(prescription.visit)
+        prescription.queue_is_called = prescription.pharmacy_queue_called_at is not None and prescription.pharmacy_queue_skipped_at is None
+        prescription.queue_is_skipped = prescription.pharmacy_queue_skipped_at is not None
+        prescription.queue_wait_started = prescription.pharmacy_queue_entered_at or prescription.sent_at or prescription.created_at
+        if not prescription.queue_is_called and not prescription.queue_is_skipped:
+            pharmacy_position += 1
+            prescription.queue_position = pharmacy_position
+        else:
+            prescription.queue_position = None
 
     open_bills = (
         Q(status__in=(Bill.Status.DRAFT, Bill.Status.READY))
@@ -691,11 +910,28 @@ def service_queue_display(request):
         .filter(billing_queue_entered_at__isnull=False)
         .filter(open_bills)
         .select_related("visit", "visit__queue")
-        .order_by("billing_queue_entered_at", "pk")
+        .order_by(
+            Case(
+                When(billing_queue_skipped_at__isnull=False, then=2),
+                When(billing_queue_called_at__isnull=False, then=0),
+                default=1,
+                output_field=IntegerField(),
+            ),
+            "billing_queue_entered_at",
+            "pk",
+        )
     )
-    for position, bill in enumerate(bills, start=1):
-        bill.queue_position = position
+    billing_position = 0
+    for bill in bills:
         bill.queue_display_number = _queue_ticket_for_visit(bill.visit)
+        bill.queue_is_called = bill.billing_queue_called_at is not None and bill.billing_queue_skipped_at is None
+        bill.queue_is_skipped = bill.billing_queue_skipped_at is not None
+        bill.queue_wait_started = bill.billing_queue_entered_at
+        if not bill.queue_is_called and not bill.queue_is_skipped:
+            billing_position += 1
+            bill.queue_position = billing_position
+        else:
+            bill.queue_position = None
 
     return render(request, "service_queue_display.html", {
         "prescriptions": prescriptions,
