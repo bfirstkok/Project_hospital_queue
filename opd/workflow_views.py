@@ -1087,7 +1087,7 @@ def billing_detail(request, bill_id):
 @transaction.atomic
 def billing_pay(request, bill_id):
     bill = get_object_or_404(
-        Bill.objects.select_for_update().select_related("visit", "coverage"),
+        Bill.objects.select_for_update(of=("self",)).select_related("visit", "coverage"),
         pk=bill_id,
     )
     if bill.status == Bill.Status.TRANSFERRED:
