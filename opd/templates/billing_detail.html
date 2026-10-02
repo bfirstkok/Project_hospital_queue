@@ -32,6 +32,9 @@
     <section class="ow-card">
       <div class="ow-card__head"><h2>1 · สิทธิการรักษาและค่าใช้จ่าย</h2><p>ตรวจสอบข้อมูลกับผู้ป่วยก่อนบันทึก แล้วระบบจะคำนวณยอดใหม่ให้อัตโนมัติ</p></div>
       <div class="ow-card__body">
+        {% if bill.status == 'TRANSFERRED' %}
+          <div class="ow-callout"><span aria-hidden="true">↗</span><div><strong>บิลนี้ถูกย้ายยอดแล้ว</strong><br>ยอด {{ source_transfer.amount|floatformat:2 }} บาท ถูกรวมไปยัง Visit #{{ source_transfer.target_visit_id }} เมื่อ {{ source_transfer.created_at|date:"d/m/Y H:i" }}{% if source_transfer.transferred_by %} โดย {{ source_transfer.transferred_by.get_full_name|default:source_transfer.transferred_by.username }}{% endif %}<br>เหตุผล: {{ source_transfer.reason }}</div></div>
+        {% else %}
         {% if bill.pharmacy_skipped %}<div class="ow-callout"><span aria-hidden="true">✓</span><div><strong>แพทย์ยืนยันว่าไม่มีรายการยากลับบ้าน</strong><br>ระบบจะแสดงค่าตรวจและค่าใช้จ่ายอื่นเท่านั้น</div></div>{% endif %}
         <form method="post">
           {% csrf_token %}
@@ -44,6 +47,7 @@
           <div class="ow-field"><label for="otherFee">ค่าใช้จ่ายอื่น (บาท)</label><input class="ow-input" id="otherFee" name="other_fee" type="number" min="0" step="0.01" value="{{ bill.other_fee }}"><span class="help">ค่าตรวจแพทย์และค่ายาคำนวณจากรายการใน Visit</span></div>
           <div class="ow-form-actions"><button class="ow-button" type="submit">บันทึกสิทธิและคำนวณยอดใหม่ <span aria-hidden="true">→</span></button><a class="ow-button secondary" href="{% url 'billing_worklist' %}">กลับรายการ</a></div>
         </form>
+        {% endif %}
       </div>
     </section>
 
@@ -54,8 +58,9 @@
         {% if prescription %}{% for item in prescription.items.all %}<div class="ow-cost-row medicine"><span>{{ item.medication_name }}{% if item.strength %} {{ item.strength }}{% endif %} × {{ item.quantity }} {{ item.unit }}</span><b>{{ item.line_total|floatformat:2 }} บาท</b></div>{% endfor %}{% endif %}
         <div class="ow-cost-row"><span>ค่ายารวม</span><b>{{ bill.medicine_total|floatformat:2 }} บาท</b></div>
         <div class="ow-cost-row"><span>ค่าใช้จ่ายอื่น</span><b>{{ bill.other_fee|floatformat:2 }} บาท</b></div>
-        <div class="ow-cost-row ow-cost-total"><span>รวมค่าใช้จ่าย</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>
+        <div class="ow-cost-row ow-cost-total"><span>รวมค่าใช้จ่าย Visit นี้</span><b>{{ bill.subtotal|floatformat:2 }} บาท</b></div>
         <div class="ow-cost-row"><span>สิทธิครอบคลุม</span><b>− {{ bill.covered_amount|floatformat:2 }} บาท</b></div>
+        {% for transfer in carried_transfers %}<div class="ow-cost-row"><span>ยอดค้างเดิมจาก Visit #{{ transfer.source_bill.visit_id }}</span><b>{{ transfer.amount|floatformat:2 }} บาท</b></div>{% endfor %}
         <div class="ow-cost-due"><span>ยอดที่ผู้ป่วยต้องชำระ</span><strong>{{ bill.patient_due|floatformat:2 }}<small style="font-size:13px"> บาท</small></strong></div>
 
         {% if bill.paid_at %}
@@ -63,6 +68,8 @@
           <a class="ow-button" href="{% url 'billing_receipt' bill.id %}" style="width:100%">เปิดใบเสร็จ <span aria-hidden="true">→</span></a>
         {% elif bill.status == 'CANCELLED' %}
           <div class="ow-callout" style="border-color:#f0c4c8;background:#fff1f2;color:#8d3039"><span aria-hidden="true">!</span><div><strong style="color:#a51d30">รายการนี้ถูกยกเลิก</strong><br>ไม่สามารถรับชำระจากรายการนี้ได้</div></div>
+        {% elif bill.status == 'TRANSFERRED' %}
+          <div class="ow-callout"><span aria-hidden="true">↗</span><div><strong>ยอดนี้ไม่อยู่ในคิวรับชำระแล้ว</strong><br>ให้รับชำระจากบิลของ Visit #{{ source_transfer.target_visit_id }} เท่านั้น</div></div>
         {% else %}
           <form class="ow-pay-form" method="post" action="{% url 'billing_pay' bill.id %}" onsubmit="return confirm('ยืนยันรับชำระยอด {{ bill.patient_due|floatformat:2 }} บาท และปิดรายการนี้หรือไม่?')">
             {% csrf_token %}

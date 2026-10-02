@@ -223,6 +223,7 @@ class Bill(models.Model):
         PAID = "PAID", "ชำระแล้ว"
         WAIVED = "WAIVED", "ไม่มีค่าใช้จ่ายผู้ป่วย"
         CANCELLED = "CANCELLED", "ยกเลิก"
+        TRANSFERRED = "TRANSFERRED", "โอนยอดค้างไปรวมบิลใหม่"
 
     visit = models.OneToOneField(
         "queues.Visit",
@@ -263,6 +264,12 @@ class Bill(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def recalculate(self, save=True):
+        # A transferred bill is an immutable historical snapshot. Its patient
+        # balance has already been assigned to a later visit and must not be
+        # recalculated or collected a second time.
+        if self.status == self.Status.TRANSFERRED:
+            return self
+
         prescription = getattr(self.visit, "prescription", None)
         medicine_total = Decimal("0.00")
         if prescription and prescription.status != Prescription.Status.CANCELLED:
@@ -271,7 +278,8 @@ class Bill(models.Model):
         percent = self.coverage.coverage_percent if self.coverage and self.coverage.is_active else 0
         percent = max(0, min(int(percent or 0), 100))
         covered = (subtotal * Decimal(percent) / Decimal("100")).quantize(Decimal("0.01"))
-        due = subtotal - covered
+        carried_due = self.visit.carried_balance_transfers.aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+        due = subtotal - covered + carried_due
 
         self.medicine_total = medicine_total
         self.subtotal = subtotal
@@ -285,6 +293,37 @@ class Bill(models.Model):
 
     def __str__(self):
         return f"Bill Visit#{self.visit_id} ({self.status})"
+
+
+class BillBalanceTransfer(models.Model):
+    """Auditable snapshot of an unpaid patient balance moved to a new visit."""
+
+    source_bill = models.OneToOneField(
+        Bill,
+        on_delete=models.PROTECT,
+        related_name="balance_transfer",
+    )
+    target_visit = models.ForeignKey(
+        "queues.Visit",
+        on_delete=models.PROTECT,
+        related_name="carried_balance_transfers",
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transferred_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bill_balance_transfers",
+    )
+    reason = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return f"Bill#{self.source_bill_id} → Visit#{self.target_visit_id}: {self.amount}"
 
 
 class MedicalCertificate(models.Model):

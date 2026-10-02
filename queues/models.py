@@ -16,6 +16,15 @@ class Visit(models.Model):
         WHITE = "WHITE", "ขาว - ผู้ป่วยทั่วไป"
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="visits")
+    superseded_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="superseded_visits",
+        editable=False,
+        help_text="Visit ใหม่ที่เริ่มแทนกระบวนการเดิมในกรณีเร่งด่วน",
+    )
     tracking_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
 
     registered_at = models.DateTimeField(auto_now_add=True)
@@ -312,6 +321,7 @@ class VisitWorkflowLog(models.Model):
         BILLING_QUEUE_ENTERED = "BILLING_QUEUE_ENTERED", "ส่งเข้าคิวการเงิน"
         SERVICE_QUEUE_ACTION = "SERVICE_QUEUE_ACTION", "จัดการคิวจุดบริการ"
         PAYMENT_RECEIVED = "PAYMENT_RECEIVED", "รับชำระเงิน"
+        URGENT_BILL_ROLLOVER = "URGENT_BILL_ROLLOVER", "เริ่ม Visit เร่งด่วนและโอนยอดค้าง"
         MEDICAL_CERTIFICATE_ISSUED = "MEDICAL_CERTIFICATE_ISSUED", "ออกใบรับรองแพทย์"
         PATIENT_DEPARTED = "PATIENT_DEPARTED", "ปิด Visit / ยืนยันออกจากโรงพยาบาล"
 

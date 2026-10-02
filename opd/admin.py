@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Bill,
+    BillBalanceTransfer,
     MedicalCertificate,
     PatientCoverage,
     Prescription,
@@ -63,6 +64,27 @@ class BillAdmin(admin.ModelAdmin):
     list_display = ("id", "visit", "status", "subtotal", "covered_amount", "patient_due", "paid_at")
     list_filter = ("status",)
     search_fields = ("visit__patient__hn", "visit__patient__first_name", "visit__patient__last_name")
+
+
+@admin.register(BillBalanceTransfer)
+class BillBalanceTransferAdmin(admin.ModelAdmin):
+    list_display = ("id", "source_bill", "target_visit", "amount", "transferred_by", "created_at")
+    search_fields = (
+        "source_bill__visit__patient__hn",
+        "source_bill__visit__patient__first_name",
+        "source_bill__visit__patient__last_name",
+        "target_visit__patient__hn",
+    )
+    readonly_fields = ("source_bill", "target_visit", "amount", "transferred_by", "reason", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(MedicalCertificate)

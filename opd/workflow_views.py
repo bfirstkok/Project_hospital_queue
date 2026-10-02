@@ -17,6 +17,7 @@ from queues.models import Queue, Visit, VisitWorkflowLog
 
 from .models import (
     Bill,
+    BillBalanceTransfer,
     MedicalCertificate,
     PatientCoverage,
     Prescription,
@@ -712,7 +713,7 @@ def billing_worklist(request):
         )
     )
     billing_history = (
-        Q(status__in=(Bill.Status.PAID, Bill.Status.CANCELLED))
+        Q(status__in=(Bill.Status.PAID, Bill.Status.CANCELLED, Bill.Status.TRANSFERRED))
         | Q(status=Bill.Status.WAIVED, paid_at__isnull=False)
     )
     bills = list(
@@ -792,6 +793,11 @@ def billing_worklist(request):
         .first()
         if selected_bill else None
     )
+    if selected_bill:
+        selected_bill.carried_transfers = list(
+            BillBalanceTransfer.objects.filter(target_visit=selected_bill.visit)
+            .select_related("source_bill", "source_bill__visit")
+        )
     billing_summary = {
         "active": len(active_bills),
         "review": sum(bill.status == Bill.Status.DRAFT for bill in active_bills),
@@ -799,6 +805,7 @@ def billing_worklist(request):
         "paid_today": len(paid_today),
         "paid_today_total": sum((bill.patient_due for bill in paid_today), Decimal("0.00")),
         "cancelled": sum(bill.status == Bill.Status.CANCELLED for bill in bills),
+        "transferred": sum(bill.status == Bill.Status.TRANSFERRED for bill in bills),
     }
     return render(request, "billing_worklist.html", {
         "bills": bills,
@@ -1019,8 +1026,20 @@ def billing_detail(request, bill_id):
     )
     visit = bill.visit
     prescription = Prescription.objects.filter(visit=visit).prefetch_related("items").first()
+    carried_transfers = list(
+        BillBalanceTransfer.objects.filter(target_visit=visit)
+        .select_related("source_bill", "source_bill__visit", "transferred_by")
+    )
+    source_transfer = (
+        BillBalanceTransfer.objects.filter(source_bill=bill)
+        .select_related("target_visit", "transferred_by")
+        .first()
+    )
 
     if request.method == "POST":
+        if bill.status == Bill.Status.TRANSFERRED:
+            messages.error(request, "บิลนี้ถูกโอนยอดไปรวมกับ Visit ใหม่แล้ว ไม่สามารถแก้ไขหรือรับชำระซ้ำได้")
+            return redirect("billing_detail", bill_id=bill.id)
         coverage_type = request.POST.get("coverage_type", PatientCoverage.CoverageType.SELF_PAY)
         valid_types = set(PatientCoverage.CoverageType.values)
         if coverage_type not in valid_types:
@@ -1056,6 +1075,8 @@ def billing_detail(request, bill_id):
         "bill": bill,
         "visit": visit,
         "prescription": prescription,
+        "carried_transfers": carried_transfers,
+        "source_transfer": source_transfer,
         "coverage_choices": PatientCoverage.CoverageType.choices,
         "coverage_defaults": COVERAGE_DEFAULT_PERCENT,
     })
@@ -1063,8 +1084,18 @@ def billing_detail(request, bill_id):
 
 @login_required
 @require_POST
+@transaction.atomic
 def billing_pay(request, bill_id):
-    bill = get_object_or_404(Bill.objects.select_related("visit", "coverage"), pk=bill_id)
+    bill = get_object_or_404(
+        Bill.objects.select_for_update().select_related("visit", "coverage"),
+        pk=bill_id,
+    )
+    if bill.status == Bill.Status.TRANSFERRED:
+        messages.error(request, "บิลนี้ถูกโอนยอดไปรวมกับบิลของ Visit ใหม่แล้ว ระบบป้องกันการชำระซ้ำ")
+        return redirect("billing_worklist")
+    if bill.status in {Bill.Status.PAID, Bill.Status.CANCELLED}:
+        messages.error(request, "บิลนี้ไม่อยู่ในสถานะที่รับชำระได้")
+        return redirect("billing_worklist")
     bill.recalculate()
     bill.received_by = request.user
     bill.paid_at = timezone.now()
@@ -1088,10 +1119,15 @@ def billing_receipt(request, bill_id):
         pk=bill_id,
     )
     prescription = Prescription.objects.filter(visit=bill.visit).prefetch_related("items").first()
+    carried_transfers = list(
+        BillBalanceTransfer.objects.filter(target_visit=bill.visit)
+        .select_related("source_bill", "source_bill__visit")
+    )
     return render(request, "billing_receipt.html", {
         "bill": bill,
         "visit": bill.visit,
         "prescription": prescription,
+        "carried_transfers": carried_transfers,
     })
 
 

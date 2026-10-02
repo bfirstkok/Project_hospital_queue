@@ -17,6 +17,21 @@
     th, td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
     th { color: rgba(255,255,255,.55); font-size: 15px; }
     .muted { color: rgba(255,255,255,.55); }
+    .status-board { margin-bottom: 18px; overflow: hidden; }
+    .status-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+    .status-heading h2 { margin:0; font-size:20px; }
+    .status-tabs { display:flex; gap:8px; overflow-x:auto; padding:3px 0 10px; }
+    .status-tab { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:8px 12px; border:1px solid rgba(255,255,255,.14); border-radius:999px; text-decoration:none; color:#d6e3eb; background:rgba(255,255,255,.04); }
+    .status-tab.active { background:#20d6b5; color:#07131f; border-color:#20d6b5; font-weight:700; }
+    .status-tab-count { min-width:20px; text-align:center; border-radius:999px; padding:1px 5px; background:rgba(0,0,0,.16); font-size:12px; }
+    .status-scroll { overflow:auto; }
+    .status-table { min-width:760px; margin-top:0; }
+    .status-table th { background:rgba(255,255,255,.04); color:#a9bbc7; }
+    .status-chip { display:inline-block; border-radius:999px; padding:5px 9px; background:rgba(32,214,181,.14); color:#82f0da; font-weight:700; }
+    .status-chip.unpaid { background:rgba(255,190,80,.16); color:#ffd28a; }
+    .status-chip.completed { background:rgba(150,170,180,.16); color:#c1cbd0; }
+    .status-sub { display:block; margin-top:4px; font-size:13px; }
+    .debt { color:#ffd28a; font-weight:700; }
     @media (max-width: 720px) { form.search { grid-template-columns: 1fr; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=sarabun-20260717">
@@ -30,6 +45,42 @@
       </div>
       {% include "includes/main_nav.html" %}
     </div>
+
+    <section class="panel status-board" aria-labelledby="patientStatusHeading">
+      <div class="status-heading">
+        <div>
+          <h2 id="patientStatusHeading">ภาพรวมสถานะผู้ป่วย</h2>
+          <div class="muted">แสดง Visit ล่าสุดของผู้ป่วยแต่ละคน และยอดค้างที่ยังไม่ได้ชำระ</div>
+        </div>
+        <span class="muted">ทั้งหมด {{ patient_status_total }} คน</span>
+      </div>
+      <nav class="status-tabs" aria-label="กรองสถานะผู้ป่วย">
+        {% for tab in status_tabs %}
+          <a class="status-tab {% if selected_status == tab.key %}active{% endif %}" href="?tab={{ tab.key }}" {% if selected_status == tab.key %}aria-current="page"{% endif %}>
+            {{ tab.label }} <span class="status-tab-count">{{ tab.count }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="status-scroll">
+        <table class="status-table">
+          <thead><tr><th>ผู้ป่วย / HN</th><th>Visit ล่าสุด</th><th>สถานะ</th><th>รายละเอียด</th><th>ยอดค้าง</th><th></th></tr></thead>
+          <tbody>
+            {% for row in status_rows %}
+              <tr>
+                <td><strong>{{ row.patient.first_name }} {{ row.patient.last_name }}</strong><span class="muted status-sub">HN {{ row.patient.hn }}</span></td>
+                <td>{% if row.visit %}#{{ row.visit.id }}<span class="muted status-sub">{{ row.visit.registered_at|date:"d/m/Y H:i" }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+                <td><span class="status-chip {{ row.status_key }}">{{ row.status_label }}</span></td>
+                <td>{{ row.status_detail }}</td>
+                <td>{% if row.debt_amount %}<span class="debt">{{ row.debt_amount|floatformat:2 }} บาท</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+                <td><a class="btn" href="{% url 'patient_history' row.patient.id %}">ประวัติ</a></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="muted">ไม่มีผู้ป่วยในสถานะนี้</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <div class="panel">
       <form class="search" method="get">

@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from queues.models import DeviceCommand, Queue, Visit, VisitWorkflowLog, VitalSign
-from opd.models import Bill, Prescription, VisitAssessment
+from opd.models import Bill, BillBalanceTransfer, PatientCoverage, Prescription, VisitAssessment
 from .models import Patient, PatientAccessToken, PatientPin
 
 
@@ -709,3 +709,143 @@ class PatientAdminCascadeDeleteTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Patient.objects.filter(pk=self.patient.pk).exists())
         self.assertFalse(DeviceCommand.objects.filter(pk=self.device_command.pk).exists())
+
+
+class PatientUrgentBillRolloverTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser(
+            username="urgent-rollover-admin",
+            email="urgent-rollover@example.test",
+            password="secret",
+        )
+        self.client.force_login(self.user)
+        self.patient = Patient.objects.create(
+            first_name="สมชาย",
+            last_name="มียอดค้าง",
+            national_id="9333333333333",
+            phone="0812345678",
+        )
+        self.old_visit = Visit.objects.create(patient=self.patient, note="Visit เดิม")
+        self.old_queue = Queue.objects.create(visit=self.old_visit, status=Queue.Status.OPD_DONE)
+        self.old_bill = Bill.objects.create(
+            visit=self.old_visit,
+            status=Bill.Status.READY,
+            subtotal="300.00",
+            covered_amount="180.00",
+            patient_due="120.00",
+        )
+        self.registration_payload = {
+            "existing_patient_id": str(self.patient.pk),
+            "first_name": self.patient.first_name,
+            "last_name": self.patient.last_name,
+            "national_id": self.patient.national_id,
+            "gender": "UNKNOWN",
+            "phone": self.patient.phone,
+            "blood_type": "UNKNOWN",
+            "note": "อาการเร่งด่วนครั้งใหม่",
+        }
+
+    def test_patient_dashboard_shows_tabs_and_unpaid_balance(self):
+        response = self.client.get(reverse("patient_search"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ภาพรวมสถานะผู้ป่วย")
+        self.assertContains(response, "รอตรวจวัด")
+        self.assertContains(response, "มียอดค้างชำระ")
+        self.assertContains(response, "120.00 บาท")
+
+        filtered = self.client.get(reverse("patient_search"), {"tab": "unpaid"})
+        self.assertContains(filtered, self.patient.hn)
+
+    def test_registration_blocks_unpaid_bill_without_urgent_override(self):
+        response = self.client.post(reverse("register_patient"), self.registration_payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ผู้ป่วยยังมียอดค้าง")
+        self.assertContains(response, "เริ่ม Visit ใหม่กรณีเร่งด่วน")
+        self.assertEqual(Visit.objects.filter(patient=self.patient).count(), 1)
+        self.old_bill.refresh_from_db()
+        self.assertEqual(self.old_bill.status, Bill.Status.READY)
+
+    def test_urgent_bypass_requires_reason(self):
+        payload = {**self.registration_payload, "urgent_bypass": "1"}
+
+        response = self.client.post(reverse("register_patient"), payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "กรุณาระบุเหตุผล")
+        self.assertEqual(Visit.objects.filter(patient=self.patient).count(), 1)
+        self.assertFalse(BillBalanceTransfer.objects.exists())
+
+    def test_urgent_bypass_moves_due_to_new_bill_without_reapplying_coverage(self):
+        payload = {
+            **self.registration_payload,
+            "urgent_bypass": "1",
+            "urgent_bypass_reason": "ผู้ป่วยมีอาการเร่งด่วน ต้องเริ่มประเมินทันที",
+        }
+
+        response = self.client.post(reverse("register_patient"), payload)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Visit.objects.filter(patient=self.patient).count(), 2)
+        new_visit = Visit.objects.exclude(pk=self.old_visit.pk).get(patient=self.patient)
+        transfer = BillBalanceTransfer.objects.get(source_bill=self.old_bill)
+        self.assertEqual(transfer.target_visit, new_visit)
+        self.assertEqual(transfer.amount, 120)
+        self.assertEqual(transfer.transferred_by, self.user)
+        self.assertIn("เร่งด่วน", transfer.reason)
+
+        self.old_bill.refresh_from_db()
+        self.old_visit.refresh_from_db()
+        self.assertEqual(self.old_bill.status, Bill.Status.TRANSFERRED)
+        self.assertEqual(self.old_bill.patient_due, 120)
+        self.assertEqual(self.old_queue.status, Queue.Status.OPD_DONE)
+        self.assertEqual(self.old_visit.superseded_by, new_visit)
+        self.assertEqual(
+            VisitWorkflowLog.objects.filter(
+                event_type=VisitWorkflowLog.EventType.URGENT_BILL_ROLLOVER,
+            ).count(),
+            2,
+        )
+
+        coverage = PatientCoverage.objects.create(
+            patient=self.patient,
+            coverage_type=PatientCoverage.CoverageType.UCS,
+            coverage_percent=100,
+            is_active=True,
+        )
+        new_bill = Bill.objects.get(visit=new_visit)
+        new_bill.coverage = coverage
+        new_bill.save(update_fields=["coverage", "updated_at"])
+        new_bill.recalculate()
+        self.assertEqual(new_bill.covered_amount, 200)
+        self.assertEqual(new_bill.patient_due, 120)
+        self.assertEqual(new_bill.status, Bill.Status.READY)
+        self.assertIsNone(new_bill.billing_queue_entered_at)
+
+        detail = self.client.get(reverse("billing_detail", args=[new_bill.pk]))
+        self.assertContains(detail, f"ยอดค้างเดิมจาก Visit #{self.old_visit.pk}")
+        old_detail = self.client.get(reverse("billing_detail", args=[self.old_bill.pk]))
+        self.assertContains(old_detail, f"Visit #{new_visit.pk}")
+        self.assertNotContains(old_detail, "ยืนยันรับชำระ")
+        old_bill_list = self.client.get(reverse("billing_worklist"))
+        self.assertContains(old_bill_list, f"โอนยอดไป Visit #{new_visit.pk}")
+
+        new_bill.billing_queue_entered_at = timezone.now()
+        new_bill.save(update_fields=["billing_queue_entered_at", "updated_at"])
+        worklist = self.client.get(reverse("billing_worklist"))
+        self.assertContains(worklist, f"ยอดค้างเดิมจาก Visit #{self.old_visit.pk}")
+
+        blocked_payment = self.client.post(reverse("billing_pay", args=[self.old_bill.pk]))
+        self.assertEqual(blocked_payment.status_code, 302)
+        self.old_bill.refresh_from_db()
+        self.assertEqual(self.old_bill.status, Bill.Status.TRANSFERRED)
+
+        new_bill.status = Bill.Status.PAID
+        new_bill.paid_at = timezone.now()
+        new_bill.save(update_fields=["status", "paid_at", "updated_at"])
+        new_visit.queue.status = Queue.Status.DISCHARGED
+        new_visit.queue.save(update_fields=["status"])
+        next_visit_response = self.client.post(reverse("register_patient"), self.registration_payload)
+        self.assertEqual(next_visit_response.status_code, 302)
+        self.assertEqual(Visit.objects.filter(patient=self.patient).count(), 3)

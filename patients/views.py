@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core import signing
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import validate_email
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q, Sum
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
@@ -31,6 +31,7 @@ from .forms import PatientBirthDateForm, PatientForm, PublicPatientRegistrationF
 from .models import Appointment, OtpChallenge, Patient, PatientAccessToken, PatientPin
 from .security import rate_limited, rate_limited_by_identifier
 from queues.models import Visit, Queue, VitalSign, VisitWorkflowLog
+from opd.models import Bill, BillBalanceTransfer, PatientCoverage
 
 
 ACTIVE_QUEUE_STATUSES = {
@@ -164,7 +165,7 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
     bill_status = getattr(bill, "status", "")
     billing_done = bill_status in {"PAID", "WAIVED"}
     billing_cancelled = bill_status == "CANCELLED"
-    billing_started = bill_status in {"DRAFT", "READY"}
+    billing_started = doctor_done and bill_status in {"DRAFT", "READY", Bill.Status.TRANSFERRED}
 
     terminal_cancelled = queue_status == Queue.Status.CANCELLED
     emergency_transfer = queue_status == Queue.Status.EMERGENCY_TRANSFER
@@ -276,7 +277,11 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
         ),
     ]
 
-    if terminal_cancelled:
+    if getattr(visit, "superseded_by_id", None):
+        current_label = "ดำเนินการต่อใน Visit ใหม่"
+        current_detail = f"เริ่ม Visit#{visit.superseded_by_id} แบบเร่งด่วน · ยอดค้างเดิมถูกย้ายไปรวมบิลใหม่"
+        current_class = "current"
+    elif terminal_cancelled:
         current_label = "ยกเลิกการรับบริการ"
         current_detail = "คิวนี้ถูกยกเลิก"
         current_class = "cancelled"
@@ -820,6 +825,11 @@ def _patient_portal_status(queue, journey):
     instead of implying that the patient is still in the examination room.
     """
     visit = queue.visit
+    if getattr(visit, "superseded_by_id", None):
+        return (
+            "ดำเนินการต่อใน Visit ใหม่",
+            f"เริ่ม Visit#{visit.superseded_by_id} แบบเร่งด่วน · ยอดค้างเดิมถูกรวมไปบิลใหม่",
+        )
     has_aftercare = queue.status in {
         Queue.Status.OPD_DONE,
         Queue.Status.FOLLOWUP,
@@ -965,7 +975,11 @@ def public_register(request):
         )
         active_visit = (
             Visit.objects.select_related("queue")
-            .filter(patient=patient, queue__status__in=ACTIVE_QUEUE_STATUSES)
+            .filter(
+                patient=patient,
+                superseded_by__isnull=True,
+                queue__status__in=ACTIVE_QUEUE_STATUSES,
+            )
             .order_by("-registered_at")
             .first()
         )
@@ -2036,7 +2050,7 @@ def patient_me(request):
             "visit__bill",
         )
         .prefetch_related("visit__workflow_logs")
-        .filter(visit__patient=patient, status__in=ACTIVE_QUEUE_STATUSES)
+        .filter(visit__patient=patient, visit__superseded_by__isnull=True, status__in=ACTIVE_QUEUE_STATUSES)
         .order_by("-created_at")
         .first()
     )
@@ -2085,7 +2099,7 @@ def patient_queue(request):
             "visit__bill",
         )
         .prefetch_related("visit__workflow_logs")
-        .filter(visit__patient=patient, status__in=ACTIVE_QUEUE_STATUSES)
+        .filter(visit__patient=patient, visit__superseded_by__isnull=True, status__in=ACTIVE_QUEUE_STATUSES)
         .order_by("-created_at")
         .first()
     )
@@ -2208,6 +2222,9 @@ def _registration_context(
     existing_query="",
     existing_results=None,
     selected_patient=None,
+    unpaid_bills=None,
+    urgent_bypass_reason="",
+    urgent_bypass=False,
 ):
     if emergency_contacts is None:
         emergency_contacts = (
@@ -2221,6 +2238,16 @@ def _registration_context(
         "province", "district", "subdistrict", "postal_code",
         "emergency_name", "emergency_relationship", "emergency_phone",
     }
+    if unpaid_bills is None and selected_patient:
+        unpaid_bills = list(
+            Bill.objects.filter(
+                visit__patient=selected_patient,
+                status=Bill.Status.READY,
+                patient_due__gt=0,
+            )
+            .select_related("visit")
+            .order_by("created_at", "pk")
+        )
     return {
         "form": form,
         "is_edit": is_edit,
@@ -2229,6 +2256,9 @@ def _registration_context(
         "existing_query": existing_query,
         "existing_results": existing_results if existing_results is not None else [],
         "selected_patient": selected_patient,
+        "unpaid_bills": unpaid_bills or [],
+        "urgent_bypass_reason": urgent_bypass_reason,
+        "urgent_bypass": urgent_bypass,
         # Do not hide validation feedback inside a collapsed optional section.
         "open_optional_details": is_edit or bool(optional_fields.intersection(form.errors)),
     }
@@ -2253,6 +2283,8 @@ def register_patient(request):
 
         form = PatientForm(request.POST, instance=selected_patient, allow_existing=True)
         emergency_contacts = _staff_emergency_contacts_from_post(request.POST)
+        urgent_bypass = request.POST.get("urgent_bypass") == "1"
+        urgent_bypass_reason = request.POST.get("urgent_bypass_reason", "").strip()[:500]
 
         if not form.is_valid():
             return render(
@@ -2262,6 +2294,8 @@ def register_patient(request):
                     form,
                     emergency_contacts=emergency_contacts,
                     selected_patient=selected_patient,
+                    urgent_bypass_reason=urgent_bypass_reason,
+                    urgent_bypass=urgent_bypass,
                 ),
             )
 
@@ -2275,6 +2309,8 @@ def register_patient(request):
                     form,
                     emergency_contacts=emergency_contacts,
                     selected_patient=selected_patient,
+                    urgent_bypass_reason=urgent_bypass_reason,
+                    urgent_bypass=urgent_bypass,
                 ),
             )
 
@@ -2285,18 +2321,50 @@ def register_patient(request):
                 patient = Patient.objects.select_for_update().filter(national_id=national_id).first()
 
             if patient:
-                active_queue = (
+                active_queues = list(
                     Queue.objects.filter(
                         visit__patient=patient,
+                        visit__superseded_by__isnull=True,
                         status__in=ACTIVE_QUEUE_STATUSES,
                     )
+                    .select_related("visit")
                     .order_by("-created_at")
-                    .first()
                 )
-                if active_queue:
+                active_queue = active_queues[0] if active_queues else None
+                unpaid_bills = list(
+                    Bill.objects.select_for_update()
+                    .filter(
+                        visit__patient=patient,
+                        status=Bill.Status.READY,
+                        patient_due__gt=0,
+                    )
+                    .select_related("visit")
+                    .order_by("created_at", "pk")
+                )
+                unpaid_bill_visit_ids = {bill.visit_id for bill in unpaid_bills}
+
+                bypass_error = None
+                if urgent_bypass and not selected_patient:
+                    bypass_error = "กรุณาค้นหาและเลือกผู้ป่วยเดิมก่อนใช้การรวมยอดค้าง"
+                elif unpaid_bills and not urgent_bypass:
+                    bypass_error = "ผู้ป่วยยังมียอดค้าง กรุณาดำเนินการบิลเดิมให้เสร็จ หรือเลือกเริ่ม Visit เร่งด่วนและรวมยอดค้าง"
+                elif urgent_bypass and not unpaid_bills:
+                    bypass_error = "ไม่พบยอดค้างที่สามารถรวมบิลได้ กรุณาตรวจสอบสถานะผู้ป่วยอีกครั้ง"
+                elif urgent_bypass and not urgent_bypass_reason:
+                    bypass_error = "กรุณาระบุเหตุผลที่ต้องเริ่มรับบริการเร่งด่วนและข้ามบิลเดิม"
+                elif active_queues and (
+                    not urgent_bypass
+                    or any(queue.visit_id not in unpaid_bill_visit_ids for queue in active_queues)
+                ):
+                    bypass_error = (
+                        f"ผู้ป่วยมีคิว {active_queue.display_number} ที่กำลังรับบริการอยู่แล้ว "
+                        "กรุณาดำเนิน Visit เดิมก่อน หรือให้หัวหน้าตรวจสอบ"
+                    )
+
+                if bypass_error:
                     form.add_error(
                         None,
-                        f"ผู้ป่วยมีคิว {active_queue.display_number} ที่กำลังรับบริการอยู่แล้ว กรุณาตรวจสอบคิวเดิม",
+                        bypass_error,
                     )
                     return render(
                         request,
@@ -2305,6 +2373,9 @@ def register_patient(request):
                             form,
                             emergency_contacts=emergency_contacts,
                             selected_patient=patient if selected_patient else None,
+                            unpaid_bills=unpaid_bills,
+                            urgent_bypass_reason=urgent_bypass_reason,
+                            urgent_bypass=urgent_bypass,
                         ),
                     )
 
@@ -2313,6 +2384,19 @@ def register_patient(request):
                 _apply_staff_emergency_contacts(patient, emergency_contacts)
                 patient.save()
             else:
+                if urgent_bypass:
+                    form.add_error(None, "การรวมยอดค้างใช้ได้เฉพาะผู้ป่วยเดิมที่เลือกจากรายการค้นหา")
+                    return render(
+                        request,
+                        "patients/register.html",
+                        _registration_context(
+                            form,
+                            emergency_contacts=emergency_contacts,
+                            selected_patient=selected_patient,
+                            urgent_bypass_reason=urgent_bypass_reason,
+                            urgent_bypass=urgent_bypass,
+                        ),
+                    )
                 patient = Patient(**form.cleaned_data)
                 _apply_staff_emergency_contacts(patient, emergency_contacts)
                 patient.save()
@@ -2333,6 +2417,55 @@ def register_patient(request):
                 visit=visit,
                 status=Queue.Status.WAITING_VITALS,
             )
+
+            if patient and urgent_bypass:
+                for source_bill in unpaid_bills:
+                    transferred_amount = source_bill.patient_due
+                    BillBalanceTransfer.objects.create(
+                        source_bill=source_bill,
+                        target_visit=visit,
+                        amount=transferred_amount,
+                        transferred_by=request.user,
+                        reason=urgent_bypass_reason,
+                    )
+                    source_bill.visit.superseded_by = visit
+                    source_bill.visit.save(update_fields=["superseded_by"])
+                    source_bill.status = Bill.Status.TRANSFERRED
+                    source_bill.save(update_fields=["status", "updated_at"])
+                    details = {
+                        "source_bill_id": source_bill.pk,
+                        "target_visit_id": visit.pk,
+                        "amount": str(transferred_amount),
+                        "reason": urgent_bypass_reason,
+                    }
+                    VisitWorkflowLog.record(
+                        visit=source_bill.visit,
+                        event_type=VisitWorkflowLog.EventType.URGENT_BILL_ROLLOVER,
+                        actor=request.user,
+                        description=f"เริ่ม Visit#{visit.pk} แบบเร่งด่วนและโอนยอดค้าง {transferred_amount:.2f} บาท",
+                        details=details,
+                    )
+                    VisitWorkflowLog.record(
+                        visit=visit,
+                        event_type=VisitWorkflowLog.EventType.URGENT_BILL_ROLLOVER,
+                        actor=request.user,
+                        description=f"รับโอนยอดค้าง {transferred_amount:.2f} บาทจาก Bill#{source_bill.pk}",
+                        details=details,
+                    )
+                target_coverage = PatientCoverage.objects.filter(patient=patient, is_active=True).first()
+                target_bill = Bill.objects.create(visit=visit, coverage=target_coverage)
+                target_bill.recalculate()
+                VisitWorkflowLog.record(
+                    visit=visit,
+                    event_type=VisitWorkflowLog.EventType.BILL_CREATED,
+                    actor=request.user,
+                    description="เตรียมบิล Visit ใหม่เพื่อรวมยอดค้าง โดยยังไม่ส่งเข้าคิวการเงินจนกว่าจะถึงขั้นตอนชำระเงิน",
+                    details={
+                        "bill_id": target_bill.pk,
+                        "carried_balance": str(sum((bill.patient_due for bill in unpaid_bills), start=0)),
+                        "urgent_bypass": True,
+                    },
+                )
 
         return _after_patient_change(request, patient)
 
@@ -2418,6 +2551,7 @@ def update_patient_birth_date(request, patient_id):
 @login_required
 def patient_search(request):
     query = request.GET.get("q", "").strip()
+    selected_status = request.GET.get("tab", "all")
     patients = Patient.objects.none()
 
     if query:
@@ -2433,9 +2567,118 @@ def patient_search(request):
             .order_by("hn", "first_name")[:80]
         )
 
+    unpaid_totals = {}
+    for row in (
+        Bill.objects.filter(status__in=(Bill.Status.DRAFT, Bill.Status.READY), patient_due__gt=0)
+        .values("visit__patient_id")
+        .annotate(amount=Sum("patient_due"), count=Count("pk"))
+    ):
+        unpaid_totals[row["visit__patient_id"]] = {
+            "amount": row["amount"],
+            "count": row["count"],
+        }
+    for row in (
+        BillBalanceTransfer.objects.filter(target_visit__bill__isnull=True)
+        .values("target_visit__patient_id")
+        .annotate(amount=Sum("amount"), count=Count("pk"))
+    ):
+        patient_id = row["target_visit__patient_id"]
+        totals = unpaid_totals.setdefault(patient_id, {"amount": 0, "count": 0})
+        totals["amount"] += row["amount"]
+        totals["count"] += row["count"]
+
+    latest_visits = {}
+    visit_queryset = (
+        Visit.objects.select_related(
+            "patient", "queue", "triage_result", "opd_assessment__examiner", "prescription", "bill",
+        )
+        .prefetch_related("workflow_logs")
+        .order_by("-registered_at", "-pk")
+    )
+    for visit in visit_queryset:
+        latest_visits.setdefault(visit.patient_id, visit)
+
+    status_rows = []
+    for patient in Patient.objects.order_by("hn", "first_name"):
+        visit = latest_visits.get(patient.pk)
+        debt = unpaid_totals.get(patient.pk, {})
+        journey = _patient_journey_for_visit(visit, list(visit.workflow_logs.all())) if visit else None
+        queue_status = journey["queue_status"] if journey else ""
+        prescription_status = getattr(getattr(visit, "prescription", None), "status", "") if visit else ""
+        bill_status = getattr(getattr(visit, "bill", None), "status", "") if visit else ""
+
+        if debt:
+            status_key = "unpaid"
+            status_label = "มียอดค้างชำระ"
+            latest_stage = f" · Visit ล่าสุด: {journey['current_label']}" if journey else ""
+            status_detail = f"ค้าง {debt['amount']:.2f} บาท · {debt['count']} บิล{latest_stage}"
+        elif not visit:
+            status_key = "no_visit"
+            status_label = "ยังไม่เคยใช้บริการ"
+            status_detail = "ยังไม่มีประวัติ Visit"
+        elif queue_status == Queue.Status.WAITING_VITALS:
+            status_key, status_label = "vitals", "รอตรวจวัดสัญญาณชีพ"
+            status_detail = journey["current_detail"]
+        elif queue_status == Queue.Status.WAITING_CONFIRMATION:
+            status_key, status_label = "triage", "รอคัดกรอง/ยืนยันผล"
+            status_detail = journey["current_detail"]
+        elif queue_status in {Queue.Status.WAITING_QUEUE, Queue.Status.WAITING}:
+            status_key, status_label = "queue", "รอเรียกคิว"
+            status_detail = journey["current_detail"]
+        elif prescription_status in {"SENT", "PREPARING", "READY"} or journey["current_label"] == "ห้องยา":
+            status_key, status_label = "pharmacy", "อยู่ระหว่างรับยา"
+            status_detail = journey["current_detail"]
+        elif bill_status in {Bill.Status.DRAFT, Bill.Status.READY} or journey["current_label"] == "การเงิน":
+            status_key, status_label = "billing", "อยู่ระหว่างการเงิน"
+            status_detail = journey["current_detail"]
+        elif queue_status in {Queue.Status.DISCHARGED, Queue.Status.CANCELLED} or journey["current_class"] == "done":
+            status_key, status_label = "completed", "เสร็จสิ้น/ยกเลิก Visit ล่าสุด"
+            status_detail = journey["current_detail"]
+        else:
+            status_key, status_label = "exam", journey["current_label"]
+            status_detail = journey["current_detail"]
+
+        status_rows.append({
+            "patient": patient,
+            "visit": visit,
+            "status_key": status_key,
+            "status_label": status_label,
+            "status_detail": status_detail,
+            "debt_amount": debt.get("amount"),
+        })
+
+    status_tab_options = [
+        ("all", "ผู้ป่วยทั้งหมด"),
+        ("vitals", "รอตรวจวัด"),
+        ("triage", "รอคัดกรอง"),
+        ("queue", "รอเรียกคิว"),
+        ("exam", "ตรวจ/เฝ้าระวัง"),
+        ("pharmacy", "ห้องยา"),
+        ("billing", "การเงิน"),
+        ("unpaid", "มียอดค้าง"),
+        ("completed", "เสร็จสิ้น"),
+        ("no_visit", "ยังไม่เคยมา"),
+    ]
+    status_counts = {key: sum(row["status_key"] == key for row in status_rows) for key, _label in status_tab_options}
+    status_counts["all"] = len(status_rows)
+    status_tabs = [
+        {"key": key, "label": label, "count": status_counts[key]}
+        for key, label in status_tab_options
+    ]
+    if selected_status not in status_counts:
+        selected_status = "all"
+    visible_status_rows = status_rows if selected_status == "all" else [
+        row for row in status_rows if row["status_key"] == selected_status
+    ]
+
     return render(request, "patients/search.html", {
         "query": query,
         "patients": patients,
+        "status_tabs": status_tabs,
+        "status_counts": status_counts,
+        "selected_status": selected_status,
+        "status_rows": visible_status_rows,
+        "patient_status_total": len(status_rows),
     })
 
 
@@ -2447,6 +2690,7 @@ def patient_history(request, patient_id: int):
         .filter(patient=patient)
         .select_related(
             "queue",
+            "superseded_by",
             "triage_result",
             "opd_assessment",
             "opd_assessment__examiner",

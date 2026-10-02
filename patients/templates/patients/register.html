@@ -125,6 +125,25 @@
           {% csrf_token %}
           {% if selected_patient %}<input type="hidden" name="existing_patient_id" value="{{ selected_patient.id }}">{% endif %}
 
+          {% if selected_patient and unpaid_bills %}
+          <section class="urgent-balance-panel" style="margin:18px 0;padding:18px;border:1px solid #e7b35c;border-radius:14px;background:#fff8e8;color:#533a11">
+            <h3 style="margin:0 0 8px;color:#744c00">มียอดค้างจาก Visit ก่อนหน้า</h3>
+            <p style="margin:0 0 10px">กรุณาชำระบิลเดิมตามปกติ หรือหากจำเป็นต้องรักษาเร่งด่วน ให้เลือกเริ่ม Visit ใหม่และย้ายเฉพาะยอดที่ผู้ป่วยต้องจ่ายไปรวมในบิลใหม่</p>
+            <ul style="margin:0 0 12px;padding-left:22px">
+              {% for old_bill in unpaid_bills %}
+                <li>Visit #{{ old_bill.visit_id }} · ค้าง {{ old_bill.patient_due|floatformat:2 }} บาท</li>
+              {% endfor %}
+            </ul>
+            <label style="display:flex;gap:9px;align-items:flex-start;font-weight:700">
+              <input id="urgentBillBypass" type="checkbox" name="urgent_bypass" value="1" {% if urgent_bypass %}checked{% endif %} style="width:auto;margin-top:4px">
+              <span>เริ่ม Visit ใหม่กรณีเร่งด่วน และรวมยอดค้างทั้งหมดไว้ในบิลของ Visit ใหม่นี้</span>
+            </label>
+            <label for="urgentBillReason" style="display:block;margin-top:12px;font-weight:700">เหตุผลที่ข้ามขั้นตอนเดิม <span aria-hidden="true">*</span></label>
+            <textarea id="urgentBillReason" name="urgent_bypass_reason" rows="2" maxlength="500" placeholder="ระบุเหตุผล เช่น ผู้ป่วยมีอาการฉุกเฉิน ต้องเริ่มประเมินทันที" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #d5c18e;border-radius:8px;font:inherit" {% if urgent_bypass %}required{% endif %}>{{ urgent_bypass_reason }}</textarea>
+            <small style="display:block;margin-top:6px">ระบบจะเก็บบิลเดิมไว้ในประวัติ ป้องกันการเรียกเก็บซ้ำ และบันทึกชื่อผู้ทำรายการ/เหตุผล</small>
+          </section>
+          {% endif %}
+
           <!-- ================= SECTION 1: ข้อมูลพื้นฐาน ================= -->
           <h3>ข้อมูลผู้ป่วย</h3>
           <p class="section-help">{% if selected_patient %}ตรวจสอบข้อมูลเดิมและแก้ไขเฉพาะข้อมูลที่เปลี่ยนแปลง{% else %}กรอกข้อมูลส่วนบุคคลให้เหมือนกับหน้าลงทะเบียนของผู้ป่วย{% endif %}</p>
@@ -470,7 +489,7 @@
 
           <!-- ================= FOOTER ================= -->
           <div class="footer">
-            <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}บันทึกการแก้ไข →{% else %}ยืนยันลงทะเบียน →{% endif %}</button>
+            <button id="submitPatientBtn" class="btn primary" type="submit">{% if is_edit %}บันทึกการแก้ไข →{% elif unpaid_bills %}ยืนยันรับบริการครั้งใหม่ →{% else %}ยืนยันลงทะเบียน →{% endif %}</button>
             <a class="btn ghost" href="{% url 'role_landing' %}">ยกเลิก</a>
           </div>
 
@@ -837,6 +856,17 @@
   const existingPatientToggle = document.getElementById("existingPatientToggle");
   const existingPatientPanel = document.getElementById("existingPatientPanel");
   const existingPatientQuery = document.getElementById("existingPatientQuery");
+  const urgentBillBypass = document.getElementById("urgentBillBypass");
+  const urgentBillReason = document.getElementById("urgentBillReason");
+  const syncUrgentBypass = () => {
+    if (!urgentBillBypass || !urgentBillReason || !submitPatientBtn) return;
+    urgentBillReason.required = urgentBillBypass.checked;
+    submitPatientBtn.textContent = urgentBillBypass.checked
+      ? "เริ่ม Visit เร่งด่วนและรวมยอดค้าง →"
+      : "ยืนยันรับบริการครั้งใหม่ →";
+  };
+  urgentBillBypass?.addEventListener("change", syncUrgentBypass);
+  syncUrgentBypass();
   existingPatientToggle?.addEventListener("click", () => {
     const willOpen = existingPatientPanel?.hasAttribute("hidden");
     if (willOpen) {
