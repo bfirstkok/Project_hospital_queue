@@ -2,6 +2,7 @@ from queues.room_assignment import active_doctor_room_assignment
 from queues.models import StaffProfile
 
 from .access import ROLE_DESCRIPTIONS, capabilities_for, simulated_role_for, user_role
+from .guide_context import staff_guide_context
 
 
 def access_control(request):
@@ -33,4 +34,5 @@ def access_control(request):
         "role_simulation_active": bool(simulated_role),
         "role_simulation_value": simulated_role or "ADMIN",
         "admin_role_choices": StaffProfile.Role.choices if request.user.is_authenticated and request.user.is_superuser else (),
+        **staff_guide_context(request, role),
     }

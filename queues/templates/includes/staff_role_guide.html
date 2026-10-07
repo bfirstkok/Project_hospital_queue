@@ -1,0 +1,54 @@
+{% load static %}
+{% if staff_role_guide %}
+<link rel="stylesheet" href="{% static 'css/staff-role-guide.css' %}?v=20261006">
+{{ staff_role_guide_config|json_script:"staff-role-guide-config" }}
+<dialog class="staff-guide" id="staffRoleGuideDialog" aria-labelledby="staffGuideTitle" aria-describedby="staffGuideSummary">
+  <header class="staff-guide__header">
+    <div>
+      <span class="staff-guide__eyebrow">คู่มือการใช้งานตามหน้าที่</span>
+      <h2 id="staffGuideTitle">{{ staff_role_guide.title }}</h2>
+    </div>
+    <button class="staff-guide__close" type="button" data-guide-close aria-label="ปิดคู่มือ">×</button>
+  </header>
+  <div class="staff-guide__body">
+    <section class="staff-guide__welcome" id="staffGuideWelcome">
+      <span class="staff-guide__book" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 6c-2-2-6-3-10-2v15c4-1 8 0 10 2 2-2 6-3 10-2V4c-4-1-8 0-10 2ZM12 6v15"/><path d="M5 8c2-.1 3 .2 4 1M5 12c2-.1 3 .2 4 1M15 9c1-.8 2-1.1 4-1M15 13c1-.8 2-1.1 4-1"/></svg></span>
+      <h3>รู้ขั้นตอนก่อนเริ่มใช้งาน</h3>
+      <p id="staffGuideSummary">{{ staff_role_guide.summary }}</p>
+      <div class="staff-guide__topics">
+        {% for section in staff_role_guide.sections %}<span><b>{{ forloop.counter }}</b>{{ section.title }}</span>{% endfor %}
+      </div>
+      <p class="staff-guide__reopen-hint">เปิดอ่านอีกครั้งได้จากเมนู “คู่มือการใช้งาน” ด้านซ้าย</p>
+    </section>
+    <section class="staff-guide__reader" id="staffGuideReader" hidden>
+      <nav class="staff-guide__contents" aria-label="หัวข้อในคู่มือ">
+        {% for section in staff_role_guide.sections %}<button type="button" class="staff-guide__topic" data-guide-topic="{{ forloop.counter0 }}"><span>{{ forloop.counter }}</span>{{ section.title }}</button>{% endfor %}
+      </nav>
+      <div class="staff-guide__pages" id="staffGuidePages">
+        {% for section in staff_role_guide.sections %}
+          <article class="staff-guide__page" data-guide-page="{{ forloop.counter0 }}" {% if not forloop.first %}hidden{% endif %}>
+            <span class="staff-guide__step-label">หัวข้อ {{ forloop.counter }} / {{ staff_role_guide.sections|length }}</span>
+            <h3 tabindex="-1">{{ section.title }}</h3>
+            <ol>{% for step in section.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+            {% if section.links %}<div class="staff-guide__links">{% for link in section.links %}<a href="{{ link.url }}" data-guide-link>{{ link.label }} <span aria-hidden="true">↗</span></a>{% endfor %}</div>{% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  <footer class="staff-guide__footer">
+    <label class="staff-guide__remember"><input id="staffGuideHideToday" type="checkbox"><span>ไม่แสดงอีกในวันนี้<small>จำเฉพาะบัญชีและตำแหน่งนี้ในเบราว์เซอร์นี้</small></span></label>
+    <p class="staff-guide__storage-note" id="staffGuideStorageNote" role="status" hidden>เบราว์เซอร์ไม่อนุญาตให้จำการตั้งค่า คู่มืออาจแสดงอีกครั้งเมื่อเปิดหน้าใหม่</p>
+    <div class="staff-guide__actions" id="staffGuideWelcomeActions">
+      <button class="staff-guide__button staff-guide__button--secondary" type="button" data-guide-close>ข้าม</button>
+      <button class="staff-guide__button staff-guide__button--primary" id="staffGuideRead" type="button">อ่านคู่มือ <span aria-hidden="true">→</span></button>
+    </div>
+    <div class="staff-guide__actions" id="staffGuideReaderActions" hidden>
+      <button class="staff-guide__button staff-guide__button--secondary" id="staffGuidePrevious" type="button">← หัวข้อก่อนหน้า</button>
+      <span class="staff-guide__progress" id="staffGuideProgress" aria-live="polite"></span>
+      <button class="staff-guide__button staff-guide__button--primary" id="staffGuideNext" type="button">หัวข้อถัดไป →</button>
+    </div>
+  </footer>
+</dialog>
+<script src="{% static 'js/staff-role-guide.js' %}?v=20261006" defer></script>
+{% endif %}
