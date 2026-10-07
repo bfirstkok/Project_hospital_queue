@@ -2061,11 +2061,23 @@ class EmergencyOfficerWorkflowTests(TestCase):
         )
 
     def test_emergency_page_exposes_accept_then_final_actions(self):
+        accept_button = (
+            '<button class="action-btn accept" type="submit">รับเคส</button>'
+        )
+        discharge_button = (
+            '<button class="action-btn done" type="submit">'
+            'รักษาเสร็จ / จำหน่าย</button>'
+        )
+        refer_button = (
+            '<button class="action-btn refer" type="submit">ส่งต่อหน่วยอื่น</button>'
+        )
         first = self.client.get(reverse("emergency_transfers"))
 
         self.assertEqual(first.status_code, 200)
-        self.assertContains(first, "รับเคส")
-        self.assertNotContains(first, "รักษาเสร็จ / จำหน่าย")
+        # The role guide also names these actions; check the actual controls.
+        self.assertContains(first, accept_button, html=True)
+        self.assertNotContains(first, discharge_button, html=True)
+        self.assertNotContains(first, refer_button, html=True)
 
         response = self.client.post(
             reverse("accept_emergency_case", args=[self.visit.id]),
@@ -2080,8 +2092,9 @@ class EmergencyOfficerWorkflowTests(TestCase):
 
         second = self.client.get(reverse("emergency_transfers"))
         self.assertContains(second, "รับเคสแล้ว")
-        self.assertContains(second, "รักษาเสร็จ / จำหน่าย")
-        self.assertContains(second, "ส่งต่อหน่วยอื่น")
+        self.assertNotContains(second, accept_button, html=True)
+        self.assertContains(second, discharge_button, html=True)
+        self.assertContains(second, refer_button, html=True)
 
     def test_cannot_discharge_before_accepting_case(self):
         response = self.client.post(
