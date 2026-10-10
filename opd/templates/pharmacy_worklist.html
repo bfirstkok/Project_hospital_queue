@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=pharmacy-dashboard-20261001">
   <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=service-queues-20260930">
   <link rel="stylesheet" href="{% static 'css/pharmacy-dashboard.css' %}?v=20261001">
+  <style>
+    .ph-filters{flex-wrap:wrap;overflow:visible}.ph-filters button[data-filter="SKIPPED"]{border-color:#e7b7bc;color:#9b2938}.ph-filters button[data-filter="SKIPPED"].active{background:#a72f40;color:#fff}
+    .ph-row-skip{margin:6px 0 0}.ph-row-skip button{padding:5px 7px;border:1px solid #eabfc2;border-radius:7px;background:#fff4f4;color:#a32d38;font:800 9px "Sarabun",Tahoma,sans-serif;cursor:pointer}
+    .ph-row-skip button:hover{background:#ffe6e8}.ph-queue-row:focus-visible,.ph-row-skip button:focus-visible{outline:2px solid #197dcc;outline-offset:-2px}
+  </style>
 </head>
 <body>
 {% include "includes/main_nav.html" %}
@@ -29,14 +34,15 @@
 
   <section class="ph-workspace" aria-label="จัดการคิวและใบสั่งยา">
     <aside class="ph-panel ph-queue-panel">
-      <header class="ph-panel-head"><div><h2>คิวผู้ป่วยรอรับยา</h2><p>ลำดับคิวห้องยา · แสดงเฉพาะรายการที่ยังไม่จ่ายยา</p></div><span class="ph-count">{{ prescriptions|length }}</span></header>
+      <header class="ph-panel-head"><div><h2>คิวผู้ป่วยรอรับยา</h2><p>ลำดับคิวห้องยา · คนที่ข้ามคิวแยกอยู่ในหมวดค้าง / ไม่มา</p></div><span class="ph-count">{{ pharmacy_status_counts.ACTIVE }}</span></header>
       <div class="ph-queue-tools">
         <label class="ph-search"><span aria-hidden="true">⌕</span><input id="pharmacySearch" type="search" placeholder="ค้นหา HN, ชื่อ หรือชื่อยา" autocomplete="off" aria-label="ค้นชื่อผู้ป่วย, HN, เลข Visit หรือชื่อยา"></label>
         <div class="ph-filters" role="group" aria-label="กรองคิวห้องยา">
-          <button type="button" class="active" data-filter="ALL">ทั้งหมด <span data-filter-count="ALL">{{ prescriptions|length }}</span></button>
+          <button type="button" class="active" data-filter="ACTIVE">รอรับบริการ <span data-filter-count="ACTIVE">{{ pharmacy_status_counts.ACTIVE }}</span></button>
           <button type="button" data-filter="SENT">รอรับ <span data-filter-count="SENT">{{ pharmacy_status_counts.SENT }}</span></button>
           <button type="button" data-filter="PREPARING">กำลังจัด <span data-filter-count="PREPARING">{{ pharmacy_status_counts.PREPARING }}</span></button>
           <button type="button" data-filter="READY">พร้อมจ่าย <span data-filter-count="READY">{{ pharmacy_status_counts.READY }}</span></button>
+          <button type="button" data-filter="SKIPPED">ค้าง / ไม่มา <span data-filter-count="SKIPPED">{{ pharmacy_status_counts.SKIPPED }}</span></button>
         </div>
       </div>
       <div class="ph-queue-scroll">
@@ -44,17 +50,19 @@
           <thead><tr><th>คิว</th><th>ผู้ป่วย / HN</th><th>เวลา</th><th>สถานะ</th></tr></thead>
           <tbody id="pharmacyQueueRows">
           {% for rx in prescriptions %}
-          <tr class="ph-queue-row{% if selected_rx.id == rx.id %} selected{% endif %}{% if rx.queue_is_called %} called{% elif rx.queue_is_skipped %} skipped{% endif %}" data-status="{{ rx.status }}" data-search="{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }} {{ rx.visit.patient.hn }} {{ rx.visit_id }} {% for item in rx.items.all %}{{ item.medication_name }} {{ item.strength }} {% endfor %}" data-href="?prescription_id={{ rx.id }}#pharmacy-dashboard" tabindex="0"{% if selected_rx.id == rx.id %} aria-current="true"{% endif %}>
+          <tr class="ph-queue-row{% if selected_rx.id == rx.id %} selected{% endif %}{% if rx.queue_is_called %} called{% elif rx.queue_is_skipped %} skipped{% endif %}" data-status="{{ rx.status }}" data-queue-skipped="{% if rx.queue_is_skipped %}true{% else %}false{% endif %}" data-search="{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }} {{ rx.visit.patient.hn }} {{ rx.visit_id }} {% for item in rx.items.all %}{{ item.medication_name }} {{ item.strength }} {% endfor %}" data-href="?prescription_id={{ rx.id }}&amp;queue_filter={% if rx.queue_is_skipped %}SKIPPED{% else %}ACTIVE{% endif %}#pharmacy-dashboard" tabindex="0"{% if selected_rx.id == rx.id %} aria-current="true"{% endif %}{% if rx.queue_is_skipped %} hidden{% endif %}>
             <td><span class="ph-row-ticket">{{ rx.queue_display_number|default:"—" }}</span><small>{% if rx.queue_is_called %}เรียกแล้ว{% elif rx.queue_is_skipped %}ข้ามคิว{% elif rx.queue_position %}ลำดับ {{ rx.queue_position }}{% else %}ประวัติ{% endif %}</small></td>
-            <td><a class="ph-patient-link" href="?prescription_id={{ rx.id }}#pharmacy-dashboard">{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</a><small>HN {{ rx.visit.patient.hn }}</small></td>
-            <td>{{ rx.sent_at|date:"H:i"|default:"—" }}</td>
-            <td><span class="ph-status {{ rx.status|lower }}{% if rx.queue_is_skipped %} no-show{% endif %}">{% if rx.queue_is_called %}กำลังเรียก{% elif rx.queue_is_skipped %}ไม่มา{% else %}{{ rx.get_status_display }}{% endif %}</span></td>
+            <td><a class="ph-patient-link" href="?prescription_id={{ rx.id }}&amp;queue_filter={% if rx.queue_is_skipped %}SKIPPED{% else %}ACTIVE{% endif %}#pharmacy-dashboard">{{ rx.visit.patient.first_name }} {{ rx.visit.patient.last_name }}</a><small>HN {{ rx.visit.patient.hn }}</small></td>
+            <td>{% if rx.pharmacy_queue_entered_at %}{{ rx.pharmacy_queue_entered_at|date:"H:i" }}{% else %}{{ rx.sent_at|date:"H:i"|default:"—" }}{% endif %}</td>
+            <td><span class="ph-status {{ rx.status|lower }}{% if rx.queue_is_skipped %} no-show{% endif %}">{% if rx.queue_is_called %}กำลังเรียก{% elif rx.queue_is_skipped %}ค้าง / ไม่มา{% else %}{{ rx.get_status_display }}{% endif %}</span>
+              {% if 'manage_pharmacy' in access_capabilities and rx.can_skip_queue and not rx.queue_is_called %}<form class="ph-row-skip" method="post" action="{% url 'pharmacy_queue_action' rx.id %}" onsubmit="return confirm('ยืนยันข้ามคิวนี้ไปหมวดค้าง / ไม่มา? ใบสั่งยายังคงอยู่ และนำกลับเข้าคิวท้ายแถวได้เมื่อผู้ป่วยมาถึง')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button type="submit">ข้ามคิว / ไม่มา</button></form>{% endif %}
+            </td>
           </tr>
           {% empty %}<tr><td colspan="4" class="ph-empty">ไม่มีผู้ป่วยที่รอรับยา กำลังจัดยา หรือพร้อมจ่ายในขณะนี้</td></tr>{% endfor %}
           </tbody>
         </table>
       </div>
-    <div class="ph-no-results" id="pharmacyNoResults">ไม่พบคิวที่ยังรอรับยาตามคำค้นหาหรือตัวกรอง</div>
+    <div class="ph-no-results{% if prescriptions and not pharmacy_status_counts.ACTIVE %} visible{% endif %}" id="pharmacyNoResults" role="status">ไม่พบคิวในหมวดนี้ · ตรวจรายการที่ถูกข้ามได้ที่ “ค้าง / ไม่มา”</div>
     </aside>
 
     <section class="ph-panel ph-detail-panel" aria-label="รายละเอียดผู้ป่วยและใบสั่งยา">
@@ -82,7 +90,7 @@
       </div>
       {% if selected_rx.note %}<div class="ph-prescription-note"><strong>หมายเหตุจากแพทย์</strong><p>{{ selected_rx.note|linebreaksbr }}</p></div>{% endif %}
       {% else %}
-      <div class="ph-detail-empty"><span aria-hidden="true">Rx</span><h2>เลือกคิวเพื่อดูใบสั่งยา</h2><p>เลือกรายการจากคิวทางซ้ายเพื่อแสดงข้อมูลผู้ป่วยและรายการยา</p></div>
+      <div class="ph-detail-empty"><span aria-hidden="true">Rx</span><h2>เลือกคิวเพื่อดูใบสั่งยา</h2><p>{% if pharmacy_status_counts.SKIPPED %}รายการที่ข้ามคิวอยู่ในหมวด “ค้าง / ไม่มา” เลือกหมวดนั้นเพื่อดูใบสั่งยาและนำกลับเข้าคิว{% else %}เลือกรายการจากคิวทางซ้ายเพื่อแสดงข้อมูลผู้ป่วยและรายการยา{% endif %}</p></div>
       {% endif %}
     </section>
 
@@ -91,22 +99,25 @@
         {% if selected_rx %}
           {% if selected_rx.queue_is_called %}
           <div class="ph-current-call"><small>กำลังเรียกผู้ป่วย</small><strong>{{ selected_rx.queue_display_number }}</strong></div>
-          <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}" onsubmit="return confirm('ยืนยันว่าผู้ป่วยไม่มาหลังเรียกคิว และข้ามไปเรียกคิวถัดไปหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="ph-action-button danger" type="submit"><span aria-hidden="true">↪</span> ไม่มา · ข้ามคิว</button></form>
-          {% elif selected_rx.queue_is_skipped %}
-          <div class="ph-call-note warning">คิวนี้ถูกข้ามแล้ว หากผู้ป่วยมาถึง ให้นำกลับเข้าท้ายแถว</div>
+          {% endif %}
+          {% if 'manage_pharmacy' in access_capabilities %}
+          {% if selected_rx.queue_is_skipped %}
+          <div class="ph-call-note warning">คิวนี้อยู่ในหมวดค้าง / ไม่มา ไม่ปนกับคิวรอ หากผู้ป่วยมาถึง ให้นำกลับเข้าท้ายแถว</div>
           <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}" onsubmit="return confirm('นำคิวนี้กลับเข้าท้ายแถวหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="requeue"><button class="ph-action-button" type="submit"><span aria-hidden="true">↻</span> กลับเข้าคิวท้ายแถว</button></form>
           {% elif selected_rx.can_call_queue %}
           <div class="ph-call-note">เรียกคิวแรกตามลำดับเวลาที่มาถึง ผู้ป่วยจะเห็นเลขคิวบนจอส่วนกลาง</div>
           <form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}">{% csrf_token %}<input type="hidden" name="action" value="call"><button class="ph-action-button" type="submit"><span aria-hidden="true">▶</span> เรียกคิว {{ selected_rx.queue_display_number }}</button></form>
-          {% elif selected_rx.queue_display_number %}
+          {% elif selected_rx.queue_display_number and not selected_rx.queue_is_called %}
           <div class="ph-call-note">คิวนี้จะถูกเรียกตามลำดับ เมื่อคิวก่อนหน้าดำเนินการเสร็จ</div><button class="ph-action-button disabled" type="button" disabled>รอเรียกตามลำดับ</button>
-          {% else %}<div class="ph-call-note">รายการนี้ไม่อยู่ในคิวที่กำลังรอรับบริการ</div>{% endif %}
+          {% elif not selected_rx.queue_display_number %}<div class="ph-call-note">รายการนี้ไม่อยู่ในคิวที่กำลังรอรับบริการ</div>{% endif %}
+          {% if selected_rx.can_skip_queue %}<form method="post" action="{% url 'pharmacy_queue_action' selected_rx.id %}" onsubmit="return confirm('ยืนยันข้ามคิวนี้ไปหมวดค้าง / ไม่มา? ใบสั่งยายังคงอยู่ และนำกลับเข้าคิวท้ายแถวได้เมื่อผู้ป่วยมาถึง')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="ph-action-button danger" type="submit"><span aria-hidden="true">↪</span> ข้ามคิว / ไม่มา</button></form>{% endif %}
+          {% else %}<div class="ph-call-note">บัญชีนี้ดูข้อมูลได้เท่านั้น การเรียก ข้าม และนำกลับเข้าคิวต้องดำเนินการโดยผู้มีสิทธิ์จัดการห้องยา</div>{% endif %}
         {% else %}<div class="ph-call-note">เมื่อมีใบสั่งยา รายการจะปรากฏที่นี่</div>{% endif %}
         <a class="ph-quiet-link" href="{% url 'pharmacy_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวห้องยา ↗</a>
       </section>
 
       <section class="ph-action-card ph-progress-card"><header><span aria-hidden="true">✓</span><h2>ขั้นตอนการจัดยา</h2></header>
-        {% if selected_rx and selected_rx.next_status %}
+        {% if selected_rx and selected_rx.next_status and 'manage_pharmacy' in access_capabilities %}
         <p class="ph-progress-hint">สถานะปัจจุบัน: <strong>{{ selected_rx.get_status_display }}</strong></p>
         <form method="post" action="{% url 'pharmacy_update_status' selected_rx.id %}" onsubmit="{% if selected_rx.next_status.0 == 'DISPENSED' %}return confirm('ยืนยันว่าตรวจสอบและจ่ายยาครบแล้วหรือไม่?'){% else %}return true{% endif %}">
           {% csrf_token %}<input type="hidden" name="status" value="{{ selected_rx.next_status.0 }}"><input type="hidden" name="return_prescription_id" value="{{ selected_rx.id }}">
@@ -130,11 +141,29 @@
   const search=document.getElementById('pharmacySearch');
   const filters=[...document.querySelectorAll('[data-filter]')];
   const noResults=document.getElementById('pharmacyNoResults');
-  let active='ALL';
-  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;rows.forEach(row=>{const status=['DISPENSED','CANCELLED'].includes(row.dataset.status)?'DONE':row.dataset.status;const matchesStatus=active==='ALL'||active===status;const matchesSearch=!term||row.dataset.search.toLocaleLowerCase().includes(term);row.hidden=!(matchesStatus&&matchesSearch);if(!row.hidden)visible++;});noResults.classList.toggle('visible',rows.length>0&&visible===0);}
+  const params=new URLSearchParams(window.location.search);
+  const selected=rows.find(row=>row.getAttribute('aria-current')==='true');
+  const validFilters=new Set(filters.map(button=>button.dataset.filter));
+  let active=params.has('prescription_id')&&selected?.dataset.queueSkipped==='true'?'SKIPPED':validFilters.has(params.get('queue_filter'))?params.get('queue_filter'):'ACTIVE';
+  function update(){
+    const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;
+    filters.forEach(button=>button.classList.toggle('active',button.dataset.filter===active));
+    rows.forEach(row=>{
+      const skipped=row.dataset.queueSkipped==='true';
+      const matchesStatus=active==='SKIPPED'?skipped:!skipped&&(active==='ACTIVE'||active===row.dataset.status);
+      const matchesSearch=!term||row.dataset.search.toLocaleLowerCase().includes(term);
+      row.hidden=!(matchesStatus&&matchesSearch);if(!row.hidden)visible++;
+      const link=row.querySelector('.ph-patient-link');
+      const destination=new URL(link.href,window.location.href);
+      destination.searchParams.set('queue_filter',skipped?'SKIPPED':active==='SKIPPED'?'ACTIVE':active);
+      row.dataset.href=destination.href;link.href=destination.href;
+    });
+    noResults.classList.toggle('visible',rows.length>0&&visible===0);
+  }
   filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.filter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
   search.addEventListener('input',update);
-  rows.forEach(row=>{row.addEventListener('click',event=>{if(event.target.closest('a,button'))return;window.location.href=row.dataset.href;});row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=row.dataset.href;}});});
+  rows.forEach(row=>{row.addEventListener('click',event=>{if(event.target.closest('a,button,input,select,textarea,form'))return;window.location.href=row.dataset.href;});row.addEventListener('keydown',event=>{if(event.target.closest('a,button,input,select,textarea,form'))return;if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=row.dataset.href;}});});
+  update();
 })();
 </script>
 </body>

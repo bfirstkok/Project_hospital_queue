@@ -601,6 +601,10 @@ def pharmacy_worklist(request):
             prescription.queue_is_called = False
             prescription.queue_is_skipped = False
         prescription.can_call_queue = False
+        prescription.can_skip_queue = (
+            prescription.status in PHARMACY_QUEUE_STATUSES
+            and not prescription.queue_is_skipped
+        )
     waiting = [
         rx for rx in prescriptions
         if rx.status in PHARMACY_QUEUE_STATUSES and not rx.queue_is_called and not rx.queue_is_skipped
@@ -615,18 +619,21 @@ def pharmacy_worklist(request):
     requested_id = request.GET.get("prescription_id", "")
     selected = next((rx for rx in prescriptions if str(rx.pk) == requested_id), None)
     if selected is None:
-        selected = next((rx for rx in prescriptions if rx.queue_is_called), None)
-    if selected is None:
-        selected = next((rx for rx in prescriptions if rx.status in PHARMACY_QUEUE_STATUSES and not rx.queue_is_skipped), None)
-    if selected is None and prescriptions:
-        selected = prescriptions[0]
+        if request.GET.get("queue_filter") == "SKIPPED":
+            selected = next((rx for rx in prescriptions if rx.queue_is_skipped), None)
+        else:
+            selected = next((rx for rx in prescriptions if rx.queue_is_called), None)
+            if selected is None:
+                selected = next((rx for rx in prescriptions if not rx.queue_is_skipped), None)
 
+    active_prescriptions = [rx for rx in prescriptions if not rx.queue_is_skipped]
     status_counts = {
-        "SENT": sum(rx.status == Prescription.Status.SENT for rx in prescriptions),
-        "PREPARING": sum(rx.status == Prescription.Status.PREPARING for rx in prescriptions),
-        "READY": sum(rx.status == Prescription.Status.READY for rx in prescriptions),
+        "SENT": sum(rx.status == Prescription.Status.SENT for rx in active_prescriptions),
+        "PREPARING": sum(rx.status == Prescription.Status.PREPARING for rx in active_prescriptions),
+        "READY": sum(rx.status == Prescription.Status.READY for rx in active_prescriptions),
+        "ACTIVE": len(active_prescriptions),
+        "SKIPPED": sum(rx.queue_is_skipped for rx in prescriptions),
     }
-    status_counts["ACTIVE"] = sum(rx.status in PHARMACY_QUEUE_STATUSES for rx in prescriptions)
     dispensed_today = Prescription.objects.filter(
         status=Prescription.Status.DISPENSED,
         dispensed_at__date=timezone.localdate(),
@@ -749,6 +756,9 @@ def billing_worklist(request):
             bill.queue_is_called = False
             bill.queue_is_skipped = False
         bill.can_call_queue = False
+        bill.can_skip_queue = (
+            bill.queue_display_number is not None and not bill.queue_is_skipped
+        )
     waiting = [
         bill for bill in bills
         if bill.billing_queue_entered_at is not None
@@ -768,12 +778,14 @@ def billing_worklist(request):
     if waiting and not called_exists:
         waiting[0].can_call_queue = True
 
-    active_bills = [
+    pending_bills = [
         bill for bill in bills
         if bill.billing_queue_entered_at is not None
         and bill.status in BILLING_QUEUE_STATUSES
         and bill.paid_at is None
     ]
+    active_bills = [bill for bill in pending_bills if not bill.queue_is_skipped]
+    skipped_bills = [bill for bill in pending_bills if bill.queue_is_skipped]
     today = timezone.localdate()
     paid_today = [
         bill for bill in bills
@@ -786,7 +798,12 @@ def billing_worklist(request):
         None,
     )
     if selected_bill is None:
-        selected_bill = next(iter(active_bills), bills[0] if bills else None)
+        default_bills = (
+            skipped_bills
+            if request.GET.get("queue_filter") == "SKIPPED"
+            else active_bills
+        )
+        selected_bill = next(iter(default_bills), None)
     prescription = (
         Prescription.objects.filter(visit=selected_bill.visit)
         .prefetch_related("items")
@@ -800,6 +817,7 @@ def billing_worklist(request):
         )
     billing_summary = {
         "active": len(active_bills),
+        "skipped": len(skipped_bills),
         "review": sum(bill.status == Bill.Status.DRAFT for bill in active_bills),
         "awaiting_payment": sum(bill.status in (Bill.Status.READY, Bill.Status.WAIVED) for bill in active_bills),
         "paid_today": len(paid_today),
@@ -882,12 +900,12 @@ def _service_queue_action(
             setattr(target, called_field, now)
             description = f"เรียกคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')}"
         elif action == "skip":
-            if not getattr(target, called_field) or getattr(target, skipped_field):
-                messages.error(request, "ทำเครื่องหมายไม่มาได้เฉพาะคิวที่กำลังเรียก")
+            if getattr(target, skipped_field):
+                messages.error(request, "รายการนี้อยู่ในหมวดค้าง / ไม่มาแล้ว")
                 return redirect(return_to)
             setattr(target, called_field, None)
             setattr(target, skipped_field, now)
-            description = f"ผู้ป่วยไม่มาหลังเรียกคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')} · ข้ามไปคิวถัดไป"
+            description = f"ข้ามคิว{('ห้องยา' if service == 'pharmacy' else 'การเงิน')} · ย้ายผู้ป่วยไปหมวดค้าง / ไม่มา"
         else:
             if not getattr(target, skipped_field):
                 messages.error(request, "นำกลับเข้าคิวได้เฉพาะรายการที่ถูกข้ามคิว")
@@ -911,7 +929,7 @@ def _service_queue_action(
 
     messages.success(request, {
         "call": "เรียกคิวแล้ว",
-        "skip": "บันทึกไม่มาแล้ว · สามารถเรียกคิวถัดไปได้",
+        "skip": "ย้ายไปหมวดค้าง / ไม่มาแล้ว · สามารถเรียกคิวถัดไปได้",
         "requeue": "นำกลับเข้าคิวท้ายแถวแล้ว",
     }[action])
     return redirect(return_to)
@@ -968,7 +986,8 @@ def pharmacy_queue_display(request):
             Prescription.Status.READY: "พร้อมจ่ายยา",
         }.get(prescription.status, "รอรับยา")
     return render(request, "service_queue_display.html", {
-        "queue_items": prescriptions,
+        "queue_items": [rx for rx in prescriptions if not rx.queue_is_skipped],
+        "skipped_queue_items": [rx for rx in prescriptions if rx.queue_is_skipped],
         "lane_title": "คิวห้องยา",
         "empty_message": "ขณะนี้ยังไม่มีคิวห้องยา",
         "called_message": "กำลังเรียก · เชิญที่ห้องยา",
@@ -1011,7 +1030,8 @@ def billing_queue_display(request):
             Bill.Status.READY: "รอชำระเงิน",
         }.get(bill.status, "รอชำระเงิน")
     return render(request, "service_queue_display.html", {
-        "queue_items": bills,
+        "queue_items": [bill for bill in bills if not bill.queue_is_skipped],
+        "skipped_queue_items": [bill for bill in bills if bill.queue_is_skipped],
         "lane_title": "คิวชำระเงิน",
         "empty_message": "ขณะนี้ยังไม่มีคิวการเงิน",
         "called_message": "กำลังเรียก · เชิญที่การเงิน",

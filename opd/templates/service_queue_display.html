@@ -32,6 +32,17 @@
         </tbody>
       </table></div>
     </section>
+    {% if skipped_queue_items %}
+    <section class="lane" aria-label="คิวค้าง / ไม่มา" style="margin-top:16px">
+      <header class="lane-head"><h2>คิวค้าง / ไม่มา</h2><span>{{ skipped_queue_items|length }} รายการ · ไม่นับรวมคิวรอ</span></header>
+      <div class="table-wrap"><table>
+        <thead><tr><th>คิว</th><th>คำแนะนำ</th></tr></thead>
+        <tbody>{% for item in skipped_queue_items %}
+          <tr class="row-skipped"><td class="ticket">{{ item.queue_display_number }}</td><td><span class="state skipped">ไม่พบผู้ป่วย · ติดต่อเจ้าหน้าที่</span></td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+    </section>
+    {% endif %}
     <footer class="footer"><span>แสดงเฉพาะหมายเลขคิว ไม่แสดงชื่อ HN หรือข้อมูลส่วนบุคคล</span><span>อัปเดตอัตโนมัติทุก 15 วินาที · อัปเดตล่าสุด <span id="updatedAt">--:--:--</span></span></footer>
   </main>
   <script>

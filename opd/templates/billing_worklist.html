@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=billing-dashboard-20261001">
   <link rel="stylesheet" href="{% static 'css/opd-workflow-ui.css' %}?v=service-queues-20260930">
   <link rel="stylesheet" href="{% static 'css/billing-dashboard.css' %}?v=20261001">
+  <style>
+    .finance-filters{flex-wrap:wrap;overflow:visible}.finance-filters button[data-bill-filter="SKIPPED"]{border-color:#e7b7bc;color:#9b2938}.finance-filters button[data-bill-filter="SKIPPED"].active{background:#a72f40;color:#fff}
+    .finance-queue-item{cursor:pointer}.finance-row-patient{text-decoration:none}.finance-row-controls{display:grid;justify-items:start;gap:5px}.finance-row-skip{margin:0}.finance-row-skip button{padding:5px 7px;border:1px solid #eabfc2;border-radius:7px;background:#fff4f4;color:#a32d38;font:800 9px "Sarabun",Tahoma,sans-serif;cursor:pointer}
+    .finance-row-skip button:hover{background:#ffe6e8}.finance-queue-item:focus-visible,.finance-row-skip button:focus-visible{outline:2px solid #197dcc;outline-offset:-2px}
+  </style>
 </head>
 <body>
 {% include "includes/main_nav.html" %}
@@ -29,12 +34,13 @@
 
   <section class="finance-layout" aria-label="จัดการคิวและรายการชำระเงิน">
     <aside class="finance-panel finance-queue-panel">
-      <header class="finance-panel__head"><div><h2>คิวผู้ป่วยการเงิน</h2><p>เลือกผู้ป่วยเพื่อดูยอดและดำเนินการ · เรียงตามคิวบริการ</p></div><span class="finance-count">{{ billing_summary.active }}</span></header>
+      <header class="finance-panel__head"><div><h2>คิวผู้ป่วยการเงิน</h2><p>เรียงตามคิวบริการ · คนที่ข้ามคิวแยกอยู่ในหมวดค้าง / ไม่มา</p></div><span class="finance-count">{{ billing_summary.active }}</span></header>
       <div class="finance-queue-tools">
         <div class="finance-filters" role="group" aria-label="กรองรายการการเงิน">
           <button class="active" type="button" data-bill-filter="OPEN">รอรับบริการ <span data-bill-filter-count="OPEN">{{ billing_summary.active }}</span></button>
           <button type="button" data-bill-filter="DRAFT">รอตรวจยอด <span data-bill-filter-count="DRAFT">{{ billing_summary.review }}</span></button>
           <button type="button" data-bill-filter="READY">รอชำระ <span data-bill-filter-count="READY">{{ billing_summary.awaiting_payment }}</span></button>
+          <button type="button" data-bill-filter="SKIPPED">ค้าง / ไม่มา <span data-bill-filter-count="SKIPPED">{{ billing_summary.skipped }}</span></button>
           <button type="button" data-bill-filter="OUTSTANDING">ค้างยอด <span data-bill-filter-count="OUTSTANDING">0</span></button>
           <button type="button" data-bill-filter="DONE">เสร็จแล้ว <span data-bill-filter-count="DONE">{{ billing_summary.paid_today }}</span></button>
           <button type="button" data-bill-filter="CANCELLED">ยกเลิก <span data-bill-filter-count="CANCELLED">{{ billing_summary.cancelled }}</span></button>
@@ -47,29 +53,31 @@
           <div class="finance-queue-row finance-queue-row--header" role="row"><span role="columnheader">คิว</span><span role="columnheader">ผู้ป่วย / HN</span><span role="columnheader">เวลา</span><span role="columnheader">สถานะ</span></div>
           <div id="billingQueueRows">
           {% for bill in bills %}
-          <a class="finance-queue-row finance-queue-item{% if selected_bill.id == bill.id %} selected{% endif %}{% if bill.queue_is_called %} called{% elif bill.queue_is_skipped %} skipped{% endif %}" href="?bill_id={{ bill.id }}#billing-dashboard" data-status="{% if bill.status == 'WAIVED' and not bill.paid_at %}READY{% else %}{{ bill.status }}{% endif %}" data-active="{% if bill.billing_queue_entered_at and bill.status != 'PAID' and bill.status != 'CANCELLED' and bill.status != 'TRANSFERRED' and not bill.paid_at %}true{% else %}false{% endif %}" data-outstanding="{% if bill.status == 'READY' and bill.patient_due > 0 and not bill.paid_at %}true{% else %}false{% endif %}" data-search="{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }} {{ bill.visit.patient.hn }} {{ bill.visit_id }}"{% if selected_bill.id == bill.id %} aria-current="true"{% endif %}>
-            <span class="finance-row-ticket">{% if bill.queue_display_number %}{{ bill.queue_display_number }}{% else %}—{% endif %}<small>{% if bill.queue_is_called %}กำลังเรียก{% elif bill.queue_is_skipped %}ข้ามคิว{% elif bill.queue_position %}ลำดับ {{ bill.queue_position }}{% else %}ประวัติ{% endif %}</small></span>
-            <span class="finance-row-patient"><strong>{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }}</strong><small>HN {{ bill.visit.patient.hn }}</small></span>
-            <span class="finance-row-time">{% if bill.billing_queue_entered_at %}{{ bill.billing_queue_entered_at|date:"H:i" }}{% else %}{{ bill.created_at|date:"H:i" }}{% endif %}</span>
-            <span class="finance-row-status"><i class="finance-status-dot" aria-hidden="true"></i>{% if bill.status == 'TRANSFERRED' and bill.balance_transfer %}โอนยอดไป Visit #{{ bill.balance_transfer.target_visit_id }}{% elif bill.queue_is_called %}กำลังเรียก{% elif bill.billing_queue_skipped_at %}ไม่มา{% elif bill.paid_at or bill.status == 'PAID' %}ชำระแล้ว{% elif bill.status == 'CANCELLED' %}ยกเลิก{% elif bill.status == 'DRAFT' %}รอตรวจยอด{% elif bill.patient_due == 0 %}รอปิดยอด{% else %}รอชำระ{% endif %}</span>
-          </a>
+          <div class="finance-queue-row finance-queue-item{% if selected_bill.id == bill.id %} selected{% endif %}{% if bill.queue_is_called %} called{% elif bill.queue_is_skipped %} skipped{% endif %}" role="row" tabindex="0" data-href="?bill_id={{ bill.id }}&amp;queue_filter={% if bill.queue_is_skipped %}SKIPPED{% elif bill.queue_display_number %}OPEN{% elif bill.paid_at or bill.status == 'PAID' %}DONE{% else %}{{ bill.status }}{% endif %}#billing-dashboard" data-status="{% if bill.status == 'WAIVED' and not bill.paid_at %}READY{% else %}{{ bill.status }}{% endif %}" data-queue-skipped="{% if bill.queue_is_skipped %}true{% else %}false{% endif %}" data-active="{% if bill.billing_queue_entered_at and bill.status != 'PAID' and bill.status != 'CANCELLED' and bill.status != 'TRANSFERRED' and not bill.paid_at and not bill.queue_is_skipped %}true{% else %}false{% endif %}" data-outstanding="{% if bill.status == 'READY' and bill.patient_due > 0 and not bill.paid_at %}true{% else %}false{% endif %}" data-search="{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }} {{ bill.visit.patient.hn }} {{ bill.visit_id }}"{% if selected_bill.id == bill.id %} aria-current="true"{% endif %}{% if bill.queue_is_skipped or not bill.queue_display_number %} hidden{% endif %}>
+            <span class="finance-row-ticket" role="cell">{% if bill.queue_display_number %}{{ bill.queue_display_number }}{% else %}—{% endif %}<small>{% if bill.queue_is_called %}กำลังเรียก{% elif bill.queue_is_skipped %}ข้ามคิว{% elif bill.queue_position %}ลำดับ {{ bill.queue_position }}{% else %}ประวัติ{% endif %}</small></span>
+            <a class="finance-row-patient" role="cell" href="?bill_id={{ bill.id }}&amp;queue_filter={% if bill.queue_is_skipped %}SKIPPED{% elif bill.queue_display_number %}OPEN{% elif bill.paid_at or bill.status == 'PAID' %}DONE{% else %}{{ bill.status }}{% endif %}#billing-dashboard"><strong>{{ bill.visit.patient.first_name }} {{ bill.visit.patient.last_name }}</strong><small>HN {{ bill.visit.patient.hn }}</small></a>
+            <span class="finance-row-time" role="cell">{% if bill.billing_queue_entered_at %}{{ bill.billing_queue_entered_at|date:"H:i" }}{% else %}{{ bill.created_at|date:"H:i" }}{% endif %}</span>
+            <div class="finance-row-controls" role="cell"><span class="finance-row-status"><i class="finance-status-dot" aria-hidden="true"></i>{% if bill.status == 'TRANSFERRED' and bill.balance_transfer %}โอนยอดไป Visit #{{ bill.balance_transfer.target_visit_id }}{% elif bill.queue_is_called %}กำลังเรียก{% elif bill.queue_is_skipped %}ค้าง / ไม่มา{% elif bill.paid_at or bill.status == 'PAID' %}ชำระแล้ว{% elif bill.status == 'CANCELLED' %}ยกเลิก{% elif bill.status == 'DRAFT' %}รอตรวจยอด{% elif bill.patient_due == 0 %}รอปิดยอด{% else %}รอชำระ{% endif %}</span>
+              {% if 'manage_billing' in access_capabilities and bill.can_skip_queue and not bill.queue_is_called %}<form class="finance-row-skip" method="post" action="{% url 'billing_queue_action' bill.id %}" onsubmit="return confirm('ยืนยันข้ามคิวนี้ไปหมวดค้าง / ไม่มา? ยอดที่ต้องชำระยังคงอยู่ และนำกลับเข้าคิวท้ายแถวได้เมื่อผู้ป่วยมาถึง')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button type="submit">ข้ามคิว / ไม่มา</button></form>{% endif %}
+            </div>
+          </div>
           {% empty %}<div class="finance-queue-empty">ยังไม่มีรายการการเงินในวันนี้</div>{% endfor %}
           </div>
         </div>
       </div>
-      <div class="finance-no-results" id="billingNoResults">ไม่พบรายการตามคำค้นหาหรือตัวกรอง</div>
+      <div class="finance-no-results{% if bills and not billing_summary.active %} visible{% endif %}" id="billingNoResults" role="status">ไม่พบรายการในหมวดนี้ · ตรวจคนที่ข้ามคิวได้ที่ “ค้าง / ไม่มา”</div>
     </aside>
 
     <section class="finance-detail-column" aria-label="รายละเอียดการชำระเงิน">
       {% if selected_bill %}
       <article class="finance-panel finance-patient-panel">
-        <header class="finance-panel__head"><div><h2>ข้อมูลผู้ป่วยและรายการชำระ</h2><p>ตรวจสอบตัวตน สิทธิ และยอดก่อนรับชำระ</p></div><a class="finance-history-link" href="{% url 'billing_detail' selected_bill.id %}">รายละเอียดเต็ม ↗</a></header>
+        <header class="finance-panel__head"><div><h2>ข้อมูลผู้ป่วยและรายการชำระ</h2><p>ตรวจสอบตัวตน สิทธิ และยอดก่อนรับชำระ</p></div>{% if 'manage_billing' in access_capabilities %}<a class="finance-history-link" href="{% url 'billing_detail' selected_bill.id %}">รายละเอียดเต็ม ↗</a>{% endif %}</header>
         <div class="finance-patient-overview">
           <div class="finance-patient-info">
             <span class="finance-patient-avatar" aria-hidden="true">{{ selected_bill.visit.patient.first_name|slice:":1" }}</span>
             <div><h2>{{ selected_bill.visit.patient.first_name }} {{ selected_bill.visit.patient.last_name }}</h2><p>HN <strong>{{ selected_bill.visit.patient.hn }}</strong> <span>·</span> Visit #{{ selected_bill.visit_id }}</p><p>สิทธิการรักษา: <strong>{% if selected_bill.coverage %}{{ selected_bill.coverage.get_coverage_type_display }}{% else %}ยังไม่บันทึกสิทธิ{% endif %}</strong></p></div>
           </div>
-          <div class="finance-patient-status {% if selected_bill.paid_at or selected_bill.status == 'PAID' or selected_bill.status == 'WAIVED' and selected_bill.paid_at %}done{% elif selected_bill.status == 'CANCELLED' or selected_bill.status == 'TRANSFERRED' %}cancelled{% elif selected_bill.status == 'DRAFT' %}review{% else %}waiting{% endif %}"><i aria-hidden="true"></i>{% if selected_bill.paid_at or selected_bill.status == 'PAID' %}ชำระแล้ว{% elif selected_bill.status == 'CANCELLED' %}ยกเลิก{% elif selected_bill.status == 'TRANSFERRED' and selected_bill.balance_transfer %}โอนยอดไป Visit #{{ selected_bill.balance_transfer.target_visit_id }}{% elif selected_bill.status == 'DRAFT' %}รอตรวจยอด{% elif selected_bill.patient_due == 0 %}รอปิดยอด{% else %}รอชำระเงิน{% endif %}</div>
+          <div class="finance-patient-status {% if selected_bill.queue_is_skipped %}cancelled{% elif selected_bill.paid_at or selected_bill.status == 'PAID' or selected_bill.status == 'WAIVED' and selected_bill.paid_at %}done{% elif selected_bill.status == 'CANCELLED' or selected_bill.status == 'TRANSFERRED' %}cancelled{% elif selected_bill.status == 'DRAFT' %}review{% else %}waiting{% endif %}"><i aria-hidden="true"></i>{% if selected_bill.queue_is_skipped %}ค้าง / ไม่มา{% elif selected_bill.paid_at or selected_bill.status == 'PAID' %}ชำระแล้ว{% elif selected_bill.status == 'CANCELLED' %}ยกเลิก{% elif selected_bill.status == 'TRANSFERRED' and selected_bill.balance_transfer %}โอนยอดไป Visit #{{ selected_bill.balance_transfer.target_visit_id }}{% elif selected_bill.status == 'DRAFT' %}รอตรวจยอด{% elif selected_bill.patient_due == 0 %}รอปิดยอด{% else %}รอชำระเงิน{% endif %}</div>
         </div>
         {% if selected_bill.pharmacy_skipped %}<div class="finance-note">แพทย์ยืนยันแล้วว่าไม่มีรายการยากลับบ้าน</div>{% endif %}
         <div class="finance-bill-content">
@@ -89,23 +97,27 @@
           </div>
           <aside class="finance-side-actions" aria-label="ดำเนินการกับรายการนี้">
             <section class="finance-action-card"><h3>จัดการคิวการเงิน</h3>
-              {% if selected_bill.queue_is_called %}
-                <p class="finance-action-hint">กำลังเรียกคิว {{ selected_bill.queue_display_number }} หากผู้ป่วยไม่มา ให้ข้ามเพื่อเรียกคนถัดไป</p>
-                <form method="post" action="{% url 'billing_queue_action' selected_bill.id %}" onsubmit="return confirm('ยืนยันว่าผู้ป่วยไม่มาหลังเรียกคิว และข้ามไปเรียกคิวถัดไปหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="finance-button danger" type="submit">ไม่มา · ข้ามคิว</button></form>
-              {% elif selected_bill.queue_is_skipped %}
-                <p class="finance-action-hint">คิวนี้ถูกข้ามแล้ว หากผู้ป่วยมาถึงให้นำกลับเข้าท้ายแถว</p>
-                <form method="post" action="{% url 'billing_queue_action' selected_bill.id %}">{% csrf_token %}<input type="hidden" name="action" value="requeue"><button class="finance-button secondary" type="submit">กลับเข้าคิวท้ายแถว</button></form>
+              {% if 'manage_billing' in access_capabilities %}
+              {% if selected_bill.queue_is_skipped %}
+                <p class="finance-action-hint">คิวนี้อยู่ในหมวดค้าง / ไม่มา ยอดที่ต้องชำระยังคงอยู่ หากผู้ป่วยมาถึงให้นำกลับเข้าท้ายแถว</p>
+                <form method="post" action="{% url 'billing_queue_action' selected_bill.id %}" onsubmit="return confirm('นำคิวนี้กลับเข้าท้ายแถวหรือไม่?')">{% csrf_token %}<input type="hidden" name="action" value="requeue"><button class="finance-button secondary" type="submit">กลับเข้าคิวท้ายแถว</button></form>
+              {% elif selected_bill.queue_is_called %}
+                <p class="finance-action-hint">กำลังเรียกคิว {{ selected_bill.queue_display_number }} หากผู้ป่วยไม่มา ให้ข้ามไปหมวดค้าง / ไม่มา แล้วเรียกคนถัดไป</p>
               {% elif selected_bill.can_call_queue %}
                 <p class="finance-action-hint">เรียกคิวแรกตามลำดับเวลาที่มาถึง</p>
                 <form method="post" action="{% url 'billing_queue_action' selected_bill.id %}">{% csrf_token %}<input type="hidden" name="action" value="call"><button class="finance-button primary" type="submit">▶ เรียกคิว {{ selected_bill.queue_display_number }}</button></form>
               {% elif selected_bill.queue_display_number %}<p class="finance-action-hint">คิว {{ selected_bill.queue_display_number }} จะถูกเรียกตามลำดับ เมื่อคิวก่อนหน้าดำเนินการเสร็จ</p>
               {% else %}<p class="finance-action-hint">รายการนี้ไม่ได้อยู่ในคิวที่กำลังรอรับบริการ</p>{% endif %}
+              {% if selected_bill.can_skip_queue %}<form method="post" action="{% url 'billing_queue_action' selected_bill.id %}" onsubmit="return confirm('ยืนยันข้ามคิวนี้ไปหมวดค้าง / ไม่มา? ยอดที่ต้องชำระยังคงอยู่ และนำกลับเข้าคิวท้ายแถวได้เมื่อผู้ป่วยมาถึง')">{% csrf_token %}<input type="hidden" name="action" value="skip"><button class="finance-button danger" type="submit">ข้ามคิว / ไม่มา</button></form>{% endif %}
+              {% else %}<p class="finance-action-hint">บัญชีนี้ดูข้อมูลได้เท่านั้น การเรียก ข้าม และนำกลับเข้าคิวต้องดำเนินการโดยผู้มีสิทธิ์จัดการการเงิน</p>{% endif %}
               <a class="finance-subtle-link" href="{% url 'billing_queue_display' %}" target="_blank" rel="noopener">เปิดจอคิวการเงิน ↗</a>
             </section>
             <section class="finance-action-card finance-payment-card"><h3>ดำเนินการชำระเงิน</h3>
               {% if selected_bill.paid_at or selected_bill.status == 'PAID' %}
                 <p class="finance-action-hint">บันทึกรับชำระแล้ว{% if selected_bill.paid_at %} เมื่อ {{ selected_bill.paid_at|date:"d/m/Y H:i" }}{% endif %}</p>
                 <a class="finance-button success" href="{% url 'billing_receipt' selected_bill.id %}" target="_blank" rel="noopener">▣ ดู / พิมพ์ใบเสร็จ</a>
+              {% elif 'manage_billing' not in access_capabilities %}
+                <p class="finance-action-hint">บัญชีนี้ไม่มีสิทธิ์ตรวจสิทธิ ปิดยอด หรือรับชำระเงิน โปรดติดต่อเจ้าหน้าที่การเงิน</p>
               {% elif selected_bill.status == 'CANCELLED' %}
                 <p class="finance-action-hint">รายการนี้ถูกยกเลิกแล้ว</p><a class="finance-button secondary" href="{% url 'billing_detail' selected_bill.id %}">ดูรายละเอียด</a>
               {% elif selected_bill.status == 'TRANSFERRED' %}
@@ -121,7 +133,7 @@
         </div>
       </article>
       {% else %}
-      <div class="finance-panel finance-detail-empty"><span aria-hidden="true">฿</span><h2>ยังไม่มีรายการให้ดำเนินการ</h2><p>เมื่อแพทย์ส่งรายการมาที่การเงิน ข้อมูลจะแสดงที่นี่</p></div>
+      <div class="finance-panel finance-detail-empty"><span aria-hidden="true">฿</span><h2>ยังไม่มีคิวรอรับบริการที่เลือก</h2><p>{% if billing_summary.skipped %}รายการที่ข้ามคิวอยู่ในหมวด “ค้าง / ไม่มา” เลือกหมวดนั้นเพื่อดูยอดหรือนำกลับเข้าคิว{% else %}เลือกผู้ป่วยจากรายการทางซ้าย หรือรอแพทย์ส่งรายการมาที่การเงิน{% endif %}</p></div>
       {% endif %}
     </section>
   </section>
@@ -134,15 +146,31 @@
   const noResults=document.getElementById('billingNoResults');
   const group=status=>['PAID','WAIVED'].includes(status)?'DONE':status;
   const selected=cards.find(card=>card.getAttribute('aria-current')==='true');
-  const selectedFromUrl=new URLSearchParams(window.location.search).has('bill_id');
-  let active=selectedFromUrl&&selected&&selected.dataset.active!=='true'?group(selected.dataset.status):'OPEN';
-  const counts={OPEN:0,DRAFT:0,READY:0,DONE:0,CANCELLED:0,TRANSFERRED:0,OUTSTANDING:0,ALL:cards.length};
-  cards.forEach(card=>{const key=group(card.dataset.status);if(card.dataset.active==='true'){counts.OPEN++;if(key in counts)counts[key]++;}else if(key in counts)counts[key]++;if(card.dataset.outstanding==='true')counts.OUTSTANDING++;});
+  const params=new URLSearchParams(window.location.search);
+  const selectedFromUrl=params.has('bill_id');
+  const validFilters=new Set(filters.map(button=>button.dataset.billFilter));
+  let active=selectedFromUrl&&selected?.dataset.queueSkipped==='true'?'SKIPPED':validFilters.has(params.get('queue_filter'))?params.get('queue_filter'):selectedFromUrl&&selected&&selected.dataset.active!=='true'?group(selected.dataset.status):'OPEN';
+  const counts={OPEN:0,DRAFT:0,READY:0,SKIPPED:0,DONE:0,CANCELLED:0,TRANSFERRED:0,OUTSTANDING:0,ALL:cards.length};
+  cards.forEach(card=>{const key=group(card.dataset.status);if(card.dataset.outstanding==='true')counts.OUTSTANDING++;if(card.dataset.queueSkipped==='true'){counts.SKIPPED++;return;}if(card.dataset.active==='true')counts.OPEN++;if(key in counts)counts[key]++;});
   Object.entries(counts).forEach(([key,value])=>{const node=document.querySelector(`[data-bill-filter-count="${key}"]`);if(node)node.textContent=value;});
   filters.forEach(button=>button.classList.toggle('active',button.dataset.billFilter===active));
-  function update(){const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;cards.forEach(card=>{const matchesStatus=active==='ALL'||(active==='OPEN'?card.dataset.active==='true':active==='OUTSTANDING'?card.dataset.outstanding==='true':active===group(card.dataset.status));const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;});noResults.classList.toggle('visible',cards.length>0&&visible===0);}
+  function update(){
+    const term=(search.value||'').trim().toLocaleLowerCase();let visible=0;
+    cards.forEach(card=>{
+      const skipped=card.dataset.queueSkipped==='true';
+      const matchesStatus=active==='ALL'||(active==='SKIPPED'?skipped:active==='OUTSTANDING'?card.dataset.outstanding==='true':!skipped&&(active==='OPEN'?card.dataset.active==='true':active===group(card.dataset.status)));
+      const matchesSearch=!term||card.dataset.search.toLocaleLowerCase().includes(term)||card.textContent.toLocaleLowerCase().includes(term);
+      card.hidden=!(matchesStatus&&matchesSearch);if(!card.hidden)visible++;
+      const link=card.querySelector('.finance-row-patient');
+      const destination=new URL(link.href,window.location.href);
+      destination.searchParams.set('queue_filter',skipped?'SKIPPED':active==='SKIPPED'?'OPEN':active);
+      card.dataset.href=destination.href;link.href=destination.href;
+    });
+    noResults.classList.toggle('visible',cards.length>0&&visible===0);
+  }
   filters.forEach(button=>button.addEventListener('click',()=>{active=button.dataset.billFilter;filters.forEach(item=>item.classList.toggle('active',item===button));update();}));
   search.addEventListener('input',update);
+  cards.forEach(card=>{card.addEventListener('click',event=>{if(event.target.closest('a,button,input,select,textarea,form'))return;window.location.href=card.dataset.href;});card.addEventListener('keydown',event=>{if(event.target.closest('a,button,input,select,textarea,form'))return;if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=card.dataset.href;}});});
   const clock=document.getElementById('financeClock');const date=document.getElementById('financeDate');
   function tick(){const now=new Date();clock.textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false});date.textContent=now.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});}
   tick();window.setInterval(tick,30000);update();
