@@ -85,7 +85,11 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
     treated as the end of the whole hospital journey when pharmacy/billing work
     remains.
     """
-    workflow_logs = list(workflow_logs or [])
+    workflow_logs = sorted(
+        workflow_logs or [],
+        key=lambda log: (log.created_at, log.pk or 0),
+        reverse=True,
+    )
 
     try:
         queue = visit.queue
@@ -110,6 +114,20 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
 
     queue_status = getattr(queue, "status", "")
     logged_events = {log.event_type for log in workflow_logs}
+
+    def event_time(event_type, *, status=None, record_key=None, record_id=None):
+        for log in workflow_logs:
+            if log.event_type != event_type:
+                continue
+            details = log.details or {}
+            if status is not None and details.get("status") != status:
+                continue
+            if record_key and details.get(record_key) is not None:
+                if str(details[record_key]) != str(record_id):
+                    continue
+            return log.created_at
+        return None
+
     departure_log = next(
         (
             log for log in workflow_logs
@@ -124,6 +142,7 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
             "label": label,
             "state": state,
             "detail": detail,
+            "timestamp": None,
         }
 
     beyond_vitals = queue_status not in {"", Queue.Status.WAITING_VITALS}
@@ -276,6 +295,79 @@ def _patient_journey_for_visit(visit, workflow_logs=None):
             departure_step_detail,
         ),
     ]
+
+    pharmacy_time = None
+    if prescription is not None:
+        pharmacy_time = event_time(
+            VisitWorkflowLog.EventType.PHARMACY_STATUS_CHANGED,
+            status=prescription_status,
+            record_key="prescription_id",
+            record_id=prescription.pk,
+        )
+        if pharmacy_done:
+            pharmacy_time = prescription.dispensed_at or pharmacy_time
+        elif prescription_status == "SENT":
+            pharmacy_time = pharmacy_time or prescription.sent_at
+        elif prescription_status == "DRAFT":
+            pharmacy_time = event_time(
+                VisitWorkflowLog.EventType.PRESCRIPTION_CREATED,
+                record_key="prescription_id",
+                record_id=prescription.pk,
+            ) or prescription.created_at
+
+    billing_time = None
+    if bill is not None:
+        if billing_done:
+            # Never present a bill's creation/arrival as the time it was paid.
+            billing_time = bill.paid_at or event_time(
+                VisitWorkflowLog.EventType.PAYMENT_RECEIVED,
+                status=bill_status,
+                record_key="bill_id",
+                record_id=bill.pk,
+            )
+        elif bill_status == Bill.Status.TRANSFERRED:
+            billing_time = event_time(
+                VisitWorkflowLog.EventType.URGENT_BILL_ROLLOVER,
+                record_key="source_bill_id",
+                record_id=bill.pk,
+            )
+        else:
+            billing_time = (
+                bill.billing_queue_entered_at
+                or event_time(
+                    VisitWorkflowLog.EventType.BILLING_QUEUE_ENTERED,
+                    record_key="bill_id",
+                    record_id=bill.pk,
+                )
+                or event_time(
+                    VisitWorkflowLog.EventType.BILL_CREATED,
+                    record_key="bill_id",
+                    record_id=bill.pk,
+                )
+                or bill.created_at
+            )
+
+    complete_time = departure_log.created_at if departure_log else None
+    if complete_time is None and queue_status == Queue.Status.DISCHARGED:
+        complete_time = event_time(VisitWorkflowLog.EventType.EMERGENCY_DISCHARGED)
+
+    step_times = {
+        "registration": visit.registered_at,
+        # triaged_at is AI evaluation time; vitals.updated_at also changes when
+        # risk flags are edited. Only the measurement audit is reliable here.
+        "vitals": event_time(VisitWorkflowLog.EventType.VITALS_RECORDED),
+        "triage": event_time(VisitWorkflowLog.EventType.TRIAGE_CONFIRMED) or visit.confirmed_at,
+        "queue": event_time(VisitWorkflowLog.EventType.QUEUE_CALLED) or visit.called_at,
+        "doctor": event_time(VisitWorkflowLog.EventType.DOCTOR_ASSESSMENT)
+        or getattr(assessment, "created_at", None),
+        "pharmacy": pharmacy_time,
+        "billing": billing_time,
+        "complete": complete_time,
+    }
+    for step_data in steps:
+        recorded_at = step_times[step_data["key"]]
+        if step_data["state"] in {"done", "current"} and recorded_at is not None:
+            step_data["timestamp"] = recorded_at.isoformat()
 
     if getattr(visit, "superseded_by_id", None):
         current_label = "ดำเนินการต่อใน Visit ใหม่"
@@ -744,6 +836,7 @@ def _serialize_patient_journey(journey):
             "label": step_data.get("label", ""),
             "state": state,
             "detail": detail,
+            "timestamp": step_data.get("timestamp"),
         })
 
     return {
